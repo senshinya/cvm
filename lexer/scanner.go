@@ -31,19 +31,6 @@ func (s *Scanner) isAtEnd() bool {
 	return s.current >= len(s.source)
 }
 
-var singleCharToken = map[byte]common.TokenType{
-	'(': common.LEFT_PAREN,
-	')': common.RIGHT_PAREN,
-	'{': common.LEFT_BRACE,
-	'}': common.RIGHT_BRACE,
-	',': common.COMMA,
-	'.': common.DOT,
-	'-': common.MINUS,
-	'+': common.PLUS,
-	';': common.SEMICOLON,
-	'*': common.STAR,
-}
-
 func (s *Scanner) scanToken() {
 	c := s.advance()
 	switch c {
