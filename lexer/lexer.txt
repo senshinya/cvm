@@ -1,0 +1,44 @@
+token -> identifier | number-literal | character-literal | string-literal | punctuator
+identifier -> letter_ (letter_ | digit)*
+digit -> 0|1|2|3|4|5|6|7|8|9
+letter_ -> _|A|B|...|Z|a|b|...|z
+number-literal -> integer-literal | floating-literal
+integer-literal -> integer-constant integer-suffix?
+integer-constant -> decimal-constant | oct-constant | hex-constant
+decimal-constant -> nonzero-digit digit*
+nonzero-digit -> 1|2|3|4|5|6|7|8|9
+oct-constant -> 0 octal-digit*          // 0 处理为八进制数
+octal-digit -> 0|1|2|3|4|5|6|7
+hex-constant -> hex-prefix hex-digit*
+hex-prefix -> 0x | 0X
+hex-digit -> 0|1|2|3|4|5|6|7|8|9|a|b|c|d|e|f|A|B|C|D|E|F
+integer-suffix -> unsigned-suffix long-suffix? | long-suffix unsigned-suffix?
+unsigned-suffix -> u|U
+long-suffix -> ll? | LL?
+floating-literal -> floating-constant floating-suffix?
+floating-constant -> decimal-floating-constant | hex-floating-constant
+decimal-floating-constant -> fractional-constant exponent? | digit-sequence exponent
+fractional-constant -> digit-sequence? . digit-sequence | digit-sequence .
+exponent -> (e|E) sign? digit-sequence
+sign -> +|-
+digit-sequence -> digit+
+floating-suffix -> f|l|F|L
+hex-floating-constant -> hex-prefix (hex-fractional-constant|hex-digit-sequence) binary-exponent
+hex-fractional-constant -> hex-digit-sequence? . hex-digit-sequence | hex-digit-sequence .
+hex-digit-sequence -> hex-digit+
+binary-exponent -> (p|P) sign? digit-sequence
+character-literal -> ' c-char '
+c-char -> escape-sequence | every ascii except ' \ \n
+escape-sequence -> simple-escape | oct-escape | hex-escape
+simple-escape -> \' | \" | \? | \\ | \a | \b | \f | \n | \r | \t | \v
+oct-escape -> \ oct-digit[1-3]
+hex-escape -> \x hex-digit-sequence
+string-literal -> " s-char-sequence? "
+s-char-sequence -> s-char+
+s-char -> escape-sequence | every ascii except " \ \n
+punctuator -> [ | ] | ( | ) | { | } | . | -> |
+              ++ | -- | & | * | + | - | ~ | ! |
+              / | % | << | >> | < | > | <= | >= | == | != | ^ | | | && | || |
+              ? | : | ; | ... |
+              = | *= | /= | %= | += | -= | <<= | >>= | &= | ^= | |= |
+              , | # | ##
