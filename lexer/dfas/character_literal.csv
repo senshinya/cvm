@@ -1,0 +1,13 @@
+state,',char_ascii,\,x,hex,simple_escape_suffix,oct
+A,B,,,,,,
+B,,H,C,,,,
+C,,,,D,,H,FH
+D,,,,,EH,,
+EH,N,H,I,,EH,,
+H,N,H,I,,,,
+FH,N,H,I,,,,GH
+GH,N,H,I,,,,H
+I,,,,J,,H,LH
+J,,,,,EH,,
+LH,N,H,I,,,,GH
+N,,,,,,,

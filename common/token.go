@@ -31,6 +31,7 @@ const (
 	// 字面量
 	IDENTIFIER = "IDENTIFIER"
 	STRING     = "STRING"
+	CHARACTER  = "CHARACTER"
 	NUMBER     = "NUMBER"
 
 	// 关键字

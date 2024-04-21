@@ -1,74 +1,73 @@
 package lexer
 
 import (
+	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/util"
 )
 
+type state string
+type stateTable map[state]map[condition]state
+type condition string
+type conditionFunc func(byte) bool
+type conditionTable map[condition]conditionFunc
+type tokenConstructor func(string, int) common.Token
+
 type Scanner struct {
-	source  string
-	tokens  []common.Token
-	start   int
-	current int
-	line    int
+	stateTable       stateTable
+	conditionTable   conditionTable
+	tokenConstructor tokenConstructor
+	startState       state
+	endState         map[state]struct{}
 }
 
-func NewScanner(source string) *Scanner {
-	return &Scanner{source: source, line: 1}
-}
-
-func (s *Scanner) ScanTokens() []common.Token {
-	for !s.isAtEnd() {
-		s.start = s.current
-		s.scanToken()
-	}
-
-	s.tokens = append(s.tokens, common.NewToken(common.EOF, "", nil, s.line))
-	return s.tokens
-}
-
-func (s *Scanner) isAtEnd() bool {
-	return s.current >= len(s.source)
-}
-
-func (s *Scanner) scanToken() {
-	c := s.advance()
-	switch c {
-	case '(':
-		s.addToken(common.LEFT_PAREN)
-	case ')':
-		s.addToken(common.RIGHT_PAREN)
-	case '{':
-		s.addToken(common.LEFT_BRACE)
-	case '}':
-		s.addToken(common.RIGHT_BRACE)
-	case ',':
-		s.addToken(common.COMMA)
-	case '.':
-		s.addToken(common.DOT)
-	case '-':
-		s.addToken(common.MINUS)
-	case '+':
-		s.addToken(common.PLUS)
-	case ';':
-		s.addToken(common.SEMICOLON)
-	case '*':
-		s.addToken(common.STAR)
-	default:
-		util.Error(s.line, "Unexpected character.")
+func newScanner(stateTable stateTable,
+	conditionTable conditionTable,
+	tokenConstructor tokenConstructor,
+	startState state,
+	endState []state) *Scanner {
+	// todo: check valid
+	return &Scanner{
+		stateTable:       stateTable,
+		conditionTable:   conditionTable,
+		tokenConstructor: tokenConstructor,
+		startState:       startState,
+		endState: funk.Map(endState, func(s state) (state, struct{}) {
+			return s, struct{}{}
+		}).(map[state]struct{}),
 	}
 }
 
-func (s *Scanner) advance() byte {
-	s.current++
-	return s.source[s.current-1]
-}
+func (s *Scanner) scan(lexState *Lexer) common.Token {
+	cState := s.startState
+	for !lexState.isAtEnd() {
+		cByte := lexState.getCurrent()
+		canTransfer := false
+		transferMap := s.stateTable[cState]
+		for cond, nState := range transferMap {
+			condFunc := s.conditionTable[cond]
+			if condFunc(cByte) {
+				// bingo, transfer state
+				canTransfer = true
+				cState = nState
+				break
+			}
+		}
+		if canTransfer {
+			lexState.moveNext()
+			continue
+		}
+		// cannot transfer, see if cState is an end state
+		if _, canEnd := s.endState[cState]; canEnd {
+			return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line)
+		}
+		// panic!
+		panic(lexState.source[lexState.start:lexState.current])
+	}
 
-func (s *Scanner) addToken(typ common.TokenType) {
-	s.addTokenWithLiteral(typ, nil)
-}
-
-func (s *Scanner) addTokenWithLiteral(typ common.TokenType, literal any) {
-	text := s.source[s.start:s.current]
-	s.tokens = append(s.tokens, common.NewToken(typ, text, literal, s.line))
+	// read to the end, see if cState is an end state
+	if _, canEnd := s.endState[cState]; canEnd {
+		return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line)
+	}
+	// panic!
+	panic(lexState.source[lexState.start:lexState.current])
 }
