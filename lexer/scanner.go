@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"fmt"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 )
@@ -25,7 +26,9 @@ func newScanner(stateTable stateTable,
 	tokenConstructor tokenConstructor,
 	startState state,
 	endState []state) *Scanner {
-	// todo: check valid
+	if err := checkScannerValid(stateTable, conditionTable, startState, endState); err != nil {
+		panic(err)
+	}
 	return &Scanner{
 		stateTable:       stateTable,
 		conditionTable:   conditionTable,
@@ -70,4 +73,40 @@ func (s *Scanner) scan(lexState *Lexer) common.Token {
 	}
 	// panic!
 	panic(lexState.source[lexState.start:lexState.current])
+}
+
+func checkScannerValid(stateTable stateTable, conditionTable conditionTable, startState state, endState []state) error {
+	states := funk.Map(stateTable, func(s state, _ map[condition]state) (state, struct{}) {
+		return s, struct{}{}
+	}).(map[state]struct{})
+	conditions := map[condition]struct{}{}
+
+	// check if all states in stateTable are defined
+	for _, conditionTransfer := range stateTable {
+		for cond, newState := range conditionTransfer {
+			conditions[cond] = struct{}{}
+			if _, ok := states[newState]; !ok {
+				return fmt.Errorf("unknown state: %s", newState)
+			}
+		}
+	}
+
+	// check if all conditions in stateTable are defined
+	for cond := range conditions {
+		if _, ok := conditionTable[cond]; !ok {
+			return fmt.Errorf("unknown condition: %s", cond)
+		}
+	}
+
+	// check if start state and end states are defined
+	for _, s := range endState {
+		if _, ok := states[s]; !ok {
+			return fmt.Errorf("unknown end state: %s", s)
+		}
+	}
+	if _, ok := states[startState]; !ok {
+		return fmt.Errorf("unknown start state: %s", startState)
+	}
+
+	return nil
 }

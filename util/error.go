@@ -4,6 +4,8 @@ import "fmt"
 
 var HadError = false
 
+// TODO: New CVM Error Type
+
 func Error(line int, message string) {
 	report(line, "", message)
 	HadError = true
