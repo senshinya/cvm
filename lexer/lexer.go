@@ -3,6 +3,7 @@ package lexer
 import (
 	"log"
 	"shinya.click/cvm/common"
+	"shinya.click/cvm/lexer/util"
 )
 
 type Lexer struct {
@@ -19,6 +20,10 @@ func NewLexer(source string) *Lexer {
 
 func (l *Lexer) ScanTokens() []common.Token {
 	for !l.isAtEnd() {
+		if l.currentEmpty() {
+			l.moveNext()
+			continue
+		}
 		l.start = l.current
 		l.scanToken()
 	}
@@ -32,16 +37,19 @@ func (l *Lexer) isAtEnd() bool {
 }
 
 func (l *Lexer) scanToken() {
-	switch l.getCurrent() {
-	case '\'':
+	switch {
+	case l.peek() == '\'':
 		token := newCharacterLiteralScanner().scan(l)
 		l.tokens = append(l.tokens, token)
+	case util.IsLetter_(l.peek()):
+		token := newIdentifierScanner().scan(l)
+		l.tokens = append(l.tokens, token)
 	default:
-		log.Panicf("Unrecognized token: %c", l.getCurrent())
+		log.Panicf("Unrecognized token: %c", l.peek())
 	}
 }
 
-func (l *Lexer) getCurrent() byte {
+func (l *Lexer) peek() byte {
 	return l.source[l.current]
 }
 
@@ -49,11 +57,17 @@ func (l *Lexer) moveNext() {
 	l.current++
 }
 
-func (l *Lexer) addToken(typ common.TokenType) {
-	l.addTokenWithLiteral(typ, nil)
-}
-
-func (l *Lexer) addTokenWithLiteral(typ common.TokenType, literal any) {
-	text := l.source[l.start:l.current]
-	l.tokens = append(l.tokens, common.NewToken(typ, text, literal, l.line))
+func (l *Lexer) currentEmpty() bool {
+	switch l.peek() {
+	case ' ':
+		fallthrough
+	case '\r':
+		fallthrough
+	case '\t':
+		return true
+	case '\n':
+		l.line++
+		return true
+	}
+	return false
 }

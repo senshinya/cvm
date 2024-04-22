@@ -43,7 +43,7 @@ func newScanner(stateTable stateTable,
 func (s *Scanner) scan(lexState *Lexer) common.Token {
 	cState := s.startState
 	for !lexState.isAtEnd() {
-		cByte := lexState.getCurrent()
+		cByte := lexState.peek()
 		canTransfer := false
 		transferMap := s.stateTable[cState]
 		for cond, nState := range transferMap {
