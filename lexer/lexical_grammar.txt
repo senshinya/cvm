@@ -1,4 +1,4 @@
-token -> identifier | number-literal | character-literal | string-literal | std-header | punctuator
+token -> identifier | number-literal | character-literal | string-literal | punctuator
 
 identifier -> letter_ (letter_ | digit)*
 digit -> 0|1|2|3|4|5|6|7|8|9
@@ -41,10 +41,6 @@ hex-escape -> \x hex-digit-sequence
 string-literal -> " s-char-sequence? "
 s-char-sequence -> s-char+
 s-char -> escape-sequence | every ascii except " \ \n
-
-std-header -> < h-char-sequence >
-h-char-sequence -> h-char+
-h-char -> every ascii except > \
 
 punctuator -> [ | ] | ( | ) | { | } | . | -> |
               ++ | -- | & | * | + | - | ~ | ! |
