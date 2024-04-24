@@ -63,7 +63,8 @@ func newCharacterLiteralScanner() *Scanner {
 	return newScanner(characterLiteralStateTable,
 		characterLiteralConditionTable,
 		func(s string, l int) common.Token {
-			return common.NewToken(common.CHARACTER, s, s[1:len(s)-1], l)
+			// TODO check escape range
+			return common.NewToken(common.CHARACTER, s, nil, l)
 		},
 		"A",
 		[]state{"N"})

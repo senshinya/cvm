@@ -1,6 +1,8 @@
 package lexer
 
-import "shinya.click/cvm/common"
+import (
+	"shinya.click/cvm/common"
+)
 
 var stringLiteralStateTable = stateTable{
 	"A":  map[condition]state{"double_quotation": "B"},
@@ -59,7 +61,8 @@ func newStringLiteralScanner() *Scanner {
 	return newScanner(stringLiteralStateTable,
 		stringLiteralConditionTable,
 		func(s string, l int) common.Token {
-			return common.NewToken(common.STRING, s, s[1:len(s)-1], l)
+			// TODO check escape range
+			return common.NewToken(common.STRING, s, nil, l)
 		},
 		"A",
 		[]state{"C"})
