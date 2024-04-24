@@ -4,7 +4,6 @@ import (
 	"shinya.click/cvm/common"
 )
 
-// TODO fix character literal state table
 var characterLiteralStateTable = stateTable{
 	"A":  map[condition]state{"single_quotation": "B"},
 	"B":  map[condition]state{"char_ascii": "H", "back_slash": "C"},
@@ -14,9 +13,7 @@ var characterLiteralStateTable = stateTable{
 	"H":  map[condition]state{"single_quotation": "N", "char_ascii": "H", "back_slash": "I"},
 	"FH": map[condition]state{"single_quotation": "N", "char_ascii": "H", "back_slash": "I", "oct": "GH"},
 	"GH": map[condition]state{"single_quotation": "N", "char_ascii": "H", "back_slash": "I", "oct": "H"},
-	"I":  map[condition]state{"x": "J", "escape_suffix": "H", "oct": "LH"},
-	"J":  map[condition]state{"hex": "EH"},
-	"LH": map[condition]state{"single_quotation": "N", "char_ascii": "H", "back_slash": "I", "oct": "GH"},
+	"I":  map[condition]state{"x": "D", "escape_suffix": "H", "oct": "FH"},
 	"N":  map[condition]state{},
 }
 
