@@ -41,6 +41,9 @@ func (l *Lexer) scanToken() {
 	case l.peek() == '\'':
 		token := newCharacterLiteralScanner().scan(l)
 		l.tokens = append(l.tokens, token)
+	case l.peek() == '"':
+		token := newStringLiteralScanner().scan(l)
+		l.tokens = append(l.tokens, token)
 	case util.IsLetter_(l.peek()):
 		token := newIdentifierScanner().scan(l)
 		l.tokens = append(l.tokens, token)
