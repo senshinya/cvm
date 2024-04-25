@@ -58,12 +58,14 @@ var stringLiteralConditionTable = conditionTable{
 }
 
 func newStringLiteralScanner() *Scanner {
-	return newScanner(stringLiteralStateTable,
-		stringLiteralConditionTable,
-		func(s string, l int) common.Token {
+	return NewScannerBuilder().
+		StateTable(stringLiteralStateTable).
+		ConditionTable(stringLiteralConditionTable).
+		TokenConstructor(func(s string, l int) common.Token {
 			// TODO check escape range
 			return common.NewToken(common.STRING, s, nil, l)
-		},
-		"A",
-		[]state{"C"})
+		}).
+		StartState("A").
+		EndState([]state{"C"}).
+		Build()
 }

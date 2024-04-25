@@ -13,6 +13,10 @@ type conditionFunc func(byte) bool
 type conditionTable map[condition]conditionFunc
 type tokenConstructor func(string, int) common.Token
 
+type ScannerBuilder struct {
+	scanner *Scanner
+}
+
 type Scanner struct {
 	stateTable       stateTable
 	conditionTable   conditionTable
@@ -21,23 +25,45 @@ type Scanner struct {
 	endState         map[state]struct{}
 }
 
-func newScanner(stateTable stateTable,
-	conditionTable conditionTable,
-	tokenConstructor tokenConstructor,
-	startState state,
-	endState []state) *Scanner {
-	if err := checkScannerValid(stateTable, conditionTable, startState, endState); err != nil {
+func NewScannerBuilder() *ScannerBuilder {
+	return &ScannerBuilder{
+		scanner: &Scanner{},
+	}
+}
+
+func (b *ScannerBuilder) StateTable(stateTable stateTable) *ScannerBuilder {
+	b.scanner.stateTable = stateTable
+	return b
+}
+
+func (b *ScannerBuilder) ConditionTable(conditionTable conditionTable) *ScannerBuilder {
+	b.scanner.conditionTable = conditionTable
+	return b
+}
+
+func (b *ScannerBuilder) TokenConstructor(tokenConstructor tokenConstructor) *ScannerBuilder {
+	b.scanner.tokenConstructor = tokenConstructor
+	return b
+}
+
+func (b *ScannerBuilder) StartState(startState state) *ScannerBuilder {
+	b.scanner.startState = startState
+	return b
+}
+
+func (b *ScannerBuilder) EndState(endState []state) *ScannerBuilder {
+	b.scanner.endState = funk.Map(endState, func(s state) (state, struct{}) {
+		return s, struct{}{}
+	}).(map[state]struct{})
+	return b
+}
+
+func (b *ScannerBuilder) Build() *Scanner {
+	s := b.scanner
+	if err := checkScannerValid(s.stateTable, s.conditionTable, s.startState, s.endState); err != nil {
 		panic(err)
 	}
-	return &Scanner{
-		stateTable:       stateTable,
-		conditionTable:   conditionTable,
-		tokenConstructor: tokenConstructor,
-		startState:       startState,
-		endState: funk.Map(endState, func(s state) (state, struct{}) {
-			return s, struct{}{}
-		}).(map[state]struct{}),
-	}
+	return s
 }
 
 func (s *Scanner) scan(lexState *Lexer) common.Token {
@@ -75,7 +101,7 @@ func (s *Scanner) scan(lexState *Lexer) common.Token {
 	panic(lexState.source[lexState.start:lexState.current])
 }
 
-func checkScannerValid(stateTable stateTable, conditionTable conditionTable, startState state, endState []state) error {
+func checkScannerValid(stateTable stateTable, conditionTable conditionTable, startState state, endState map[state]struct{}) error {
 	states := funk.Map(stateTable, func(s state, _ map[condition]state) (state, struct{}) {
 		return s, struct{}{}
 	}).(map[state]struct{})
@@ -99,7 +125,7 @@ func checkScannerValid(stateTable stateTable, conditionTable conditionTable, sta
 	}
 
 	// check if start state and end states are defined
-	for _, s := range endState {
+	for s := range endState {
 		if _, ok := states[s]; !ok {
 			return fmt.Errorf("unknown end state: %s", s)
 		}

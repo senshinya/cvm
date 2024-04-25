@@ -60,12 +60,14 @@ var characterLiteralConditionTable = conditionTable{
 }
 
 func newCharacterLiteralScanner() *Scanner {
-	return newScanner(characterLiteralStateTable,
-		characterLiteralConditionTable,
-		func(s string, l int) common.Token {
+	return NewScannerBuilder().
+		StateTable(characterLiteralStateTable).
+		ConditionTable(characterLiteralConditionTable).
+		TokenConstructor(func(s string, l int) common.Token {
 			// TODO check escape range
 			return common.NewToken(common.CHARACTER, s, nil, l)
-		},
-		"A",
-		[]state{"N"})
+		}).
+		StartState("A").
+		EndState([]state{"N"}).
+		Build()
 }

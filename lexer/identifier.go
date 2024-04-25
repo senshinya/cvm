@@ -25,11 +25,13 @@ func identifierConstructor(s string, l int) common.Token {
 }
 
 func newIdentifierScanner() *Scanner {
-	return newScanner(identifierStateTable,
-		identifierConditionTable,
-		identifierConstructor,
-		"A",
-		[]state{"B"})
+	return NewScannerBuilder().
+		StateTable(identifierStateTable).
+		ConditionTable(identifierConditionTable).
+		TokenConstructor(identifierConstructor).
+		StartState("A").
+		EndState([]state{"B"}).
+		Build()
 }
 
 var keywords = map[string]common.TokenType{
