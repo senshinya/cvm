@@ -6,8 +6,8 @@ import (
 )
 
 var identifierStateTable = stateTable{
-	"A": map[condition]state{"letter_": "B"},
-	"B": map[condition]state{"letter_": "B", "digit": "B"},
+	"A": []Edge{{"letter_", "B"}},
+	"B": []Edge{{"letter_", "B"}, {"digit", "B"}},
 }
 
 var identifierConditionTable = conditionTable{
@@ -17,7 +17,7 @@ var identifierConditionTable = conditionTable{
 	},
 }
 
-func identifierConstructor(s string, l int) common.Token {
+func identifierConstructor(s string, l int, _ interface{}) common.Token {
 	if tokenType, ok := keywords[s]; ok {
 		return common.NewToken(tokenType, s, nil, l)
 	}

@@ -7,22 +7,38 @@ import (
 )
 
 type state string
-type stateTable map[state]map[condition]state
+type stateTable map[state][]Edge
 type condition string
 type conditionFunc func(byte) bool
 type conditionTable map[condition]conditionFunc
-type tokenConstructor func(string, int) common.Token
+type tokenConstructor func(string, int, interface{}) common.Token
+type transferInterceptor func(before, after state, char byte, store interface{})
+type Edge struct {
+	condition condition
+	state     state
+}
+
+func (s state) in(group []state) bool {
+	for _, c := range group {
+		if c == s {
+			return true
+		}
+	}
+	return false
+}
 
 type ScannerBuilder struct {
 	scanner *Scanner
 }
 
 type Scanner struct {
-	stateTable       stateTable
-	conditionTable   conditionTable
-	tokenConstructor tokenConstructor
-	startState       state
-	endState         map[state]struct{}
+	stateTable          stateTable
+	conditionTable      conditionTable
+	tokenConstructor    tokenConstructor
+	startState          state
+	endState            map[state]struct{}
+	transferInterceptor transferInterceptor
+	store               interface{}
 }
 
 func NewScannerBuilder() *ScannerBuilder {
@@ -58,6 +74,16 @@ func (b *ScannerBuilder) EndState(endState []state) *ScannerBuilder {
 	return b
 }
 
+func (b *ScannerBuilder) transferInterceptor(transferInterceptor transferInterceptor) *ScannerBuilder {
+	b.scanner.transferInterceptor = transferInterceptor
+	return b
+}
+
+func (b *ScannerBuilder) store(store interface{}) *ScannerBuilder {
+	b.scanner.store = store
+	return b
+}
+
 func (b *ScannerBuilder) Build() *Scanner {
 	s := b.scanner
 	if err := checkScannerValid(s.stateTable, s.conditionTable, s.startState, s.endState); err != nil {
@@ -71,12 +97,16 @@ func (s *Scanner) scan(lexState *Lexer) common.Token {
 	for !lexState.isAtEnd() {
 		cByte := lexState.peek()
 		canTransfer := false
-		transferMap := s.stateTable[cState]
-		for cond, nState := range transferMap {
-			condFunc := s.conditionTable[cond]
+		edges := s.stateTable[cState]
+		for _, edge := range edges {
+			condFunc := s.conditionTable[edge.condition]
 			if condFunc(cByte) {
 				// bingo, transfer state
 				canTransfer = true
+				nState := edge.state
+				if s.transferInterceptor != nil {
+					s.transferInterceptor(cState, nState, cByte, s.store)
+				}
 				cState = nState
 				break
 			}
@@ -87,7 +117,7 @@ func (s *Scanner) scan(lexState *Lexer) common.Token {
 		}
 		// cannot transfer, see if cState is an end state
 		if _, canEnd := s.endState[cState]; canEnd {
-			return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line)
+			return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, s.store)
 		}
 		// panic!
 		panic(lexState.source[lexState.start:lexState.current])
@@ -95,24 +125,24 @@ func (s *Scanner) scan(lexState *Lexer) common.Token {
 
 	// read to the end, see if cState is an end state
 	if _, canEnd := s.endState[cState]; canEnd {
-		return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line)
+		return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, s.store)
 	}
 	// panic!
 	panic(lexState.source[lexState.start:lexState.current])
 }
 
 func checkScannerValid(stateTable stateTable, conditionTable conditionTable, startState state, endState map[state]struct{}) error {
-	states := funk.Map(stateTable, func(s state, _ map[condition]state) (state, struct{}) {
+	states := funk.Map(stateTable, func(s state, _ []Edge) (state, struct{}) {
 		return s, struct{}{}
 	}).(map[state]struct{})
 	conditions := map[condition]struct{}{}
 
 	// check if all states in stateTable are defined
-	for _, conditionTransfer := range stateTable {
-		for cond, newState := range conditionTransfer {
-			conditions[cond] = struct{}{}
-			if _, ok := states[newState]; !ok {
-				return fmt.Errorf("unknown state: %s", newState)
+	for _, edges := range stateTable {
+		for _, edge := range edges {
+			conditions[edge.condition] = struct{}{}
+			if _, ok := states[edge.state]; !ok {
+				return fmt.Errorf("unknown state: %s", edge.state)
 			}
 		}
 	}

@@ -6,7 +6,11 @@ import (
 )
 
 func TestCharacterLiteral(t *testing.T) {
-	fmt.Println(NewLexer("'abc''\\n' '\\123''\\xAc6'\t  \n \n 'abc\\n\\123\\xAc6'").ScanTokens())
+	fmt.Println(NewLexer("'abc''\\n' '\\123''\\xAc'\t  \n \n 'abc\\n\\123\\xAc'").ScanTokens())
+}
+
+func Test123(t *testing.T) {
+	fmt.Println(NewLexer("'\\''").ScanTokens())
 }
 
 func TestIdentifier(t *testing.T) {
@@ -14,7 +18,7 @@ func TestIdentifier(t *testing.T) {
 }
 
 func TestStringLiteral(t *testing.T) {
-	fmt.Println(NewLexer("'abc'\"abc\\n\\tCTAABC\\xAADC6\\123\"").ScanTokens())
+	fmt.Println(NewLexer("'abc'\"abc\\n\\tCTAABC\\xAA\\123\"").ScanTokens())
 }
 
 func TestAll(t *testing.T) {

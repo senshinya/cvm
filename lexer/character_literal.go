@@ -2,19 +2,21 @@ package lexer
 
 import (
 	"shinya.click/cvm/common"
+	"shinya.click/cvm/lexer/util"
 )
 
 var characterLiteralStateTable = stateTable{
-	"A":  map[condition]state{"single_quotation": "B"},
-	"B":  map[condition]state{"char_ascii": "H", "back_slash": "C"},
-	"C":  map[condition]state{"x": "D", "escape_suffix": "H", "oct": "FH"},
-	"D":  map[condition]state{"hex": "EH"},
-	"EH": map[condition]state{"single_quotation": "N", "char_ascii": "H", "back_slash": "I", "hex": "EH"},
-	"H":  map[condition]state{"single_quotation": "N", "char_ascii": "H", "back_slash": "I"},
-	"FH": map[condition]state{"single_quotation": "N", "char_ascii": "H", "back_slash": "I", "oct": "GH"},
-	"GH": map[condition]state{"single_quotation": "N", "char_ascii": "H", "back_slash": "I", "oct": "H"},
-	"I":  map[condition]state{"x": "D", "escape_suffix": "H", "oct": "FH"},
-	"N":  map[condition]state{},
+	"A":  []Edge{{"single_quotation", "B"}},
+	"B":  []Edge{{"char_ascii", "H"}, {"back_slash", "C"}},
+	"C":  []Edge{{"x", "D"}, {"escape_suffix", "H"}, {"oct", "FH"}},
+	"D":  []Edge{{"hex", "EH"}},
+	"EH": []Edge{{"hex", "EH"}, {"single_quotation", "N"}, {"char_ascii", "H"}, {"back_slash", "I"}},
+	"H":  []Edge{{"single_quotation", "N"}, {"char_ascii", "H"}, {"back_slash", "I"}},
+	"FH": []Edge{{"oct", "GH"}, {"single_quotation", "N"}, {"char_ascii", "H"}, {"back_slash", "I"}},
+	"GH": []Edge{{"oct", "JH"}, {"single_quotation", "N"}, {"char_ascii", "H"}, {"back_slash", "I"}},
+	"JH": []Edge{{"single_quotation", "N"}, {"char_ascii", "H"}, {"back_slash", "I"}},
+	"I":  []Edge{{"x", "D"}, {"escape_suffix", "H"}, {"oct", "FH"}},
+	"N":  []Edge{},
 }
 
 var characterLiteralConditionTable = conditionTable{
@@ -34,13 +36,7 @@ var characterLiteralConditionTable = conditionTable{
 	"x": func(b byte) bool {
 		return b == 'x'
 	},
-	"escape_suffix": func(b byte) bool {
-		suffixMap := map[byte]struct{}{
-			'\'': {}, '"': {}, '?': {}, '\\': {}, 'a': {}, 'b': {}, 'f': {}, 'n': {}, 'r': {}, 't': {}, 'v': {},
-		}
-		_, ok := suffixMap[b]
-		return ok
-	},
+	"escape_suffix": util.IsSimpleEscapeSuffix,
 	"oct": func(b byte) bool {
 		octs := map[byte]struct{}{
 			'0': {}, '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {}, '7': {},
@@ -59,15 +55,40 @@ var characterLiteralConditionTable = conditionTable{
 	},
 }
 
+type characterLiteralStore struct {
+	last         byte
+	currentBytes string
+}
+
+func characterLiteralTransferInterceptor(before, next state, char byte, store interface{}) {
+	cs := store.(*characterLiteralStore)
+	if (next == "N") ||
+		(next == "I") ||
+		(before.in([]state{"H", "EH", "FH", "GH", "JH"}) && next == "H") {
+		// a character has been read!
+		// check if out of range
+		b := util.CheckAndUnquoteCharacterLiteral(cs.currentBytes)
+		cs.currentBytes = ""
+		cs.last = b
+	}
+
+	if char == '\'' && (before == "A" || next == "N") {
+		return
+	}
+	cs.currentBytes += string(char)
+}
+
 func newCharacterLiteralScanner() *Scanner {
 	return NewScannerBuilder().
 		StateTable(characterLiteralStateTable).
 		ConditionTable(characterLiteralConditionTable).
-		TokenConstructor(func(s string, l int) common.Token {
-			// TODO check escape range
-			return common.NewToken(common.CHARACTER, s, nil, l)
+		TokenConstructor(func(s string, l int, store interface{}) common.Token {
+			cs := store.(*characterLiteralStore)
+			return common.NewToken(common.CHARACTER, s, cs.last, l)
 		}).
 		StartState("A").
 		EndState([]state{"N"}).
+		transferInterceptor(characterLiteralTransferInterceptor).
+		store(&characterLiteralStore{}).
 		Build()
 }
