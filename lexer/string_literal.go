@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"fmt"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
 )
@@ -61,7 +60,7 @@ type stringLiteralStore struct {
 
 func stringLiteralTransferInterceptor(before, next state, char byte, store interface{}) {
 	cs := store.(*stringLiteralStore)
-	fmt.Printf("before: %s, next: %s, char %c\n", before, next, char)
+	//fmt.Printf("before: %s, next: %s, char %c\n", before, next, char)
 	if len(cs.currentBytes) != 0 &&
 		((next == "C") ||
 			(next == "D") ||
