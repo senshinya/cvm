@@ -47,6 +47,9 @@ func (l *Lexer) scanToken() {
 	case util.IsLetter_(l.peek()):
 		token := newIdentifierScanner().scan(l)
 		l.tokens = append(l.tokens, token)
+	case isPunctuatorPrefix(l.peek()):
+		token := newPunctuatorScanner().scan(l)
+		l.tokens = append(l.tokens, token)
 	default:
 		log.Panicf("Unrecognized token: %c", l.peek())
 	}

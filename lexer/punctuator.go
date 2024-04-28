@@ -127,6 +127,16 @@ var punctuatorTokenMap = map[string]common.TokenType{
 	"##":  common.SHARP_SHARP,
 }
 
+func isPunctuatorPrefix(b byte) bool {
+	prefix := map[byte]struct{}{
+		'[': {}, ']': {}, '(': {}, ')': {}, '{': {}, '}': {}, '.': {}, '-': {},
+		'+': {}, '&': {}, '*': {}, '~': {}, '!': {}, '/': {}, '%': {}, '<': {},
+		'>': {}, '=': {}, '^': {}, '|': {}, '?': {}, ':': {}, ';': {}, '#': {},
+	}
+	_, ok := prefix[b]
+	return ok
+}
+
 func punctuatorConstructor(s string, l int, _ interface{}) common.Token {
 	tokenType, ok := punctuatorTokenMap[s]
 	if !ok {
