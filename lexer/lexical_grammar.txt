@@ -11,7 +11,7 @@ decimal-constant -> nonzero-digit digit*
 nonzero-digit -> 1|2|3|4|5|6|7|8|9
 oct-constant -> 0 octal-digit*          // 0 处理为八进制数
 octal-digit -> 0|1|2|3|4|5|6|7
-hex-constant -> hex-prefix hex-digit*
+hex-constant -> hex-prefix hex-digit+
 hex-prefix -> 0x | 0X
 hex-digit -> 0|1|2|3|4|5|6|7|8|9|a|b|c|d|e|f|A|B|C|D|E|F
 integer-suffix -> unsigned-suffix long-suffix? | long-suffix unsigned-suffix?
