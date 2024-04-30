@@ -12,12 +12,10 @@ var identifierStateTable = stateTable{
 
 var identifierConditionTable = conditionTable{
 	"letter_": util.IsLetter_,
-	"digit": func(b byte) bool {
-		return b >= '0' && b <= '9'
-	},
+	"digit":   util.IsDigit,
 }
 
-func identifierConstructor(s string, l int, _ interface{}) common.Token {
+func identifierConstructor(s string, l int, _ state, _ interface{}) common.Token {
 	if tokenType, ok := keywords[s]; ok {
 		return common.NewToken(tokenType, s, nil, l)
 	}

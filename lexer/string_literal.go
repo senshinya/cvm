@@ -35,22 +35,8 @@ var stringLiteralConditionTable = conditionTable{
 		return b == 'x'
 	},
 	"escape_suffix": util.IsSimpleEscapeSuffix,
-	"oct": func(b byte) bool {
-		octs := map[byte]struct{}{
-			'0': {}, '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {}, '7': {},
-		}
-		_, ok := octs[b]
-		return ok
-	},
-	"hex": func(b byte) bool {
-		hexes := map[byte]struct{}{
-			'0': {}, '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {}, '7': {}, '8': {}, '9': {},
-			'a': {}, 'b': {}, 'c': {}, 'd': {}, 'e': {}, 'f': {},
-			'A': {}, 'B': {}, 'C': {}, 'D': {}, 'E': {}, 'F': {},
-		}
-		_, ok := hexes[b]
-		return ok
-	},
+	"oct":           util.IsOctDigit,
+	"hex":           util.IsHexDigit,
 }
 
 type stringLiteralStore struct {
@@ -82,7 +68,7 @@ func newStringLiteralScanner() *Scanner {
 	return NewScannerBuilder().
 		StateTable(stringLiteralStateTable).
 		ConditionTable(stringLiteralConditionTable).
-		TokenConstructor(func(s string, l int, store interface{}) common.Token {
+		TokenConstructor(func(s string, l int, _ state, store interface{}) common.Token {
 			cs := store.(*stringLiteralStore)
 			return common.NewToken(common.STRING, s, cs.result, l)
 		}).

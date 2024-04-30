@@ -10,6 +10,19 @@ func IsLetter_(b byte) bool {
 	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_'
 }
 
+func IsDigit(b byte) bool {
+	return b >= '0' && b <= '9'
+}
+
+func IsOctDigit(b byte) bool {
+	return b >= '0' && b <= '7'
+}
+
+func IsHexDigit(b byte) bool {
+	return IsDigit(b) || b == 'A' || b == 'a' || b == 'B' || b == 'b' ||
+		b == 'C' || b == 'c' || b == 'D' || b == 'd' || b == 'E' || b == 'e' || b == 'F' || b == 'f'
+}
+
 var charToAscii = map[byte]int64{
 	'0': 0,
 	'1': 1,

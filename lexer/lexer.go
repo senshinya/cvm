@@ -50,6 +50,9 @@ func (l *Lexer) scanToken() {
 	case isPunctuatorPrefix(l.peek()):
 		token := newPunctuatorScanner().scan(l)
 		l.tokens = append(l.tokens, token)
+	case util.IsDigit(l.peek()):
+		token := newNumberLiteral().scan(l)
+		l.tokens = append(l.tokens, token)
 	default:
 		log.Panicf("Unrecognized token: %c", l.peek())
 	}
