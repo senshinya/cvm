@@ -3,6 +3,7 @@ package lexer
 import (
 	"fmt"
 	"shinya.click/cvm/common"
+	"sync"
 )
 
 var punctuatorStateTable = stateTable{
@@ -143,6 +144,18 @@ func punctuatorConstructor(s string, l int, _ state, _ interface{}) common.Token
 		panic(fmt.Sprintf("punctuator constructor: unknown punctuator: %s", s))
 	}
 	return common.NewToken(tokenType, s, nil, l)
+}
+
+var (
+	punctuatorScanner     *Scanner
+	punctuatorScannerOnce sync.Once
+)
+
+func PunctuatorScanner() *Scanner {
+	punctuatorScannerOnce.Do(func() {
+		punctuatorScanner = newPunctuatorScanner()
+	})
+	return punctuatorScanner
 }
 
 func newPunctuatorScanner() *Scanner {

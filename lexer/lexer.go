@@ -40,17 +40,17 @@ func (l *Lexer) scanToken() {
 	var sc *Scanner
 	switch {
 	case l.peek() == '\'':
-		sc = newCharacterLiteralScanner()
+		sc = CharacterLiteralScanner()
 	case l.peek() == '"':
-		sc = newStringLiteralScanner()
+		sc = StringLiteralScanner()
 	case util.IsLetter_(l.peek()):
-		sc = newIdentifierScanner()
+		sc = IdentifierScanner()
 	case l.peek() == '.' && util.IsDigit(l.lookForward(1)):
-		sc = newNumberLiteral()
+		sc = NumberLiteralScanner()
 	case isPunctuatorPrefix(l.peek()):
-		sc = newPunctuatorScanner()
+		sc = PunctuatorScanner()
 	case util.IsDigit(l.peek()):
-		sc = newNumberLiteral()
+		sc = NumberLiteralScanner()
 	default:
 		log.Panicf("Unrecognized token: %c", l.peek())
 	}

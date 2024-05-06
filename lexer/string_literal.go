@@ -3,6 +3,7 @@ package lexer
 import (
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
+	"sync"
 )
 
 var stringLiteralStateTable = stateTable{
@@ -64,6 +65,19 @@ func stringLiteralTransferInterceptor(before, next state, char byte, store inter
 	cs.currentBytes += string(char)
 }
 
+var (
+	stringLiteralScanner     *Scanner
+	stringLiteralScannerOnce sync.Once
+)
+
+func StringLiteralScanner() *Scanner {
+	stringLiteralScannerOnce.Do(func() {
+		stringLiteralScanner = newStringLiteralScanner()
+	})
+	stringLiteralScanner.Store(&stringLiteralStore{})
+	return stringLiteralScanner
+}
+
 func newStringLiteralScanner() *Scanner {
 	return NewScannerBuilder().
 		StateTable(stringLiteralStateTable).
@@ -75,6 +89,5 @@ func newStringLiteralScanner() *Scanner {
 		StartState("A").
 		EndState([]state{"C"}).
 		transferInterceptor(stringLiteralTransferInterceptor).
-		store(&stringLiteralStore{}).
 		Build()
 }

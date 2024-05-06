@@ -3,6 +3,7 @@ package lexer
 import (
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
+	"sync"
 )
 
 var identifierStateTable = stateTable{
@@ -20,6 +21,18 @@ func identifierConstructor(s string, l int, _ state, _ interface{}) common.Token
 		return common.NewToken(tokenType, s, nil, l)
 	}
 	return common.NewToken(common.IDENTIFIER, s, nil, l)
+}
+
+var (
+	identifierScanner     *Scanner
+	identifierScannerOnce sync.Once
+)
+
+func IdentifierScanner() *Scanner {
+	identifierScannerOnce.Do(func() {
+		identifierScanner = newIdentifierScanner()
+	})
+	return identifierScanner
 }
 
 func newIdentifierScanner() *Scanner {

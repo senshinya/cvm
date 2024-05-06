@@ -3,6 +3,7 @@ package lexer
 import (
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
+	"sync"
 )
 
 var numberLiteralStateTable = stateTable{
@@ -63,6 +64,18 @@ func numberLiteralConstructor(s string, l int, _ state, _ interface{}) common.To
 
 var numberLiteralEndStates = []state{
 	"B", "C", "D", "E", "F", "G", "H", "I", "L", "M", "N", "O", "R", "V",
+}
+
+var (
+	numberLiteralScanner     *Scanner
+	numberLiteralScannerOnce sync.Once
+)
+
+func NumberLiteralScanner() *Scanner {
+	numberLiteralScannerOnce.Do(func() {
+		numberLiteralScanner = newNumberLiteral()
+	})
+	return numberLiteralScanner
 }
 
 func newNumberLiteral() *Scanner {

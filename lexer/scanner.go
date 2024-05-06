@@ -79,11 +79,6 @@ func (b *ScannerBuilder) transferInterceptor(transferInterceptor transferInterce
 	return b
 }
 
-func (b *ScannerBuilder) store(store interface{}) *ScannerBuilder {
-	b.scanner.store = store
-	return b
-}
-
 func (b *ScannerBuilder) Build() *Scanner {
 	s := b.scanner
 	if err := checkScannerValid(s.stateTable, s.conditionTable, s.startState, s.endState); err != nil {
@@ -129,6 +124,10 @@ func (s *Scanner) scan(lexState *Lexer) common.Token {
 	}
 	// panic!
 	panic(lexState.source[lexState.start:lexState.current])
+}
+
+func (s *Scanner) Store(store interface{}) {
+	s.store = store
 }
 
 func checkScannerValid(stateTable stateTable, conditionTable conditionTable, startState state, endState map[state]struct{}) error {

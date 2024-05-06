@@ -3,6 +3,7 @@ package lexer
 import (
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
+	"sync"
 )
 
 var characterLiteralStateTable = stateTable{
@@ -38,7 +39,7 @@ var characterLiteralConditionTable = conditionTable{
 	},
 	"escape_suffix": util.IsSimpleEscapeSuffix,
 	"oct":           util.IsOctDigit,
-	"hex":           util.IsDigit,
+	"hex":           util.IsHexDigit,
 }
 
 type characterLiteralStore struct {
@@ -64,6 +65,19 @@ func characterLiteralTransferInterceptor(before, next state, char byte, store in
 	cs.currentBytes += string(char)
 }
 
+var (
+	characterLiteralScanner     *Scanner
+	characterLiteralScannerOnce sync.Once
+)
+
+func CharacterLiteralScanner() *Scanner {
+	characterLiteralScannerOnce.Do(func() {
+		characterLiteralScanner = newCharacterLiteralScanner()
+	})
+	characterLiteralScanner.Store(&characterLiteralStore{})
+	return characterLiteralScanner
+}
+
 func newCharacterLiteralScanner() *Scanner {
 	return NewScannerBuilder().
 		StateTable(characterLiteralStateTable).
@@ -75,6 +89,5 @@ func newCharacterLiteralScanner() *Scanner {
 		StartState("A").
 		EndState([]state{"N"}).
 		transferInterceptor(characterLiteralTransferInterceptor).
-		store(&characterLiteralStore{}).
 		Build()
 }
