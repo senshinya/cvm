@@ -37,25 +37,25 @@ func (l *Lexer) isAtEnd() bool {
 }
 
 func (l *Lexer) scanToken() {
+	var sc *Scanner
 	switch {
 	case l.peek() == '\'':
-		token := newCharacterLiteralScanner().scan(l)
-		l.tokens = append(l.tokens, token)
+		sc = newCharacterLiteralScanner()
 	case l.peek() == '"':
-		token := newStringLiteralScanner().scan(l)
-		l.tokens = append(l.tokens, token)
+		sc = newStringLiteralScanner()
 	case util.IsLetter_(l.peek()):
-		token := newIdentifierScanner().scan(l)
-		l.tokens = append(l.tokens, token)
+		sc = newIdentifierScanner()
+	case l.peek() == '.' && util.IsDigit(l.lookForward(1)):
+		sc = newNumberLiteral()
 	case isPunctuatorPrefix(l.peek()):
-		token := newPunctuatorScanner().scan(l)
-		l.tokens = append(l.tokens, token)
+		sc = newPunctuatorScanner()
 	case util.IsDigit(l.peek()):
-		token := newNumberLiteral().scan(l)
-		l.tokens = append(l.tokens, token)
+		sc = newNumberLiteral()
 	default:
 		log.Panicf("Unrecognized token: %c", l.peek())
 	}
+	token := sc.scan(l)
+	l.tokens = append(l.tokens, token)
 }
 
 func (l *Lexer) peek() byte {
@@ -79,4 +79,12 @@ func (l *Lexer) currentEmpty() bool {
 		return true
 	}
 	return false
+}
+
+func (l *Lexer) lookForward(i int) byte {
+	forward := l.current + i
+	if forward >= len(l.source) {
+		return ' '
+	}
+	return l.source[forward]
 }

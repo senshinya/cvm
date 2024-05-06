@@ -20,13 +20,13 @@ long-suffix -> ll? | LL?
 floating-literal -> floating-constant floating-suffix?
 floating-constant -> decimal-floating-constant | hex-floating-constant
 decimal-floating-constant -> fractional-constant exponent? | digit-sequence exponent
-fractional-constant -> digit-sequence . digit-sequence?
+fractional-constant -> digit-sequence? . digit-sequence | digit-sequence .
 exponent -> (e|E) sign? digit-sequence
 sign -> +|-
 digit-sequence -> digit+
 floating-suffix -> f|l|F|L
 hex-floating-constant -> hex-prefix (hex-fractional-constant|hex-digit-sequence) binary-exponent
-hex-fractional-constant -> hex-digit-sequence . hex-digit-sequence?
+hex-fractional-constant -> hex-digit-sequence? . hex-digit-sequence | hex-digit-sequence .
 hex-digit-sequence -> hex-digit+
 binary-exponent -> (p|P) sign? digit-sequence
 

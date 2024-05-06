@@ -6,7 +6,7 @@ import (
 )
 
 var numberLiteralStateTable = stateTable{
-	"A": []Edge{{"nozero_digit", "B"}, {"0", "N"}},
+	"A": []Edge{{"nozero_digit", "B"}, {"0", "N"}, {".", "W"}},
 	"B": []Edge{{"digit", "B"}, {"L/l", "F"}, {"U/u", "C"}, {".", "I"}, {"E/e", "J"}},
 	"C": []Edge{{"L/l", "D"}},
 	"D": []Edge{{"L/l", "E"}},
@@ -22,12 +22,14 @@ var numberLiteralStateTable = stateTable{
 	"N": []Edge{{"oct_digit", "O"}, {"nooct_digit", "P"}, {".", "I"}, {"E/e", "J"}, {"X/x", "Q"}},
 	"O": []Edge{{"oct_digit", "O"}, {"L/l", "F"}, {"U/u", "C"}, {".", "I"}, {"nooct_digit", "P"}, {"E/e", "J"}},
 	"P": []Edge{{"digit", "P"}, {".", "I"}, {"E/e", "J"}},
-	"Q": []Edge{{"hex_digit", "R"}},
+	"Q": []Edge{{"hex_digit", "R"}, {".", "X"}},
 	"R": []Edge{{"hex_digit", "R"}, {"L/l", "F"}, {"U/u", "C"}, {".", "S"}, {"P/p", "T"}},
 	"S": []Edge{{"hex_digit", "S"}, {"P/p", "T"}},
 	"T": []Edge{{"digit", "V"}, {"+/-", "U"}},
 	"U": []Edge{{"digit", "V"}},
 	"V": []Edge{{"digit", "V"}, {"F/L/f/l", "M"}},
+	"W": []Edge{{"digit", "I"}},
+	"X": []Edge{{"hex_digit", "S"}},
 }
 
 var numberLiteralConditionTable = conditionTable{
@@ -55,7 +57,7 @@ var numberLiteralConditionTable = conditionTable{
 	"hex_digit": util.IsHexDigit,
 }
 
-func numberLiteralConstructor(s string, l int, end state, _ interface{}) common.Token {
+func numberLiteralConstructor(s string, l int, _ state, _ interface{}) common.Token {
 	return common.NewToken(common.INTEGER_CONSTANT, s, nil, l)
 }
 
