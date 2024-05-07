@@ -15,7 +15,7 @@ var numberLiteralStateTable = stateTable{
 	"F": []Edge{{"L/l", "G"}, {"U/u", "H"}},
 	"G": []Edge{{"U/u", "H"}},
 	"H": []Edge{},
-	"I": []Edge{{"digit", "I"}, {"E/e", "J"}},
+	"I": []Edge{{"digit", "I"}, {"E/e", "J"}, {"F/L/f/l", "M"}},
 	"J": []Edge{{"digit", "L"}, {"+/-", "K"}},
 	"K": []Edge{{"digit", "L"}},
 	"L": []Edge{{"digit", "L"}, {"F/L/f/l", "M"}},
