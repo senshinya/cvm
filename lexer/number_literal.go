@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"fmt"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
 	"sync"
@@ -58,8 +59,23 @@ var numberLiteralConditionTable = conditionTable{
 	"hex_digit": util.IsHexDigit,
 }
 
-func numberLiteralConstructor(s string, l int, _ state, _ interface{}) common.Token {
-	return common.NewToken(common.INTEGER_CONSTANT, s, nil, l)
+var integerEndStates = map[state]struct{}{
+	"B": {}, "C": {}, "D": {}, "E": {}, "F": {}, "G": {}, "H": {},
+	"N": {}, "O": {}, "R": {},
+}
+
+var floatEndStates = map[state]struct{}{
+	"I": {}, "L": {}, "M": {}, "V": {},
+}
+
+func numberLiteralConstructor(s string, l int, endState state, _ interface{}) common.Token {
+	if _, ok := integerEndStates[endState]; ok {
+		return common.NewToken(common.INTEGER_CONSTANT, s, nil, l)
+	}
+	if _, ok := floatEndStates[endState]; ok {
+		return common.NewToken(common.FLOATING_CONSTANT, s, nil, l)
+	}
+	panic(fmt.Sprintf("Unknown number literal type: %s", s))
 }
 
 var numberLiteralEndStates = []state{
