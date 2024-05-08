@@ -11,7 +11,7 @@ type stateTable map[state][]Edge
 type condition string
 type conditionFunc func(byte) bool
 type conditionTable map[condition]conditionFunc
-type tokenConstructor func(string, int, state, interface{}) common.Token
+type tokenConstructor func(lexeme string, line, sc, ec int, endState state, literal interface{}) common.Token
 type transferInterceptor func(before, after state, char byte, store interface{})
 type Edge struct {
 	condition condition
@@ -112,7 +112,7 @@ func (s *Scanner) scan(lexState *Lexer) common.Token {
 		}
 		// cannot transfer, see if cState is an end state
 		if _, canEnd := s.endState[cState]; canEnd {
-			return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, cState, s.store)
+			return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, lexState.sColumn, lexState.cColumn, cState, s.store)
 		}
 		// panic!
 		panic(lexState.source[lexState.start:lexState.current])
@@ -120,7 +120,7 @@ func (s *Scanner) scan(lexState *Lexer) common.Token {
 
 	// read to the end, see if cState is an end state
 	if _, canEnd := s.endState[cState]; canEnd {
-		return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, cState, s.store)
+		return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, lexState.sColumn, lexState.cColumn, cState, s.store)
 	}
 	// panic!
 	panic(lexState.source[lexState.start:lexState.current])

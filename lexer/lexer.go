@@ -11,6 +11,8 @@ type Lexer struct {
 	tokens  []common.Token
 	start   int
 	current int
+	sColumn int
+	cColumn int
 	line    int
 }
 
@@ -25,10 +27,11 @@ func (l *Lexer) ScanTokens() []common.Token {
 			continue
 		}
 		l.start = l.current
+		l.sColumn = l.cColumn
 		l.scanToken()
 	}
 
-	l.tokens = append(l.tokens, common.NewToken(common.EOF, "", nil, l.line))
+	l.tokens = append(l.tokens, common.NewToken(common.EOF, "", nil, l.line, l.cColumn, l.cColumn))
 	return l.tokens
 }
 
@@ -64,6 +67,7 @@ func (l *Lexer) peek() byte {
 
 func (l *Lexer) moveNext() {
 	l.current++
+	l.cColumn++
 }
 
 func (l *Lexer) currentEmpty() bool {
@@ -76,6 +80,7 @@ func (l *Lexer) currentEmpty() bool {
 		return true
 	case '\n':
 		l.line++
+		l.cColumn = 0
 		return true
 	}
 	return false

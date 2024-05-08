@@ -82,9 +82,9 @@ func newStringLiteralScanner() *Scanner {
 	return NewScannerBuilder().
 		StateTable(stringLiteralStateTable).
 		ConditionTable(stringLiteralConditionTable).
-		TokenConstructor(func(s string, l int, _ state, store interface{}) common.Token {
+		TokenConstructor(func(s string, l, sc, ec int, _ state, store interface{}) common.Token {
 			cs := store.(*stringLiteralStore)
-			return common.NewToken(common.STRING, s, cs.result, l)
+			return common.NewToken(common.STRING, s, cs.result, l, sc, ec)
 		}).
 		StartState("A").
 		EndState([]state{"C"}).

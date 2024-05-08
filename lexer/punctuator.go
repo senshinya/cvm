@@ -138,12 +138,12 @@ func isPunctuatorPrefix(b byte) bool {
 	return ok
 }
 
-func punctuatorConstructor(s string, l int, _ state, _ interface{}) common.Token {
+func punctuatorConstructor(s string, l, sc, ec int, _ state, _ interface{}) common.Token {
 	tokenType, ok := punctuatorTokenMap[s]
 	if !ok {
 		panic(fmt.Sprintf("punctuator constructor: unknown punctuator: %s", s))
 	}
-	return common.NewToken(tokenType, s, nil, l)
+	return common.NewToken(tokenType, s, nil, l, sc, ec)
 }
 
 var (

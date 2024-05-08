@@ -70,17 +70,17 @@ var floatEndStates = map[state]struct{}{
 	"I": {}, "L": {}, "M": {}, "V": {},
 }
 
-func numberLiteralConstructor(s string, l int, endState state, _ interface{}) common.Token {
+func numberLiteralConstructor(s string, l, sc, ec int, endState state, _ interface{}) common.Token {
 	if _, ok := integerEndStates[endState]; ok {
-		return constructIntegerToken(s, l)
+		return constructIntegerToken(s, l, sc, ec)
 	}
 	if _, ok := floatEndStates[endState]; ok {
-		return constructFloatToken(s, l)
+		return constructFloatToken(s, l, sc, ec)
 	}
 	panic(fmt.Sprintf("Unknown number literal type: %s", s))
 }
 
-func constructIntegerToken(rawStr string, l int) common.Token {
+func constructIntegerToken(rawStr string, l, sc, ec int) common.Token {
 	s := rawStr
 
 	// check integer suffix
@@ -117,19 +117,19 @@ func constructIntegerToken(rawStr string, l int) common.Token {
 		panic(err)
 	}
 	if long && unsigned {
-		return common.NewToken(common.INTEGER_CONSTANT, rawStr, raw, l)
+		return common.NewToken(common.INTEGER_CONSTANT, rawStr, raw, l, sc, ec)
 	}
 	if !long && unsigned {
-		return common.NewToken(common.INTEGER_CONSTANT, rawStr, uint32(raw), l)
+		return common.NewToken(common.INTEGER_CONSTANT, rawStr, uint32(raw), l, sc, ec)
 	}
 	if long && !unsigned {
-		return common.NewToken(common.INTEGER_CONSTANT, rawStr, int64(raw), l)
+		return common.NewToken(common.INTEGER_CONSTANT, rawStr, int64(raw), l, sc, ec)
 	}
 	// !long && !unsigned
-	return common.NewToken(common.INTEGER_CONSTANT, rawStr, int32(raw), l)
+	return common.NewToken(common.INTEGER_CONSTANT, rawStr, int32(raw), l, sc, ec)
 }
 
-func constructFloatToken(rawStr string, l int) common.Token {
+func constructFloatToken(rawStr string, l, sc, ec int) common.Token {
 	s := rawStr
 
 	// check float suffix
@@ -148,9 +148,9 @@ func constructFloatToken(rawStr string, l int) common.Token {
 		panic(err)
 	}
 	if float {
-		return common.NewToken(common.FLOATING_CONSTANT, rawStr, float32(raw), l)
+		return common.NewToken(common.FLOATING_CONSTANT, rawStr, float32(raw), l, sc, ec)
 	}
-	return common.NewToken(common.FLOATING_CONSTANT, rawStr, raw, l)
+	return common.NewToken(common.FLOATING_CONSTANT, rawStr, raw, l, sc, ec)
 }
 
 var numberLiteralEndStates = []state{

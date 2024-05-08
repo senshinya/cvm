@@ -16,11 +16,11 @@ var identifierConditionTable = conditionTable{
 	"digit":   util.IsDigit,
 }
 
-func identifierConstructor(s string, l int, _ state, _ interface{}) common.Token {
+func identifierConstructor(s string, l, sc, ec int, _ state, _ interface{}) common.Token {
 	if tokenType, ok := keywords[s]; ok {
-		return common.NewToken(tokenType, s, nil, l)
+		return common.NewToken(tokenType, s, nil, l, sc, ec)
 	}
-	return common.NewToken(common.IDENTIFIER, s, nil, l)
+	return common.NewToken(common.IDENTIFIER, s, nil, l, sc, ec)
 }
 
 var (

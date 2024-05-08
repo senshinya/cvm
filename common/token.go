@@ -104,18 +104,22 @@ const (
 )
 
 type Token struct {
-	Typ     TokenType
-	Lexeme  string
-	Literal any
-	Line    int
+	Typ         TokenType
+	Lexeme      string
+	Literal     any
+	Line        int
+	StartColumn int
+	EndColumn   int
 }
 
-func NewToken(typ TokenType, lexeme string, literal any, line int) Token {
+func NewToken(typ TokenType, lexeme string, literal any, line, sc, ec int) Token {
 	return Token{
-		Typ:     typ,
-		Lexeme:  lexeme,
-		Literal: literal,
-		Line:    line,
+		Typ:         typ,
+		Lexeme:      lexeme,
+		Literal:     literal,
+		Line:        line,
+		StartColumn: sc,
+		EndColumn:   ec,
 	}
 }
 
