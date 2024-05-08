@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -70,12 +72,85 @@ var floatEndStates = map[state]struct{}{
 
 func numberLiteralConstructor(s string, l int, endState state, _ interface{}) common.Token {
 	if _, ok := integerEndStates[endState]; ok {
-		return common.NewToken(common.INTEGER_CONSTANT, s, nil, l)
+		return constructIntegerToken(s, l)
 	}
 	if _, ok := floatEndStates[endState]; ok {
-		return common.NewToken(common.FLOATING_CONSTANT, s, nil, l)
+		return constructFloatToken(s, l)
 	}
 	panic(fmt.Sprintf("Unknown number literal type: %s", s))
+}
+
+func constructIntegerToken(rawStr string, l int) common.Token {
+	s := rawStr
+
+	// check integer suffix
+	long, unsigned := false, false
+	if strings.Contains(s, "ll") || strings.Contains(s, "LL") {
+		long = true
+	}
+	if strings.Contains(s, "u") || strings.Contains(s, "U") {
+		unsigned = true
+	}
+	s = strings.ReplaceAll(s, "l", "")
+	s = strings.ReplaceAll(s, "L", "")
+	s = strings.ReplaceAll(s, "u", "")
+	s = strings.ReplaceAll(s, "U", "")
+
+	var (
+		raw uint64
+		err error
+	)
+	switch {
+	case strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X"):
+		// hex
+		s = s[2:]
+		raw, err = strconv.ParseUint(s, 16, 64)
+	case strings.HasPrefix(s, "0") && len(s) > 1:
+		// oct
+		s = s[1:]
+		raw, err = strconv.ParseUint(s, 8, 64)
+	default:
+		// dec
+		raw, err = strconv.ParseUint(s, 10, 64)
+	}
+	if err != nil {
+		panic(err)
+	}
+	if long && unsigned {
+		return common.NewToken(common.INTEGER_CONSTANT, rawStr, raw, l)
+	}
+	if !long && unsigned {
+		return common.NewToken(common.INTEGER_CONSTANT, rawStr, uint32(raw), l)
+	}
+	if long && !unsigned {
+		return common.NewToken(common.INTEGER_CONSTANT, rawStr, int64(raw), l)
+	}
+	// !long && !unsigned
+	return common.NewToken(common.INTEGER_CONSTANT, rawStr, int32(raw), l)
+}
+
+func constructFloatToken(rawStr string, l int) common.Token {
+	s := rawStr
+
+	// check float suffix
+	float := false
+	if strings.HasSuffix(s, "f") || strings.HasSuffix(s, "F") {
+		float = true
+		s = s[:len(s)-1]
+	}
+	if strings.Contains(s, "l") || strings.Contains(s, "L") {
+		float = true
+		s = s[:len(s)-1]
+	}
+
+	raw, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		panic(err)
+	}
+	if float {
+		return common.NewToken(common.FLOATING_CONSTANT, rawStr, float32(raw), l)
+	}
+	return common.NewToken(common.FLOATING_CONSTANT, rawStr, raw, l)
 }
 
 var numberLiteralEndStates = []state{
