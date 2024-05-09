@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
+	"shinya.click/cvm/lexer/util"
 )
 
 type state string
@@ -11,8 +12,8 @@ type stateTable map[state][]Edge
 type condition string
 type conditionFunc func(byte) bool
 type conditionTable map[condition]conditionFunc
-type tokenConstructor func(lexeme string, line, sc, ec int, endState state, literal interface{}) common.Token
-type transferInterceptor func(before, after state, char byte, store interface{})
+type tokenConstructor func(lexeme string, line, sc, ec int, endState state, literal interface{}) (common.Token, error)
+type transferInterceptor func(before, after state, char byte, store interface{}, l, sc, ec int) error
 type Edge struct {
 	condition condition
 	state     state
@@ -32,6 +33,7 @@ type ScannerBuilder struct {
 }
 
 type Scanner struct {
+	name                string // just for error message
 	stateTable          stateTable
 	conditionTable      conditionTable
 	tokenConstructor    tokenConstructor
@@ -41,9 +43,9 @@ type Scanner struct {
 	store               interface{}
 }
 
-func NewScannerBuilder() *ScannerBuilder {
+func NewScannerBuilder(name string) *ScannerBuilder {
 	return &ScannerBuilder{
-		scanner: &Scanner{},
+		scanner: &Scanner{name: name},
 	}
 }
 
@@ -82,12 +84,14 @@ func (b *ScannerBuilder) transferInterceptor(transferInterceptor transferInterce
 func (b *ScannerBuilder) Build() *Scanner {
 	s := b.scanner
 	if err := checkScannerValid(s.stateTable, s.conditionTable, s.startState, s.endState); err != nil {
-		panic(err)
+		panic(common.NewVmError(common.ErrInvalidStateMachine, "Invalid %s Scanner: %s", b.scanner.name, err.Error()))
 	}
 	return s
 }
 
-func (s *Scanner) scan(lexState *Lexer) common.Token {
+var emptyToken = common.Token{}
+
+func (s *Scanner) scan(lexState *Lexer) (common.Token, error) {
 	cState := s.startState
 	for !lexState.isAtEnd() {
 		cByte := lexState.peek()
@@ -100,7 +104,10 @@ func (s *Scanner) scan(lexState *Lexer) common.Token {
 				canTransfer = true
 				nState := edge.state
 				if s.transferInterceptor != nil {
-					s.transferInterceptor(cState, nState, cByte, s.store)
+					err := s.transferInterceptor(cState, nState, cByte, s.store, lexState.line, lexState.sColumn, lexState.cColumn)
+					if err != nil {
+						return emptyToken, err
+					}
 				}
 				cState = nState
 				break
@@ -114,16 +121,16 @@ func (s *Scanner) scan(lexState *Lexer) common.Token {
 		if _, canEnd := s.endState[cState]; canEnd {
 			return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, lexState.sColumn, lexState.cColumn, cState, s.store)
 		}
-		// panic!
-		panic(lexState.source[lexState.start:lexState.current])
+		// unknown token
+		return emptyToken, util.NewLexerError(util.ErrUnidentifiableToken, lexState.line, lexState.sColumn, lexState.cColumn, lexState.source[lexState.start:lexState.current])
 	}
 
 	// read to the end, see if cState is an end state
 	if _, canEnd := s.endState[cState]; canEnd {
 		return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, lexState.sColumn, lexState.cColumn, cState, s.store)
 	}
-	// panic!
-	panic(lexState.source[lexState.start:lexState.current])
+	// unknown token
+	return emptyToken, util.NewLexerError(util.ErrUnidentifiableToken, lexState.line, lexState.sColumn, lexState.cColumn, lexState.source[lexState.start:lexState.current])
 }
 
 func (s *Scanner) Store(store interface{}) {

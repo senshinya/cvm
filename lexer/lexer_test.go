@@ -6,23 +6,39 @@ import (
 )
 
 func TestCharacterLiteral(t *testing.T) {
-	fmt.Println(NewLexer("'abc''\\n' '\\123''\\xAc'\t  \n \n 'abc\\n\\123\\xAc'").ScanTokens())
+	tokens, err := NewLexer("'abc''\\n' '\\123''\\xAc'\t  \n \n 'abc\\n\\123\\xAc'").ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(tokens)
 }
 
 func Test123(t *testing.T) {
-	fmt.Println(NewLexer("'\\''").ScanTokens())
+	tokens, err := NewLexer("'\\''").ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(tokens)
 }
 
 func TestIdentifier(t *testing.T) {
-	fmt.Println(NewLexer("abc _12 ab_1 _i4 ").ScanTokens())
+	tokens, err := NewLexer("abc _12 ab_1 _i4 ").ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(tokens)
 }
 
 func TestStringLiteral(t *testing.T) {
-	fmt.Println(NewLexer("'abc'\"abc\\n\\tCTAABC\\xAA\\123\"").ScanTokens())
+	tokens, err := NewLexer("'abc'\"abc\\n\\tCTAABC\\xAA\\123\"").ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(tokens)
 }
 
 func TestNumberLiteral(t *testing.T) {
-	fmt.Println(NewLexer(`42
+	tokens, err := NewLexer(`42
 1234567890
 0777
 0
@@ -57,14 +73,26 @@ func TestNumberLiteral(t *testing.T) {
 0X.FFP+10
 0x1.8p-3
 0x.1p10
-`).ScanTokens())
+`).ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(tokens)
 }
 
 func TestNumberLiteral1(t *testing.T) {
-	fmt.Println(NewLexer(`3.14L
-3.14L`).ScanTokens())
+	tokens, err := NewLexer(`3.14L
+3.14L`).ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(tokens)
 }
 
 func TestAll(t *testing.T) {
-	fmt.Println(NewLexer("'abc''\\n' '\\123''\\xAc''abc\\n\\123\\xAc'\nabc _12 ab_1 _i4 ").ScanTokens())
+	tokens, err := NewLexer("'abc''\\n' '\\123''\\xAc''abc\\n\\123\\xAc'\nabc _12 ab_1 _i4 ").ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(tokens)
 }

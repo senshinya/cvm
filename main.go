@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"shinya.click/cvm/util"
+	"shinya.click/cvm/common"
 )
 
 func main() {
@@ -18,17 +18,14 @@ func main() {
 func runFile(filePath string) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		panic(err)
+		panic(common.NewVmError(common.ErrOpenFile, err.Error()))
 	}
 	defer file.Close()
 	bytes, err := io.ReadAll(file)
 	if err != nil {
-		panic(err)
+		panic(common.NewVmError(common.ErrReadFile, err.Error()))
 	}
 	run(string(bytes))
-	if util.HadError {
-		os.Exit(65)
-	}
 }
 
 func run(source string) {

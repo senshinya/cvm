@@ -1,12 +1,10 @@
 package lexer
 
 import (
-	"fmt"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 var numberLiteralStateTable = stateTable{
@@ -70,17 +68,17 @@ var floatEndStates = map[state]struct{}{
 	"I": {}, "L": {}, "M": {}, "V": {},
 }
 
-func numberLiteralConstructor(s string, l, sc, ec int, endState state, _ interface{}) common.Token {
+func numberLiteralConstructor(s string, l, sc, ec int, endState state, _ interface{}) (common.Token, error) {
 	if _, ok := integerEndStates[endState]; ok {
 		return constructIntegerToken(s, l, sc, ec)
 	}
 	if _, ok := floatEndStates[endState]; ok {
 		return constructFloatToken(s, l, sc, ec)
 	}
-	panic(fmt.Sprintf("Unknown number literal type: %s", s))
+	return emptyToken, util.NewLexerError(util.ErrUnidentifiableToken, l, sc, ec, "Unknown number literal: %s", s)
 }
 
-func constructIntegerToken(rawStr string, l, sc, ec int) common.Token {
+func constructIntegerToken(rawStr string, l, sc, ec int) (common.Token, error) {
 	s := rawStr
 
 	// check integer suffix
@@ -114,22 +112,22 @@ func constructIntegerToken(rawStr string, l, sc, ec int) common.Token {
 		raw, err = strconv.ParseUint(s, 10, 64)
 	}
 	if err != nil {
-		panic(err)
+		return emptyToken, util.NewLexerError(util.ErrUnidentifiableToken, l, sc, ec, "Unparseable Integer: %s", err.Error())
 	}
 	if long && unsigned {
-		return common.NewToken(common.INTEGER_CONSTANT, rawStr, raw, l, sc, ec)
+		return common.NewToken(common.INTEGER_CONSTANT, rawStr, raw, l, sc, ec), nil
 	}
 	if !long && unsigned {
-		return common.NewToken(common.INTEGER_CONSTANT, rawStr, uint32(raw), l, sc, ec)
+		return common.NewToken(common.INTEGER_CONSTANT, rawStr, uint32(raw), l, sc, ec), nil
 	}
 	if long && !unsigned {
-		return common.NewToken(common.INTEGER_CONSTANT, rawStr, int64(raw), l, sc, ec)
+		return common.NewToken(common.INTEGER_CONSTANT, rawStr, int64(raw), l, sc, ec), nil
 	}
 	// !long && !unsigned
-	return common.NewToken(common.INTEGER_CONSTANT, rawStr, int32(raw), l, sc, ec)
+	return common.NewToken(common.INTEGER_CONSTANT, rawStr, int32(raw), l, sc, ec), nil
 }
 
-func constructFloatToken(rawStr string, l, sc, ec int) common.Token {
+func constructFloatToken(rawStr string, l, sc, ec int) (common.Token, error) {
 	s := rawStr
 
 	// check float suffix
@@ -145,32 +143,30 @@ func constructFloatToken(rawStr string, l, sc, ec int) common.Token {
 
 	raw, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		panic(err)
+		return emptyToken, util.NewLexerError(util.ErrUnidentifiableToken, l, sc, ec, "Unparseable Float: %s", err.Error())
 	}
 	if float {
-		return common.NewToken(common.FLOATING_CONSTANT, rawStr, float32(raw), l, sc, ec)
+		return common.NewToken(common.FLOATING_CONSTANT, rawStr, float32(raw), l, sc, ec), nil
 	}
-	return common.NewToken(common.FLOATING_CONSTANT, rawStr, raw, l, sc, ec)
+	return common.NewToken(common.FLOATING_CONSTANT, rawStr, raw, l, sc, ec), nil
 }
 
 var numberLiteralEndStates = []state{
 	"B", "C", "D", "E", "F", "G", "H", "I", "L", "M", "N", "O", "R", "V",
 }
 
-var (
-	numberLiteralScanner     *Scanner
-	numberLiteralScannerOnce sync.Once
-)
+var numberLiteralScanner *Scanner
+
+func init() {
+	numberLiteralScanner = newNumberLiteral()
+}
 
 func NumberLiteralScanner() *Scanner {
-	numberLiteralScannerOnce.Do(func() {
-		numberLiteralScanner = newNumberLiteral()
-	})
 	return numberLiteralScanner
 }
 
 func newNumberLiteral() *Scanner {
-	return NewScannerBuilder().
+	return NewScannerBuilder("Number Literal").
 		StateTable(numberLiteralStateTable).
 		ConditionTable(numberLiteralConditionTable).
 		TokenConstructor(numberLiteralConstructor).

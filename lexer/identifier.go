@@ -3,7 +3,6 @@ package lexer
 import (
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
-	"sync"
 )
 
 var identifierStateTable = stateTable{
@@ -16,27 +15,25 @@ var identifierConditionTable = conditionTable{
 	"digit":   util.IsDigit,
 }
 
-func identifierConstructor(s string, l, sc, ec int, _ state, _ interface{}) common.Token {
+func identifierConstructor(s string, l, sc, ec int, _ state, _ interface{}) (common.Token, error) {
 	if tokenType, ok := keywords[s]; ok {
-		return common.NewToken(tokenType, s, nil, l, sc, ec)
+		return common.NewToken(tokenType, s, nil, l, sc, ec), nil
 	}
-	return common.NewToken(common.IDENTIFIER, s, nil, l, sc, ec)
+	return common.NewToken(common.IDENTIFIER, s, nil, l, sc, ec), nil
 }
 
-var (
-	identifierScanner     *Scanner
-	identifierScannerOnce sync.Once
-)
+var identifierScanner *Scanner
+
+func init() {
+	identifierScanner = newIdentifierScanner()
+}
 
 func IdentifierScanner() *Scanner {
-	identifierScannerOnce.Do(func() {
-		identifierScanner = newIdentifierScanner()
-	})
 	return identifierScanner
 }
 
 func newIdentifierScanner() *Scanner {
-	return NewScannerBuilder().
+	return NewScannerBuilder("Identifier").
 		StateTable(identifierStateTable).
 		ConditionTable(identifierConditionTable).
 		TokenConstructor(identifierConstructor).

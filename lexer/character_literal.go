@@ -3,7 +3,6 @@ package lexer
 import (
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
-	"sync"
 )
 
 var characterLiteralStateTable = stateTable{
@@ -47,44 +46,46 @@ type characterLiteralStore struct {
 	currentBytes string
 }
 
-func characterLiteralTransferInterceptor(before, next state, char byte, store interface{}) {
+func characterLiteralTransferInterceptor(before, next state, char byte, store interface{}, l, sc, ec int) error {
 	cs := store.(*characterLiteralStore)
 	if (next == "N") ||
 		(next == "I") ||
 		(before.in([]state{"H", "EH", "FH", "GH", "JH"}) && next == "H") {
 		// a character has been read!
 		// check if out of range
-		b := util.CheckAndUnquoteCharacterLiteral(cs.currentBytes)
+		b, err := util.CheckAndUnquoteCharacterLiteral(cs.currentBytes)
+		if err != nil {
+			return util.NewLexerError(util.ErrInvalidCharacter, l, sc, ec, err.Error())
+		}
 		cs.currentBytes = ""
 		cs.last = b
 	}
 
 	if char == '\'' && (before == "A" || next == "N") {
-		return
+		return nil
 	}
 	cs.currentBytes += string(char)
+	return nil
 }
 
-var (
-	characterLiteralScanner     *Scanner
-	characterLiteralScannerOnce sync.Once
-)
+var characterLiteralScanner *Scanner
+
+func init() {
+	characterLiteralScanner = newCharacterLiteralScanner()
+}
 
 func CharacterLiteralScanner() *Scanner {
-	characterLiteralScannerOnce.Do(func() {
-		characterLiteralScanner = newCharacterLiteralScanner()
-	})
 	characterLiteralScanner.Store(&characterLiteralStore{})
 	return characterLiteralScanner
 }
 
 func newCharacterLiteralScanner() *Scanner {
-	return NewScannerBuilder().
+	return NewScannerBuilder("Character Literal").
 		StateTable(characterLiteralStateTable).
 		ConditionTable(characterLiteralConditionTable).
-		TokenConstructor(func(s string, l, sc, ec int, _ state, store interface{}) common.Token {
+		TokenConstructor(func(s string, l, sc, ec int, _ state, store interface{}) (common.Token, error) {
 			cs := store.(*characterLiteralStore)
-			return common.NewToken(common.CHARACTER, s, cs.last, l, sc, ec)
+			return common.NewToken(common.CHARACTER, s, cs.last, l, sc, ec), nil
 		}).
 		StartState("A").
 		EndState([]state{"N"}).

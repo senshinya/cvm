@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"log"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
 )
@@ -20,7 +19,7 @@ func NewLexer(source string) *Lexer {
 	return &Lexer{source: source, line: 1}
 }
 
-func (l *Lexer) ScanTokens() []common.Token {
+func (l *Lexer) ScanTokens() ([]common.Token, error) {
 	for !l.isAtEnd() {
 		if l.currentEmpty() {
 			l.moveNext()
@@ -28,18 +27,20 @@ func (l *Lexer) ScanTokens() []common.Token {
 		}
 		l.start = l.current
 		l.sColumn = l.cColumn
-		l.scanToken()
+		if err := l.scanToken(); err != nil {
+			return nil, err
+		}
 	}
 
 	l.tokens = append(l.tokens, common.NewToken(common.EOF, "", nil, l.line, l.cColumn, l.cColumn))
-	return l.tokens
+	return l.tokens, nil
 }
 
 func (l *Lexer) isAtEnd() bool {
 	return l.current >= len(l.source)
 }
 
-func (l *Lexer) scanToken() {
+func (l *Lexer) scanToken() error {
 	var sc *Scanner
 	switch {
 	case l.peek() == '\'':
@@ -55,10 +56,14 @@ func (l *Lexer) scanToken() {
 	case util.IsDigit(l.peek()):
 		sc = NumberLiteralScanner()
 	default:
-		log.Panicf("Unrecognized token: %c", l.peek())
+		return util.NewLexerError(util.ErrUnidentifiableToken, l.line, l.sColumn, l.cColumn, string(l.peek()))
 	}
-	token := sc.scan(l)
+	token, err := sc.scan(l)
+	if err != nil {
+		return err
+	}
 	l.tokens = append(l.tokens, token)
+	return nil
 }
 
 func (l *Lexer) peek() byte {

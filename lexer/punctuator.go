@@ -1,9 +1,8 @@
 package lexer
 
 import (
-	"fmt"
 	"shinya.click/cvm/common"
-	"sync"
+	"shinya.click/cvm/lexer/util"
 )
 
 var punctuatorStateTable = stateTable{
@@ -138,28 +137,26 @@ func isPunctuatorPrefix(b byte) bool {
 	return ok
 }
 
-func punctuatorConstructor(s string, l, sc, ec int, _ state, _ interface{}) common.Token {
+func punctuatorConstructor(s string, l, sc, ec int, _ state, _ interface{}) (common.Token, error) {
 	tokenType, ok := punctuatorTokenMap[s]
 	if !ok {
-		panic(fmt.Sprintf("punctuator constructor: unknown punctuator: %s", s))
+		return emptyToken, util.NewLexerError(util.ErrUnidentifiableToken, l, sc, ec, "Unknown Punctuator: %s", s)
 	}
-	return common.NewToken(tokenType, s, nil, l, sc, ec)
+	return common.NewToken(tokenType, s, nil, l, sc, ec), nil
 }
 
-var (
-	punctuatorScanner     *Scanner
-	punctuatorScannerOnce sync.Once
-)
+var punctuatorScanner *Scanner
+
+func init() {
+	punctuatorScanner = newPunctuatorScanner()
+}
 
 func PunctuatorScanner() *Scanner {
-	punctuatorScannerOnce.Do(func() {
-		punctuatorScanner = newPunctuatorScanner()
-	})
 	return punctuatorScanner
 }
 
 func newPunctuatorScanner() *Scanner {
-	return NewScannerBuilder().
+	return NewScannerBuilder("Punctuator").
 		StateTable(punctuatorStateTable).
 		ConditionTable(punctuatorConditionTable).
 		TokenConstructor(punctuatorConstructor).

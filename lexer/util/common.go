@@ -1,7 +1,7 @@
 package util
 
 import (
-	"log"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -52,16 +52,16 @@ func HexOrOctCharToNum(char byte) int64 {
 	return charToAscii[char]
 }
 
-func CheckAndUnquoteCharacterInString(bytes string) byte {
+func CheckAndUnquoteCharacterInString(bytes string) (byte, error) {
 	if !strings.HasPrefix(bytes, "\\") {
-		return bytes[0]
+		return bytes[0], nil
 	}
 	if IsSimpleEscapeSuffix(bytes[1]) {
 		unquote, err := strconv.Unquote("\"" + bytes + "\"")
 		if err != nil {
-			panic(err)
+			return 0, err
 		}
-		return unquote[0]
+		return unquote[0], nil
 	}
 	var ascii int64
 	if strings.HasPrefix(bytes, "\\x") {
@@ -78,14 +78,14 @@ func CheckAndUnquoteCharacterInString(bytes string) byte {
 		}
 	}
 	if ascii > 255 || ascii < 0 {
-		log.Panicf("%s out of range", bytes)
+		return 0, fmt.Errorf("%s out of range", bytes)
 	}
-	return byte(ascii)
+	return byte(ascii), nil
 }
 
-func CheckAndUnquoteCharacterLiteral(bytes string) byte {
+func CheckAndUnquoteCharacterLiteral(bytes string) (byte, error) {
 	if !strings.HasPrefix(bytes, "\\") {
-		return bytes[0]
+		return bytes[0], nil
 	}
 	if IsSimpleEscapeSuffix(bytes[1]) {
 		if bytes[1] == '\'' {
@@ -93,9 +93,9 @@ func CheckAndUnquoteCharacterLiteral(bytes string) byte {
 		}
 		unquote, err := strconv.Unquote("\"" + bytes + "\"")
 		if err != nil {
-			panic(err)
+			return 0, err
 		}
-		return unquote[0]
+		return unquote[0], nil
 	}
 	var ascii int64
 	if strings.HasPrefix(bytes, "\\x") {
@@ -112,9 +112,9 @@ func CheckAndUnquoteCharacterLiteral(bytes string) byte {
 		}
 	}
 	if ascii > 255 || ascii < 0 {
-		log.Panicf("%s out of range", bytes)
+		return 0, fmt.Errorf("%s out of range", bytes)
 	}
-	return byte(ascii)
+	return byte(ascii), nil
 }
 
 func IsSimpleEscapeSuffix(b byte) bool {

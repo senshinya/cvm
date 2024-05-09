@@ -3,7 +3,6 @@ package lexer
 import (
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer/util"
-	"sync"
 )
 
 var stringLiteralStateTable = stateTable{
@@ -45,7 +44,7 @@ type stringLiteralStore struct {
 	currentBytes string
 }
 
-func stringLiteralTransferInterceptor(before, next state, char byte, store interface{}) {
+func stringLiteralTransferInterceptor(before, next state, char byte, store interface{}, l, sc, ec int) error {
 	cs := store.(*stringLiteralStore)
 	//fmt.Printf("before: %s, next: %s, char %c\n", before, next, char)
 	if len(cs.currentBytes) != 0 &&
@@ -54,37 +53,39 @@ func stringLiteralTransferInterceptor(before, next state, char byte, store inter
 			(before.in([]state{"B", "FB", "GB", "HB", "IB"}) && next == "B")) {
 		// a character has been read!
 		// check if out of range
-		b := util.CheckAndUnquoteCharacterInString(cs.currentBytes)
+		b, err := util.CheckAndUnquoteCharacterInString(cs.currentBytes)
+		if err != nil {
+			return util.NewLexerError(util.ErrInvalidCharacter, l, sc, ec, err.Error())
+		}
 		cs.currentBytes = ""
 		cs.result += string(b)
 	}
 
 	if char == '"' && (before == "A" || next == "B") {
-		return
+		return nil
 	}
 	cs.currentBytes += string(char)
+	return nil
 }
 
-var (
-	stringLiteralScanner     *Scanner
-	stringLiteralScannerOnce sync.Once
-)
+var stringLiteralScanner *Scanner
+
+func init() {
+	stringLiteralScanner = newStringLiteralScanner()
+}
 
 func StringLiteralScanner() *Scanner {
-	stringLiteralScannerOnce.Do(func() {
-		stringLiteralScanner = newStringLiteralScanner()
-	})
 	stringLiteralScanner.Store(&stringLiteralStore{})
 	return stringLiteralScanner
 }
 
 func newStringLiteralScanner() *Scanner {
-	return NewScannerBuilder().
+	return NewScannerBuilder("String Literal").
 		StateTable(stringLiteralStateTable).
 		ConditionTable(stringLiteralConditionTable).
-		TokenConstructor(func(s string, l, sc, ec int, _ state, store interface{}) common.Token {
+		TokenConstructor(func(s string, l, sc, ec int, _ state, store interface{}) (common.Token, error) {
 			cs := store.(*stringLiteralStore)
-			return common.NewToken(common.STRING, s, cs.result, l, sc, ec)
+			return common.NewToken(common.STRING, s, cs.result, l, sc, ec), nil
 		}).
 		StartState("A").
 		EndState([]state{"C"}).
