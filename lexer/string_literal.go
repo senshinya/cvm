@@ -44,7 +44,7 @@ type stringLiteralStore struct {
 	currentBytes string
 }
 
-func stringLiteralTransferInterceptor(before, next state, char byte, store interface{}, l, sc, ec int) error {
+func stringLiteralTransferInterceptor(before, next state, char byte, store interface{}, l, _, ec int) error {
 	cs := store.(*stringLiteralStore)
 	//fmt.Printf("before: %s, next: %s, char %c\n", before, next, char)
 	if len(cs.currentBytes) != 0 &&
@@ -55,7 +55,7 @@ func stringLiteralTransferInterceptor(before, next state, char byte, store inter
 		// check if out of range
 		b, err := util.CheckAndUnquoteCharacterInString(cs.currentBytes)
 		if err != nil {
-			return util.NewLexerError(util.ErrInvalidCharacter, l, sc, ec, err.Error())
+			return util.NewLexerError(util.ErrInvalidCharacter, l, ec-len(cs.currentBytes)+1, ec, err.Error())
 		}
 		cs.currentBytes = ""
 		cs.result += string(b)
