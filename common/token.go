@@ -29,6 +29,7 @@ const (
 	FOR       = "FOR"
 	GOTO      = "GOTO"
 	IF        = "IF"
+	INLINE    = "INLINE"
 	INT       = "INT"
 	LONG      = "LONG"
 	REGISTER  = "REGISTER"

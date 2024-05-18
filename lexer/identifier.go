@@ -59,6 +59,7 @@ var keywords = map[string]common.TokenType{
 	"for":        common.FOR,
 	"goto":       common.GOTO,
 	"if":         common.IF,
+	"inline":     common.INLINE,
 	"int":        common.INT,
 	"long":       common.LONG,
 	"register":   common.REGISTER,
