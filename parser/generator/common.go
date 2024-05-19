@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	mapset "github.com/deckarep/golang-set/v2"
+)
 
 type Production struct {
 	Left  string
@@ -10,6 +13,23 @@ type Production struct {
 type Productions struct {
 	Productions []*Production
 	LeftMap     map[string][]*Production
+}
+
+func (p Productions) first(symbol string) []string {
+	if isTerminalSymbol(symbol) {
+		return []string{symbol}
+	}
+	result := mapset.NewSet[string]()
+	defProds := p.LeftMap[symbol]
+	for _, prod := range defProds {
+		right := prod.Right[0]
+		if right == symbol {
+			continue
+		}
+		result.Append(p.first(right)...)
+		// nothing can derive to epsilon
+	}
+	return result.ToSlice()
 }
 
 func NewProductions(prods []*Production) *Productions {
@@ -65,6 +85,11 @@ type LRDFA struct {
 	StartState *LRNode
 	EndStates  []*LRNode
 	AllNodes   []*LRNode
+}
+
+type StateSpecificLRItem struct {
+	Node *LRNode
+	Item LRItem
 }
 
 var terminals = map[string]struct{}{
