@@ -2,10 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/oleiade/lane/v2"
 	"github.com/thoas/go-funk"
+	"go/format"
 	"golang.org/x/exp/slices"
+	"html/template"
 	"io"
 	"log"
 	"os"
@@ -19,6 +23,8 @@ func main() {
 	checkProductions(productions)
 	dfa := constructLR0(productions)
 	addLookAheadSymbol(dfa, productions)
+	checkDFA(dfa)
+	generateFile(dfa, productions)
 }
 
 func readLines() []string {
@@ -188,16 +194,10 @@ func addLookAheadSymbol(dfa LRDFA, productions *Productions) {
 					continue
 				}
 				symbol := closureItem.getSymbolAfterDot()
-				targetNode, ok := node.Edges[symbol]
-				if !ok {
-					continue
-				}
+				targetNode := node.Edges[symbol]
 				shifted := LRItem{
 					Production: closureItem.Production,
-					DotIndex:   closureItem.DotIndex,
-				}
-				if !closureItem.isReducible() {
-					shifted.DotIndex = closureItem.DotIndex + 1
+					DotIndex:   closureItem.DotIndex + 1,
 				}
 				targetSSLRItem := StateSpecificLRItem{Node: targetNode, Item: shifted}
 				if closureItem.LookAhead == externalSymbol {
@@ -247,8 +247,8 @@ func addLookAheadSymbol(dfa LRDFA, productions *Productions) {
 		}
 		newKernel = funk.Uniq(newKernel).([]LRItem)
 		clo := closure(newKernel, productions)
-		key.Node.Kernel = newKernel
-		key.Node.Items = clo
+		key.Node.Kernel = append(key.Node.Kernel, newKernel...)
+		key.Node.Items = append(key.Node.Items, clo...)
 	}
 }
 
@@ -314,4 +314,92 @@ func closure(kernel []LRItem, productions *Productions) []LRItem {
 		}
 	}
 	return result
+}
+
+func checkDFA(dfa LRDFA) {
+	// check conflicts
+	for _, node := range dfa.AllNodes {
+		symbols := map[string]struct{}{}
+		for symbol := range node.Edges {
+			_, ok := symbols[symbol]
+			if ok {
+				for _, item := range node.Items {
+					fmt.Println(item)
+				}
+				panic("a" + symbol)
+			}
+			symbols[symbol] = struct{}{}
+		}
+		for _, item := range node.Items {
+			if !item.isReducible() {
+				continue
+			}
+			lookahead := item.LookAhead
+			_, ok := symbols[lookahead]
+			if ok {
+				for _, item := range node.Items {
+					fmt.Println(item)
+				}
+				for symbol, _ := range node.Edges {
+					fmt.Printf("%s :\n", symbol)
+				}
+				panic(lookahead)
+			}
+			symbols[lookahead] = struct{}{}
+		}
+	}
+}
+
+func generateFile(dfa LRDFA, productions *Productions) {
+	productionIndex := map[*Production]int{}
+	for i, prod := range productions.Productions {
+		productionIndex[prod] = i
+	}
+
+	NodeStateMap := map[*LRNode]int{}
+	for i, node := range dfa.AllNodes {
+		NodeStateMap[node] = i
+	}
+	table := map[int]map[string]DFAOperator{}
+	for i, node := range dfa.AllNodes {
+		table[i] = map[string]DFAOperator{}
+		for symbol, lrNode := range node.Edges {
+			table[i][symbol] = DFAOperator{
+				OperatorType: SHIFT,
+				StateIndex:   NodeStateMap[lrNode],
+			}
+		}
+		for _, item := range node.Items {
+			if item.isReducible() {
+				if productionIndex[item.Production] == 0 {
+					table[i][item.LookAhead] = DFAOperator{
+						OperatorType: ACC,
+					}
+					continue
+				}
+				table[i][item.LookAhead] = DFAOperator{
+					OperatorType: REDUCE,
+					ReduceIndex:  productionIndex[item.Production],
+				}
+			}
+		}
+
+	}
+
+	tmpl := `package parser
+
+var productions = []Production{
+{{ range $_, $v := .Productions }}	{ Left: "{{ $v.Left }}", Right: []string{ {{ range $i, $r := $v.Right }}{{if $i}},{{end}}"{{ $r }}"{{ end }} } },
+{{ end }}
+}
+`
+	data := struct {
+		Productions []*Production
+	}{
+		Productions: productions.Productions,
+	}
+	var buf bytes.Buffer
+	template.Must(template.New("test").Parse(tmpl)).Execute(&buf, data)
+	source, _ := format.Source(buf.Bytes())
+	fmt.Println(string(source))
 }

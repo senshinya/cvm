@@ -183,9 +183,24 @@ var terminals = map[string]struct{}{
 	"COMMA":             {},
 	"SHARP":             {},
 	"SHARP_SHARP":       {},
+	"TYPE_NAME":         {},
 }
 
 func isTerminalSymbol(s string) bool {
 	_, ok := terminals[s]
 	return ok
+}
+
+type OperatorType uint
+
+const (
+	SHIFT  OperatorType = 1
+	REDUCE OperatorType = 2
+	ACC    OperatorType = 3
+)
+
+type DFAOperator struct {
+	OperatorType OperatorType
+	StateIndex   int
+	ReduceIndex  int
 }
