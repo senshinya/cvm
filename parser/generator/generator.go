@@ -23,8 +23,35 @@ func main() {
 	checkProductions(productions)
 	dfa := constructLR0(productions)
 	addLookAheadSymbol(dfa, productions)
+	shaveDFA(dfa)
 	checkDFA(dfa)
 	generateFile(dfa, productions)
+}
+
+func shaveDFA(dfa LRDFA) {
+	// handle the ELSE shift-reduce conflict
+	for _, node := range dfa.AllNodes {
+		shiftELSE := false
+		for edge := range node.Edges {
+			if edge == "ELSE" {
+				shiftELSE = true
+				break
+			}
+		}
+		if !shiftELSE {
+			continue
+		}
+		problem := -1
+		for i, item := range node.Items {
+			if item.isReducible() && item.LookAhead == "ELSE" {
+				problem = i
+				break
+			}
+		}
+		if problem != -1 {
+			node.Items = append(node.Items[:problem], node.Items[problem+1:]...)
+		}
+	}
 }
 
 func readLines() []string {
