@@ -184,6 +184,7 @@ var terminals = map[string]struct{}{
 	"SHARP":             {},
 	"SHARP_SHARP":       {},
 	"TYPE_NAME":         {},
+	"EOF":               {},
 }
 
 func isTerminalSymbol(s string) bool {

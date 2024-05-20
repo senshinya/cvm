@@ -1,8 +1,10 @@
 package parser
 
+import "shinya.click/cvm/common"
+
 type Production struct {
-	Left  string
-	Right []string
+	Left  common.TokenType
+	Right []common.TokenType
 }
 
 type OperatorType uint
