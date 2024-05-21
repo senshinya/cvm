@@ -103,7 +103,7 @@ func checkProductions(prods *Productions) {
 	}
 	for _, prod := range prods.Productions {
 		for _, part := range prod.Right {
-			if isTerminalSymbol(part) {
+			if common.IsTerminalSymbol(part) {
 				continue
 			}
 			if _, ok := nonTerminal[part]; !ok {
@@ -297,7 +297,7 @@ func closure(kernel []LRItem, productions *Productions) []LRItem {
 		}
 
 		left := item.getSymbolAfterDot()
-		if isTerminalSymbol(left) {
+		if common.IsTerminalSymbol(left) {
 			continue
 		}
 
@@ -384,24 +384,30 @@ func generateFile(dfa LRDFA, productions *Productions) {
 	for i, node := range dfa.AllNodes {
 		NodeStateMap[node] = i
 	}
-	table := map[int]map[string]DFAOperator{}
+	action := map[int]map[string]DFAOperator{}
+	gotos := map[int]map[string]int{}
 	for i, node := range dfa.AllNodes {
-		table[i] = map[string]DFAOperator{}
+		action[i] = map[string]DFAOperator{}
+		gotos[i] = map[string]int{}
 		for symbol, lrNode := range node.Edges {
-			table[i][symbol] = DFAOperator{
-				OperatorType: SHIFT,
-				StateIndex:   NodeStateMap[lrNode],
+			if common.IsTerminalSymbol(symbol) {
+				action[i][symbol] = DFAOperator{
+					OperatorType: SHIFT,
+					StateIndex:   NodeStateMap[lrNode],
+				}
+			} else {
+				gotos[i][symbol] = NodeStateMap[lrNode]
 			}
 		}
 		for _, item := range node.Items {
 			if item.isReducible() {
 				if productionIndex[item.Production] == 0 {
-					table[i][item.LookAhead] = DFAOperator{
+					action[i][item.LookAhead] = DFAOperator{
 						OperatorType: ACC,
 					}
 					continue
 				}
-				table[i][item.LookAhead] = DFAOperator{
+				action[i][item.LookAhead] = DFAOperator{
 					OperatorType: REDUCE,
 					ReduceIndex:  productionIndex[item.Production],
 				}
@@ -425,19 +431,26 @@ var productions = []Production{
 {{ end }}
 }
 
-var lalrTable = map[int]map[common.TokenType]DFAOperator{
-{{ range $index, $ops := .Table }}	{{ $index }}: { {{ $first := true }}{{ range $k, $op := $ops }}{{if not $first}}, {{else}}{{$first = false}}{{end}}{{if isTerminal $k}}common.{{end}}{{ $k }}: { {{ if eq $op.OperatorType 1 }}OperatorType: SHIFT, StateIndex: {{ $op.StateIndex }}{{ else if eq $op.OperatorType 2 }}OperatorType: REDUCE, ReduceIndex: {{ $op.ReduceIndex }}{{ else }}OperatorType: ACC{{ end }} }{{end}}},
+var lalrAction = map[int]map[common.TokenType]DFAOperator{
+{{ range $index, $ops := .Action }}	{{ $index }}: { {{ $first := true }}{{ range $k, $op := $ops }}{{if not $first}}, {{else}}{{$first = false}}{{end}}common.{{ $k }}: { {{ if eq $op.OperatorType 1 }}OperatorType: SHIFT, StateIndex: {{ $op.StateIndex }}{{ else if eq $op.OperatorType 2 }}OperatorType: REDUCE, ReduceIndex: {{ $op.ReduceIndex }}{{ else }}OperatorType: ACC{{ end }} }{{end}}},
+{{ end }}
+}
+
+var lalrGoto = map[int]map[common.TokenType]int{
+{{ range $index, $gotos := .Goto }}	{{ $index }}: { {{ $first := true }}{{ range $k, $goto := $gotos }}{{if not $first}}, {{else}}{{$first = false}}{{end}}{{ $k }}: {{ $goto }}{{end}} },
 {{ end }}
 }
 `
 	data := struct {
 		Productions  []*Production
 		NonTerminals []string
-		Table        map[int]map[string]DFAOperator
+		Action       map[int]map[string]DFAOperator
+		Goto         map[int]map[string]int
 	}{
 		Productions:  productions.Productions,
 		NonTerminals: nonTerminals,
-		Table:        table,
+		Action:       action,
+		Goto:         gotos,
 	}
 	file, err := os.OpenFile("./parser/lalr_table.go", os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666)
 	if err != nil {
@@ -445,10 +458,13 @@ var lalrTable = map[int]map[common.TokenType]DFAOperator{
 	}
 	defer file.Close()
 	var buf bytes.Buffer
-	err = template.Must(template.New("test").Funcs(template.FuncMap{"isTerminal": isTerminalSymbol}).Parse(tmpl)).Execute(&buf, data)
+	err = template.Must(template.New("test").Funcs(template.FuncMap{"isTerminal": common.IsTerminalSymbol}).Parse(tmpl)).Execute(&buf, data)
 	if err != nil {
 		panic(err)
 	}
-	source, _ := format.Source(buf.Bytes())
+	source, err := format.Source(buf.Bytes())
+	if err != nil {
+		panic(err)
+	}
 	file.Write(source)
 }

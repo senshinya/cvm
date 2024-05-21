@@ -96,3 +96,11 @@ func TestAll(t *testing.T) {
 	}
 	fmt.Println(tokens)
 }
+
+func TestIds(t *testing.T) {
+	tokens, err := NewLexer("a,b,c").ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(tokens)
+}

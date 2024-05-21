@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
+	"shinya.click/cvm/common"
 )
 
 type Production struct {
@@ -16,7 +17,7 @@ type Productions struct {
 }
 
 func (p Productions) first(symbol string) []string {
-	if isTerminalSymbol(symbol) {
+	if common.IsTerminalSymbol(symbol) {
 		return []string{symbol}
 	}
 	result := mapset.NewSet[string]()
@@ -90,106 +91,6 @@ type LRDFA struct {
 type StateSpecificLRItem struct {
 	Node *LRNode
 	Item LRItem
-}
-
-var terminals = map[string]struct{}{
-	"IDENTIFIER":        {},
-	"STRING":            {},
-	"CHARACTER":         {},
-	"INTEGER_CONSTANT":  {},
-	"FLOATING_CONSTANT": {},
-	"AUTO":              {},
-	"BREAK":             {},
-	"CASE":              {},
-	"CHAR":              {},
-	"CONST":             {},
-	"CONTINUE":          {},
-	"DEFAULT":           {},
-	"DO":                {},
-	"DOUBLE":            {},
-	"ELSE":              {},
-	"ENUM":              {},
-	"EXTERN":            {},
-	"FLOAT":             {},
-	"FOR":               {},
-	"GOTO":              {},
-	"IF":                {},
-	"INLINE":            {},
-	"INT":               {},
-	"LONG":              {},
-	"REGISTER":          {},
-	"RESTRICT":          {},
-	"RETURN":            {},
-	"SHORT":             {},
-	"SIGNED":            {},
-	"SIZEOF":            {},
-	"STATIC":            {},
-	"STRUCT":            {},
-	"SWITCH":            {},
-	"TYPEDEF":           {},
-	"UNION":             {},
-	"UNSIGNED":          {},
-	"VOID":              {},
-	"VOLATILE":          {},
-	"WHILE":             {},
-	"BOOL":              {},
-	"COMPLEX":           {},
-	"IMAGINARY":         {},
-	"LEFT_BRACKETS":     {},
-	"RIGHT_BRACKETS":    {},
-	"LEFT_PARENTHESES":  {},
-	"RIGHT_PARENTHESES": {},
-	"LEFT_BRACES":       {},
-	"RIGHT_BRACES":      {},
-	"PERIOD":            {},
-	"ARROW":             {},
-	"PLUS_PLUS":         {},
-	"MINUS_MINUS":       {},
-	"AND":               {},
-	"ASTERISK":          {},
-	"PLUS":              {},
-	"MINUS":             {},
-	"TILDE":             {},
-	"EXCLAMATION":       {},
-	"SLASH":             {},
-	"PERCENT":           {},
-	"LEFT_SHIFT":        {},
-	"RIGHT_SHIFT":       {},
-	"LESS":              {},
-	"GREATER":           {},
-	"LESS_EQUAL":        {},
-	"GREATER_EQUAL":     {},
-	"EQUAL_EQUAL":       {},
-	"NOT_EQUAL":         {},
-	"XOR":               {},
-	"OR":                {},
-	"AND_AND":           {},
-	"OR_OR":             {},
-	"QUESTION":          {},
-	"COLON":             {},
-	"SEMICOLON":         {},
-	"VARIADIC":          {},
-	"EQUAL":             {},
-	"MULTIPLY_EQUAL":    {},
-	"DIVIDE_EQUAL":      {},
-	"MOD_EQUAL":         {},
-	"PLUS_EQUAL":        {},
-	"MINUS_EQUAL":       {},
-	"LEFT_SHIFT_EQUAL":  {},
-	"RIGHT_SHIFT_EQUAL": {},
-	"AND_EQUAL":         {},
-	"XOR_EQUAL":         {},
-	"OR_EQUAL":          {},
-	"COMMA":             {},
-	"SHARP":             {},
-	"SHARP_SHARP":       {},
-	"TYPE_NAME":         {},
-	"EOF":               {},
-}
-
-func isTerminalSymbol(s string) bool {
-	_, ok := terminals[s]
-	return ok
 }
 
 type OperatorType uint
