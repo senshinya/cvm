@@ -3,10 +3,11 @@ package parser
 import "shinya.click/cvm/common"
 
 type AstNode struct {
-	Parent   *AstNode
-	Typ      common.TokenType
-	Terminal *common.Token
-	Children []*AstNode
+	Parent    *AstNode
+	Typ       common.TokenType
+	Terminal  *common.Token
+	ProdIndex int // reduce by which production
+	Children  []*AstNode
 }
 
 func (n *AstNode) SetChildren(children []*AstNode) {

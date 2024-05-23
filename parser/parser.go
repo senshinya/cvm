@@ -5,19 +5,33 @@ import (
 	"github.com/oleiade/lane/v2"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
+	"shinya.click/cvm/parser/syntax"
 )
 
 type Parser struct {
 	Tokens       []common.Token
 	AST          *AstNode
 	TypeDefNames []string
+	Syntax       *syntax.Program
 }
 
 func NewParser(tokens []common.Token) *Parser {
 	return &Parser{Tokens: tokens}
 }
 
-func (p *Parser) ConstructAST() error {
+func (p *Parser) Parse() error {
+	if err := p.constructAST(); err != nil {
+		return err
+	}
+
+	if err := p.parseSyntax(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Parser) constructAST() error {
 	if p.AST != nil {
 		return nil
 	}
@@ -65,7 +79,7 @@ func (p *Parser) ConstructAST() error {
 				}
 				rights = append(rights, sym)
 			}
-			newSym := &AstNode{Typ: prod.Left}
+			newSym := &AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
 			newSym.SetChildren(funk.Reverse(rights).([]*AstNode))
 			symbolStack.Push(newSym)
 			nowHeadState, ok := stateStack.Head()
@@ -102,4 +116,43 @@ func printAST(ast *AstNode, level int) {
 	for _, child := range ast.Children {
 		printAST(child, level+1)
 	}
+}
+
+func (p *Parser) parseSyntax() error {
+	p.Syntax = &syntax.Program{}
+
+	// flatten the outer translation unit
+	units := flattenTranslationUnit(p.AST.Children[0])
+	for _, unit := range units {
+		switch productions[unit.ProdIndex].Right[0] {
+		case function_definition:
+			funcDef, err := parseFunctionDefinition(unit.Children[0])
+			if err != nil {
+				return err
+			}
+			p.Syntax.Units = append(p.Syntax.Units, funcDef)
+		case declaration:
+			declare, err := parseDeclaration(unit.Children[0])
+			if err != nil {
+				return err
+			}
+			p.Syntax.Units = append(p.Syntax.Units, declare)
+		}
+	}
+	return nil
+}
+
+func flattenTranslationUnit(ast *AstNode) []*AstNode {
+	// ast must be program_units node
+	if ast.Typ != program_units {
+		return nil
+	}
+
+	// if reduced by program_units := translation_unit
+	if len(productions[ast.ProdIndex].Right) == 1 {
+		return []*AstNode{ast.Children[0]}
+	}
+
+	// reduced by program_units := program_units translation_unit
+	return append(flattenTranslationUnit(ast.Children[0]), ast.Children[1])
 }

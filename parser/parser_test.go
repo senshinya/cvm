@@ -15,5 +15,5 @@ func TestTypeDefDeclaration(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	NewParser(tokens).ConstructAST()
+	NewParser(tokens).Parse()
 }
