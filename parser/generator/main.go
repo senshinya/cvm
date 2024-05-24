@@ -440,11 +440,23 @@ func generateFile(dfa LRDFA, productions *Productions) {
 	}
 	for _, actionsPairs := range actions {
 		sort.Slice(actionsPairs, func(i, j int) bool {
+			if actionsPairs[i].Symbol == actionsPairs[j].Symbol {
+				if actionsPairs[i].Op.OperatorType == actionsPairs[j].Op.OperatorType {
+					if actionsPairs[i].Op.StateIndex == actionsPairs[j].Op.StateIndex {
+						return actionsPairs[i].Op.ReduceIndex < actionsPairs[j].Op.ReduceIndex
+					}
+					return actionsPairs[i].Op.StateIndex < actionsPairs[j].Op.StateIndex
+				}
+				return actionsPairs[i].Op.OperatorType < actionsPairs[j].Op.OperatorType
+			}
 			return actionsPairs[i].Symbol < actionsPairs[j].Symbol
 		})
 	}
 	for _, gotoPairs := range gotos {
 		sort.Slice(gotoPairs, func(i, j int) bool {
+			if gotoPairs[i].Symbol == gotoPairs[j].Symbol {
+				return gotoPairs[i].State < gotoPairs[j].State
+			}
 			return gotoPairs[i].Symbol < gotoPairs[j].Symbol
 		})
 	}
