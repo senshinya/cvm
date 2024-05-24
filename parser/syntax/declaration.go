@@ -10,12 +10,6 @@ func (d *Declaration) GetUnitType() TranslationUnitType {
 	return UnitTypeDeclaration
 }
 
-type TypeQualifiers struct {
-	Const    bool
-	Restrict bool
-	Volatile bool
-}
-
 type Declarator struct {
 	Identifier string
 

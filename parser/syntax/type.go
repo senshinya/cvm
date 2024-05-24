@@ -6,11 +6,18 @@ const (
 	MetaTypeUnknown MetaType = iota
 	MetaTypeVoid
 	MetaTypeNumber
+	MetaTypeEnum
 	MetaTypePointer
 	MetaTypeStruct
 	MetaTypeUnion
 	MetaTypeFunction
 )
+
+type TypeQualifiers struct {
+	Const    bool
+	Restrict bool
+	Volatile bool
+}
 
 type Type struct {
 	TypeQualifiers TypeQualifiers
