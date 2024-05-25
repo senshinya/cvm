@@ -60,9 +60,9 @@ func (i LRItem) getSymbolAfterDot() string {
 }
 
 type LRNode struct {
-	Kernel []LRItem           // kernel items
-	Items  []LRItem           // all items
-	Edges  map[string]*LRNode // from edges
+	Kernel []LRItem             // kernel items
+	Items  []LRItem             // all items
+	Edges  map[string][]*LRNode // from edges
 }
 
 func (n LRNode) hasSameKernel(kernel []LRItem) bool {

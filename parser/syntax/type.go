@@ -12,6 +12,7 @@ const (
 	MetaTypeUnion
 	MetaTypeFunction
 	MetaTypeArray
+	MetaTypeUserDefined
 )
 
 type TypeQualifiers struct {
@@ -31,6 +32,7 @@ type Type struct {
 	UnionMetaInfo    *UnionMetaInfo
 	FunctionMetaInfo *FunctionMetaInfo
 	ArrayMetaInfo    *ArrayMetaInfo
+	UserDefinedType  *Type
 }
 
 type BaseNumType uint8

@@ -57,6 +57,7 @@ func parseTypeSpecifiers(specifiers []*AstNode, typ *syntax.Type) {
 			// TODO enum declare
 		case common.IDENTIFIER:
 			// TODO need a symbol table!
+			typ.MetaType = syntax.MetaTypeUserDefined
 		}
 	}
 	switch typ.MetaType {

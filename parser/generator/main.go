@@ -23,7 +23,7 @@ func main() {
 	checkProductions(productions)
 	dfa := constructLR0(productions)
 	addLookAheadSymbol(dfa, productions)
-	shaveDFA(dfa)
+	//shaveDFA(dfa)
 	//checkDFA(dfa)
 	generateFile(dfa, productions)
 }
@@ -129,7 +129,7 @@ func constructLR0(productions *Productions) LRDFA {
 	startNode := &LRNode{
 		Kernel: startKernel,
 		Items:  startClosure,
-		Edges:  map[string]*LRNode{},
+		Edges:  map[string][]*LRNode{},
 	}
 
 	nodes = append(nodes, startNode)
@@ -158,16 +158,16 @@ func constructLR0(productions *Productions) LRDFA {
 				}
 			}
 			if existedNode != nil {
-				currentNode.Edges[s] = existedNode
+				currentNode.Edges[s] = append(currentNode.Edges[s], existedNode)
 				continue
 			}
 			nextItems := closure(nextKernel, productions)
 			nNode := &LRNode{
 				Kernel: nextKernel,
 				Items:  nextItems,
-				Edges:  map[string]*LRNode{},
+				Edges:  map[string][]*LRNode{},
 			}
-			currentNode.Edges[s] = nNode
+			currentNode.Edges[s] = append(currentNode.Edges[s], nNode)
 			nodes = append(nodes, nNode)
 			stack.Push(nNode)
 		}
@@ -223,16 +223,18 @@ func addLookAheadSymbol(dfa LRDFA, productions *Productions) {
 					continue
 				}
 				symbol := closureItem.getSymbolAfterDot()
-				targetNode := node.Edges[symbol]
+				targetNodes := node.Edges[symbol]
 				shifted := LRItem{
 					Production: closureItem.Production,
 					DotIndex:   closureItem.DotIndex + 1,
 				}
-				targetSSLRItem := StateSpecificLRItem{Node: targetNode, Item: shifted}
-				if closureItem.LookAhead == externalSymbol {
-					propagateMap[stateSpecificKernelItem] = append(propagateMap[stateSpecificKernelItem], targetSSLRItem)
-				} else {
-					resultMap[targetSSLRItem] = append(resultMap[targetSSLRItem], closureItem.LookAhead)
+				for _, targetNode := range targetNodes {
+					targetSSLRItem := StateSpecificLRItem{Node: targetNode, Item: shifted}
+					if closureItem.LookAhead == externalSymbol {
+						propagateMap[stateSpecificKernelItem] = append(propagateMap[stateSpecificKernelItem], targetSSLRItem)
+					} else {
+						resultMap[targetSSLRItem] = append(resultMap[targetSSLRItem], closureItem.LookAhead)
+					}
 				}
 			}
 		}
@@ -349,10 +351,13 @@ func checkDFA(dfa LRDFA) {
 	// check conflicts
 	for _, node := range dfa.AllNodes {
 		symbols := map[string]struct{}{}
-		for symbol := range node.Edges {
+		for symbol, nodes := range node.Edges {
+			if len(nodes) != 0 {
+				fmt.Println(symbol + " contain shift-shift conflicts!")
+			}
 			_, ok := symbols[symbol]
 			if ok {
-				fmt.Println("contain shift-shift conflicts!")
+				fmt.Println(symbol + " contain shift-shift conflicts!")
 			}
 			symbols[symbol] = struct{}{}
 		}
@@ -363,7 +368,7 @@ func checkDFA(dfa LRDFA) {
 			lookahead := item.LookAhead
 			_, ok := symbols[lookahead]
 			if ok {
-				fmt.Println("contain shift-reduce conflicts!")
+				fmt.Println(lookahead + " contain shift-reduce conflicts!")
 			}
 			symbols[lookahead] = struct{}{}
 		}
@@ -392,14 +397,16 @@ func generateFile(dfa LRDFA, productions *Productions) {
 	for i, node := range dfa.AllNodes {
 		action[i] = map[string][]DFAOperator{}
 		gotos[i] = map[string]int{}
-		for symbol, lrNode := range node.Edges {
-			if common.IsTerminalSymbol(symbol) {
-				action[i][symbol] = append(action[i][symbol], DFAOperator{
-					OperatorType: SHIFT,
-					StateIndex:   NodeStateMap[lrNode],
-				})
-			} else {
-				gotos[i][symbol] = NodeStateMap[lrNode]
+		for symbol, lrNodes := range node.Edges {
+			for _, lrNode := range lrNodes {
+				if common.IsTerminalSymbol(symbol) {
+					action[i][symbol] = append(action[i][symbol], DFAOperator{
+						OperatorType: SHIFT,
+						StateIndex:   NodeStateMap[lrNode],
+					})
+				} else {
+					gotos[i][symbol] = NodeStateMap[lrNode]
+				}
 			}
 		}
 		for _, item := range node.Items {

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/syntax"
@@ -29,7 +30,7 @@ func parseDeclaration(root *AstNode) (syntax.TranslationUnit, error) {
 		if res.MidType.MetaType != syntax.MetaTypeStruct &&
 			res.MidType.MetaType != syntax.MetaTypeUnion &&
 			res.MidType.MetaType != syntax.MetaTypeEnum {
-			panic("declaration does not declare anything")
+			return nil, errors.New("declaration does not declare anything")
 		}
 		return res, nil
 	}
@@ -209,7 +210,7 @@ func parseDeclarator(root *AstNode, midType syntax.Type) (syntax.Declarator, err
 			currentNode = currentNode.Parent
 			continue
 		}
-		panic("unknown current node type")
+		return res, errors.New("unknown current node type")
 	}
 	*currentType = midType
 	return res, nil

@@ -3,55 +3,43 @@ package parser
 import (
 	"fmt"
 	"github.com/mohae/deepcopy"
-	"github.com/oleiade/lane/v2"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/syntax"
 )
 
 type Parser struct {
-	Tokens          []common.Token
-	TokenIndex      int
-	AST             *AstNode
-	StateStack      *lane.Stack[int]
-	SymbolStack     *lane.Stack[*AstNode]
-	CheckPointStack *lane.Stack[*CheckPoint]
-	TypeDefNames    []string
-	Syntax          *syntax.Program
+	Tokens           []common.Token
+	TokenIndex       int
+	AST              *AstNode
+	StateStack       *Stack[int]
+	SymbolStack      *Stack[*AstNode]
+	CheckPointStack  *Stack[*CheckPoint]
+	TranslationUnits []syntax.TranslationUnit
 }
 
 func NewParser(tokens []common.Token) *Parser {
 	return &Parser{Tokens: tokens}
 }
 
-func (p *Parser) Parse() error {
-	if err := p.constructAST(); err != nil {
-		return err
-	}
-
-	if err := p.parseSyntax(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 type CheckPoint struct {
-	TokenIndex      int
-	ChooseIndex     int
-	StateStackSnap  *lane.Stack[int]
-	SymbolStackSnap *lane.Stack[*AstNode]
+	TokenIndex       int
+	ChooseIndex      int
+	StateStackSnap   []int
+	SymbolStackSnap  []*AstNode
+	TranslationUnits []syntax.TranslationUnit
 }
 
-func (p *Parser) constructAST() error {
+func (p *Parser) Parse() error {
 	if p.AST != nil {
 		return nil
 	}
 
 	p.TokenIndex = 0
-	p.StateStack = lane.NewStack[int]()
-	p.SymbolStack = lane.NewStack[*AstNode]()
-	p.CheckPointStack = lane.NewStack[*CheckPoint]()
+	p.StateStack = NewStack[int]()
+	p.SymbolStack = NewStack[*AstNode]()
+	p.CheckPointStack = NewStack[*CheckPoint]()
+	p.TranslationUnits = []syntax.TranslationUnit{}
 
 	p.StateStack.Push(0) // init state is always 0
 
@@ -59,22 +47,26 @@ func (p *Parser) constructAST() error {
 	for {
 		// read to the end before reduce program
 		if p.TokenIndex >= len(p.Tokens) {
+			fmt.Println("alo1")
 			chooseOp = p.restore()
 			continue
 		}
 		token := p.Tokens[p.TokenIndex]
-		state, ok := p.StateStack.Head()
+		state, ok := p.StateStack.Peek()
 		if !ok {
+			fmt.Println("alo2")
 			chooseOp = p.restore()
 			continue
 		}
 
 		ops, ok := lalrAction[state][token.Typ]
 		if !ok {
+			fmt.Println("alo3")
 			chooseOp = p.restore()
 			continue
 		}
 		if chooseOp >= len(ops) {
+			fmt.Println("alo4")
 			chooseOp = p.restore()
 			continue
 		}
@@ -119,10 +111,21 @@ func (p *Parser) constructAST() error {
 				}
 				rights = append(rights, sym)
 			}
+			fmt.Printf("Reduced by %+v\n", prod)
 			newSym := &AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
 			newSym.SetChildren(funk.Reverse(rights).([]*AstNode))
 			p.SymbolStack.Push(newSym)
-			nowHeadState, ok := p.StateStack.Head()
+
+			if prod.Left == translation_unit {
+				err := p.parseTranslationUnit(newSym)
+				if err != nil {
+					fmt.Println(err)
+					chooseOp = p.restore()
+					continue
+				}
+			}
+
+			nowHeadState, ok := p.StateStack.Peek()
 			if !ok {
 				chooseOp = p.restore()
 				continue
@@ -148,12 +151,48 @@ func (p *Parser) constructAST() error {
 }
 
 func (p *Parser) addCheckPoint(chooseOp int) {
-	p.CheckPointStack.Push(&CheckPoint{
-		TokenIndex:      p.TokenIndex,
-		ChooseIndex:     chooseOp,
-		StateStackSnap:  deepcopy.Copy(p.StateStack).(*lane.Stack[int]),
-		SymbolStackSnap: deepcopy.Copy(p.SymbolStack).(*lane.Stack[*AstNode]),
-	})
+	stateAll := p.StateStack.DumpAll()
+	symAll := p.SymbolStack.DumpAll()
+	cp := CheckPoint{
+		TokenIndex:       p.TokenIndex,
+		ChooseIndex:      chooseOp,
+		StateStackSnap:   deepcopy.Copy(stateAll).([]int),
+		SymbolStackSnap:  deepCopyAstNodeSlice(symAll),
+		TranslationUnits: deepcopy.Copy(p.TranslationUnits).([]syntax.TranslationUnit),
+	}
+	p.CheckPointStack.Push(&cp)
+	fmt.Printf("addCheckPoint %+v\n", cp)
+}
+
+func deepCopyAstNodeSlice(origins []*AstNode) []*AstNode {
+	// due to a node contains parent and children, it cannot be deepcopy.Copy(), or stack overflow
+	var res []*AstNode
+	for _, origin := range origins {
+		res = append(res, copyAstNode(origin))
+	}
+	for _, node := range res {
+		fillAstParent(node, nil)
+	}
+	return res
+}
+
+func copyAstNode(origin *AstNode) *AstNode {
+	root := &AstNode{
+		Typ:       origin.Typ,
+		Terminal:  origin.Terminal,
+		ProdIndex: origin.ProdIndex,
+	}
+	for _, child := range origin.Children {
+		root.Children = append(root.Children, copyAstNode(child))
+	}
+	return root
+}
+
+func fillAstParent(node *AstNode, parent *AstNode) {
+	node.Parent = parent
+	for _, child := range node.Children {
+		fillAstParent(child, node)
+	}
 }
 
 func (p *Parser) restore() int {
@@ -161,10 +200,11 @@ func (p *Parser) restore() int {
 	if !ok {
 		panic("total dead!")
 	}
-
+	fmt.Printf("restore to %+v\n", *checkPoint)
 	p.TokenIndex = checkPoint.TokenIndex
-	p.StateStack = checkPoint.StateStackSnap
-	p.SymbolStack = checkPoint.SymbolStackSnap
+	p.StateStack = NewStackWithElements[int](checkPoint.StateStackSnap)
+	p.SymbolStack = NewStackWithElements[*AstNode](checkPoint.SymbolStackSnap)
+	p.TranslationUnits = checkPoint.TranslationUnits
 
 	return checkPoint.ChooseIndex + 1
 }
@@ -183,27 +223,21 @@ func printAST(ast *AstNode, level int) {
 	}
 }
 
-func (p *Parser) parseSyntax() error {
-	p.Syntax = &syntax.Program{}
-
-	// flatten the outer translation unit
-	units := flattenTranslationUnit(p.AST.Children[0])
-	for _, unit := range units {
-		switch productions[unit.ProdIndex].Right[0] {
-		case function_definition:
-			funcDef, err := parseFunctionDefinition(unit.Children[0])
-			if err != nil {
-				return err
-			}
-			p.Syntax.Units = append(p.Syntax.Units, funcDef)
-		case declaration:
-			declare, err := parseDeclaration(unit.Children[0])
-			if err != nil {
-				return err
-			}
-			printDeclaration(declare)
-			p.Syntax.Units = append(p.Syntax.Units, declare)
+func (p *Parser) parseTranslationUnit(unit *AstNode) error {
+	switch productions[unit.ProdIndex].Right[0] {
+	case function_definition:
+		funcDef, err := parseFunctionDefinition(unit.Children[0])
+		if err != nil {
+			return err
 		}
+		p.TranslationUnits = append(p.TranslationUnits, funcDef)
+	case declaration:
+		declare, err := parseDeclaration(unit.Children[0])
+		if err != nil {
+			return err
+		}
+		printDeclaration(declare)
+		p.TranslationUnits = append(p.TranslationUnits, declare)
 	}
 	return nil
 }
@@ -268,6 +302,10 @@ func printDeclaration(unit syntax.TranslationUnit) {
 			case syntax.MetaTypeArray:
 				print("array of ")
 				typ = typ.ArrayMetaInfo.InnerType
+			case syntax.MetaTypeUserDefined:
+				// TODO user defined
+				print("user defined")
+				goto out
 			}
 		}
 	out:

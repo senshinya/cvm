@@ -1,9 +1,5 @@
 package syntax
 
-type Program struct {
-	Units []TranslationUnit
-}
-
 type TranslationUnitType uint8
 
 const (
