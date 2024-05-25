@@ -79,7 +79,7 @@ func parseNumberRec(numRec *numSpecifierRecorder) *syntax.NumberMetaInfo {
 
 	// base type specifier
 	res.BaseNumType = syntax.BaseNumTypeInt
-	if numRec.char+numRec.int_+numRec.float+numRec.double+numRec.bool_ >= 1 {
+	if numRec.char+numRec.int_+numRec.float+numRec.double+numRec.bool_ > 1 {
 		panic("invalid number type combination")
 	}
 	switch {

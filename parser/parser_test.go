@@ -6,12 +6,7 @@ import (
 )
 
 func TestTypeDefDeclaration(t *testing.T) {
-	tokens, err := lexer.NewLexer("typedef int a,b,c;").ScanTokens()
-	if err != nil {
-		panic(err)
-	}
-	//NewParser(tokens).ConstructAST()
-	tokens, err = lexer.NewLexer("int (*a(float))[1];").ScanTokens()
+	tokens, err := lexer.NewLexer("volatile int (*const a(float))[1];").ScanTokens()
 	if err != nil {
 		panic(err)
 	}

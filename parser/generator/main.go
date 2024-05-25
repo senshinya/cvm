@@ -80,6 +80,8 @@ func readLines() []string {
 }
 
 func genProductions(lines []string) *Productions {
+	// add dummy
+	lines = append([]string{"dummy := program"}, lines...)
 	var productions []*Production
 	for _, line := range lines {
 		splits := strings.Split(line, ":=")
@@ -401,14 +403,12 @@ func generateFile(dfa LRDFA, productions *Productions) {
 		}
 		for _, item := range node.Items {
 			if item.isReducible() {
-				if productionIndex[item.Production] == 0 {
-					action[i][item.LookAhead] = DFAOperator{
-						OperatorType: ACC,
-					}
-					continue
+				op := REDUCE
+				if productionIndex[item.Production] == 1 {
+					op = ACC
 				}
 				action[i][item.LookAhead] = DFAOperator{
-					OperatorType: REDUCE,
+					OperatorType: op,
 					ReduceIndex:  productionIndex[item.Production],
 				}
 			}
@@ -432,7 +432,7 @@ var productions = []Production{
 }
 
 var lalrAction = map[int]map[common.TokenType]DFAOperator{
-{{ range $index, $ops := .Action }}	{{ $index }}: { {{ $first := true }}{{ range $k, $op := $ops }}{{if not $first}}, {{else}}{{$first = false}}{{end}}common.{{ $k }}: { {{ if eq $op.OperatorType 1 }}OperatorType: SHIFT, StateIndex: {{ $op.StateIndex }}{{ else if eq $op.OperatorType 2 }}OperatorType: REDUCE, ReduceIndex: {{ $op.ReduceIndex }}{{ else }}OperatorType: ACC{{ end }} }{{end}}},
+{{ range $index, $ops := .Action }}	{{ $index }}: { {{ $first := true }}{{ range $k, $op := $ops }}{{if not $first}}, {{else}}{{$first = false}}{{end}}common.{{ $k }}: { {{ if eq $op.OperatorType 1 }}OperatorType: SHIFT, StateIndex: {{ $op.StateIndex }}{{ else if eq $op.OperatorType 2 }}OperatorType: REDUCE, ReduceIndex: {{ $op.ReduceIndex }}{{ else }}OperatorType: ACC, ReduceIndex: {{ $op.ReduceIndex }}{{ end }} }{{end}}},
 {{ end }}
 }
 

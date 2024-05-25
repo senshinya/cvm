@@ -58,6 +58,19 @@ func (p *Parser) constructAST() error {
 			panic("Unexpected token!" + token.Typ)
 		}
 		if op.OperatorType == ACC {
+			prod := productions[op.ReduceIndex]
+			var rights []*AstNode
+			for i := 0; i < len(prod.Right); i++ {
+				stateStack.Pop()
+				sym, ok := symbolStack.Pop()
+				if !ok {
+					panic("symbolStack is empty")
+				}
+				rights = append(rights, sym)
+			}
+			newSym := &AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
+			newSym.SetChildren(funk.Reverse(rights).([]*AstNode))
+			symbolStack.Push(newSym)
 			break
 		}
 		switch op.OperatorType {
@@ -99,7 +112,7 @@ func (p *Parser) constructAST() error {
 		panic("symbolStack is empty")
 	}
 	p.AST = res
-	printAST(p.AST, 0)
+	//printAST(p.AST, 0)
 
 	return nil
 }
@@ -136,10 +149,78 @@ func (p *Parser) parseSyntax() error {
 			if err != nil {
 				return err
 			}
+			printDeclaration(declare)
 			p.Syntax.Units = append(p.Syntax.Units, declare)
 		}
 	}
 	return nil
+}
+
+func printDeclaration(unit syntax.TranslationUnit) {
+	declares := unit.(*syntax.Declaration)
+	for _, declare := range declares.Declarators {
+		fmt.Printf("declare %s as ", declare.Identifier)
+		typ := &declare.Type
+		for {
+			if typ.TypeQualifiers.Const {
+				fmt.Print("const ")
+			}
+			if typ.TypeQualifiers.Volatile {
+				fmt.Print("volatile ")
+			}
+			if typ.TypeQualifiers.Restrict {
+				fmt.Print("restrict ")
+			}
+			switch typ.MetaType {
+			case syntax.MetaTypeVoid:
+				print("void")
+				goto out
+			case syntax.MetaTypeNumber:
+				numMeta := typ.NumberMetaInfo
+				if numMeta.Signed {
+					print("signed ")
+				}
+				if numMeta.Unsigned {
+					print("unsigned ")
+				}
+				switch numMeta.BaseNumType {
+				case syntax.BaseNumTypeChar:
+					print("char")
+				case syntax.BaseNumTypeShort:
+					print("short")
+				case syntax.BaseNumTypeInt:
+					print("int")
+				case syntax.BaseNumTypeLong:
+					print("long")
+				case syntax.BaseNumTypeFloat:
+					print("float")
+				case syntax.BaseNumTypeDouble:
+					print("double")
+				case syntax.BaseNumTypeBool:
+					print("bool")
+				case syntax.BaseNumTypeLongLong:
+					print("long long")
+				case syntax.BaseNumTypeLongDouble:
+					print("long double")
+				}
+				goto out
+			case syntax.MetaTypeEnum:
+			case syntax.MetaTypePointer:
+				print("pointer to ")
+				typ = typ.PointerInnerType
+			case syntax.MetaTypeStruct:
+			case syntax.MetaTypeUnion:
+			case syntax.MetaTypeFunction:
+				print("function returning ")
+				typ = typ.FunctionMetaInfo.ReturnType
+			case syntax.MetaTypeArray:
+				print("array of ")
+				typ = typ.ArrayMetaInfo.InnerType
+			}
+		}
+	out:
+		fmt.Println()
+	}
 }
 
 func flattenTranslationUnit(ast *AstNode) []*AstNode {
