@@ -11,7 +11,6 @@ const (
 	CHARACTER         TokenType = "CHARACTER"
 	INTEGER_CONSTANT  TokenType = "INTEGER_CONSTANT"
 	FLOATING_CONSTANT TokenType = "FLOATING_CONSTANT"
-	TYPE_NAME         TokenType = "TYPE_NAME"
 
 	// 关键字
 	AUTO      TokenType = "AUTO"

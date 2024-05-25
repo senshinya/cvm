@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"github.com/mohae/deepcopy"
 	"github.com/oleiade/lane/v2"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
@@ -9,10 +10,14 @@ import (
 )
 
 type Parser struct {
-	Tokens       []common.Token
-	AST          *AstNode
-	TypeDefNames []string
-	Syntax       *syntax.Program
+	Tokens          []common.Token
+	TokenIndex      int
+	AST             *AstNode
+	StateStack      *lane.Stack[int]
+	SymbolStack     *lane.Stack[*AstNode]
+	CheckPointStack *lane.Stack[*CheckPoint]
+	TypeDefNames    []string
+	Syntax          *syntax.Program
 }
 
 func NewParser(tokens []common.Token) *Parser {
@@ -31,90 +36,137 @@ func (p *Parser) Parse() error {
 	return nil
 }
 
+type CheckPoint struct {
+	TokenIndex      int
+	ChooseIndex     int
+	StateStackSnap  *lane.Stack[int]
+	SymbolStackSnap *lane.Stack[*AstNode]
+}
+
 func (p *Parser) constructAST() error {
 	if p.AST != nil {
 		return nil
 	}
 
-	stateStack := lane.NewStack[int]()
-	symbolStack := lane.NewStack[*AstNode]()
+	p.TokenIndex = 0
+	p.StateStack = lane.NewStack[int]()
+	p.SymbolStack = lane.NewStack[*AstNode]()
+	p.CheckPointStack = lane.NewStack[*CheckPoint]()
 
-	stateStack.Push(0) // init state is always 0
+	p.StateStack.Push(0) // init state is always 0
 
-	tokenIndex := 0
+	chooseOp := 0
 	for {
 		// read to the end before reduce program
-		if tokenIndex >= len(p.Tokens) {
-			panic("read to the end!")
+		if p.TokenIndex >= len(p.Tokens) {
+			chooseOp = p.restore()
+			continue
 		}
-		token := p.Tokens[tokenIndex]
-		state, ok := stateStack.Head()
+		token := p.Tokens[p.TokenIndex]
+		state, ok := p.StateStack.Head()
 		if !ok {
-			panic("stateStack is empty")
+			chooseOp = p.restore()
+			continue
 		}
 
-		op, ok := lalrAction[state][token.Typ]
+		ops, ok := lalrAction[state][token.Typ]
 		if !ok {
-			panic("Unexpected token!" + token.Typ)
+			chooseOp = p.restore()
+			continue
 		}
+		if chooseOp >= len(ops) {
+			chooseOp = p.restore()
+			continue
+		}
+		if len(ops) != 1 {
+			p.addCheckPoint(chooseOp)
+		}
+		op := ops[chooseOp]
 		if op.OperatorType == ACC {
 			prod := productions[op.ReduceIndex]
 			var rights []*AstNode
 			for i := 0; i < len(prod.Right); i++ {
-				stateStack.Pop()
-				sym, ok := symbolStack.Pop()
+				p.StateStack.Pop()
+				sym, ok := p.SymbolStack.Pop()
 				if !ok {
-					panic("symbolStack is empty")
+					chooseOp = p.restore()
+					continue
 				}
 				rights = append(rights, sym)
 			}
 			newSym := &AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
 			newSym.SetChildren(funk.Reverse(rights).([]*AstNode))
-			symbolStack.Push(newSym)
+			p.SymbolStack.Push(newSym)
 			break
 		}
 		switch op.OperatorType {
 		case SHIFT:
-			stateStack.Push(op.StateIndex)
-			symbolStack.Push(&AstNode{
+			p.StateStack.Push(op.StateIndex)
+			p.SymbolStack.Push(&AstNode{
 				Typ:      token.Typ,
 				Terminal: &token,
 			})
-			tokenIndex++
+			p.TokenIndex++
 		case REDUCE:
 			prod := productions[op.ReduceIndex]
 			var rights []*AstNode
 			for i := 0; i < len(prod.Right); i++ {
-				stateStack.Pop()
-				sym, ok := symbolStack.Pop()
+				p.StateStack.Pop()
+				sym, ok := p.SymbolStack.Pop()
 				if !ok {
-					panic("symbolStack is empty")
+					chooseOp = p.restore()
+					continue
 				}
 				rights = append(rights, sym)
 			}
 			newSym := &AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
 			newSym.SetChildren(funk.Reverse(rights).([]*AstNode))
-			symbolStack.Push(newSym)
-			nowHeadState, ok := stateStack.Head()
+			p.SymbolStack.Push(newSym)
+			nowHeadState, ok := p.StateStack.Head()
 			if !ok {
-				panic("stateStack is empty")
+				chooseOp = p.restore()
+				continue
 			}
 			gotoState, ok := lalrGoto[nowHeadState][newSym.Typ]
 			if !ok {
-				panic("gotoState is empty")
+				chooseOp = p.restore()
+				continue
 			}
-			stateStack.Push(gotoState)
+			p.StateStack.Push(gotoState)
 		}
+		chooseOp = 0
 	}
 
-	res, ok := symbolStack.Pop()
+	res, ok := p.SymbolStack.Pop()
 	if !ok {
 		panic("symbolStack is empty")
 	}
 	p.AST = res
-	//printAST(p.AST, 0)
+	// printAST(p.AST, 0)
 
 	return nil
+}
+
+func (p *Parser) addCheckPoint(chooseOp int) {
+	p.CheckPointStack.Push(&CheckPoint{
+		TokenIndex:      p.TokenIndex,
+		ChooseIndex:     chooseOp,
+		StateStackSnap:  deepcopy.Copy(p.StateStack).(*lane.Stack[int]),
+		SymbolStackSnap: deepcopy.Copy(p.SymbolStack).(*lane.Stack[*AstNode]),
+	})
+}
+
+func (p *Parser) restore() int {
+	checkPoint, ok := p.CheckPointStack.Pop()
+	if !ok {
+		panic("total dead!")
+	}
+
+	p.TokenIndex = checkPoint.TokenIndex
+	p.StateStack = checkPoint.StateStackSnap
+	p.SymbolStack = checkPoint.SymbolStackSnap
+
+	return checkPoint.ChooseIndex + 1
 }
 
 func printAST(ast *AstNode, level int) {

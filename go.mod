@@ -8,3 +8,5 @@ require (
 	github.com/thoas/go-funk v0.9.3
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
 )
+
+require github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
