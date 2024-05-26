@@ -111,7 +111,6 @@ func (p *Parser) Parse() error {
 				}
 				rights = append(rights, sym)
 			}
-			fmt.Printf("Reduced by %+v\n", prod)
 			newSym := &AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
 			newSym.SetChildren(funk.Reverse(rights).([]*AstNode))
 			p.SymbolStack.Push(newSym)
@@ -119,7 +118,6 @@ func (p *Parser) Parse() error {
 			if prod.Left == translation_unit {
 				err := p.parseTranslationUnit(newSym)
 				if err != nil {
-					fmt.Println(err)
 					chooseOp = p.restore()
 					continue
 				}
@@ -146,6 +144,11 @@ func (p *Parser) Parse() error {
 	}
 	p.AST = res
 	// printAST(p.AST, 0)
+	for _, unit := range p.TranslationUnits {
+		if unit.GetUnitType() == syntax.UnitTypeDeclaration {
+			printDeclaration(unit)
+		}
+	}
 
 	return nil
 }
@@ -161,7 +164,6 @@ func (p *Parser) addCheckPoint(chooseOp int) {
 		TranslationUnits: deepcopy.Copy(p.TranslationUnits).([]syntax.TranslationUnit),
 	}
 	p.CheckPointStack.Push(&cp)
-	fmt.Printf("addCheckPoint %+v\n", cp)
 }
 
 func deepCopyAstNodeSlice(origins []*AstNode) []*AstNode {
@@ -200,7 +202,6 @@ func (p *Parser) restore() int {
 	if !ok {
 		panic("total dead!")
 	}
-	fmt.Printf("restore to %+v\n", *checkPoint)
 	p.TokenIndex = checkPoint.TokenIndex
 	p.StateStack = NewStackWithElements[int](checkPoint.StateStackSnap)
 	p.SymbolStack = NewStackWithElements[*AstNode](checkPoint.SymbolStackSnap)
@@ -236,7 +237,6 @@ func (p *Parser) parseTranslationUnit(unit *AstNode) error {
 		if err != nil {
 			return err
 		}
-		printDeclaration(declare)
 		p.TranslationUnits = append(p.TranslationUnits, declare)
 	}
 	return nil
@@ -300,7 +300,15 @@ func printDeclaration(unit syntax.TranslationUnit) {
 				print("function returning ")
 				typ = typ.FunctionMetaInfo.ReturnType
 			case syntax.MetaTypeArray:
-				print("array of ")
+				print("array ")
+				sizeExps := typ.ArrayMetaInfo.Size
+				if len(sizeExps) != 0 {
+					sizeExp := sizeExps[len(sizeExps)-1]
+					if sizeExp.ExpressionType == syntax.ExpressionTypeConst {
+						fmt.Printf("%+v ", sizeExp.Terminal.Literal)
+					}
+				}
+				print("of ")
 				typ = typ.ArrayMetaInfo.InnerType
 			case syntax.MetaTypeUserDefined:
 				// TODO user defined

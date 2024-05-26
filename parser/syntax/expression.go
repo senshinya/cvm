@@ -14,6 +14,11 @@ const (
 	ExpressionTypeNumber
 	ExpressionTypeCast
 	ExpressionTypeUnary
+	ExpressionTypeArrayAccess
+	ExpressionTypeFunctionCall
+	ExpressionTypeStructAccess
+	ExpressionTypePostfix
+	ExpressionTypeConstruct
 )
 
 type SingleExpression struct {
@@ -21,12 +26,18 @@ type SingleExpression struct {
 
 	Terminal *common.Token
 
-	AssignmentExpressionInfo *AssignmentExpressionInfo
-	ConditionExpressionInfo  *ConditionExpressionInfo
-	LogicExpressionInfo      *LogicExpressionInfo
-	BitExpressionInfo        *BitExpressionInfo
-	NumberExpressionInfo     *NumberExpressionInfo
-	CastExpressionInfo       *CastExpressionInfo
+	AssignmentExpressionInfo   *AssignmentExpressionInfo
+	ConditionExpressionInfo    *ConditionExpressionInfo
+	LogicExpressionInfo        *LogicExpressionInfo
+	BitExpressionInfo          *BitExpressionInfo
+	NumberExpressionInfo       *NumberExpressionInfo
+	CastExpressionInfo         *CastExpressionInfo
+	UnaryExpressionInfo        *UnaryExpressionInfo
+	ArrayAccessExpressionInfo  *ArrayAccessExpressionInfo
+	PostfixExpressionInfo      *PostfixExpressionInfo
+	FunctionCallExpressionInfo *FunctionCallExpressionInfo
+	StructAccessExpressionInfo *StructAccessExpressionInfo
+	ConstructExpressionInfo    *ConstructExpressionInfo
 }
 
 type AssignmentExpressionInfo struct {
@@ -62,4 +73,32 @@ type NumberExpressionInfo struct {
 type CastExpressionInfo struct {
 	Type   Type
 	Target []*SingleExpression
+}
+
+type UnaryExpressionInfo struct {
+	Operator common.TokenType
+	Target   []*SingleExpression
+}
+
+type ArrayAccessExpressionInfo struct {
+	Array  []*SingleExpression
+	Target []*SingleExpression
+}
+
+type PostfixExpressionInfo struct {
+	Operator common.TokenType
+	Target   []*SingleExpression
+}
+
+type FunctionCallExpressionInfo struct {
+	Function []*SingleExpression
+}
+
+type StructAccessExpressionInfo struct {
+	Struct []*SingleExpression
+	Field  string
+}
+
+type ConstructExpressionInfo struct {
+	Type Type
 }
