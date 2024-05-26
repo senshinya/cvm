@@ -301,9 +301,8 @@ func printDeclaration(unit syntax.TranslationUnit) {
 				typ = typ.FunctionMetaInfo.ReturnType
 			case syntax.MetaTypeArray:
 				print("array ")
-				sizeExps := typ.ArrayMetaInfo.Size
-				if len(sizeExps) != 0 {
-					sizeExp := sizeExps[len(sizeExps)-1]
+				sizeExp := typ.ArrayMetaInfo.Size
+				if sizeExp != nil {
 					if sizeExp.ExpressionType == syntax.ExpressionTypeConst {
 						fmt.Printf("%+v ", sizeExp.Terminal.Literal)
 					}

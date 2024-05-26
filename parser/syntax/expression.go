@@ -19,6 +19,7 @@ const (
 	ExpressionTypeStructAccess
 	ExpressionTypePostfix
 	ExpressionTypeConstruct
+	ExpressionTypeExpressions
 )
 
 type SingleExpression struct {
@@ -38,64 +39,65 @@ type SingleExpression struct {
 	FunctionCallExpressionInfo *FunctionCallExpressionInfo
 	StructAccessExpressionInfo *StructAccessExpressionInfo
 	ConstructExpressionInfo    *ConstructExpressionInfo
+	Expressions                []*SingleExpression
 }
 
 type AssignmentExpressionInfo struct {
-	LValue   []*SingleExpression
+	LValue   *SingleExpression
 	Operator common.TokenType
-	RValue   []*SingleExpression
+	RValue   *SingleExpression
 }
 
 type ConditionExpressionInfo struct {
-	Condition   []*SingleExpression
-	TrueBranch  []*SingleExpression
-	FalseBranch []*SingleExpression
+	Condition   *SingleExpression
+	TrueBranch  *SingleExpression
+	FalseBranch *SingleExpression
 }
 
 type LogicExpressionInfo struct {
 	Operator common.TokenType
-	One      []*SingleExpression
-	Two      []*SingleExpression
+	One      *SingleExpression
+	Two      *SingleExpression
 }
 
 type BitExpressionInfo struct {
 	Operator common.TokenType
-	One      []*SingleExpression
-	Two      []*SingleExpression
+	One      *SingleExpression
+	Two      *SingleExpression
 }
 
 type NumberExpressionInfo struct {
 	Operator common.TokenType
-	One      []*SingleExpression
-	Two      []*SingleExpression
+	One      *SingleExpression
+	Two      *SingleExpression
 }
 
 type CastExpressionInfo struct {
 	Type   Type
-	Target []*SingleExpression
+	Target *SingleExpression
 }
 
 type UnaryExpressionInfo struct {
 	Operator common.TokenType
-	Target   []*SingleExpression
+	Target   *SingleExpression
 }
 
 type ArrayAccessExpressionInfo struct {
-	Array  []*SingleExpression
-	Target []*SingleExpression
+	Array  *SingleExpression
+	Target *SingleExpression
 }
 
 type PostfixExpressionInfo struct {
 	Operator common.TokenType
-	Target   []*SingleExpression
+	Target   *SingleExpression
 }
 
 type FunctionCallExpressionInfo struct {
-	Function []*SingleExpression
+	Function *SingleExpression
 }
 
 type StructAccessExpressionInfo struct {
-	Struct []*SingleExpression
+	Struct *SingleExpression
 	Field  string
 }
 

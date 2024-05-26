@@ -70,7 +70,7 @@ type ArrayMetaInfo struct {
 	TypeQualifiers
 	Asterisk bool
 
-	Size []*SingleExpression
+	Size *SingleExpression
 }
 
 type FunctionMetaInfo struct {
