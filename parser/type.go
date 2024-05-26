@@ -22,7 +22,7 @@ func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*AstNode) syntax.
 	if len(specifiers) == 0 {
 		panic("need type specifiers")
 	}
-	parseTypeQualifiers(qualifiers, &typ)
+	parseTypeQualifiers(qualifiers, &typ.TypeQualifiers)
 	parseTypeSpecifiers(specifiers, &typ)
 	return typ
 }
@@ -181,16 +181,21 @@ func countNumberTypeSpecifiers(typ common.TokenType, numRec *numSpecifierRecorde
 	}
 }
 
-func parseTypeQualifiers(qualifiers []*AstNode, typ *syntax.Type) {
+func parseTypeQualifiers(qualifiers []*AstNode, typ *syntax.TypeQualifiers) {
 	for _, qualifier := range qualifiers {
 		n := qualifier.Children[0]
 		switch n.Typ {
 		case common.CONST:
-			typ.TypeQualifiers.Const = true
+			typ.Const = true
 		case common.RESTRICT:
-			typ.TypeQualifiers.Restrict = true
+			typ.Restrict = true
 		case common.VOLATILE:
-			typ.TypeQualifiers.Volatile = true
+			typ.Volatile = true
 		}
 	}
+}
+
+func ParseTypeName(typeNameNode *AstNode) syntax.Type {
+	// TODO ParseTypeName
+	return syntax.Type{}
 }

@@ -64,6 +64,13 @@ type UnionMetaInfo struct {
 
 type ArrayMetaInfo struct {
 	InnerType *Type
+
+	// should only be in array declare inside function prototype
+	Static bool
+	TypeQualifiers
+	Asterisk bool
+
+	Size []*SingleExpression
 }
 
 type FunctionMetaInfo struct {

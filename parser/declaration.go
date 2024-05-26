@@ -195,9 +195,8 @@ func parseDeclarator(root *AstNode, midType syntax.Type) (syntax.Declarator, err
 			continue
 		}
 		if currentNode.Children[1].Typ == common.LEFT_BRACKETS {
-			// TODO parse array declarator
 			currentType.MetaType = syntax.MetaTypeArray
-			currentType.ArrayMetaInfo = &syntax.ArrayMetaInfo{InnerType: &syntax.Type{}}
+			currentType.ArrayMetaInfo = parseArrayMetaInfo(currentNode)
 			currentType = currentType.ArrayMetaInfo.InnerType
 			currentNode = currentNode.Parent
 			continue
@@ -248,7 +247,7 @@ func parsePointer(rootPointer *AstNode, currentType *syntax.Type) *syntax.Type {
 			continue
 		}
 		typeQualifiers := flattenTypeQualifierList(currentPointer.Children[1])
-		parseTypeQualifiers(typeQualifiers, currentType)
+		parseTypeQualifiers(typeQualifiers, &currentType.TypeQualifiers)
 		currentType = currentType.PointerInnerType
 		currentPointer = currentPointer.Parent
 	}
@@ -257,7 +256,7 @@ func parsePointer(rootPointer *AstNode, currentType *syntax.Type) *syntax.Type {
 	if len(rootPointer.Children) == 2 {
 		// parse the root qualifiers
 		typeQualifiers := flattenTypeQualifierList(rootPointer.Children[1])
-		parseTypeQualifiers(typeQualifiers, currentType)
+		parseTypeQualifiers(typeQualifiers, &currentType.TypeQualifiers)
 	}
 	return currentType
 }
@@ -267,4 +266,31 @@ func flattenTypeQualifierList(listNode *AstNode) []*AstNode {
 		return []*AstNode{listNode.Children[0]}
 	}
 	return append(flattenTypeQualifierList(listNode.Children[0]), listNode.Children[1])
+}
+
+func parseArrayMetaInfo(arrayNode *AstNode) *syntax.ArrayMetaInfo {
+	res := &syntax.ArrayMetaInfo{InnerType: &syntax.Type{}}
+	prod := productions[arrayNode.ProdIndex]
+	for i := 1; i < len(prod.Right); i++ {
+		child := arrayNode.Children[i]
+		if child.Typ == common.LEFT_BRACKETS ||
+			child.Typ == common.RIGHT_BRACKETS {
+			continue
+		}
+		if child.Typ == common.STATIC {
+			res.Static = true
+			continue
+		}
+		if child.Typ == common.ASTERISK {
+			res.Asterisk = true
+		}
+		if child.Typ == type_qualifier_list {
+			parseTypeQualifiers(flattenTypeQualifierList(child), &res.TypeQualifiers)
+			continue
+		}
+		// assignment_expression
+		res.Size = ParseExpressionNode(child)
+	}
+	// TODO Check MetaInfo
+	return res
 }
