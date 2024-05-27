@@ -50,7 +50,7 @@ func parseExpressionNodeInner(node *AstNode) *syntax.SingleExpression {
 				FalseBranch: parseExpressionNodeInner(node.Children[4]),
 			},
 		}
-	case logical_or_expression, logical_and_expression, exclusive_or_expression,
+	case logical_or_expression, logical_and_expression,
 		equality_expression, relational_expression:
 		// logical_or_expression := logical_or_expression OR_OR logical_and_expression
 		return &syntax.SingleExpression{
@@ -61,7 +61,8 @@ func parseExpressionNodeInner(node *AstNode) *syntax.SingleExpression {
 				Two:      parseExpressionNodeInner(node.Children[2]),
 			},
 		}
-	case inclusive_or_expression, and_expression, shift_expression:
+	case inclusive_or_expression, and_expression,
+		shift_expression, exclusive_or_expression:
 		// inclusive_or_expression := inclusive_or_expression OR exclusive_or_expression
 		return &syntax.SingleExpression{
 			ExpressionType: syntax.ExpressionTypeBit,
@@ -202,108 +203,4 @@ func flattenExpression(node *AstNode) []*AstNode {
 	}
 
 	return append(flattenExpression(node.Children[0]), node.Children[2])
-}
-
-func simplifyConstExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	switch exp.ExpressionType {
-	case syntax.ExpressionTypeConst, syntax.ExpressionTypeIdentifier:
-		return exp
-	case syntax.ExpressionTypeAssignment, syntax.ExpressionTypeExpressions:
-		// may contains side effect
-		return exp
-	case syntax.ExpressionTypeCondition:
-		return simplifyConditionExpression(exp)
-	case syntax.ExpressionTypeLogic:
-		return simplifyLogicExpression(exp)
-	case syntax.ExpressionTypeBit:
-		return simplifyBitExpression(exp)
-	case syntax.ExpressionTypeNumber:
-	case syntax.ExpressionTypeCast:
-	case syntax.ExpressionTypeUnary:
-	case syntax.ExpressionTypeArrayAccess:
-	case syntax.ExpressionTypeFunctionCall:
-	case syntax.ExpressionTypeStructAccess:
-	case syntax.ExpressionTypePostfix:
-	case syntax.ExpressionTypeConstruct:
-	default:
-		panic(nil)
-	}
-	panic(nil)
-}
-
-func simplifyConditionExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	exp.ConditionExpressionInfo.Condition = simplifyConstExpression(exp.ConditionExpressionInfo.Condition)
-	exp.ConditionExpressionInfo.TrueBranch = simplifyConstExpression(exp.ConditionExpressionInfo.TrueBranch)
-	exp.ConditionExpressionInfo.FalseBranch = simplifyConstExpression(exp.ConditionExpressionInfo.FalseBranch)
-	if exp.ConditionExpressionInfo.Condition.ExpressionType != syntax.ExpressionTypeConst {
-		return exp
-	}
-	ter := exp.ConditionExpressionInfo.Condition.Terminal
-	if cConstToBool(ter.Literal) {
-		return exp.ConditionExpressionInfo.TrueBranch
-	}
-	return exp.ConditionExpressionInfo.FalseBranch
-}
-
-func cConstToBool(num any) bool {
-	switch num.(type) {
-	case string:
-		return true
-	case byte:
-		return num.(byte) != 0
-	case int32:
-		return num.(int32) != 0
-	case int64:
-		return num.(int64) != 0
-	case uint32:
-		return num.(uint32) != 0
-	case uint64:
-		return num.(uint64) != 0
-	case float32:
-		return num.(float32) != 0
-	case float64:
-		return num.(float64) != 0
-	}
-	panic(nil)
-}
-
-func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	exp.LogicExpressionInfo.One = simplifyConditionExpression(exp.LogicExpressionInfo.One)
-	if exp.LogicExpressionInfo.Operator == common.OR_OR &&
-		cConstToBool(exp.LogicExpressionInfo.One.Terminal.Lexeme) {
-		return exp.LogicExpressionInfo.One
-	}
-	if exp.LogicExpressionInfo.Operator == common.AND_AND &&
-		!cConstToBool(exp.LogicExpressionInfo.One.Terminal.Lexeme) {
-		return exp.LogicExpressionInfo.One
-	}
-
-	exp.LogicExpressionInfo.Two = simplifyLogicExpression(exp.LogicExpressionInfo.Two)
-	if exp.LogicExpressionInfo.Operator == common.OR_OR &&
-		cConstToBool(exp.LogicExpressionInfo.Two.Terminal.Lexeme) {
-		return exp.LogicExpressionInfo.Two
-	}
-	if exp.LogicExpressionInfo.Operator == common.AND_AND &&
-		!cConstToBool(exp.LogicExpressionInfo.Two.Terminal.Lexeme) {
-		return exp.LogicExpressionInfo.Two
-	}
-	switch exp.LogicExpressionInfo.Operator {
-	case common.OR_OR:
-
-	case common.AND_AND:
-
-	case common.XOR:
-
-	case common.EQUAL_EQUAL:
-	case common.NOT_EQUAL:
-	case common.LESS:
-	case common.GREATER:
-	case common.LESS_EQUAL:
-	case common.GREATER_EQUAL:
-	}
-	panic(nil)
-}
-
-func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	return nil
 }
