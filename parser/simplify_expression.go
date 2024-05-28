@@ -99,7 +99,7 @@ func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 		return goBoolToExpression(cConstToBool(oneLexeme) && cConstToBool(twoLexeme))
 	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
 		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
-		return CalTwoConstOperate(oneLexeme, twoLexeme, exp.LogicExpressionInfo.Operator)
+		return calTwoConstOperate(oneLexeme, twoLexeme, exp.LogicExpressionInfo.Operator)
 	}
 	panic(nil)
 }
@@ -135,8 +135,35 @@ func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpressio
 	return nil
 }
 
-func CalTwoConstOperate(one, two any, op common.TokenType) *syntax.SingleExpression {
+func calTwoConstOperate(one, two any, op common.TokenType) *syntax.SingleExpression {
 	_, oneString := one.(string)
+	_, twoString := two.(string)
+
+	if oneString {
+		return calStringRelatedConstOperate(one.(string), two, op)
+	}
+	if twoString {
+		return calStringRelatedConstOperate(two.(string), one, op)
+	}
+
+	return calTwoNumberConstOperate(one, two, op)
+}
+
+func calStringRelatedConstOperate(str string, two any, op common.TokenType) *syntax.SingleExpression {
+	switch two.(type) {
+	case string, float32, float64:
+		panic("invalid operands to binary expression")
+	}
+	switch op {
+	case inclusive_or_expression, and_expression,
+		shift_expression, exclusive_or_expression:
+		// bit-wise op to const str is not supported
+		panic("invalid operands to binary expression")
+	}
+	return nil
+}
+
+func calTwoNumberConstOperate(one, two any, op common.TokenType) *syntax.SingleExpression {
 	_, oneFloat64 := one.(float64)
 	_, oneFloat32 := one.(float32)
 	_, oneUint64 := one.(uint64)
@@ -145,7 +172,6 @@ func CalTwoConstOperate(one, two any, op common.TokenType) *syntax.SingleExpress
 	_, oneInt32 := one.(int32)
 	_, oneByte := one.(byte)
 
-	_, twoString := two.(string)
 	_, twoFloat64 := two.(float64)
 	_, twoFloat32 := two.(float32)
 	_, twoUint64 := two.(uint64)
@@ -154,7 +180,62 @@ func CalTwoConstOperate(one, two any, op common.TokenType) *syntax.SingleExpress
 	_, twoInt32 := two.(int32)
 	_, twoByte := two.(byte)
 
-	// TODO
+	switch {
+	case oneFloat64 || twoFloat64:
+		return calFloat64ConstOperate(convNumConstToFloat64(one), convNumConstToFloat64(two), op)
+	}
+}
 
-	return nil
+func calFloat64ConstOperate(one, two float64, op common.TokenType) *syntax.SingleExpression {
+	switch op {
+	case common.EQUAL_EQUAL:
+		if one == two {
+			return constructTrueExpression()
+		}
+		return constructFalseExpression()
+	case common.NOT_EQUAL:
+		if one != two {
+			return constructTrueExpression()
+		}
+		return constructFalseExpression()
+	case common.LESS:
+		if one < two {
+			return constructTrueExpression()
+		}
+		return constructFalseExpression()
+	case common.GREATER:
+		if one > two {
+			return constructTrueExpression()
+		}
+		return constructFalseExpression()
+	case common.LESS_EQUAL:
+		if one <= two {
+			return constructTrueExpression()
+		}
+		return constructFalseExpression()
+	case common.GREATER_EQUAL:
+		if one >= two {
+			return constructTrueExpression()
+		}
+		return constructFalseExpression()
+	}
+}
+
+func convNumConstToFloat64(one any) float64 {
+	switch one.(type) {
+	case float64:
+		return one.(float64)
+	case float32:
+		return float64(one.(float32))
+	case uint64:
+		return float64(one.(uint64))
+	case uint32:
+		return float64(one.(uint32))
+	case int64:
+		return float64(one.(int64))
+	case int32:
+		return float64(one.(int32))
+	default:
+		return float64(one.(byte)) //last is byte
+	}
 }
