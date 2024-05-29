@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"golang.org/x/exp/constraints"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/syntax"
 )
@@ -132,7 +133,22 @@ func constructFalseExpression() *syntax.SingleExpression {
 }
 
 func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	return nil
+	exp.BitExpressionInfo.One = simplifyConstExpression(exp.BitExpressionInfo.One)
+	oneConst := exp.BitExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
+
+	if !oneConst {
+		return exp
+	}
+
+	exp.BitExpressionInfo.Two = simplifyConstExpression(exp.BitExpressionInfo.Two)
+	twoConst := exp.BitExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
+
+	if !twoConst {
+		return exp
+	}
+
+	oneLexeme, twoLexeme := exp.BitExpressionInfo.One.Terminal.Lexeme, exp.BitExpressionInfo.One.Terminal.Lexeme
+	return calTwoConstOperate(oneLexeme, twoLexeme, exp.BitExpressionInfo.Operator)
 }
 
 func calTwoConstOperate(one, two any, op common.TokenType) *syntax.SingleExpression {
@@ -169,24 +185,54 @@ func calTwoNumberConstOperate(one, two any, op common.TokenType) *syntax.SingleE
 	_, oneUint64 := one.(uint64)
 	_, oneInt64 := one.(int64)
 	_, oneUInt32 := one.(uint32)
-	_, oneInt32 := one.(int32)
-	_, oneByte := one.(byte)
+	//_, oneInt32 := one.(int32)
+	//_, oneByte := one.(byte)
 
 	_, twoFloat64 := two.(float64)
 	_, twoFloat32 := two.(float32)
 	_, twoUint64 := two.(uint64)
 	_, twoInt64 := two.(int64)
 	_, twoUInt32 := two.(uint32)
-	_, twoInt32 := two.(int32)
-	_, twoByte := two.(byte)
+	//_, twoInt32 := two.(int32)
+	//_, twoByte := two.(byte)
 
 	switch {
 	case oneFloat64 || twoFloat64:
-		return calFloat64ConstOperate(convNumConstToFloat64(one), convNumConstToFloat64(two), op)
+		return calNumConstOperate(convNumConstToFloat64(one), convNumConstToFloat64(two), op)
+	case oneFloat32 || twoFloat32:
+		return calNumConstOperate(convNumConstToFloat32(one), convNumConstToFloat32(two), op)
+	case oneUint64 || twoUint64:
+		return calNumConstOperate(convNumConstToUint64(one), convNumConstToUint64(two), op)
+	case oneInt64 || twoInt64:
+		return calNumConstOperate(convNumConstToInt64(one), convNumConstToInt64(two), op)
+	case oneUInt32 || twoUInt32:
+		return calNumConstOperate(convNumConstToUint32(one), convNumConstToUint32(two), op)
+	default:
+		return calNumConstOperate(convNumConstToInt32(one), convNumConstToInt32(two), op)
 	}
 }
 
-func calFloat64ConstOperate(one, two float64, op common.TokenType) *syntax.SingleExpression {
+func calNumConstOperate[T constraints.Integer | constraints.Float](one, two T, op common.TokenType) *syntax.SingleExpression {
+	switch op {
+	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
+		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
+		return calNumConstLogicOperate(one, two, op)
+	case common.OR, common.AND, common.XOR,
+		common.LEFT_SHIFT, common.RIGHT_SHIFT:
+		if _, ok := any(one).(constraints.Integer); ok {
+			return calNumConstBitOperate(one, two, op)
+		} else {
+
+		}
+	}
+	panic("invalid operands to binary expression")
+}
+
+func calNumConstBitOperate[T constraints.Integer](one T, two T, op common.TokenType) *syntax.SingleExpression {
+
+}
+
+func calNumConstLogicOperate[T constraints.Integer | constraints.Float](one, two T, op common.TokenType) *syntax.SingleExpression {
 	switch op {
 	case common.EQUAL_EQUAL:
 		if one == two {
@@ -219,6 +265,7 @@ func calFloat64ConstOperate(one, two float64, op common.TokenType) *syntax.Singl
 		}
 		return constructFalseExpression()
 	}
+	panic("invalid logic operate")
 }
 
 func convNumConstToFloat64(one any) float64 {
@@ -229,13 +276,78 @@ func convNumConstToFloat64(one any) float64 {
 		return float64(one.(float32))
 	case uint64:
 		return float64(one.(uint64))
-	case uint32:
-		return float64(one.(uint32))
 	case int64:
 		return float64(one.(int64))
+	case uint32:
+		return float64(one.(uint32))
 	case int32:
 		return float64(one.(int32))
 	default:
-		return float64(one.(byte)) //last is byte
+		return float64(one.(byte)) // last is byte
+	}
+}
+
+func convNumConstToFloat32(one any) float32 {
+	switch one.(type) {
+	case float32:
+		return one.(float32)
+	case uint64:
+		return float32(one.(uint64))
+	case int64:
+		return float32(one.(int64))
+	case uint32:
+		return float32(one.(uint32))
+	case int32:
+		return float32(one.(int32))
+	default:
+		return float32(one.(byte)) // last is byte
+	}
+}
+
+func convNumConstToUint64(one any) uint64 {
+	switch one.(type) {
+	case uint64:
+		return one.(uint64)
+	case int64:
+		return uint64(one.(int64))
+	case uint32:
+		return uint64(one.(uint32))
+	case int32:
+		return uint64(one.(int32))
+	default:
+		return uint64(one.(byte)) // last is byte
+	}
+}
+
+func convNumConstToInt64(one any) int64 {
+	switch one.(type) {
+	case int64:
+		return one.(int64)
+	case uint32:
+		return int64(one.(uint32))
+	case int32:
+		return int64(one.(int32))
+	default:
+		return int64(one.(byte)) // last is byte
+	}
+}
+
+func convNumConstToUint32(one any) uint32 {
+	switch one.(type) {
+	case uint32:
+		return one.(uint32)
+	case int32:
+		return uint32(one.(int32))
+	default:
+		return uint32(one.(byte)) // last is byte
+	}
+}
+
+func convNumConstToInt32(one any) int32 {
+	switch one.(type) {
+	case int32:
+		return one.(int32)
+	default:
+		return int32(one.(byte)) // last is byte
 	}
 }
