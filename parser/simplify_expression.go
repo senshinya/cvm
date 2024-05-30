@@ -132,6 +132,16 @@ func constructFalseExpression() *syntax.SingleExpression {
 	}
 }
 
+func constructConstExpression(literal any) *syntax.SingleExpression {
+	return &syntax.SingleExpression{
+		ExpressionType: syntax.ExpressionTypeConst,
+		Terminal: &common.Token{
+			Typ:     common.INTEGER_CONSTANT,
+			Literal: literal,
+		},
+	}
+}
+
 func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
 	exp.BitExpressionInfo.One = simplifyConstExpression(exp.BitExpressionInfo.One)
 	oneConst := exp.BitExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
@@ -198,38 +208,58 @@ func calTwoNumberConstOperate(one, two any, op common.TokenType) *syntax.SingleE
 
 	switch {
 	case oneFloat64 || twoFloat64:
-		return calNumConstOperate(convNumConstToFloat64(one), convNumConstToFloat64(two), op)
+		return calFloatConstOperate(convNumConstToFloat64(one), convNumConstToFloat64(two), op)
 	case oneFloat32 || twoFloat32:
-		return calNumConstOperate(convNumConstToFloat32(one), convNumConstToFloat32(two), op)
+		return calFloatConstOperate(convNumConstToFloat32(one), convNumConstToFloat32(two), op)
 	case oneUint64 || twoUint64:
-		return calNumConstOperate(convNumConstToUint64(one), convNumConstToUint64(two), op)
+		return calIntegerConstOperate(convNumConstToUint64(one), convNumConstToUint64(two), op)
 	case oneInt64 || twoInt64:
-		return calNumConstOperate(convNumConstToInt64(one), convNumConstToInt64(two), op)
+		return calIntegerConstOperate(convNumConstToInt64(one), convNumConstToInt64(two), op)
 	case oneUInt32 || twoUInt32:
-		return calNumConstOperate(convNumConstToUint32(one), convNumConstToUint32(two), op)
+		return calIntegerConstOperate(convNumConstToUint32(one), convNumConstToUint32(two), op)
 	default:
-		return calNumConstOperate(convNumConstToInt32(one), convNumConstToInt32(two), op)
+		return calIntegerConstOperate(convNumConstToInt32(one), convNumConstToInt32(two), op)
 	}
 }
 
-func calNumConstOperate[T constraints.Integer | constraints.Float](one, two T, op common.TokenType) *syntax.SingleExpression {
+func calIntegerConstOperate[T constraints.Integer](one, two T, op common.TokenType) *syntax.SingleExpression {
 	switch op {
 	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
 		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
 		return calNumConstLogicOperate(one, two, op)
 	case common.OR, common.AND, common.XOR,
 		common.LEFT_SHIFT, common.RIGHT_SHIFT:
-		if _, ok := any(one).(constraints.Integer); ok {
-			return calNumConstBitOperate(one, two, op)
-		} else {
+		calNumConstBitOperate(one, two, op)
+	}
+	panic("invalid operands to binary expression")
+}
 
-		}
+func calFloatConstOperate[T constraints.Float](one, two T, op common.TokenType) *syntax.SingleExpression {
+	switch op {
+	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
+		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
+		return calNumConstLogicOperate(one, two, op)
+	case common.OR, common.AND, common.XOR,
+		common.LEFT_SHIFT, common.RIGHT_SHIFT:
+		panic("invalid operand to binary expression")
 	}
 	panic("invalid operands to binary expression")
 }
 
 func calNumConstBitOperate[T constraints.Integer](one T, two T, op common.TokenType) *syntax.SingleExpression {
-
+	switch op {
+	case common.OR:
+		return constructConstExpression(one | two)
+	case common.AND:
+		return constructConstExpression(one & two)
+	case common.XOR:
+		return constructConstExpression(one ^ two)
+	case common.LEFT_SHIFT:
+		return constructConstExpression(one << two)
+	case common.RIGHT_SHIFT:
+		return constructConstExpression(one >> two)
+	}
+	panic("invalid operands to binary expression")
 }
 
 func calNumConstLogicOperate[T constraints.Integer | constraints.Float](one, two T, op common.TokenType) *syntax.SingleExpression {
