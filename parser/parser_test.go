@@ -6,7 +6,7 @@ import (
 )
 
 func TestTypeDefDeclaration(t *testing.T) {
-	tokens, err := lexer.NewLexer("volatile int (*const a(float))[1];").ScanTokens()
+	tokens, err := lexer.NewLexer("volatile int (*const a(float))[2*3];").ScanTokens()
 	if err != nil {
 		panic(err)
 	}

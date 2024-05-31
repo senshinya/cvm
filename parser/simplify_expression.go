@@ -20,17 +20,24 @@ func simplifyConstExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 	case syntax.ExpressionTypeBit:
 		return simplifyBitExpression(exp)
 	case syntax.ExpressionTypeNumber:
+		return simplifyNumberCalExpression(exp)
 	case syntax.ExpressionTypeCast:
+		return exp
 	case syntax.ExpressionTypeUnary:
+		return exp
 	case syntax.ExpressionTypeArrayAccess:
+		return exp
 	case syntax.ExpressionTypeFunctionCall:
+		return exp
 	case syntax.ExpressionTypeStructAccess:
+		return exp
 	case syntax.ExpressionTypePostfix:
+		return exp
 	case syntax.ExpressionTypeConstruct:
+		return exp
 	default:
 		panic(nil)
 	}
-	panic(nil)
 }
 
 func simplifyConditionExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
@@ -75,11 +82,11 @@ func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 	oneConst := exp.LogicExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
 	if oneConst {
 		if exp.LogicExpressionInfo.Operator == common.OR_OR &&
-			cConstToBool(exp.LogicExpressionInfo.One.Terminal.Lexeme) {
+			cConstToBool(exp.LogicExpressionInfo.One.Terminal.Literal) {
 			return constructTrueExpression()
 		}
 		if exp.LogicExpressionInfo.Operator == common.AND_AND &&
-			!cConstToBool(exp.LogicExpressionInfo.One.Terminal.Lexeme) {
+			!cConstToBool(exp.LogicExpressionInfo.One.Terminal.Literal) {
 			return constructFalseExpression()
 		}
 	}
@@ -91,16 +98,16 @@ func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 		return exp
 	}
 
-	oneLexeme, twoLexeme := exp.LogicExpressionInfo.One.Terminal.Lexeme, exp.LogicExpressionInfo.One.Terminal.Lexeme
+	oneLiteral, twoLiteral := exp.LogicExpressionInfo.One.Terminal.Literal, exp.LogicExpressionInfo.One.Terminal.Literal
 
 	switch exp.LogicExpressionInfo.Operator {
 	case common.OR_OR:
-		return goBoolToExpression(cConstToBool(oneLexeme) || cConstToBool(twoLexeme))
+		return goBoolToExpression(cConstToBool(oneLiteral) || cConstToBool(twoLiteral))
 	case common.AND_AND:
-		return goBoolToExpression(cConstToBool(oneLexeme) && cConstToBool(twoLexeme))
+		return goBoolToExpression(cConstToBool(oneLiteral) && cConstToBool(twoLiteral))
 	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
 		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
-		return calTwoConstOperate(oneLexeme, twoLexeme, exp.LogicExpressionInfo.Operator)
+		return calTwoConstOperate(oneLiteral, twoLiteral, exp.LogicExpressionInfo.Operator, exp)
 	}
 	panic(nil)
 }
@@ -157,33 +164,57 @@ func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpressio
 		return exp
 	}
 
-	oneLexeme, twoLexeme := exp.BitExpressionInfo.One.Terminal.Lexeme, exp.BitExpressionInfo.One.Terminal.Lexeme
-	return calTwoConstOperate(oneLexeme, twoLexeme, exp.BitExpressionInfo.Operator)
+	oneLiteral, twoLiteral := exp.BitExpressionInfo.One.Terminal.Literal, exp.BitExpressionInfo.One.Terminal.Literal
+	return calTwoConstOperate(oneLiteral, twoLiteral, exp.BitExpressionInfo.Operator, exp)
 }
 
-func calTwoConstOperate(one, two any, op common.TokenType) *syntax.SingleExpression {
+func simplifyNumberCalExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.NumberExpressionInfo.One = simplifyConstExpression(exp.NumberExpressionInfo.One)
+	oneConst := exp.NumberExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
+
+	if !oneConst {
+		return exp
+	}
+
+	exp.NumberExpressionInfo.Two = simplifyConstExpression(exp.NumberExpressionInfo.Two)
+	twoConst := exp.NumberExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
+
+	if !twoConst {
+		return exp
+	}
+
+	oneLiteral, twoLiteral := exp.NumberExpressionInfo.One.Terminal.Literal, exp.NumberExpressionInfo.Two.Terminal.Literal
+	return calTwoConstOperate(oneLiteral, twoLiteral, exp.NumberExpressionInfo.Operator, exp)
+}
+
+func calTwoConstOperate(one, two any, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
 	_, oneString := one.(string)
 	_, twoString := two.(string)
 
 	if oneString {
-		return calStringRelatedConstOperate(one.(string), two, op)
+		return calStringRelatedConstOperate(one.(string), two, op, origin)
 	}
 	if twoString {
-		return calStringRelatedConstOperate(two.(string), one, op)
+		return calStringRelatedConstOperate(two.(string), one, op, origin)
 	}
 
 	return calTwoNumberConstOperate(one, two, op)
 }
 
-func calStringRelatedConstOperate(str string, two any, op common.TokenType) *syntax.SingleExpression {
+func calStringRelatedConstOperate(str string, two any, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
 	switch two.(type) {
 	case string, float32, float64:
 		panic("invalid operands to binary expression")
 	}
 	switch op {
-	case inclusive_or_expression, and_expression,
-		shift_expression, exclusive_or_expression:
+	case common.OR, common.AND, common.XOR,
+		common.LEFT_SHIFT, common.RIGHT_SHIFT:
 		// bit-wise op to const str is not supported
+		panic("invalid operands to binary expression")
+	case common.PLUS, common.MINUS:
+		// cannot handle right now
+		return origin
+	case common.ASTERISK, common.SLASH, common.PERCENT:
 		panic("invalid operands to binary expression")
 	}
 	return nil
@@ -230,6 +261,16 @@ func calIntegerConstOperate[T constraints.Integer](one, two T, op common.TokenTy
 	case common.OR, common.AND, common.XOR,
 		common.LEFT_SHIFT, common.RIGHT_SHIFT:
 		calNumConstBitOperate(one, two, op)
+	case common.PLUS:
+		return constructConstExpression(one + two)
+	case common.MINUS:
+		return constructConstExpression(one - two)
+	case common.ASTERISK:
+		return constructConstExpression(one * two)
+	case common.SLASH:
+		return constructConstExpression(one / two)
+	case common.PERCENT:
+		return constructConstExpression(one % two)
 	}
 	panic("invalid operands to binary expression")
 }
@@ -242,6 +283,16 @@ func calFloatConstOperate[T constraints.Float](one, two T, op common.TokenType) 
 	case common.OR, common.AND, common.XOR,
 		common.LEFT_SHIFT, common.RIGHT_SHIFT:
 		panic("invalid operand to binary expression")
+	case common.PLUS:
+		return constructConstExpression(one + two)
+	case common.MINUS:
+		return constructConstExpression(one - two)
+	case common.ASTERISK:
+		return constructConstExpression(one * two)
+	case common.SLASH:
+		return constructConstExpression(one / two)
+	case common.PERCENT:
+		panic("invalid operands to binary expression")
 	}
 	panic("invalid operands to binary expression")
 }
