@@ -459,7 +459,7 @@ var lalrGoto = map[int]map[common.TokenType]int{
 		Action:       action,
 		Goto:         gotos,
 	}
-	file, err := os.OpenFile("./parser/lalr_table.go", os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666)
+	file, err := os.OpenFile("./parser/glr_table.go", os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666)
 	if err != nil {
 		panic(err)
 	}

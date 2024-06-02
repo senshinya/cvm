@@ -194,8 +194,3 @@ func parseTypeQualifiers(qualifiers []*AstNode, typ *syntax.TypeQualifiers) {
 		}
 	}
 }
-
-func ParseTypeName(typeNameNode *AstNode) syntax.Type {
-	// TODO ParseTypeName
-	return syntax.Type{}
-}
