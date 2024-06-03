@@ -1,6 +1,6 @@
 module shinya.click/cvm
 
-go 1.21.3
+go 1.22.3
 
 require (
 	github.com/deckarep/golang-set/v2 v2.6.0
@@ -9,4 +9,4 @@ require (
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
 )
 
-require github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
+require github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
