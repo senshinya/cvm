@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"errors"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/syntax"
@@ -21,12 +20,6 @@ func ParseTypeName(typeNameNode *AstNode) syntax.Type {
 	)
 
 	if len(productions[typeNameNode.ProdIndex].Right) == 1 {
-		// reduced by type_name := specifier_qualifier_list
-		if midType.MetaType != syntax.MetaTypeStruct &&
-			midType.MetaType != syntax.MetaTypeUnion &&
-			midType.MetaType != syntax.MetaTypeEnum {
-			panic(errors.New("declaration does not declare anything"))
-		}
 		return midType
 	}
 
@@ -123,6 +116,10 @@ func findMostInnerNode(root *AstNode) *AstNode {
 		case common.LEFT_BRACKETS:
 			return current
 		case common.LEFT_PARENTHESES:
+			if prod.Right[1] == abstract_declarator {
+				current = current.Children[1]
+				continue
+			}
 			return current
 		default:
 			panic("never happen")

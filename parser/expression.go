@@ -170,10 +170,9 @@ func parseUnary(node *AstNode) *syntax.SingleExpression {
 	if len(prod.Right) == 4 {
 		// unary_expression := SIZEOF LEFT_PARENTHESES type_name RIGHT_PARENTHESES
 		return &syntax.SingleExpression{
-			ExpressionType: syntax.ExpressionTypeUnary,
-			UnaryExpressionInfo: &syntax.UnaryExpressionInfo{
-				Operator: common.SIZEOF,
-				Target:   parseExpressionNodeInner(node.Children[2]),
+			ExpressionType: syntax.ExpressionTypeTypeSize,
+			TypeSizeExpressionInfo: &syntax.TypeSizeExpressionInfo{
+				Type: ParseTypeName(node.Children[2]),
 			},
 		}
 	}

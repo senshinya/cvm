@@ -14,6 +14,7 @@ const (
 	ExpressionTypeNumber
 	ExpressionTypeCast
 	ExpressionTypeUnary
+	ExpressionTypeTypeSize
 	ExpressionTypeArrayAccess
 	ExpressionTypeFunctionCall
 	ExpressionTypeStructAccess
@@ -34,6 +35,7 @@ type SingleExpression struct {
 	NumberExpressionInfo       *NumberExpressionInfo
 	CastExpressionInfo         *CastExpressionInfo
 	UnaryExpressionInfo        *UnaryExpressionInfo
+	TypeSizeExpressionInfo     *TypeSizeExpressionInfo
 	ArrayAccessExpressionInfo  *ArrayAccessExpressionInfo
 	PostfixExpressionInfo      *PostfixExpressionInfo
 	FunctionCallExpressionInfo *FunctionCallExpressionInfo
@@ -80,6 +82,10 @@ type CastExpressionInfo struct {
 type UnaryExpressionInfo struct {
 	Operator common.TokenType
 	Target   *SingleExpression
+}
+
+type TypeSizeExpressionInfo struct {
+	Type Type
 }
 
 type ArrayAccessExpressionInfo struct {

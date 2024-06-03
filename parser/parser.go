@@ -47,26 +47,22 @@ func (p *Parser) Parse() error {
 	for {
 		// read to the end before reduce program
 		if p.TokenIndex >= len(p.Tokens) {
-			fmt.Println("alo1")
 			chooseOp = p.restore()
 			continue
 		}
 		token := p.Tokens[p.TokenIndex]
 		state, ok := p.StateStack.Peek()
 		if !ok {
-			fmt.Println("alo2")
 			chooseOp = p.restore()
 			continue
 		}
 
 		ops, ok := lalrAction[state][token.Typ]
 		if !ok {
-			fmt.Println("alo3")
 			chooseOp = p.restore()
 			continue
 		}
 		if chooseOp >= len(ops) {
-			fmt.Println("alo4")
 			chooseOp = p.restore()
 			continue
 		}
@@ -116,6 +112,7 @@ func (p *Parser) Parse() error {
 			p.SymbolStack.Push(newSym)
 
 			if prod.Left == translation_unit {
+				printAST(newSym, 0)
 				err := p.parseTranslationUnit(newSym)
 				if err != nil {
 					chooseOp = p.restore()
@@ -143,7 +140,6 @@ func (p *Parser) Parse() error {
 		panic("symbolStack is empty")
 	}
 	p.AST = res
-	// printAST(p.AST, 0)
 	for _, unit := range p.TranslationUnits {
 		if unit.GetUnitType() == syntax.UnitTypeDeclaration {
 			printDeclaration(unit)
@@ -247,76 +243,84 @@ func printDeclaration(unit syntax.TranslationUnit) {
 	for _, declare := range declares.Declarators {
 		fmt.Printf("declare %s as ", declare.Identifier)
 		typ := &declare.Type
-		for {
-			if typ.TypeQualifiers.Const {
-				fmt.Print("const ")
-			}
-			if typ.TypeQualifiers.Volatile {
-				fmt.Print("volatile ")
-			}
-			if typ.TypeQualifiers.Restrict {
-				fmt.Print("restrict ")
-			}
-			switch typ.MetaType {
-			case syntax.MetaTypeVoid:
-				print("void")
-				goto out
-			case syntax.MetaTypeNumber:
-				numMeta := typ.NumberMetaInfo
-				if numMeta.Signed {
-					print("signed ")
-				}
-				if numMeta.Unsigned {
-					print("unsigned ")
-				}
-				switch numMeta.BaseNumType {
-				case syntax.BaseNumTypeChar:
-					print("char")
-				case syntax.BaseNumTypeShort:
-					print("short")
-				case syntax.BaseNumTypeInt:
-					print("int")
-				case syntax.BaseNumTypeLong:
-					print("long")
-				case syntax.BaseNumTypeFloat:
-					print("float")
-				case syntax.BaseNumTypeDouble:
-					print("double")
-				case syntax.BaseNumTypeBool:
-					print("bool")
-				case syntax.BaseNumTypeLongLong:
-					print("long long")
-				case syntax.BaseNumTypeLongDouble:
-					print("long double")
-				}
-				goto out
-			case syntax.MetaTypeEnum:
-			case syntax.MetaTypePointer:
-				print("pointer to ")
-				typ = typ.PointerInnerType
-			case syntax.MetaTypeStruct:
-			case syntax.MetaTypeUnion:
-			case syntax.MetaTypeFunction:
-				print("function returning ")
-				typ = typ.FunctionMetaInfo.ReturnType
-			case syntax.MetaTypeArray:
-				print("array ")
-				sizeExp := typ.ArrayMetaInfo.Size
-				if sizeExp != nil {
-					if sizeExp.ExpressionType == syntax.ExpressionTypeConst {
-						fmt.Printf("%+v ", sizeExp.Terminal.Literal)
-					}
-				}
-				print("of ")
-				typ = typ.ArrayMetaInfo.InnerType
-			case syntax.MetaTypeUserDefined:
-				// TODO user defined
-				print("user defined")
-				goto out
-			}
-		}
-	out:
+		printType(typ)
 		fmt.Println()
+	}
+}
+
+func printType(typ *syntax.Type) {
+	for {
+		if typ.TypeQualifiers.Const {
+			fmt.Print("const ")
+		}
+		if typ.TypeQualifiers.Volatile {
+			fmt.Print("volatile ")
+		}
+		if typ.TypeQualifiers.Restrict {
+			fmt.Print("restrict ")
+		}
+		switch typ.MetaType {
+		case syntax.MetaTypeVoid:
+			print("void")
+			return
+		case syntax.MetaTypeNumber:
+			numMeta := typ.NumberMetaInfo
+			if numMeta.Signed {
+				print("signed ")
+			}
+			if numMeta.Unsigned {
+				print("unsigned ")
+			}
+			switch numMeta.BaseNumType {
+			case syntax.BaseNumTypeChar:
+				print("char")
+			case syntax.BaseNumTypeShort:
+				print("short")
+			case syntax.BaseNumTypeInt:
+				print("int")
+			case syntax.BaseNumTypeLong:
+				print("long")
+			case syntax.BaseNumTypeFloat:
+				print("float")
+			case syntax.BaseNumTypeDouble:
+				print("double")
+			case syntax.BaseNumTypeBool:
+				print("bool")
+			case syntax.BaseNumTypeLongLong:
+				print("long long")
+			case syntax.BaseNumTypeLongDouble:
+				print("long double")
+			}
+			return
+		case syntax.MetaTypeEnum:
+		case syntax.MetaTypePointer:
+			print("pointer to ")
+			typ = typ.PointerInnerType
+		case syntax.MetaTypeStruct:
+		case syntax.MetaTypeUnion:
+		case syntax.MetaTypeFunction:
+			print("function returning ")
+			typ = typ.FunctionMetaInfo.ReturnType
+		case syntax.MetaTypeArray:
+			print("array ")
+			sizeExp := typ.ArrayMetaInfo.Size
+			if sizeExp != nil {
+				if sizeExp.ExpressionType == syntax.ExpressionTypeConst {
+					fmt.Printf("%+v ", sizeExp.Terminal.Literal)
+				}
+				if sizeExp.ExpressionType == syntax.ExpressionTypeTypeSize {
+					fmt.Printf("( with the size of type (")
+					printType(&sizeExp.TypeSizeExpressionInfo.Type)
+					fmt.Printf(") ) ")
+				}
+			}
+			print("of ")
+			typ = typ.ArrayMetaInfo.InnerType
+		case syntax.MetaTypeUserDefined:
+			// TODO user defined
+			print("user defined")
+			return
+		}
 	}
 }
 

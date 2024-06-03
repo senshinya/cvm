@@ -18,3 +18,11 @@ func TestTypeDefDeclaration(t *testing.T) {
 	//}
 	//NewParser(tokens).Parse()
 }
+
+func TestTypeName(t *testing.T) {
+	tokens, err := lexer.NewLexer("int a[sizeof(int (*const [])(unsigned int, ...))];").ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	NewParser(tokens).Parse()
+}

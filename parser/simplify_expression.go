@@ -25,6 +25,8 @@ func simplifyConstExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 		return exp
 	case syntax.ExpressionTypeUnary:
 		return exp
+	case syntax.ExpressionTypeTypeSize:
+		return exp
 	case syntax.ExpressionTypeArrayAccess:
 		return exp
 	case syntax.ExpressionTypeFunctionCall:
