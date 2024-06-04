@@ -55,7 +55,7 @@ func parseTypeSpecifiers(specifiers []*AstNode, typ *syntax.Type) {
 			// TODO struct or union declare
 		case enum_specifier:
 			// TODO enum declare
-		case common.IDENTIFIER:
+		case typedef_name:
 			// TODO need a symbol table!
 			typ.MetaType = syntax.MetaTypeUserDefined
 		}

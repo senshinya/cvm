@@ -8,10 +8,7 @@ import (
 )
 
 func parseDeclaration(root *AstNode) (syntax.TranslationUnit, error) {
-	res := &syntax.Declaration{
-		Specifiers: syntax.Specifiers{},
-		MidType:    syntax.Type{},
-	}
+	res := &syntax.Declaration{}
 
 	// parse specifiers
 	isTypeDef, err := parseDeclarationSpecifiers(root.Children[0], res)
@@ -202,9 +199,8 @@ func parseDeclarator(root *AstNode, midType syntax.Type) (syntax.Declarator, err
 			continue
 		}
 		if currentNode.Children[1].Typ == common.LEFT_PARENTHESES {
-			// TODO parse function declarator
 			currentType.MetaType = syntax.MetaTypeFunction
-			currentType.FunctionMetaInfo = &syntax.FunctionMetaInfo{ReturnType: &syntax.Type{}}
+			currentType.FunctionMetaInfo = parseFunctionMetaInfo(currentNode)
 			currentType = currentType.FunctionMetaInfo.ReturnType
 			currentNode = currentNode.Parent
 			continue

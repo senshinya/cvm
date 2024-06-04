@@ -72,9 +72,8 @@ func ParseAbstractDeclarator(root *AstNode, midType syntax.Type) syntax.Type {
 				currentNode = currentNode.Parent
 				continue
 			}
-			// TODO parse function declarator
 			currentType.MetaType = syntax.MetaTypeFunction
-			currentType.FunctionMetaInfo = &syntax.FunctionMetaInfo{ReturnType: &syntax.Type{}}
+			currentType.FunctionMetaInfo = parseFunctionMetaInfo(currentNode)
 			currentType = currentType.FunctionMetaInfo.ReturnType
 			currentNode = currentNode.Parent
 			continue
@@ -87,9 +86,8 @@ func ParseAbstractDeclarator(root *AstNode, midType syntax.Type) syntax.Type {
 			continue
 		}
 		if prod.Right[1] == common.LEFT_PARENTHESES {
-			// TODO parse function declarator
 			currentType.MetaType = syntax.MetaTypeFunction
-			currentType.FunctionMetaInfo = &syntax.FunctionMetaInfo{ReturnType: &syntax.Type{}}
+			currentType.FunctionMetaInfo = parseFunctionMetaInfo(currentNode)
 			currentType = currentType.FunctionMetaInfo.ReturnType
 			currentNode = currentNode.Parent
 			continue

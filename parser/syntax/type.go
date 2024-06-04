@@ -73,6 +73,15 @@ type ArrayMetaInfo struct {
 	Size *SingleExpression
 }
 
+type FunctionParameter struct {
+	Specifiers Specifiers
+	Type       Type
+	Identifier *string
+}
+
 type FunctionMetaInfo struct {
-	ReturnType *Type
+	ReturnType     *Type
+	Parameters     []*FunctionParameter
+	Variadic       bool
+	IdentifierList []string
 }
