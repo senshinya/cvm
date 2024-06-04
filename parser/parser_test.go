@@ -26,3 +26,11 @@ func TestTypeName(t *testing.T) {
 	}
 	NewParser(tokens).Parse()
 }
+
+func TestFunctionDeclaration1(t *testing.T) {
+	tokens, err := lexer.NewLexer("int (*fpfi(int (*)(long), int))(int, ...);").ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	NewParser(tokens).Parse()
+}
