@@ -35,12 +35,16 @@ func TestFunctionDeclaration1(t *testing.T) {
 	NewParser(tokens).Parse()
 }
 
-func TestIdentifierList(t *testing.T) {
-	tokens, err := lexer.NewLexer(`extern int max(a, b)
-	int a, b;
-	{
-		return a > b ? a : b;
-	}`).ScanTokens()
+func TestFunctionDeclaration2(t *testing.T) {
+	tokens, err := lexer.NewLexer("int f(void), *fip(), (*pfi)();").ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	NewParser(tokens).Parse()
+}
+
+func TestFunctionDeclaration3(t *testing.T) {
+	tokens, err := lexer.NewLexer("int (*apfi[3])(int *x, int *y);").ScanTokens()
 	if err != nil {
 		panic(err)
 	}

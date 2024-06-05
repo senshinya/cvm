@@ -168,14 +168,18 @@ func parseDeclarator(root *AstNode, midType syntax.Type) (syntax.Declarator, err
 
 	currentType := &res.Type
 	for {
-		// currentType should always be empty at the start and end of the loop
-		if currentNode == root {
+		// need to parse the most out node
+		if currentNode == root.Parent {
 			break
 		}
 		prod := productions[currentNode.ProdIndex]
 		if currentNode.Typ == declarator {
-			// must be reduced by declarator := pointer direct_declarator
-			// cause if be reduced by declarator := direct_declarator, should break before
+			if len(prod.Right) == 1 {
+				// declarator := direct_declarator
+				currentNode = currentNode.Parent
+				continue
+			}
+			// reduced by declarator := pointer direct_declarator
 			currentType = parsePointer(currentNode.Children[0], currentType).PointerInnerType
 			currentNode = currentNode.Parent
 			continue

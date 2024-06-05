@@ -6,7 +6,7 @@ import (
 )
 
 func parseFunctionMetaInfo(node *AstNode) *syntax.FunctionMetaInfo {
-	res := &syntax.FunctionMetaInfo{}
+	res := &syntax.FunctionMetaInfo{ReturnType: &syntax.Type{}}
 	prod := productions[node.ProdIndex]
 	switch node.Typ {
 	case direct_declarator:
@@ -58,6 +58,10 @@ func parseParameterTypeList(node *AstNode) ([]*syntax.FunctionParameter, bool) {
 	var params []*syntax.FunctionParameter
 	for _, paramDeclare := range parameterDeclarations {
 		params = append(params, parseParamDeclare(paramDeclare))
+	}
+
+	if len(params) == 1 && params[0].Type.MetaType == syntax.MetaTypeVoid {
+		params = nil
 	}
 
 	return params, variadic

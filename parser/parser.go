@@ -6,6 +6,7 @@ import (
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/syntax"
+	"strings"
 )
 
 type Parser struct {
@@ -249,79 +250,95 @@ func printDeclaration(unit syntax.TranslationUnit) {
 }
 
 func printType(typ *syntax.Type) {
-	for {
-		if typ.TypeQualifiers.Const {
-			fmt.Print("const ")
-		}
-		if typ.TypeQualifiers.Volatile {
-			fmt.Print("volatile ")
-		}
-		if typ.TypeQualifiers.Restrict {
-			fmt.Print("restrict ")
-		}
-		switch typ.MetaType {
-		case syntax.MetaTypeVoid:
-			print("void")
-			return
-		case syntax.MetaTypeNumber:
-			numMeta := typ.NumberMetaInfo
-			if numMeta.Signed {
-				print("signed ")
-			}
-			if numMeta.Unsigned {
-				print("unsigned ")
-			}
-			switch numMeta.BaseNumType {
-			case syntax.BaseNumTypeChar:
-				print("char")
-			case syntax.BaseNumTypeShort:
-				print("short")
-			case syntax.BaseNumTypeInt:
-				print("int")
-			case syntax.BaseNumTypeLong:
-				print("long")
-			case syntax.BaseNumTypeFloat:
-				print("float")
-			case syntax.BaseNumTypeDouble:
-				print("double")
-			case syntax.BaseNumTypeBool:
-				print("bool")
-			case syntax.BaseNumTypeLongLong:
-				print("long long")
-			case syntax.BaseNumTypeLongDouble:
-				print("long double")
-			}
-			return
-		case syntax.MetaTypeEnum:
-		case syntax.MetaTypePointer:
-			print("pointer to ")
-			typ = typ.PointerInnerType
-		case syntax.MetaTypeStruct:
-		case syntax.MetaTypeUnion:
-		case syntax.MetaTypeFunction:
-			print("function returning ")
-			typ = typ.FunctionMetaInfo.ReturnType
-		case syntax.MetaTypeArray:
-			print("array ")
-			sizeExp := typ.ArrayMetaInfo.Size
-			if sizeExp != nil {
-				if sizeExp.ExpressionType == syntax.ExpressionTypeConst {
-					fmt.Printf("%+v ", sizeExp.Terminal.Literal)
-				}
-				if sizeExp.ExpressionType == syntax.ExpressionTypeTypeSize {
-					fmt.Printf("( with the size of type (")
-					printType(&sizeExp.TypeSizeExpressionInfo.Type)
-					fmt.Printf(") ) ")
-				}
-			}
-			print("of ")
-			typ = typ.ArrayMetaInfo.InnerType
-		case syntax.MetaTypeUserDefined:
-			// TODO user defined
-			print("user defined")
-			return
-		}
+	if typ.TypeQualifiers.Const {
+		fmt.Print("const ")
 	}
+	if typ.TypeQualifiers.Volatile {
+		fmt.Print("volatile ")
+	}
+	if typ.TypeQualifiers.Restrict {
+		fmt.Print("restrict ")
+	}
+	switch typ.MetaType {
+	case syntax.MetaTypeVoid:
+		print("void")
+		return
+	case syntax.MetaTypeNumber:
+		numMeta := typ.NumberMetaInfo
+		if numMeta.Signed {
+			print("signed ")
+		}
+		if numMeta.Unsigned {
+			print("unsigned ")
+		}
+		switch numMeta.BaseNumType {
+		case syntax.BaseNumTypeChar:
+			print("char")
+		case syntax.BaseNumTypeShort:
+			print("short")
+		case syntax.BaseNumTypeInt:
+			print("int")
+		case syntax.BaseNumTypeLong:
+			print("long")
+		case syntax.BaseNumTypeFloat:
+			print("float")
+		case syntax.BaseNumTypeDouble:
+			print("double")
+		case syntax.BaseNumTypeBool:
+			print("bool")
+		case syntax.BaseNumTypeLongLong:
+			print("long long")
+		case syntax.BaseNumTypeLongDouble:
+			print("long double")
+		}
+		return
+	case syntax.MetaTypeEnum:
+	case syntax.MetaTypePointer:
+		print("pointer to ( ")
+		printType(typ.PointerInnerType)
+		print(" ) ")
+	case syntax.MetaTypeStruct:
+	case syntax.MetaTypeUnion:
+	case syntax.MetaTypeFunction:
+		print("function with parameter ( ")
+		for i, param := range typ.FunctionMetaInfo.Parameters {
+			if i != 0 {
+				print(" , ")
+			}
+			printType(&param.Type)
+		}
+		if len(typ.FunctionMetaInfo.IdentifierList) != 0 {
+			print(strings.Join(typ.FunctionMetaInfo.IdentifierList, ", "))
+		}
+		print(" ) ")
+		if typ.FunctionMetaInfo.Variadic {
+			print("... ")
+		}
+		print("and returning ( ")
+		printType(typ.FunctionMetaInfo.ReturnType)
+		print(" ) ")
+	case syntax.MetaTypeArray:
+		print("array ")
+		sizeExp := typ.ArrayMetaInfo.Size
+		if sizeExp != nil {
+			if sizeExp.ExpressionType == syntax.ExpressionTypeConst {
+				fmt.Printf("%+v ", sizeExp.Terminal.Literal)
+			}
+			if sizeExp.ExpressionType == syntax.ExpressionTypeTypeSize {
+				fmt.Printf("( with the size of type (")
+				printType(&sizeExp.TypeSizeExpressionInfo.Type)
+				fmt.Printf(") ) ")
+			}
+		}
+		print("of ( ")
+		printType(typ.ArrayMetaInfo.InnerType)
+		print(" ) ")
+	case syntax.MetaTypeUserDefined:
+		// TODO user defined
+		print("user defined")
+		return
+	}
+
 }
 
 func flattenTranslationUnit(ast *AstNode) []*AstNode {
