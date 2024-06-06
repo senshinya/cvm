@@ -19,6 +19,9 @@ type Specifiers struct {
 	Auto     bool
 	Register bool
 
+	// typedef
+	TypeDef bool
+
 	// function specifier
 	Inline bool
 }

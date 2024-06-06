@@ -230,11 +230,11 @@ func (p *Parser) parseTranslationUnit(unit *AstNode) error {
 		}
 		p.TranslationUnits = append(p.TranslationUnits, funcDef)
 	case declaration:
-		declare, err := parseDeclaration(unit.Children[0])
+		res, err := parseDeclaration(unit.Children[0])
 		if err != nil {
 			return err
 		}
-		p.TranslationUnits = append(p.TranslationUnits, declare)
+		p.TranslationUnits = append(p.TranslationUnits, res)
 	}
 	return nil
 }

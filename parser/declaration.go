@@ -11,13 +11,15 @@ func parseDeclaration(root *AstNode) (syntax.TranslationUnit, error) {
 	res := &syntax.Declaration{}
 
 	// parse specifiers
-	isTypeDef, err := parseDeclarationSpecifiers(root.Children[0], res)
+	specifiers, midType, err := parseDeclarationSpecifiers(root.Children[0])
 	if err != nil {
 		return nil, err
 	}
-	if isTypeDef {
-		return parseTypeDef(root)
+	if specifiers.TypeDef {
+		return parseTypeDef(root, specifiers, midType)
 	}
+	res.Specifiers = specifiers
+	res.MidType = midType
 
 	if len(productions[root.ProdIndex].Right) == 2 {
 		// reduced by declaration := declaration_specifiers SEMICOLON
@@ -41,7 +43,9 @@ func parseDeclaration(root *AstNode) (syntax.TranslationUnit, error) {
 	return res, nil
 }
 
-func parseDeclarationSpecifiers(specifiersNode *AstNode, rec *syntax.Declaration) (bool, error) {
+func parseDeclarationSpecifiers(specifiersNode *AstNode) (syntax.Specifiers, syntax.Type, error) {
+	specifiers, midType := syntax.Specifiers{}, syntax.Type{}
+
 	specifierNodes := flattenDeclarationSpecifier(specifiersNode)
 
 	// parse storage class specifier
@@ -49,17 +53,14 @@ func parseDeclarationSpecifiers(specifiersNode *AstNode, rec *syntax.Declaration
 		return specifier.Typ == storage_class_specifier
 	}).([]*AstNode)
 	for _, storagesSpecifier := range storagesSpecifiers {
-		isTypeDef := parseStorageClassSpecifier(storagesSpecifier, &rec.Specifiers)
-		if isTypeDef {
-			return true, nil
-		}
+		parseStorageClassSpecifier(storagesSpecifier, &specifiers)
 	}
-	if err := checkStorageClassSpecifiers(rec); err != nil {
-		return false, err
+	if err := checkStorageClassSpecifiers(specifiers); err != nil {
+		return specifiers, midType, err
 	}
 
 	// parse type specifier and qualifiers
-	midType := parseTypeSpecifiersAndQualifiers(
+	midType = parseTypeSpecifiersAndQualifiers(
 		funk.Filter(specifierNodes, func(specifier *AstNode) bool {
 			return specifier.Typ == type_specifier
 		}).([]*AstNode),
@@ -67,29 +68,28 @@ func parseDeclarationSpecifiers(specifiersNode *AstNode, rec *syntax.Declaration
 			return specifier.Typ == type_qualifier
 		}).([]*AstNode),
 	)
-	rec.MidType = midType
 
 	// parse function specifier
 	functionSpecifiers := funk.Filter(specifierNodes, func(specifier *AstNode) bool {
 		return specifier.Typ == function_specifier
 	}).([]*AstNode)
 	if len(functionSpecifiers) != 0 {
-		rec.Specifiers.Inline = true
+		specifiers.Inline = true
 	}
 
-	return false, nil
+	return specifiers, midType, nil
 }
 
-func checkStorageClassSpecifiers(rec *syntax.Declaration) error {
+func checkStorageClassSpecifiers(specifiers syntax.Specifiers) error {
 	// TODO check storage class specifiers conflict
 	return nil
 }
 
-func parseStorageClassSpecifier(storageSpecifier *AstNode, spe *syntax.Specifiers) bool {
+func parseStorageClassSpecifier(storageSpecifier *AstNode, spe *syntax.Specifiers) {
 	n := storageSpecifier.Children[0]
 	switch n.Typ {
 	case common.TYPEDEF:
-		return true
+		spe.TypeDef = true
 	case common.EXTERN:
 		spe.Extern = true
 	case common.STATIC:
@@ -99,7 +99,6 @@ func parseStorageClassSpecifier(storageSpecifier *AstNode, spe *syntax.Specifier
 	case common.REGISTER:
 		spe.Register = true
 	}
-	return false
 }
 
 func flattenDeclarationSpecifier(specifiers *AstNode) []*AstNode {
