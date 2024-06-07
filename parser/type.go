@@ -52,7 +52,10 @@ func parseTypeSpecifiers(specifiers []*AstNode, typ *syntax.Type) {
 		case common.COMPLEX:
 			// support complex?
 		case struct_or_union_specifier:
-			// TODO struct or union declare
+			if typ.MetaType != syntax.MetaTypeUnknown {
+				panic("conflict type declaration")
+			}
+			parseStructOrUnion(n, typ)
 		case enum_specifier:
 			// TODO enum declare
 		case typedef_name:
@@ -193,4 +196,24 @@ func parseTypeQualifiers(qualifiers []*AstNode, typ *syntax.TypeQualifiers) {
 			typ.Volatile = true
 		}
 	}
+}
+
+func parseStructOrUnion(root *AstNode, typ *syntax.Type) {
+	structOrUnion := root.Children[0]
+	switch structOrUnion.Children[0].Typ {
+	case common.STRUCT:
+		// struct
+		parseStruct(root, typ)
+	default:
+		// enum
+		parseUnion(root, typ)
+	}
+}
+
+func parseStruct(root *AstNode, typ *syntax.Type) {
+	typ.MetaType = syntax.MetaTypeStruct
+}
+
+func parseUnion(root *AstNode, typ *syntax.Type) {
+	typ.MetaType = syntax.MetaTypeUnion
 }

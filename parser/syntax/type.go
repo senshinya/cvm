@@ -57,9 +57,19 @@ type NumberMetaInfo struct {
 }
 
 type StructMetaInfo struct {
+	Identifier string
+
+	FieldMetaInfo []*FieldsMetaInfo
+}
+
+type FieldsMetaInfo struct {
+	Type       Type
+	Identifier *string
+	BitWidth   *SingleExpression
 }
 
 type UnionMetaInfo struct {
+	Identifier string
 }
 
 type ArrayMetaInfo struct {
