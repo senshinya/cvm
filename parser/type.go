@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/syntax"
 )
@@ -212,6 +213,94 @@ func parseStructOrUnion(root *AstNode, typ *syntax.Type) {
 
 func parseStruct(root *AstNode, typ *syntax.Type) {
 	typ.MetaType = syntax.MetaTypeStruct
+	meta := &syntax.StructMetaInfo{}
+
+	prod := productions[root.ProdIndex]
+	switch {
+	case len(prod.Right) == 2:
+		// struct_or_union_specifier := struct_or_union IDENTIFIER
+		meta.Identifier = root.Children[1].Terminal.Lexeme
+		meta.Incomplete = true
+	case len(prod.Right) == 4:
+		// struct_or_union_specifier := struct_or_union LEFT_BRACES struct_declaration_list RIGHT_BRACES
+		meta.FieldMetaInfo = parseStructDeclarationList(root.Children[2])
+	case len(prod.Right) == 5:
+		// struct_or_union_specifier := struct_or_union IDENTIFIER LEFT_BRACES struct_declaration_list RIGHT_BRACES
+		meta.Identifier = root.Children[1].Terminal.Lexeme
+		meta.FieldMetaInfo = parseStructDeclarationList(root.Children[3])
+	}
+
+	typ.StructMetaInfo = meta
+}
+
+func parseStructDeclarationList(root *AstNode) []*syntax.FieldMetaInfo {
+	structDeclarations := flattenStructDeclarationList(root)
+
+	var res []*syntax.FieldMetaInfo
+	for _, structDeclaration := range structDeclarations {
+		// struct_declaration := specifier_qualifier_list struct_declarator_list SEMICOLON
+		specifiersQualifiers := flattenSpecifiersQualifiers(structDeclaration.Children[0])
+		midType := parseTypeSpecifiersAndQualifiers(
+			funk.Filter(specifiersQualifiers, func(specifier *AstNode) bool {
+				return specifier.Typ == type_specifier
+			}).([]*AstNode),
+			funk.Filter(specifiersQualifiers, func(specifier *AstNode) bool {
+				return specifier.Typ == type_qualifier
+			}).([]*AstNode),
+		)
+
+		structDeclarators := flattenStructDeclaratorList(root.Children[1])
+		for _, structDeclarator := range structDeclarators {
+			prod := productions[structDeclarator.ProdIndex]
+			switch len(prod.Right) {
+			case 1:
+				// struct_declarator := declarator
+				declare, err := parseDeclarator(structDeclarator.Children[0], midType)
+				if err != nil {
+					panic(err)
+				}
+				res = append(res, &syntax.FieldMetaInfo{
+					Type:       declare.Type,
+					Identifier: &declare.Identifier,
+				})
+			case 2:
+				// struct_declarator := COLON constant_expression
+				res = append(res, &syntax.FieldMetaInfo{
+					Type:     midType,
+					BitWidth: ParseExpressionNode(structDeclarator.Children[1]),
+				})
+			case 3:
+				// struct_declarator := declarator COLON constant_expression
+				declare, err := parseDeclarator(structDeclarator.Children[0], midType)
+				if err != nil {
+					panic(err)
+				}
+				res = append(res, &syntax.FieldMetaInfo{
+					Type:       declare.Type,
+					Identifier: &declare.Identifier,
+					BitWidth:   ParseExpressionNode(structDeclarator.Children[2]),
+				})
+			}
+		}
+	}
+
+	return res
+}
+
+func flattenStructDeclaratorList(root *AstNode) []*AstNode {
+	if len(root.Children) == 1 {
+		return []*AstNode{root.Children[0]}
+	}
+
+	return append(flattenStructDeclaratorList(root.Children[0]), root.Children[2])
+}
+
+func flattenStructDeclarationList(root *AstNode) []*AstNode {
+	if len(root.Children) == 1 {
+		return []*AstNode{root.Children[0]}
+	}
+
+	return append(flattenStructDeclarationList(root.Children[0]), root.Children[1])
 }
 
 func parseUnion(root *AstNode, typ *syntax.Type) {
