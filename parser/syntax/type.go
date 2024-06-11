@@ -59,10 +59,11 @@ type NumberMetaInfo struct {
 type StructMetaInfo struct {
 	Identifier string
 
-	FieldMetaInfo []*FieldsMetaInfo
+	Incomplete    bool
+	FieldMetaInfo []*FieldMetaInfo
 }
 
-type FieldsMetaInfo struct {
+type FieldMetaInfo struct {
 	Type       Type
 	Identifier *string
 	BitWidth   *SingleExpression
@@ -70,6 +71,8 @@ type FieldsMetaInfo struct {
 
 type UnionMetaInfo struct {
 	Identifier string
+
+	Incomplete bool
 }
 
 type ArrayMetaInfo struct {
@@ -80,7 +83,8 @@ type ArrayMetaInfo struct {
 	TypeQualifiers
 	Asterisk bool
 
-	Size *SingleExpression
+	Incomplete bool
+	Size       *SingleExpression
 }
 
 type FunctionParameter struct {

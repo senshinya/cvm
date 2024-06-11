@@ -270,8 +270,12 @@ func flattenTypeQualifierList(listNode *AstNode) []*AstNode {
 func parseArrayMetaInfo(arrayNode *AstNode) *syntax.ArrayMetaInfo {
 	res := &syntax.ArrayMetaInfo{InnerType: &syntax.Type{}}
 	prod := productions[arrayNode.ProdIndex]
-	for i := 1; i < len(prod.Right); i++ {
+	for i := 0; i < len(prod.Right); i++ {
 		child := arrayNode.Children[i]
+		if child.Typ == direct_abstract_declarator ||
+			child.Typ == direct_declarator {
+			continue
+		}
 		if child.Typ == common.LEFT_BRACKETS ||
 			child.Typ == common.RIGHT_BRACKETS {
 			continue
@@ -282,6 +286,7 @@ func parseArrayMetaInfo(arrayNode *AstNode) *syntax.ArrayMetaInfo {
 		}
 		if child.Typ == common.ASTERISK {
 			res.Asterisk = true
+			continue
 		}
 		if child.Typ == type_qualifier_list {
 			parseTypeQualifiers(flattenTypeQualifierList(child), &res.TypeQualifiers)
@@ -289,6 +294,9 @@ func parseArrayMetaInfo(arrayNode *AstNode) *syntax.ArrayMetaInfo {
 		}
 		// assignment_expression
 		res.Size = ParseExpressionNode(child)
+	}
+	if res.Size == nil {
+		res.Incomplete = true
 	}
 	// TODO Check MetaInfo
 	return res
