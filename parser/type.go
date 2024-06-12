@@ -204,16 +204,17 @@ func parseStructOrUnion(root *AstNode, typ *syntax.Type) {
 	switch structOrUnion.Children[0].Typ {
 	case common.STRUCT:
 		// struct
-		parseStruct(root, typ)
+		typ.MetaType = syntax.MetaTypeStruct
+		parseStructUnionMeta(root, typ)
 	default:
-		// enum
-		parseUnion(root, typ)
+		// union
+		typ.MetaType = syntax.MetaTypeUnion
+		parseStructUnionMeta(root, typ)
 	}
 }
 
-func parseStruct(root *AstNode, typ *syntax.Type) {
-	typ.MetaType = syntax.MetaTypeStruct
-	meta := &syntax.StructMetaInfo{}
+func parseStructUnionMeta(root *AstNode, typ *syntax.Type) {
+	meta := &syntax.StructUnionMetaInfo{}
 
 	prod := productions[root.ProdIndex]
 	switch {

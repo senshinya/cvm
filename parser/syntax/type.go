@@ -28,8 +28,8 @@ type Type struct {
 
 	NumberMetaInfo   *NumberMetaInfo
 	PointerInnerType *Type
-	StructMetaInfo   *StructMetaInfo
-	UnionMetaInfo    *UnionMetaInfo
+	StructMetaInfo   *StructUnionMetaInfo
+	UnionMetaInfo    *StructUnionMetaInfo
 	FunctionMetaInfo *FunctionMetaInfo
 	ArrayMetaInfo    *ArrayMetaInfo
 	UserDefinedType  *Type
@@ -56,7 +56,7 @@ type NumberMetaInfo struct {
 	BaseNumType BaseNumType
 }
 
-type StructMetaInfo struct {
+type StructUnionMetaInfo struct {
 	Identifier string
 
 	Incomplete    bool
@@ -67,12 +67,6 @@ type FieldMetaInfo struct {
 	Type       Type
 	Identifier *string
 	BitWidth   *SingleExpression
-}
-
-type UnionMetaInfo struct {
-	Identifier string
-
-	Incomplete bool
 }
 
 type ArrayMetaInfo struct {
