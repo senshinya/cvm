@@ -205,15 +205,15 @@ func parseStructOrUnion(root *AstNode, typ *syntax.Type) {
 	case common.STRUCT:
 		// struct
 		typ.MetaType = syntax.MetaTypeStruct
-		parseStructUnionMeta(root, typ)
+		typ.StructMetaInfo = parseStructUnionMeta(root)
 	default:
 		// union
 		typ.MetaType = syntax.MetaTypeUnion
-		parseStructUnionMeta(root, typ)
+		typ.UnionMetaInfo = parseStructUnionMeta(root)
 	}
 }
 
-func parseStructUnionMeta(root *AstNode, typ *syntax.Type) {
+func parseStructUnionMeta(root *AstNode) *syntax.StructUnionMetaInfo {
 	meta := &syntax.StructUnionMetaInfo{}
 
 	prod := productions[root.ProdIndex]
@@ -231,7 +231,7 @@ func parseStructUnionMeta(root *AstNode, typ *syntax.Type) {
 		meta.FieldMetaInfo = parseStructDeclarationList(root.Children[3])
 	}
 
-	typ.StructMetaInfo = meta
+	return meta
 }
 
 func parseStructDeclarationList(root *AstNode) []*syntax.FieldMetaInfo {
