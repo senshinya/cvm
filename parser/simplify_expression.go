@@ -22,7 +22,7 @@ func simplifyConstExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 	case syntax.ExpressionTypeNumber:
 		return simplifyNumberCalExpression(exp)
 	case syntax.ExpressionTypeCast:
-		return exp
+		return simplifyCastExpression(exp)
 	case syntax.ExpressionTypeUnary:
 		return exp
 	case syntax.ExpressionTypeTypeSize:
@@ -38,8 +38,32 @@ func simplifyConstExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 	case syntax.ExpressionTypeConstruct:
 		return exp
 	default:
-		panic(nil)
+		return exp
 	}
+}
+
+func simplifyCastExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.CastExpressionInfo.Target = simplifyConstExpression(exp.CastExpressionInfo.Target)
+	if exp.CastExpressionInfo.Target.ExpressionType != syntax.ExpressionTypeConst {
+		return exp
+	}
+
+	info := exp.CastExpressionInfo
+	if info.Type.MetaType != syntax.MetaTypeNumber {
+		return exp
+	}
+
+	literal := exp.CastExpressionInfo.Target.Terminal.Literal
+	if _, ok := literal.(string); ok {
+		return exp
+	}
+
+	return castNumberConst(exp.CastExpressionInfo.Target.Terminal.Literal, info.Type.NumberMetaInfo)
+}
+
+func castNumberConst(origin any, numberType *syntax.NumberMetaInfo) *syntax.SingleExpression {
+	// TODO
+	return nil
 }
 
 func simplifyConditionExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
@@ -174,14 +198,10 @@ func simplifyNumberCalExpression(exp *syntax.SingleExpression) *syntax.SingleExp
 	exp.NumberExpressionInfo.One = simplifyConstExpression(exp.NumberExpressionInfo.One)
 	oneConst := exp.NumberExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
 
-	if !oneConst {
-		return exp
-	}
-
 	exp.NumberExpressionInfo.Two = simplifyConstExpression(exp.NumberExpressionInfo.Two)
 	twoConst := exp.NumberExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
 
-	if !twoConst {
+	if !oneConst || !twoConst {
 		return exp
 	}
 
@@ -200,7 +220,7 @@ func calTwoConstOperate(one, two any, op common.TokenType, origin *syntax.Single
 		return calStringRelatedConstOperate(two.(string), one, op, origin)
 	}
 
-	return calTwoNumberConstOperate(one, two, op)
+	return calTwoNumberConstOperate(one, two, op, origin)
 }
 
 func calStringRelatedConstOperate(str string, two any, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
@@ -222,7 +242,7 @@ func calStringRelatedConstOperate(str string, two any, op common.TokenType, orig
 	return nil
 }
 
-func calTwoNumberConstOperate(one, two any, op common.TokenType) *syntax.SingleExpression {
+func calTwoNumberConstOperate(one, two any, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
 	_, oneFloat64 := one.(float64)
 	_, oneFloat32 := one.(float32)
 	_, oneUint64 := one.(uint64)
@@ -241,21 +261,21 @@ func calTwoNumberConstOperate(one, two any, op common.TokenType) *syntax.SingleE
 
 	switch {
 	case oneFloat64 || twoFloat64:
-		return calFloatConstOperate(convNumConstToFloat64(one), convNumConstToFloat64(two), op)
+		return calFloatConstOperate(convNumConstToFloat64(one), convNumConstToFloat64(two), op, origin)
 	case oneFloat32 || twoFloat32:
-		return calFloatConstOperate(convNumConstToFloat32(one), convNumConstToFloat32(two), op)
+		return calFloatConstOperate(convNumConstToFloat32(one), convNumConstToFloat32(two), op, origin)
 	case oneUint64 || twoUint64:
-		return calIntegerConstOperate(convNumConstToUint64(one), convNumConstToUint64(two), op)
+		return calIntegerConstOperate(convNumConstToUint64(one), convNumConstToUint64(two), op, origin)
 	case oneInt64 || twoInt64:
-		return calIntegerConstOperate(convNumConstToInt64(one), convNumConstToInt64(two), op)
+		return calIntegerConstOperate(convNumConstToInt64(one), convNumConstToInt64(two), op, origin)
 	case oneUInt32 || twoUInt32:
-		return calIntegerConstOperate(convNumConstToUint32(one), convNumConstToUint32(two), op)
+		return calIntegerConstOperate(convNumConstToUint32(one), convNumConstToUint32(two), op, origin)
 	default:
-		return calIntegerConstOperate(convNumConstToInt32(one), convNumConstToInt32(two), op)
+		return calIntegerConstOperate(convNumConstToInt32(one), convNumConstToInt32(two), op, origin)
 	}
 }
 
-func calIntegerConstOperate[T constraints.Integer](one, two T, op common.TokenType) *syntax.SingleExpression {
+func calIntegerConstOperate[T constraints.Integer](one, two T, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
 	switch op {
 	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
 		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
@@ -270,6 +290,10 @@ func calIntegerConstOperate[T constraints.Integer](one, two T, op common.TokenTy
 	case common.ASTERISK:
 		return constructConstExpression(one * two)
 	case common.SLASH:
+		if two == 0 {
+			// ub
+			return origin
+		}
 		return constructConstExpression(one / two)
 	case common.PERCENT:
 		return constructConstExpression(one % two)
@@ -277,7 +301,7 @@ func calIntegerConstOperate[T constraints.Integer](one, two T, op common.TokenTy
 	panic("invalid operands to binary expression")
 }
 
-func calFloatConstOperate[T constraints.Float](one, two T, op common.TokenType) *syntax.SingleExpression {
+func calFloatConstOperate[T constraints.Float](one, two T, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
 	switch op {
 	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
 		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
@@ -292,6 +316,10 @@ func calFloatConstOperate[T constraints.Float](one, two T, op common.TokenType) 
 	case common.ASTERISK:
 		return constructConstExpression(one * two)
 	case common.SLASH:
+		if two == 0.0 {
+			// ub
+			return origin
+		}
 		return constructConstExpression(one / two)
 	case common.PERCENT:
 		panic("invalid operands to binary expression")
