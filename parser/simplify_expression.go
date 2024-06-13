@@ -7,6 +7,7 @@ import (
 )
 
 func simplifyConstExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	// TODO Simplify Inner Expression
 	switch exp.ExpressionType {
 	case syntax.ExpressionTypeConst, syntax.ExpressionTypeIdentifier:
 		return exp
