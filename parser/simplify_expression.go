@@ -6,14 +6,14 @@ import (
 	"shinya.click/cvm/parser/syntax"
 )
 
-func simplifyConstExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	// TODO Simplify Inner Expression
+func SimplifyExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
 	switch exp.ExpressionType {
-	case syntax.ExpressionTypeConst, syntax.ExpressionTypeIdentifier:
+	case syntax.ExpressionTypeConst:
 		return exp
-	case syntax.ExpressionTypeAssignment, syntax.ExpressionTypeExpressions:
-		// may contains side effect
+	case syntax.ExpressionTypeIdentifier:
 		return exp
+	case syntax.ExpressionTypeAssignment:
+		return simplifyAssignmentExpression(exp)
 	case syntax.ExpressionTypeCondition:
 		return simplifyConditionExpression(exp)
 	case syntax.ExpressionTypeLogic:
@@ -25,26 +25,85 @@ func simplifyConstExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 	case syntax.ExpressionTypeCast:
 		return simplifyCastExpression(exp)
 	case syntax.ExpressionTypeUnary:
-		return exp
 	case syntax.ExpressionTypeTypeSize:
-		return exp
 	case syntax.ExpressionTypeArrayAccess:
-		return exp
 	case syntax.ExpressionTypeFunctionCall:
-		return exp
 	case syntax.ExpressionTypeStructAccess:
-		return exp
 	case syntax.ExpressionTypePostfix:
-		return exp
 	case syntax.ExpressionTypeConstruct:
-		return exp
-	default:
+	case syntax.ExpressionTypeExpressions:
+	}
+	return exp
+}
+
+func simplifyAssignmentExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.AssignmentExpressionInfo.RValue = SimplifyExpression(exp.AssignmentExpressionInfo.RValue)
+	exp.AssignmentExpressionInfo.LValue = SimplifyExpression(exp.AssignmentExpressionInfo.LValue)
+	return exp
+}
+
+func simplifyConditionExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.ConditionExpressionInfo.Condition = SimplifyExpression(exp.ConditionExpressionInfo.Condition)
+	if exp.ConditionExpressionInfo.Condition.ExpressionType != syntax.ExpressionTypeConst {
+		exp.ConditionExpressionInfo.TrueBranch = SimplifyExpression(exp.ConditionExpressionInfo.TrueBranch)
+		exp.ConditionExpressionInfo.FalseBranch = SimplifyExpression(exp.ConditionExpressionInfo.FalseBranch)
 		return exp
 	}
+	cond := exp.ConditionExpressionInfo.Condition.Terminal
+	if cConstToBool(cond.Literal) {
+		return SimplifyExpression(exp.ConditionExpressionInfo.TrueBranch)
+	}
+	return SimplifyExpression(exp.ConditionExpressionInfo.FalseBranch)
+}
+
+func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	// short circuit
+	exp.LogicExpressionInfo.One = SimplifyExpression(exp.LogicExpressionInfo.One)
+	oneConst := exp.LogicExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
+	if oneConst {
+		if exp.LogicExpressionInfo.Operator == common.OR_OR &&
+			cConstToBool(exp.LogicExpressionInfo.One.Terminal.Literal) {
+			return constructTrueExpression()
+		}
+		if exp.LogicExpressionInfo.Operator == common.AND_AND &&
+			!cConstToBool(exp.LogicExpressionInfo.One.Terminal.Literal) {
+			return constructFalseExpression()
+		}
+	}
+
+	exp.LogicExpressionInfo.Two = SimplifyExpression(exp.LogicExpressionInfo.Two)
+	twoConst := exp.LogicExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
+	if twoConst {
+		if exp.LogicExpressionInfo.Operator == common.OR_OR &&
+			cConstToBool(exp.LogicExpressionInfo.Two.Terminal.Literal) {
+			return constructTrueExpression()
+		}
+		if exp.LogicExpressionInfo.Operator == common.AND_AND &&
+			!cConstToBool(exp.LogicExpressionInfo.Two.Terminal.Literal) {
+			return constructFalseExpression()
+		}
+	}
+
+	if !oneConst || !twoConst {
+		return exp
+	}
+
+	oneLiteral, twoLiteral := exp.LogicExpressionInfo.One.Terminal.Literal, exp.LogicExpressionInfo.One.Terminal.Literal
+
+	switch exp.LogicExpressionInfo.Operator {
+	case common.OR_OR:
+		return goBoolToExpression(cConstToBool(oneLiteral) || cConstToBool(twoLiteral))
+	case common.AND_AND:
+		return goBoolToExpression(cConstToBool(oneLiteral) && cConstToBool(twoLiteral))
+	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
+		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
+		return calTwoConstOperate(oneLiteral, twoLiteral, exp.LogicExpressionInfo.Operator, exp)
+	}
+	panic(nil)
 }
 
 func simplifyCastExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	exp.CastExpressionInfo.Target = simplifyConstExpression(exp.CastExpressionInfo.Target)
+	exp.CastExpressionInfo.Target = SimplifyExpression(exp.CastExpressionInfo.Target)
 	if exp.CastExpressionInfo.Target.ExpressionType != syntax.ExpressionTypeConst {
 		return exp
 	}
@@ -67,20 +126,6 @@ func castNumberConst(origin any, numberType *syntax.NumberMetaInfo) *syntax.Sing
 	return nil
 }
 
-func simplifyConditionExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	exp.ConditionExpressionInfo.Condition = simplifyConstExpression(exp.ConditionExpressionInfo.Condition)
-	exp.ConditionExpressionInfo.TrueBranch = simplifyConstExpression(exp.ConditionExpressionInfo.TrueBranch)
-	exp.ConditionExpressionInfo.FalseBranch = simplifyConstExpression(exp.ConditionExpressionInfo.FalseBranch)
-	if exp.ConditionExpressionInfo.Condition.ExpressionType != syntax.ExpressionTypeConst {
-		return exp
-	}
-	ter := exp.ConditionExpressionInfo.Condition.Terminal
-	if cConstToBool(ter.Literal) {
-		return exp.ConditionExpressionInfo.TrueBranch
-	}
-	return exp.ConditionExpressionInfo.FalseBranch
-}
-
 func cConstToBool(num any) bool {
 	switch num.(type) {
 	case string:
@@ -99,42 +144,6 @@ func cConstToBool(num any) bool {
 		return num.(float32) != 0
 	case float64:
 		return num.(float64) != 0
-	}
-	panic(nil)
-}
-
-func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	// short circuit
-	exp.LogicExpressionInfo.One = simplifyConstExpression(exp.LogicExpressionInfo.One)
-	oneConst := exp.LogicExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
-	if oneConst {
-		if exp.LogicExpressionInfo.Operator == common.OR_OR &&
-			cConstToBool(exp.LogicExpressionInfo.One.Terminal.Literal) {
-			return constructTrueExpression()
-		}
-		if exp.LogicExpressionInfo.Operator == common.AND_AND &&
-			!cConstToBool(exp.LogicExpressionInfo.One.Terminal.Literal) {
-			return constructFalseExpression()
-		}
-	}
-
-	exp.LogicExpressionInfo.Two = simplifyConstExpression(exp.LogicExpressionInfo.Two)
-	twoConst := exp.LogicExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
-
-	if !oneConst || !twoConst {
-		return exp
-	}
-
-	oneLiteral, twoLiteral := exp.LogicExpressionInfo.One.Terminal.Literal, exp.LogicExpressionInfo.One.Terminal.Literal
-
-	switch exp.LogicExpressionInfo.Operator {
-	case common.OR_OR:
-		return goBoolToExpression(cConstToBool(oneLiteral) || cConstToBool(twoLiteral))
-	case common.AND_AND:
-		return goBoolToExpression(cConstToBool(oneLiteral) && cConstToBool(twoLiteral))
-	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
-		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
-		return calTwoConstOperate(oneLiteral, twoLiteral, exp.LogicExpressionInfo.Operator, exp)
 	}
 	panic(nil)
 }
@@ -177,14 +186,14 @@ func constructConstExpression(literal any) *syntax.SingleExpression {
 }
 
 func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	exp.BitExpressionInfo.One = simplifyConstExpression(exp.BitExpressionInfo.One)
+	exp.BitExpressionInfo.One = SimplifyExpression(exp.BitExpressionInfo.One)
 	oneConst := exp.BitExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
 
 	if !oneConst {
 		return exp
 	}
 
-	exp.BitExpressionInfo.Two = simplifyConstExpression(exp.BitExpressionInfo.Two)
+	exp.BitExpressionInfo.Two = SimplifyExpression(exp.BitExpressionInfo.Two)
 	twoConst := exp.BitExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
 
 	if !twoConst {
@@ -196,10 +205,10 @@ func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpressio
 }
 
 func simplifyNumberCalExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	exp.NumberExpressionInfo.One = simplifyConstExpression(exp.NumberExpressionInfo.One)
+	exp.NumberExpressionInfo.One = SimplifyExpression(exp.NumberExpressionInfo.One)
 	oneConst := exp.NumberExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
 
-	exp.NumberExpressionInfo.Two = simplifyConstExpression(exp.NumberExpressionInfo.Two)
+	exp.NumberExpressionInfo.Two = SimplifyExpression(exp.NumberExpressionInfo.Two)
 	twoConst := exp.NumberExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
 
 	if !oneConst || !twoConst {

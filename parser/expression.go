@@ -6,7 +6,7 @@ import (
 )
 
 func ParseExpressionNode(node *AstNode) *syntax.SingleExpression {
-	return simplifyConstExpression(parseExpressionNodeInner(node))
+	return SimplifyExpression(parseExpressionNodeInner(node))
 }
 
 func parseExpressionNodeInner(node *AstNode) *syntax.SingleExpression {
