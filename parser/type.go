@@ -64,18 +64,8 @@ func parseTypeSpecifiers(specifiers []*AstNode, typ *syntax.Type) {
 			typ.MetaType = syntax.MetaTypeUserDefined
 		}
 	}
-	switch typ.MetaType {
-	case syntax.MetaTypeVoid:
-	case syntax.MetaTypeNumber:
+	if typ.MetaType == syntax.MetaTypeNumber {
 		typ.NumberMetaInfo = parseNumberRec(numRec)
-	case syntax.MetaTypeStruct:
-		// TODO struct declare
-	case syntax.MetaTypeUnion:
-		// TODO union declare
-	case syntax.MetaTypeEnum:
-		// TODO enum declare
-	default:
-
 	}
 }
 
