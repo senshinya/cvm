@@ -324,9 +324,9 @@ func printType(typ *syntax.Type) {
 			if sizeExp.ExpressionType == syntax.ExpressionTypeConst {
 				fmt.Printf("%+v ", sizeExp.Terminal.Literal)
 			}
-			if sizeExp.ExpressionType == syntax.ExpressionTypeTypeSize {
+			if sizeExp.ExpressionType == syntax.ExpressionTypeSizeOf {
 				fmt.Printf("( with the size of type (")
-				printType(&sizeExp.TypeSizeExpressionInfo.Type)
+				printType(&sizeExp.SizeOfExpressionInfo.Type)
 				fmt.Printf(") ) ")
 			}
 		}

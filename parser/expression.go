@@ -88,7 +88,7 @@ func parseExpressionNodeInner(node *AstNode) *syntax.SingleExpression {
 			ExpressionType: syntax.ExpressionTypeCast,
 			CastExpressionInfo: &syntax.CastExpressionInfo{
 				Type:   ParseTypeName(node.Children[1]),
-				Target: parseExpressionNodeInner(node.Children[3]),
+				Source: parseExpressionNodeInner(node.Children[3]),
 			},
 		}
 	case unary_expression:
@@ -153,10 +153,12 @@ func parsePostfix(node *AstNode) *syntax.SingleExpression {
 			StructAccessExpressionInfo: &syntax.StructAccessExpressionInfo{
 				Struct: parseExpressionNodeInner(node.Children[0]),
 				Field:  node.Children[1].Terminal.Lexeme,
+				Access: prod.Right[1],
 			},
 		}
 	}
 	// postfix_expression := LEFT_PARENTHESES type_name RIGHT_PARENTHESES LEFT_BRACES initializer_list RIGHT_BRACES
+	// TODO initializer_list
 	return &syntax.SingleExpression{
 		ExpressionType: syntax.ExpressionTypeConstruct,
 		ConstructExpressionInfo: &syntax.ConstructExpressionInfo{
@@ -170,13 +172,13 @@ func parseUnary(node *AstNode) *syntax.SingleExpression {
 	if len(prod.Right) == 4 {
 		// unary_expression := SIZEOF LEFT_PARENTHESES type_name RIGHT_PARENTHESES
 		return &syntax.SingleExpression{
-			ExpressionType: syntax.ExpressionTypeTypeSize,
-			TypeSizeExpressionInfo: &syntax.TypeSizeExpressionInfo{
+			ExpressionType: syntax.ExpressionTypeSizeOf,
+			SizeOfExpressionInfo: &syntax.SizeOfExpressionInfo{
 				Type: ParseTypeName(node.Children[2]),
 			},
 		}
 	}
-	if node.Children[0].Typ == unary_expression {
+	if prod.Right[0] == unary_operator {
 		// unary_expression := unary_operator cast_expression
 		return &syntax.SingleExpression{
 			ExpressionType: syntax.ExpressionTypeUnary,

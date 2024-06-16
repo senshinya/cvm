@@ -25,13 +25,21 @@ func SimplifyExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
 	case syntax.ExpressionTypeCast:
 		return simplifyCastExpression(exp)
 	case syntax.ExpressionTypeUnary:
-	case syntax.ExpressionTypeTypeSize:
+		return simplifyUnaryExpression(exp)
+	case syntax.ExpressionTypeSizeOf:
+		return simplifySizeOfExpression(exp)
 	case syntax.ExpressionTypeArrayAccess:
+		return simplifyArrayAccessExpression(exp)
 	case syntax.ExpressionTypeFunctionCall:
+		return simplifyFunctionCallExpression(exp)
 	case syntax.ExpressionTypeStructAccess:
+		return simplifyStructAccessExpression(exp)
 	case syntax.ExpressionTypePostfix:
+		return simplifyPostfixExpression(exp)
 	case syntax.ExpressionTypeConstruct:
+		return simplifyConstructExpression(exp)
 	case syntax.ExpressionTypeExpressions:
+		return simplifyExpressionsExpression(exp)
 	}
 	return exp
 }
@@ -88,7 +96,7 @@ func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 		return exp
 	}
 
-	oneLiteral, twoLiteral := exp.LogicExpressionInfo.One.Terminal.Literal, exp.LogicExpressionInfo.One.Terminal.Literal
+	oneLiteral, twoLiteral := exp.LogicExpressionInfo.One.Terminal.Literal, exp.LogicExpressionInfo.Two.Terminal.Literal
 
 	switch exp.LogicExpressionInfo.Operator {
 	case common.OR_OR:
@@ -102,9 +110,39 @@ func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 	panic(nil)
 }
 
+func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.BitExpressionInfo.One = SimplifyExpression(exp.BitExpressionInfo.One)
+	oneConst := exp.BitExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
+
+	exp.BitExpressionInfo.Two = SimplifyExpression(exp.BitExpressionInfo.Two)
+	twoConst := exp.BitExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
+
+	if !oneConst || !twoConst {
+		return exp
+	}
+
+	oneLiteral, twoLiteral := exp.BitExpressionInfo.One.Terminal.Literal, exp.BitExpressionInfo.Two.Terminal.Literal
+	return calTwoConstOperate(oneLiteral, twoLiteral, exp.BitExpressionInfo.Operator, exp)
+}
+
+func simplifyNumberCalExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.NumberExpressionInfo.One = SimplifyExpression(exp.NumberExpressionInfo.One)
+	oneConst := exp.NumberExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
+
+	exp.NumberExpressionInfo.Two = SimplifyExpression(exp.NumberExpressionInfo.Two)
+	twoConst := exp.NumberExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
+
+	if !oneConst || !twoConst {
+		return exp
+	}
+
+	oneLiteral, twoLiteral := exp.NumberExpressionInfo.One.Terminal.Literal, exp.NumberExpressionInfo.Two.Terminal.Literal
+	return calTwoConstOperate(oneLiteral, twoLiteral, exp.NumberExpressionInfo.Operator, exp)
+}
+
 func simplifyCastExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	exp.CastExpressionInfo.Target = SimplifyExpression(exp.CastExpressionInfo.Target)
-	if exp.CastExpressionInfo.Target.ExpressionType != syntax.ExpressionTypeConst {
+	exp.CastExpressionInfo.Source = SimplifyExpression(exp.CastExpressionInfo.Source)
+	if exp.CastExpressionInfo.Source.ExpressionType != syntax.ExpressionTypeConst {
 		return exp
 	}
 
@@ -113,29 +151,194 @@ func simplifyCastExpression(exp *syntax.SingleExpression) *syntax.SingleExpressi
 		return exp
 	}
 
-	literal := exp.CastExpressionInfo.Target.Terminal.Literal
+	literal := exp.CastExpressionInfo.Source.Terminal.Literal
 	if _, ok := literal.(string); ok {
 		return exp
 	}
 
-	return castNumberConst(exp.CastExpressionInfo.Target.Terminal.Literal, info.Type.NumberMetaInfo)
+	return castNumberConst(exp.CastExpressionInfo.Source.Terminal.Literal, info.Type.NumberMetaInfo)
+}
+
+func simplifyUnaryExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.UnaryExpressionInfo.Target = SimplifyExpression(exp.UnaryExpressionInfo.Target)
+	return exp
+}
+
+func simplifySizeOfExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	return exp
+}
+
+func simplifyArrayAccessExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.ArrayAccessExpressionInfo.Array = SimplifyExpression(exp.ArrayAccessExpressionInfo.Array)
+	exp.ArrayAccessExpressionInfo.Target = SimplifyExpression(exp.ArrayAccessExpressionInfo.Target)
+	return exp
+}
+
+func simplifyFunctionCallExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.FunctionCallExpressionInfo.Function = SimplifyExpression(exp.FunctionCallExpressionInfo.Function)
+	return exp
+}
+
+func simplifyStructAccessExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.StructAccessExpressionInfo.Struct = SimplifyExpression(exp.StructAccessExpressionInfo.Struct)
+	return exp
+}
+
+func simplifyPostfixExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	exp.PostfixExpressionInfo.Target = SimplifyExpression(exp.PostfixExpressionInfo.Target)
+	return exp
+}
+
+func simplifyConstructExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	return exp
+}
+
+func simplifyExpressionsExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+	var res []*syntax.SingleExpression
+	for _, singleExpression := range exp.Expressions {
+		res = append(res, SimplifyExpression(singleExpression))
+	}
+	exp.Expressions = res
+	return exp
 }
 
 func castNumberConst(origin any, numberType *syntax.NumberMetaInfo) *syntax.SingleExpression {
-	// TODO
-	return nil
+	switch numberType.BaseNumType {
+	case syntax.BaseNumTypeChar:
+		if numberType.Signed {
+			return &syntax.SingleExpression{
+				ExpressionType: syntax.ExpressionTypeConst,
+				Terminal: &common.Token{
+					Typ:     common.INTEGER_CONSTANT,
+					Literal: convNumConstToInt8(origin),
+				},
+			}
+		}
+		return &syntax.SingleExpression{
+			ExpressionType: syntax.ExpressionTypeConst,
+			Terminal: &common.Token{
+				Typ:     common.INTEGER_CONSTANT,
+				Literal: convNumConstToUint8(origin),
+			},
+		}
+	case syntax.BaseNumTypeShort:
+		if numberType.Signed {
+			return &syntax.SingleExpression{
+				ExpressionType: syntax.ExpressionTypeConst,
+				Terminal: &common.Token{
+					Typ:     common.INTEGER_CONSTANT,
+					Literal: convNumConstToInt16(origin),
+				},
+			}
+		}
+		return &syntax.SingleExpression{
+			ExpressionType: syntax.ExpressionTypeConst,
+			Terminal: &common.Token{
+				Typ:     common.INTEGER_CONSTANT,
+				Literal: convNumConstToUint16(origin),
+			},
+		}
+	case syntax.BaseNumTypeInt:
+		if numberType.Signed {
+			return &syntax.SingleExpression{
+				ExpressionType: syntax.ExpressionTypeConst,
+				Terminal: &common.Token{
+					Typ:     common.INTEGER_CONSTANT,
+					Literal: convNumConstToInt32(origin),
+				},
+			}
+		}
+		return &syntax.SingleExpression{
+			ExpressionType: syntax.ExpressionTypeConst,
+			Terminal: &common.Token{
+				Typ:     common.INTEGER_CONSTANT,
+				Literal: convNumConstToUint32(origin),
+			},
+		}
+	case syntax.BaseNumTypeLong:
+		if numberType.Signed {
+			return &syntax.SingleExpression{
+				ExpressionType: syntax.ExpressionTypeConst,
+				Terminal: &common.Token{
+					Typ:     common.INTEGER_CONSTANT,
+					Literal: convNumConstToInt64(origin),
+				},
+			}
+		}
+		return &syntax.SingleExpression{
+			ExpressionType: syntax.ExpressionTypeConst,
+			Terminal: &common.Token{
+				Typ:     common.INTEGER_CONSTANT,
+				Literal: convNumConstToUint64(origin),
+			},
+		}
+	case syntax.BaseNumTypeFloat:
+		return &syntax.SingleExpression{
+			ExpressionType: syntax.ExpressionTypeConst,
+			Terminal: &common.Token{
+				Typ:     common.FLOATING_CONSTANT,
+				Literal: convNumConstToFloat32(origin),
+			},
+		}
+	case syntax.BaseNumTypeDouble:
+		return &syntax.SingleExpression{
+			ExpressionType: syntax.ExpressionTypeConst,
+			Terminal: &common.Token{
+				Typ:     common.FLOATING_CONSTANT,
+				Literal: convNumConstToFloat64(origin),
+			},
+		}
+	case syntax.BaseNumTypeBool:
+		if cConstToBool(origin) {
+			return constructTrueExpression()
+		}
+		return constructFalseExpression()
+	case syntax.BaseNumTypeLongLong:
+		if numberType.Signed {
+			return &syntax.SingleExpression{
+				ExpressionType: syntax.ExpressionTypeConst,
+				Terminal: &common.Token{
+					Typ:     common.INTEGER_CONSTANT,
+					Literal: convNumConstToInt64(origin),
+				},
+			}
+		}
+		return &syntax.SingleExpression{
+			ExpressionType: syntax.ExpressionTypeConst,
+			Terminal: &common.Token{
+				Typ:     common.INTEGER_CONSTANT,
+				Literal: convNumConstToUint64(origin),
+			},
+		}
+	case syntax.BaseNumTypeLongDouble:
+		return &syntax.SingleExpression{
+			ExpressionType: syntax.ExpressionTypeConst,
+			Terminal: &common.Token{
+				Typ:     common.FLOATING_CONSTANT,
+				Literal: convNumConstToFloat64(origin),
+			},
+		}
+	default:
+		panic("Impossible")
+	}
 }
 
 func cConstToBool(num any) bool {
 	switch num.(type) {
 	case string:
 		return true
-	case byte:
-		return num.(byte) != 0
+	case int8:
+		return num.(int8) != 0
+	case int16:
+		return num.(int16) != 0
 	case int32:
 		return num.(int32) != 0
 	case int64:
 		return num.(int64) != 0
+	case uint8:
+		return num.(uint8) != 0
+	case uint16:
+		return num.(uint16) != 0
 	case uint32:
 		return num.(uint32) != 0
 	case uint64:
@@ -183,40 +386,6 @@ func constructConstExpression(literal any) *syntax.SingleExpression {
 			Literal: literal,
 		},
 	}
-}
-
-func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	exp.BitExpressionInfo.One = SimplifyExpression(exp.BitExpressionInfo.One)
-	oneConst := exp.BitExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
-
-	if !oneConst {
-		return exp
-	}
-
-	exp.BitExpressionInfo.Two = SimplifyExpression(exp.BitExpressionInfo.Two)
-	twoConst := exp.BitExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
-
-	if !twoConst {
-		return exp
-	}
-
-	oneLiteral, twoLiteral := exp.BitExpressionInfo.One.Terminal.Literal, exp.BitExpressionInfo.One.Terminal.Literal
-	return calTwoConstOperate(oneLiteral, twoLiteral, exp.BitExpressionInfo.Operator, exp)
-}
-
-func simplifyNumberCalExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	exp.NumberExpressionInfo.One = SimplifyExpression(exp.NumberExpressionInfo.One)
-	oneConst := exp.NumberExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
-
-	exp.NumberExpressionInfo.Two = SimplifyExpression(exp.NumberExpressionInfo.Two)
-	twoConst := exp.NumberExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
-
-	if !oneConst || !twoConst {
-		return exp
-	}
-
-	oneLiteral, twoLiteral := exp.NumberExpressionInfo.One.Terminal.Literal, exp.NumberExpressionInfo.Two.Terminal.Literal
-	return calTwoConstOperate(oneLiteral, twoLiteral, exp.NumberExpressionInfo.Operator, exp)
 }
 
 func calTwoConstOperate(one, two any, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
@@ -403,13 +572,21 @@ func convNumConstToFloat64(one any) float64 {
 		return float64(one.(uint32))
 	case int32:
 		return float64(one.(int32))
+	case uint16:
+		return float64(one.(uint16))
+	case int16:
+		return float64(one.(int16))
+	case uint8:
+		return float64(one.(uint8))
 	default:
-		return float64(one.(byte)) // last is byte
+		return float64(one.(int8))
 	}
 }
 
 func convNumConstToFloat32(one any) float32 {
 	switch one.(type) {
+	case float64:
+		return float32(one.(float64))
 	case float32:
 		return one.(float32)
 	case uint64:
@@ -420,13 +597,23 @@ func convNumConstToFloat32(one any) float32 {
 		return float32(one.(uint32))
 	case int32:
 		return float32(one.(int32))
+	case uint16:
+		return float32(one.(uint16))
+	case int16:
+		return float32(one.(int16))
+	case uint8:
+		return float32(one.(uint8))
 	default:
-		return float32(one.(byte)) // last is byte
+		return float32(one.(int8))
 	}
 }
 
 func convNumConstToUint64(one any) uint64 {
 	switch one.(type) {
+	case float64:
+		return uint64(one.(float64))
+	case float32:
+		return uint64(one.(float32))
 	case uint64:
 		return one.(uint64)
 	case int64:
@@ -435,40 +622,188 @@ func convNumConstToUint64(one any) uint64 {
 		return uint64(one.(uint32))
 	case int32:
 		return uint64(one.(int32))
+	case uint16:
+		return uint64(one.(uint16))
+	case int16:
+		return uint64(one.(int16))
+	case uint8:
+		return uint64(one.(uint8))
 	default:
-		return uint64(one.(byte)) // last is byte
+		return uint64(one.(int8))
 	}
 }
 
 func convNumConstToInt64(one any) int64 {
 	switch one.(type) {
+	case float64:
+		return int64(one.(float64))
+	case float32:
+		return int64(one.(float32))
+	case uint64:
+		return int64(one.(uint64))
 	case int64:
 		return one.(int64)
 	case uint32:
 		return int64(one.(uint32))
 	case int32:
 		return int64(one.(int32))
+	case uint16:
+		return int64(one.(uint16))
+	case int16:
+		return int64(one.(int16))
+	case uint8:
+		return int64(one.(uint8))
 	default:
-		return int64(one.(byte)) // last is byte
+		return int64(one.(int8))
 	}
 }
 
 func convNumConstToUint32(one any) uint32 {
 	switch one.(type) {
+	case float64:
+		return uint32(one.(float64))
+	case float32:
+		return uint32(one.(float32))
+	case uint64:
+		return uint32(one.(uint64))
+	case int64:
+		return uint32(one.(int64))
 	case uint32:
 		return one.(uint32)
 	case int32:
 		return uint32(one.(int32))
+	case uint16:
+		return uint32(one.(uint16))
+	case int16:
+		return uint32(one.(int16))
+	case uint8:
+		return uint32(one.(uint8))
 	default:
-		return uint32(one.(byte)) // last is byte
+		return uint32(one.(int8))
 	}
 }
 
 func convNumConstToInt32(one any) int32 {
 	switch one.(type) {
+	case float64:
+		return int32(one.(float64))
+	case float32:
+		return int32(one.(float32))
+	case uint64:
+		return int32(one.(uint64))
+	case int64:
+		return int32(one.(int64))
+	case uint32:
+		return int32(one.(uint32))
 	case int32:
 		return one.(int32)
+	case uint16:
+		return int32(one.(uint16))
+	case int16:
+		return int32(one.(int16))
+	case uint8:
+		return int32(one.(uint8))
 	default:
-		return int32(one.(byte)) // last is byte
+		return int32(one.(int8))
+	}
+}
+
+func convNumConstToUint16(one any) uint16 {
+	switch one.(type) {
+	case float64:
+		return uint16(one.(float64))
+	case float32:
+		return uint16(one.(float32))
+	case uint64:
+		return uint16(one.(uint64))
+	case int64:
+		return uint16(one.(int64))
+	case uint32:
+		return uint16(one.(uint32))
+	case int32:
+		return uint16(one.(int32))
+	case uint16:
+		return one.(uint16)
+	case int16:
+		return uint16(one.(int16))
+	case uint8:
+		return uint16(one.(uint8))
+	default:
+		return uint16(one.(int8))
+	}
+}
+
+func convNumConstToInt16(one any) int16 {
+	switch one.(type) {
+	case float64:
+		return int16(one.(float64))
+	case float32:
+		return int16(one.(float32))
+	case uint64:
+		return int16(one.(uint64))
+	case int64:
+		return int16(one.(int64))
+	case uint32:
+		return int16(one.(uint32))
+	case int32:
+		return int16(one.(int32))
+	case uint16:
+		return int16(one.(uint16))
+	case int16:
+		return one.(int16)
+	case uint8:
+		return int16(one.(uint8))
+	default:
+		return int16(one.(int8))
+	}
+}
+
+func convNumConstToUint8(one any) uint8 {
+	switch one.(type) {
+	case float64:
+		return uint8(one.(float64))
+	case float32:
+		return uint8(one.(float32))
+	case uint64:
+		return uint8(one.(uint64))
+	case int64:
+		return uint8(one.(int64))
+	case uint32:
+		return uint8(one.(uint32))
+	case int32:
+		return uint8(one.(int32))
+	case uint16:
+		return uint8(one.(uint16))
+	case int16:
+		return uint8(one.(int16))
+	case uint8:
+		return one.(uint8)
+	default:
+		return uint8(one.(int8))
+	}
+}
+
+func convNumConstToInt8(one any) int8 {
+	switch one.(type) {
+	case float64:
+		return int8(one.(float64))
+	case float32:
+		return int8(one.(float32))
+	case uint64:
+		return int8(one.(uint64))
+	case int64:
+		return int8(one.(int64))
+	case uint32:
+		return int8(one.(uint32))
+	case int32:
+		return int8(one.(int32))
+	case uint16:
+		return int8(one.(uint16))
+	case int16:
+		return int8(one.(int16))
+	case uint8:
+		return int8(one.(uint8))
+	default:
+		return one.(int8)
 	}
 }
