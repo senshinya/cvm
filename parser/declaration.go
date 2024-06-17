@@ -5,9 +5,10 @@ import (
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/entity"
+	"shinya.click/cvm/parser/glr"
 )
 
-func parseDeclaration(root *AstNode) (entity.TranslationUnit, error) {
+func parseDeclaration(root *entity.AstNode) (entity.TranslationUnit, error) {
 	res := &entity.Declaration{}
 
 	// parse specifiers
@@ -21,7 +22,7 @@ func parseDeclaration(root *AstNode) (entity.TranslationUnit, error) {
 	res.Specifiers = specifiers
 	res.MidType = midType
 
-	if len(productions[root.ProdIndex].Right) == 2 {
+	if len(glr.Productions[root.ProdIndex].Right) == 2 {
 		// reduced by declaration := declaration_specifiers SEMICOLON
 		// this production can only declare struct, union or enum
 		// otherwise "declaration does not declare anything" occurs
@@ -43,15 +44,15 @@ func parseDeclaration(root *AstNode) (entity.TranslationUnit, error) {
 	return res, nil
 }
 
-func parseDeclarationSpecifiers(specifiersNode *AstNode) (entity.Specifiers, entity.Type, error) {
+func parseDeclarationSpecifiers(specifiersNode *entity.AstNode) (entity.Specifiers, entity.Type, error) {
 	specifiers, midType := entity.Specifiers{}, entity.Type{}
 
 	specifierNodes := flattenDeclarationSpecifier(specifiersNode)
 
 	// parse storage class specifier
-	storagesSpecifiers := funk.Filter(specifierNodes, func(specifier *AstNode) bool {
-		return specifier.Typ == storage_class_specifier
-	}).([]*AstNode)
+	storagesSpecifiers := funk.Filter(specifierNodes, func(specifier *entity.AstNode) bool {
+		return specifier.Typ == glr.StorageClassSpecifier
+	}).([]*entity.AstNode)
 	for _, storagesSpecifier := range storagesSpecifiers {
 		parseStorageClassSpecifier(storagesSpecifier, &specifiers)
 	}
@@ -61,18 +62,18 @@ func parseDeclarationSpecifiers(specifiersNode *AstNode) (entity.Specifiers, ent
 
 	// parse type specifier and qualifiers
 	midType = parseTypeSpecifiersAndQualifiers(
-		funk.Filter(specifierNodes, func(specifier *AstNode) bool {
-			return specifier.Typ == type_specifier
-		}).([]*AstNode),
-		funk.Filter(specifierNodes, func(specifier *AstNode) bool {
-			return specifier.Typ == type_qualifier
-		}).([]*AstNode),
+		funk.Filter(specifierNodes, func(specifier *entity.AstNode) bool {
+			return specifier.Typ == glr.TypeSpecifier
+		}).([]*entity.AstNode),
+		funk.Filter(specifierNodes, func(specifier *entity.AstNode) bool {
+			return specifier.Typ == glr.TypeQualifier
+		}).([]*entity.AstNode),
 	)
 
 	// parse function specifier
-	functionSpecifiers := funk.Filter(specifierNodes, func(specifier *AstNode) bool {
-		return specifier.Typ == function_specifier
-	}).([]*AstNode)
+	functionSpecifiers := funk.Filter(specifierNodes, func(specifier *entity.AstNode) bool {
+		return specifier.Typ == glr.FunctionSpecifier
+	}).([]*entity.AstNode)
 	if len(functionSpecifiers) != 0 {
 		specifiers.Inline = true
 	}
@@ -85,7 +86,7 @@ func checkStorageClassSpecifiers(specifiers entity.Specifiers) error {
 	return nil
 }
 
-func parseStorageClassSpecifier(storageSpecifier *AstNode, spe *entity.Specifiers) {
+func parseStorageClassSpecifier(storageSpecifier *entity.AstNode, spe *entity.Specifiers) {
 	n := storageSpecifier.Children[0]
 	switch n.Typ {
 	case common.TYPEDEF:
@@ -101,15 +102,15 @@ func parseStorageClassSpecifier(storageSpecifier *AstNode, spe *entity.Specifier
 	}
 }
 
-func flattenDeclarationSpecifier(specifiers *AstNode) []*AstNode {
-	if len(productions[specifiers.ProdIndex].Right) == 1 {
-		return []*AstNode{specifiers.Children[0]}
+func flattenDeclarationSpecifier(specifiers *entity.AstNode) []*entity.AstNode {
+	if len(glr.Productions[specifiers.ProdIndex].Right) == 1 {
+		return []*entity.AstNode{specifiers.Children[0]}
 	}
 
 	return append(flattenDeclarationSpecifier(specifiers.Children[1]), specifiers.Children[0])
 }
 
-func parseInitDeclarators(declarators *AstNode, midType entity.Type) ([]entity.Declarator, error) {
+func parseInitDeclarators(declarators *entity.AstNode, midType entity.Type) ([]entity.Declarator, error) {
 	var res []entity.Declarator
 	initDeclarators := flattenInitDeclarators(declarators)
 	for _, initDeclarator := range initDeclarators {
@@ -120,7 +121,7 @@ func parseInitDeclarators(declarators *AstNode, midType entity.Type) ([]entity.D
 		}
 		res = append(res, declare)
 
-		if len(productions[initDeclarator.ProdIndex].Right) != 3 {
+		if len(glr.Productions[initDeclarator.ProdIndex].Right) != 3 {
 			continue
 		}
 
@@ -129,22 +130,22 @@ func parseInitDeclarators(declarators *AstNode, midType entity.Type) ([]entity.D
 	return res, nil
 }
 
-func flattenInitDeclarators(declarators *AstNode) []*AstNode {
-	if len(productions[declarators.ProdIndex].Right) == 1 {
-		return []*AstNode{declarators.Children[0]}
+func flattenInitDeclarators(declarators *entity.AstNode) []*entity.AstNode {
+	if len(glr.Productions[declarators.ProdIndex].Right) == 1 {
+		return []*entity.AstNode{declarators.Children[0]}
 	}
 
 	return append(flattenInitDeclarators(declarators.Children[0]), declarators.Children[2])
 }
 
-func parseDeclarator(root *AstNode, midType entity.Type) (entity.Declarator, error) {
+func parseDeclarator(root *entity.AstNode, midType entity.Type) (entity.Declarator, error) {
 	res := entity.Declarator{}
 
 	// 1. find the most inner direct_declarator node that contains only IDENTIFIER
 	currentNode := root
 	for {
-		if currentNode.Typ == declarator {
-			if len(productions[currentNode.ProdIndex].Right) == 2 {
+		if currentNode.Typ == glr.Declarator {
+			if len(glr.Productions[currentNode.ProdIndex].Right) == 2 {
 				// reduced by declarator := pointer direct_declarator
 				currentNode = currentNode.Children[1]
 				continue
@@ -153,7 +154,7 @@ func parseDeclarator(root *AstNode, midType entity.Type) (entity.Declarator, err
 			continue
 		}
 		// current node type is direct_declarator
-		if len(productions[currentNode.ProdIndex].Right) == 1 {
+		if len(glr.Productions[currentNode.ProdIndex].Right) == 1 {
 			// gotcha
 			break
 		}
@@ -171,8 +172,8 @@ func parseDeclarator(root *AstNode, midType entity.Type) (entity.Declarator, err
 		if currentNode == root.Parent {
 			break
 		}
-		prod := productions[currentNode.ProdIndex]
-		if currentNode.Typ == declarator {
+		prod := glr.Productions[currentNode.ProdIndex]
+		if currentNode.Typ == glr.Declarator {
 			if len(prod.Right) == 1 {
 				// declarator := direct_declarator
 				currentNode = currentNode.Parent
@@ -214,13 +215,13 @@ func parseDeclarator(root *AstNode, midType entity.Type) (entity.Declarator, err
 	return res, nil
 }
 
-func parsePointer(rootPointer *AstNode, currentType *entity.Type) *entity.Type {
+func parsePointer(rootPointer *entity.AstNode, currentType *entity.Type) *entity.Type {
 	// find the most inner pointer
 	currentPointer := rootPointer
 	for {
-		prod := productions[rootPointer.ProdIndex]
+		prod := glr.Productions[rootPointer.ProdIndex]
 		if len(prod.Right) == 1 ||
-			(len(prod.Right) == 2 && rootPointer.Children[1].Typ == type_qualifier_list) {
+			(len(prod.Right) == 2 && rootPointer.Children[1].Typ == glr.TypeQualifierList) {
 			// gotcha
 			break
 		}
@@ -238,9 +239,9 @@ func parsePointer(rootPointer *AstNode, currentType *entity.Type) *entity.Type {
 		}
 		currentType.MetaType = entity.MetaTypePointer
 		currentType.PointerInnerType = &entity.Type{}
-		prod := productions[currentPointer.ProdIndex]
+		prod := glr.Productions[currentPointer.ProdIndex]
 		if len(prod.Right) == 1 ||
-			(len(prod.Right) == 2 && currentPointer.Children[1].Typ == pointer) {
+			(len(prod.Right) == 2 && currentPointer.Children[1].Typ == glr.Pointer) {
 			currentType = currentType.PointerInnerType
 			currentPointer = currentPointer.Parent
 			continue
@@ -260,20 +261,20 @@ func parsePointer(rootPointer *AstNode, currentType *entity.Type) *entity.Type {
 	return currentType
 }
 
-func flattenTypeQualifierList(listNode *AstNode) []*AstNode {
+func flattenTypeQualifierList(listNode *entity.AstNode) []*entity.AstNode {
 	if len(listNode.Children) == 1 {
-		return []*AstNode{listNode.Children[0]}
+		return []*entity.AstNode{listNode.Children[0]}
 	}
 	return append(flattenTypeQualifierList(listNode.Children[0]), listNode.Children[1])
 }
 
-func parseArrayMetaInfo(arrayNode *AstNode) *entity.ArrayMetaInfo {
+func parseArrayMetaInfo(arrayNode *entity.AstNode) *entity.ArrayMetaInfo {
 	res := &entity.ArrayMetaInfo{InnerType: &entity.Type{}}
-	prod := productions[arrayNode.ProdIndex]
+	prod := glr.Productions[arrayNode.ProdIndex]
 	for i := 0; i < len(prod.Right); i++ {
 		child := arrayNode.Children[i]
-		if child.Typ == direct_abstract_declarator ||
-			child.Typ == direct_declarator {
+		if child.Typ == glr.DirectAbstractDeclarator ||
+			child.Typ == glr.DirectDeclarator {
 			continue
 		}
 		if child.Typ == common.LEFT_BRACKETS ||
@@ -288,7 +289,7 @@ func parseArrayMetaInfo(arrayNode *AstNode) *entity.ArrayMetaInfo {
 			res.Asterisk = true
 			continue
 		}
-		if child.Typ == type_qualifier_list {
+		if child.Typ == glr.TypeQualifierList {
 			parseTypeQualifiers(flattenTypeQualifierList(child), &res.TypeQualifiers)
 			continue
 		}

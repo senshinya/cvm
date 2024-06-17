@@ -3,16 +3,17 @@ package parser
 import (
 	"errors"
 	"shinya.click/cvm/parser/entity"
+	"shinya.click/cvm/parser/glr"
 )
 
-func parseTypeDef(root *AstNode, specifiers entity.Specifiers, midType entity.Type) (entity.TranslationUnit, error) {
+func parseTypeDef(root *entity.AstNode, specifiers entity.Specifiers, midType entity.Type) (entity.TranslationUnit, error) {
 	var err error
 	if err = checkTypeDefSpecifiers(specifiers); err != nil {
 		return nil, err
 	}
 
 	res := &entity.TypeDef{MidType: midType}
-	if len(productions[root.ProdIndex].Right) == 2 {
+	if len(glr.Productions[root.ProdIndex].Right) == 2 {
 		// reduced by declaration := declaration_specifiers SEMICOLON
 		// this production can only declare struct, union or enum
 		// otherwise "declaration does not declare anything" occurs

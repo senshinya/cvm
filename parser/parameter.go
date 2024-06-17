@@ -3,18 +3,19 @@ package parser
 import (
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/entity"
+	"shinya.click/cvm/parser/glr"
 )
 
-func parseFunctionMetaInfo(node *AstNode) *entity.FunctionMetaInfo {
+func parseFunctionMetaInfo(node *entity.AstNode) *entity.FunctionMetaInfo {
 	res := &entity.FunctionMetaInfo{ReturnType: &entity.Type{}}
-	prod := productions[node.ProdIndex]
+	prod := glr.Productions[node.ProdIndex]
 	switch node.Typ {
-	case direct_declarator:
+	case glr.DirectDeclarator:
 		if len(prod.Right) == 3 {
 			// reduced by direct_declarator := direct_declarator LEFT_PARENTHESES RIGHT_PARENTHESES
 			return res
 		}
-		if prod.Right[2] == parameter_type_list {
+		if prod.Right[2] == glr.ParameterTypeList {
 			params, variadic := parseParameterTypeList(node.Children[2])
 			res.Parameters = params
 			res.Variadic = variadic
@@ -23,7 +24,7 @@ func parseFunctionMetaInfo(node *AstNode) *entity.FunctionMetaInfo {
 		// identifier_list
 		res.IdentifierList = parseIdentifierList(node.Children[2])
 		return res
-	case direct_abstract_declarator:
+	case glr.DirectAbstractDeclarator:
 		if prod.Right[0] == common.LEFT_PARENTHESES {
 			if len(prod.Right) == 2 {
 				// reduced by direct_abstract_declarator := LEFT_PARENTHESES RIGHT_PARENTHESES
@@ -45,10 +46,10 @@ func parseFunctionMetaInfo(node *AstNode) *entity.FunctionMetaInfo {
 	panic("unreachable")
 }
 
-func parseParameterTypeList(node *AstNode) ([]*entity.FunctionParameter, bool) {
+func parseParameterTypeList(node *entity.AstNode) ([]*entity.FunctionParameter, bool) {
 	variadic := false
 
-	prod := productions[node.ProdIndex]
+	prod := glr.Productions[node.ProdIndex]
 	if len(prod.Right) == 3 {
 		variadic = true
 	}
@@ -67,29 +68,28 @@ func parseParameterTypeList(node *AstNode) ([]*entity.FunctionParameter, bool) {
 	return params, variadic
 }
 
-func parseParamDeclare(paramDeclare *AstNode) *entity.FunctionParameter {
+func parseParamDeclare(paramDeclare *entity.AstNode) *entity.FunctionParameter {
 	res := &entity.FunctionParameter{}
 
-	tmp := &entity.Declaration{}
-	isTypeDef, err := parseDeclarationSpecifiers(paramDeclare.Children[0], tmp)
-	if isTypeDef {
-		panic("type def should not appear in parameter declaration")
-	}
+	specifiers, midType, err := parseDeclarationSpecifiers(paramDeclare.Children[0])
 	if err != nil {
 		panic(err)
 	}
-	res.Specifiers = tmp.Specifiers
+	if specifiers.TypeDef {
+		panic("type def should not appear in parameter declaration")
+	}
+	res.Specifiers = specifiers
 
-	prod := productions[paramDeclare.ProdIndex]
+	prod := glr.Productions[paramDeclare.ProdIndex]
 	if len(prod.Right) == 1 {
 		// parameter_declaration := declaration_specifiers
-		res.Type = tmp.MidType
+		res.Type = midType
 		return res
 	}
 
-	if prod.Right[1] == declarator {
+	if prod.Right[1] == glr.Declarator {
 		// parameter_declaration := declaration_specifiers declarator
-		declare, err := parseDeclarator(paramDeclare.Children[1], tmp.MidType)
+		declare, err := parseDeclarator(paramDeclare.Children[1], midType)
 		if err != nil {
 			panic(err)
 		}
@@ -98,21 +98,21 @@ func parseParamDeclare(paramDeclare *AstNode) *entity.FunctionParameter {
 		return res
 	}
 	// parameter_declaration := declaration_specifiers abstract_declarator
-	res.Type = ParseAbstractDeclarator(paramDeclare.Children[1], tmp.MidType)
+	res.Type = ParseAbstractDeclarator(paramDeclare.Children[1], midType)
 	return res
 }
 
-func flattenParameterList(parameterList *AstNode) []*AstNode {
-	prod := productions[parameterList.ProdIndex]
+func flattenParameterList(parameterList *entity.AstNode) []*entity.AstNode {
+	prod := glr.Productions[parameterList.ProdIndex]
 	if len(prod.Right) == 1 {
-		return []*AstNode{parameterList.Children[0]}
+		return []*entity.AstNode{parameterList.Children[0]}
 	}
 
 	return append(flattenParameterList(parameterList.Children[0]), parameterList.Children[2])
 }
 
-func parseIdentifierList(node *AstNode) []string {
-	prod := productions[node.ProdIndex]
+func parseIdentifierList(node *entity.AstNode) []string {
+	prod := glr.Productions[node.ProdIndex]
 	if len(prod.Right) == 1 {
 		return []string{node.Children[0].Terminal.Lexeme}
 	}

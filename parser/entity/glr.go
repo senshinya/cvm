@@ -1,4 +1,4 @@
-package parser
+package entity
 
 import "shinya.click/cvm/common"
 

@@ -6,15 +6,16 @@ import (
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/entity"
+	"shinya.click/cvm/parser/glr"
 	"strings"
 )
 
 type Parser struct {
 	Tokens           []common.Token
 	TokenIndex       int
-	AST              *AstNode
+	AST              *entity.AstNode
 	StateStack       *Stack[int]
-	SymbolStack      *Stack[*AstNode]
+	SymbolStack      *Stack[*entity.AstNode]
 	CheckPointStack  *Stack[*CheckPoint]
 	TranslationUnits []entity.TranslationUnit
 }
@@ -27,7 +28,7 @@ type CheckPoint struct {
 	TokenIndex       int
 	ChooseIndex      int
 	StateStackSnap   []int
-	SymbolStackSnap  []*AstNode
+	SymbolStackSnap  []*entity.AstNode
 	TranslationUnits []entity.TranslationUnit
 }
 
@@ -38,7 +39,7 @@ func (p *Parser) Parse() error {
 
 	p.TokenIndex = 0
 	p.StateStack = NewStack[int]()
-	p.SymbolStack = NewStack[*AstNode]()
+	p.SymbolStack = NewStack[*entity.AstNode]()
 	p.CheckPointStack = NewStack[*CheckPoint]()
 	p.TranslationUnits = []entity.TranslationUnit{}
 
@@ -58,7 +59,7 @@ func (p *Parser) Parse() error {
 			continue
 		}
 
-		ops, ok := lalrAction[state][token.Typ]
+		ops, ok := glr.LalrAction[state][token.Typ]
 		if !ok {
 			chooseOp = p.restore()
 			continue
@@ -71,9 +72,9 @@ func (p *Parser) Parse() error {
 			p.addCheckPoint(chooseOp)
 		}
 		op := ops[chooseOp]
-		if op.OperatorType == ACC {
-			prod := productions[op.ReduceIndex]
-			var rights []*AstNode
+		if op.OperatorType == entity.ACC {
+			prod := glr.Productions[op.ReduceIndex]
+			var rights []*entity.AstNode
 			for i := 0; i < len(prod.Right); i++ {
 				p.StateStack.Pop()
 				sym, ok := p.SymbolStack.Pop()
@@ -83,22 +84,22 @@ func (p *Parser) Parse() error {
 				}
 				rights = append(rights, sym)
 			}
-			newSym := &AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
-			newSym.SetChildren(funk.Reverse(rights).([]*AstNode))
+			newSym := &entity.AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
+			newSym.SetChildren(funk.Reverse(rights).([]*entity.AstNode))
 			p.SymbolStack.Push(newSym)
 			break
 		}
 		switch op.OperatorType {
-		case SHIFT:
+		case entity.SHIFT:
 			p.StateStack.Push(op.StateIndex)
-			p.SymbolStack.Push(&AstNode{
+			p.SymbolStack.Push(&entity.AstNode{
 				Typ:      token.Typ,
 				Terminal: &token,
 			})
 			p.TokenIndex++
-		case REDUCE:
-			prod := productions[op.ReduceIndex]
-			var rights []*AstNode
+		case entity.REDUCE:
+			prod := glr.Productions[op.ReduceIndex]
+			var rights []*entity.AstNode
 			for i := 0; i < len(prod.Right); i++ {
 				p.StateStack.Pop()
 				sym, ok := p.SymbolStack.Pop()
@@ -108,12 +109,12 @@ func (p *Parser) Parse() error {
 				}
 				rights = append(rights, sym)
 			}
-			newSym := &AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
-			newSym.SetChildren(funk.Reverse(rights).([]*AstNode))
+			newSym := &entity.AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
+			newSym.SetChildren(funk.Reverse(rights).([]*entity.AstNode))
 			p.SymbolStack.Push(newSym)
 
-			if prod.Left == translation_unit {
-				printAST(newSym, 0)
+			if prod.Left == glr.TranslationUnit {
+				//printAST(newSym, 0)
 				err := p.parseTranslationUnit(newSym)
 				if err != nil {
 					chooseOp = p.restore()
@@ -126,7 +127,7 @@ func (p *Parser) Parse() error {
 				chooseOp = p.restore()
 				continue
 			}
-			gotoState, ok := lalrGoto[nowHeadState][newSym.Typ]
+			gotoState, ok := glr.LalrGoto[nowHeadState][newSym.Typ]
 			if !ok {
 				chooseOp = p.restore()
 				continue
@@ -163,9 +164,9 @@ func (p *Parser) addCheckPoint(chooseOp int) {
 	p.CheckPointStack.Push(&cp)
 }
 
-func deepCopyAstNodeSlice(origins []*AstNode) []*AstNode {
+func deepCopyAstNodeSlice(origins []*entity.AstNode) []*entity.AstNode {
 	// due to a node contains parent and children, it cannot be deepcopy.Copy(), or stack overflow
-	var res []*AstNode
+	var res []*entity.AstNode
 	for _, origin := range origins {
 		res = append(res, copyAstNode(origin))
 	}
@@ -175,8 +176,8 @@ func deepCopyAstNodeSlice(origins []*AstNode) []*AstNode {
 	return res
 }
 
-func copyAstNode(origin *AstNode) *AstNode {
-	root := &AstNode{
+func copyAstNode(origin *entity.AstNode) *entity.AstNode {
+	root := &entity.AstNode{
 		Typ:       origin.Typ,
 		Terminal:  origin.Terminal,
 		ProdIndex: origin.ProdIndex,
@@ -187,7 +188,7 @@ func copyAstNode(origin *AstNode) *AstNode {
 	return root
 }
 
-func fillAstParent(node *AstNode, parent *AstNode) {
+func fillAstParent(node *entity.AstNode, parent *entity.AstNode) {
 	node.Parent = parent
 	for _, child := range node.Children {
 		fillAstParent(child, node)
@@ -201,13 +202,13 @@ func (p *Parser) restore() int {
 	}
 	p.TokenIndex = checkPoint.TokenIndex
 	p.StateStack = NewStackWithElements[int](checkPoint.StateStackSnap)
-	p.SymbolStack = NewStackWithElements[*AstNode](checkPoint.SymbolStackSnap)
+	p.SymbolStack = NewStackWithElements[*entity.AstNode](checkPoint.SymbolStackSnap)
 	p.TranslationUnits = checkPoint.TranslationUnits
 
 	return checkPoint.ChooseIndex + 1
 }
 
-func printAST(ast *AstNode, level int) {
+func printAST(ast *entity.AstNode, level int) {
 	for i := 0; i < level; i++ {
 		fmt.Print("  ")
 	}
@@ -221,15 +222,15 @@ func printAST(ast *AstNode, level int) {
 	}
 }
 
-func (p *Parser) parseTranslationUnit(unit *AstNode) error {
-	switch productions[unit.ProdIndex].Right[0] {
-	case function_definition:
+func (p *Parser) parseTranslationUnit(unit *entity.AstNode) error {
+	switch glr.Productions[unit.ProdIndex].Right[0] {
+	case glr.FunctionDefinition:
 		funcDef, err := parseFunctionDefinition(unit.Children[0])
 		if err != nil {
 			return err
 		}
 		p.TranslationUnits = append(p.TranslationUnits, funcDef)
-	case declaration:
+	case glr.Declaration:
 		res, err := parseDeclaration(unit.Children[0])
 		if err != nil {
 			return err
@@ -339,19 +340,4 @@ func printType(typ *entity.Type) {
 		return
 	}
 
-}
-
-func flattenTranslationUnit(ast *AstNode) []*AstNode {
-	// ast must be program_units node
-	if ast.Typ != program_units {
-		return nil
-	}
-
-	// if reduced by program_units := translation_unit
-	if len(productions[ast.ProdIndex].Right) == 1 {
-		return []*AstNode{ast.Children[0]}
-	}
-
-	// reduced by program_units := program_units translation_unit
-	return append(flattenTranslationUnit(ast.Children[0]), ast.Children[1])
 }

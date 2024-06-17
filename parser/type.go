@@ -4,6 +4,7 @@ import (
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/entity"
+	"shinya.click/cvm/parser/glr"
 )
 
 type numSpecifierRecorder struct {
@@ -18,7 +19,7 @@ type numSpecifierRecorder struct {
 	bool_    int
 }
 
-func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*AstNode) entity.Type {
+func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*entity.AstNode) entity.Type {
 	typ := entity.Type{}
 	if len(specifiers) == 0 {
 		panic("need type specifiers")
@@ -28,7 +29,7 @@ func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*AstNode) entity.
 	return typ
 }
 
-func parseTypeSpecifiers(specifiers []*AstNode, typ *entity.Type) {
+func parseTypeSpecifiers(specifiers []*entity.AstNode, typ *entity.Type) {
 	var numRec *numSpecifierRecorder
 	for _, specifier := range specifiers {
 		n := specifier.Children[0]
@@ -52,14 +53,14 @@ func parseTypeSpecifiers(specifiers []*AstNode, typ *entity.Type) {
 			countNumberTypeSpecifiers(n.Typ, numRec)
 		case common.COMPLEX:
 			// support complex?
-		case struct_or_union_specifier:
+		case glr.StructOrUnionSpecifier:
 			if typ.MetaType != entity.MetaTypeUnknown {
 				panic("conflict type declaration")
 			}
 			parseStructOrUnion(n, typ)
-		case enum_specifier:
+		case glr.EnumSpecifier:
 			// TODO enum declare
-		case typedef_name:
+		case glr.TypedefName:
 			// TODO need a symbol table!
 			typ.MetaType = entity.MetaTypeUserDefined
 		}
@@ -175,7 +176,7 @@ func countNumberTypeSpecifiers(typ common.TokenType, numRec *numSpecifierRecorde
 	}
 }
 
-func parseTypeQualifiers(qualifiers []*AstNode, typ *entity.TypeQualifiers) {
+func parseTypeQualifiers(qualifiers []*entity.AstNode, typ *entity.TypeQualifiers) {
 	for _, qualifier := range qualifiers {
 		n := qualifier.Children[0]
 		switch n.Typ {
@@ -189,7 +190,7 @@ func parseTypeQualifiers(qualifiers []*AstNode, typ *entity.TypeQualifiers) {
 	}
 }
 
-func parseStructOrUnion(root *AstNode, typ *entity.Type) {
+func parseStructOrUnion(root *entity.AstNode, typ *entity.Type) {
 	structOrUnion := root.Children[0]
 	switch structOrUnion.Children[0].Typ {
 	case common.STRUCT:
@@ -203,10 +204,10 @@ func parseStructOrUnion(root *AstNode, typ *entity.Type) {
 	}
 }
 
-func parseStructUnionMeta(root *AstNode) *entity.StructUnionMetaInfo {
+func parseStructUnionMeta(root *entity.AstNode) *entity.StructUnionMetaInfo {
 	meta := &entity.StructUnionMetaInfo{}
 
-	prod := productions[root.ProdIndex]
+	prod := glr.Productions[root.ProdIndex]
 	switch {
 	case len(prod.Right) == 2:
 		// struct_or_union_specifier := struct_or_union IDENTIFIER
@@ -224,7 +225,7 @@ func parseStructUnionMeta(root *AstNode) *entity.StructUnionMetaInfo {
 	return meta
 }
 
-func parseStructDeclarationList(root *AstNode) []*entity.FieldMetaInfo {
+func parseStructDeclarationList(root *entity.AstNode) []*entity.FieldMetaInfo {
 	structDeclarations := flattenStructDeclarationList(root)
 
 	var res []*entity.FieldMetaInfo
@@ -232,17 +233,17 @@ func parseStructDeclarationList(root *AstNode) []*entity.FieldMetaInfo {
 		// struct_declaration := specifier_qualifier_list struct_declarator_list SEMICOLON
 		specifiersQualifiers := flattenSpecifiersQualifiers(structDeclaration.Children[0])
 		midType := parseTypeSpecifiersAndQualifiers(
-			funk.Filter(specifiersQualifiers, func(specifier *AstNode) bool {
-				return specifier.Typ == type_specifier
-			}).([]*AstNode),
-			funk.Filter(specifiersQualifiers, func(specifier *AstNode) bool {
-				return specifier.Typ == type_qualifier
-			}).([]*AstNode),
+			funk.Filter(specifiersQualifiers, func(specifier *entity.AstNode) bool {
+				return specifier.Typ == glr.TypeSpecifier
+			}).([]*entity.AstNode),
+			funk.Filter(specifiersQualifiers, func(specifier *entity.AstNode) bool {
+				return specifier.Typ == glr.TypeQualifier
+			}).([]*entity.AstNode),
 		)
 
 		structDeclarators := flattenStructDeclaratorList(root.Children[1])
 		for _, structDeclarator := range structDeclarators {
-			prod := productions[structDeclarator.ProdIndex]
+			prod := glr.Productions[structDeclarator.ProdIndex]
 			switch len(prod.Right) {
 			case 1:
 				// struct_declarator := declarator
@@ -278,22 +279,22 @@ func parseStructDeclarationList(root *AstNode) []*entity.FieldMetaInfo {
 	return res
 }
 
-func flattenStructDeclaratorList(root *AstNode) []*AstNode {
+func flattenStructDeclaratorList(root *entity.AstNode) []*entity.AstNode {
 	if len(root.Children) == 1 {
-		return []*AstNode{root.Children[0]}
+		return []*entity.AstNode{root.Children[0]}
 	}
 
 	return append(flattenStructDeclaratorList(root.Children[0]), root.Children[2])
 }
 
-func flattenStructDeclarationList(root *AstNode) []*AstNode {
+func flattenStructDeclarationList(root *entity.AstNode) []*entity.AstNode {
 	if len(root.Children) == 1 {
-		return []*AstNode{root.Children[0]}
+		return []*entity.AstNode{root.Children[0]}
 	}
 
 	return append(flattenStructDeclarationList(root.Children[0]), root.Children[1])
 }
 
-func parseUnion(root *AstNode, typ *entity.Type) {
+func parseUnion(root *entity.AstNode, typ *entity.Type) {
 	typ.MetaType = entity.MetaTypeUnion
 }

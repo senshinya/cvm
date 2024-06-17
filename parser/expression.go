@@ -3,13 +3,14 @@ package parser
 import (
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/entity"
+	"shinya.click/cvm/parser/glr"
 )
 
-func ParseExpressionNode(node *AstNode) *entity.SingleExpression {
+func ParseExpressionNode(node *entity.AstNode) *entity.SingleExpression {
 	return SimplifyExpression(parseExpressionNodeInner(node))
 }
 
-func parseExpressionNodeInner(node *AstNode) *entity.SingleExpression {
+func parseExpressionNodeInner(node *entity.AstNode) *entity.SingleExpression {
 	if node.Typ == common.IDENTIFIER {
 		return &entity.SingleExpression{
 			ExpressionType: entity.ExpressionTypeIdentifier,
@@ -24,13 +25,13 @@ func parseExpressionNodeInner(node *AstNode) *entity.SingleExpression {
 		}
 	}
 
-	prod := productions[node.ProdIndex]
+	prod := glr.Productions[node.ProdIndex]
 	if len(prod.Right) == 1 {
 		return parseExpressionNodeInner(node.Children[0])
 	}
 
 	switch node.Typ {
-	case assignment_expression:
+	case glr.AssignmentExpression:
 		// assignment_expression := unary_expression assignment_operator assignment_expression
 		return &entity.SingleExpression{
 			ExpressionType: entity.ExpressionTypeAssignment,
@@ -40,7 +41,7 @@ func parseExpressionNodeInner(node *AstNode) *entity.SingleExpression {
 				RValue:   parseExpressionNodeInner(node.Children[2]),
 			},
 		}
-	case conditional_expression:
+	case glr.ConditionalExpression:
 		// conditional_expression := logical_or_expression QUESTION expression COLON conditional_expression
 		return &entity.SingleExpression{
 			ExpressionType: entity.ExpressionTypeCondition,
@@ -50,8 +51,8 @@ func parseExpressionNodeInner(node *AstNode) *entity.SingleExpression {
 				FalseBranch: parseExpressionNodeInner(node.Children[4]),
 			},
 		}
-	case logical_or_expression, logical_and_expression,
-		equality_expression, relational_expression:
+	case glr.LogicalOrExpression, glr.LogicalAndExpression,
+		glr.EqualityExpression, glr.RelationalExpression:
 		// logical_or_expression := logical_or_expression OR_OR logical_and_expression
 		return &entity.SingleExpression{
 			ExpressionType: entity.ExpressionTypeLogic,
@@ -61,8 +62,8 @@ func parseExpressionNodeInner(node *AstNode) *entity.SingleExpression {
 				Two:      parseExpressionNodeInner(node.Children[2]),
 			},
 		}
-	case inclusive_or_expression, and_expression,
-		shift_expression, exclusive_or_expression:
+	case glr.InclusiveOrExpression, glr.AndExpression,
+		glr.ShiftExpression, glr.ExclusiveOrExpression:
 		// inclusive_or_expression := inclusive_or_expression OR exclusive_or_expression
 		return &entity.SingleExpression{
 			ExpressionType: entity.ExpressionTypeBit,
@@ -72,7 +73,7 @@ func parseExpressionNodeInner(node *AstNode) *entity.SingleExpression {
 				Two:      parseExpressionNodeInner(node.Children[2]),
 			},
 		}
-	case additive_expression, multiplicative_expression:
+	case glr.AdditiveExpression, glr.MultiplicativeExpression:
 		// additive_expression := additive_expression PLUS multiplicative_expression
 		return &entity.SingleExpression{
 			ExpressionType: entity.ExpressionTypeNumber,
@@ -82,7 +83,7 @@ func parseExpressionNodeInner(node *AstNode) *entity.SingleExpression {
 				Two:      parseExpressionNodeInner(node.Children[2]),
 			},
 		}
-	case cast_expression:
+	case glr.CastExpression:
 		// cast_expression := LEFT_PARENTHESES type_name RIGHT_PARENTHESES cast_expression
 		return &entity.SingleExpression{
 			ExpressionType: entity.ExpressionTypeCast,
@@ -91,14 +92,14 @@ func parseExpressionNodeInner(node *AstNode) *entity.SingleExpression {
 				Source: parseExpressionNodeInner(node.Children[3]),
 			},
 		}
-	case unary_expression:
+	case glr.UnaryExpression:
 		return parseUnary(node)
-	case postfix_expression:
+	case glr.PostfixExpression:
 		return parsePostfix(node)
-	case primary_expression:
+	case glr.PrimaryExpression:
 		// primary_expression := LEFT_PARENTHESES expression RIGHT_PARENTHESES
 		return parseExpressionNodeInner(node.Children[1])
-	case expression:
+	case glr.Expression:
 		// expression := expression COMMA assignment_expression
 		var exps []*entity.SingleExpression
 		for _, n := range flattenExpression(node) {
@@ -115,8 +116,8 @@ func parseExpressionNodeInner(node *AstNode) *entity.SingleExpression {
 	panic("should not happen")
 }
 
-func parsePostfix(node *AstNode) *entity.SingleExpression {
-	prod := productions[node.ProdIndex]
+func parsePostfix(node *entity.AstNode) *entity.SingleExpression {
+	prod := glr.Productions[node.ProdIndex]
 	if len(prod.Right) == 2 {
 		// postfix_expression := postfix_expression PLUS_PLUS
 		return &entity.SingleExpression{
@@ -167,8 +168,8 @@ func parsePostfix(node *AstNode) *entity.SingleExpression {
 	}
 }
 
-func parseUnary(node *AstNode) *entity.SingleExpression {
-	prod := productions[node.ProdIndex]
+func parseUnary(node *entity.AstNode) *entity.SingleExpression {
+	prod := glr.Productions[node.ProdIndex]
 	if len(prod.Right) == 4 {
 		// unary_expression := SIZEOF LEFT_PARENTHESES type_name RIGHT_PARENTHESES
 		return &entity.SingleExpression{
@@ -178,7 +179,7 @@ func parseUnary(node *AstNode) *entity.SingleExpression {
 			},
 		}
 	}
-	if prod.Right[0] == unary_operator {
+	if prod.Right[0] == glr.UnaryOperator {
 		// unary_expression := unary_operator cast_expression
 		return &entity.SingleExpression{
 			ExpressionType: entity.ExpressionTypeUnary,
@@ -197,10 +198,10 @@ func parseUnary(node *AstNode) *entity.SingleExpression {
 	}
 }
 
-func flattenExpression(node *AstNode) []*AstNode {
+func flattenExpression(node *entity.AstNode) []*entity.AstNode {
 	// flatten expression := expression COMMA assignment_expression
-	if len(productions[node.ProdIndex].Right) == 1 {
-		return []*AstNode{node.Children[0]}
+	if len(glr.Productions[node.ProdIndex].Right) == 1 {
+		return []*entity.AstNode{node.Children[0]}
 	}
 
 	return append(flattenExpression(node.Children[0]), node.Children[2])
