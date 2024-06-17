@@ -1,4 +1,4 @@
-package syntax
+package entity
 
 type Declaration struct {
 	Specifiers  Specifiers

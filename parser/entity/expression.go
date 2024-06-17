@@ -1,4 +1,4 @@
-package syntax
+package entity
 
 import "shinya.click/cvm/common"
 

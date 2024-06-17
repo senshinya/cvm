@@ -3,10 +3,10 @@ package parser
 import (
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/parser/syntax"
+	"shinya.click/cvm/parser/entity"
 )
 
-func ParseTypeName(typeNameNode *AstNode) syntax.Type {
+func ParseTypeName(typeNameNode *AstNode) entity.Type {
 	specifiersQualifiers := typeNameNode.Children[0]
 	specifierNodes := flattenSpecifiersQualifiers(specifiersQualifiers)
 
@@ -34,11 +34,11 @@ func flattenSpecifiersQualifiers(specifiersQualifiers *AstNode) []*AstNode {
 	return append(flattenSpecifiersQualifiers(specifiersQualifiers.Children[1]), specifiersQualifiers.Children[0])
 }
 
-func ParseAbstractDeclarator(root *AstNode, midType syntax.Type) syntax.Type {
+func ParseAbstractDeclarator(root *AstNode, midType entity.Type) entity.Type {
 	mostInnerNode := findMostInnerNode(root)
 
 	currentNode := mostInnerNode
-	res := syntax.Type{}
+	res := entity.Type{}
 	currentType := &res
 	for {
 		// need to parse the most out node
@@ -60,7 +60,7 @@ func ParseAbstractDeclarator(root *AstNode, midType syntax.Type) syntax.Type {
 		}
 		// current node is direct_abstract_declarator
 		if prod.Right[0] == common.LEFT_BRACKETS {
-			currentType.MetaType = syntax.MetaTypeArray
+			currentType.MetaType = entity.MetaTypeArray
 			currentType.ArrayMetaInfo = parseArrayMetaInfo(currentNode)
 			currentType = currentType.ArrayMetaInfo.InnerType
 			currentNode = currentNode.Parent
@@ -72,21 +72,21 @@ func ParseAbstractDeclarator(root *AstNode, midType syntax.Type) syntax.Type {
 				currentNode = currentNode.Parent
 				continue
 			}
-			currentType.MetaType = syntax.MetaTypeFunction
+			currentType.MetaType = entity.MetaTypeFunction
 			currentType.FunctionMetaInfo = parseFunctionMetaInfo(currentNode)
 			currentType = currentType.FunctionMetaInfo.ReturnType
 			currentNode = currentNode.Parent
 			continue
 		}
 		if prod.Right[1] == common.LEFT_BRACKETS {
-			currentType.MetaType = syntax.MetaTypeArray
+			currentType.MetaType = entity.MetaTypeArray
 			currentType.ArrayMetaInfo = parseArrayMetaInfo(currentNode)
 			currentType = currentType.ArrayMetaInfo.InnerType
 			currentNode = currentNode.Parent
 			continue
 		}
 		if prod.Right[1] == common.LEFT_PARENTHESES {
-			currentType.MetaType = syntax.MetaTypeFunction
+			currentType.MetaType = entity.MetaTypeFunction
 			currentType.FunctionMetaInfo = parseFunctionMetaInfo(currentNode)
 			currentType = currentType.FunctionMetaInfo.ReturnType
 			currentNode = currentNode.Parent

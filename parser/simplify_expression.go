@@ -3,56 +3,56 @@ package parser
 import (
 	"golang.org/x/exp/constraints"
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/parser/syntax"
+	"shinya.click/cvm/parser/entity"
 )
 
-func SimplifyExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func SimplifyExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	switch exp.ExpressionType {
-	case syntax.ExpressionTypeConst:
+	case entity.ExpressionTypeConst:
 		return exp
-	case syntax.ExpressionTypeIdentifier:
+	case entity.ExpressionTypeIdentifier:
 		return exp
-	case syntax.ExpressionTypeAssignment:
+	case entity.ExpressionTypeAssignment:
 		return simplifyAssignmentExpression(exp)
-	case syntax.ExpressionTypeCondition:
+	case entity.ExpressionTypeCondition:
 		return simplifyConditionExpression(exp)
-	case syntax.ExpressionTypeLogic:
+	case entity.ExpressionTypeLogic:
 		return simplifyLogicExpression(exp)
-	case syntax.ExpressionTypeBit:
+	case entity.ExpressionTypeBit:
 		return simplifyBitExpression(exp)
-	case syntax.ExpressionTypeNumber:
+	case entity.ExpressionTypeNumber:
 		return simplifyNumberCalExpression(exp)
-	case syntax.ExpressionTypeCast:
+	case entity.ExpressionTypeCast:
 		return simplifyCastExpression(exp)
-	case syntax.ExpressionTypeUnary:
+	case entity.ExpressionTypeUnary:
 		return simplifyUnaryExpression(exp)
-	case syntax.ExpressionTypeSizeOf:
+	case entity.ExpressionTypeSizeOf:
 		return simplifySizeOfExpression(exp)
-	case syntax.ExpressionTypeArrayAccess:
+	case entity.ExpressionTypeArrayAccess:
 		return simplifyArrayAccessExpression(exp)
-	case syntax.ExpressionTypeFunctionCall:
+	case entity.ExpressionTypeFunctionCall:
 		return simplifyFunctionCallExpression(exp)
-	case syntax.ExpressionTypeStructAccess:
+	case entity.ExpressionTypeStructAccess:
 		return simplifyStructAccessExpression(exp)
-	case syntax.ExpressionTypePostfix:
+	case entity.ExpressionTypePostfix:
 		return simplifyPostfixExpression(exp)
-	case syntax.ExpressionTypeConstruct:
+	case entity.ExpressionTypeConstruct:
 		return simplifyConstructExpression(exp)
-	case syntax.ExpressionTypeExpressions:
+	case entity.ExpressionTypeExpressions:
 		return simplifyExpressionsExpression(exp)
 	}
 	return exp
 }
 
-func simplifyAssignmentExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyAssignmentExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	exp.AssignmentExpressionInfo.RValue = SimplifyExpression(exp.AssignmentExpressionInfo.RValue)
 	exp.AssignmentExpressionInfo.LValue = SimplifyExpression(exp.AssignmentExpressionInfo.LValue)
 	return exp
 }
 
-func simplifyConditionExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyConditionExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	exp.ConditionExpressionInfo.Condition = SimplifyExpression(exp.ConditionExpressionInfo.Condition)
-	if exp.ConditionExpressionInfo.Condition.ExpressionType != syntax.ExpressionTypeConst {
+	if exp.ConditionExpressionInfo.Condition.ExpressionType != entity.ExpressionTypeConst {
 		exp.ConditionExpressionInfo.TrueBranch = SimplifyExpression(exp.ConditionExpressionInfo.TrueBranch)
 		exp.ConditionExpressionInfo.FalseBranch = SimplifyExpression(exp.ConditionExpressionInfo.FalseBranch)
 		return exp
@@ -64,10 +64,10 @@ func simplifyConditionExpression(exp *syntax.SingleExpression) *syntax.SingleExp
 	return SimplifyExpression(exp.ConditionExpressionInfo.FalseBranch)
 }
 
-func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyLogicExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	// short circuit
 	exp.LogicExpressionInfo.One = SimplifyExpression(exp.LogicExpressionInfo.One)
-	oneConst := exp.LogicExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
+	oneConst := exp.LogicExpressionInfo.One.ExpressionType == entity.ExpressionTypeConst
 	if oneConst {
 		if exp.LogicExpressionInfo.Operator == common.OR_OR &&
 			cConstToBool(exp.LogicExpressionInfo.One.Terminal.Literal) {
@@ -80,7 +80,7 @@ func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 	}
 
 	exp.LogicExpressionInfo.Two = SimplifyExpression(exp.LogicExpressionInfo.Two)
-	twoConst := exp.LogicExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
+	twoConst := exp.LogicExpressionInfo.Two.ExpressionType == entity.ExpressionTypeConst
 	if twoConst {
 		if exp.LogicExpressionInfo.Operator == common.OR_OR &&
 			cConstToBool(exp.LogicExpressionInfo.Two.Terminal.Literal) {
@@ -110,12 +110,12 @@ func simplifyLogicExpression(exp *syntax.SingleExpression) *syntax.SingleExpress
 	panic(nil)
 }
 
-func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyBitExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	exp.BitExpressionInfo.One = SimplifyExpression(exp.BitExpressionInfo.One)
-	oneConst := exp.BitExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
+	oneConst := exp.BitExpressionInfo.One.ExpressionType == entity.ExpressionTypeConst
 
 	exp.BitExpressionInfo.Two = SimplifyExpression(exp.BitExpressionInfo.Two)
-	twoConst := exp.BitExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
+	twoConst := exp.BitExpressionInfo.Two.ExpressionType == entity.ExpressionTypeConst
 
 	if !oneConst || !twoConst {
 		return exp
@@ -125,12 +125,12 @@ func simplifyBitExpression(exp *syntax.SingleExpression) *syntax.SingleExpressio
 	return calTwoConstOperate(oneLiteral, twoLiteral, exp.BitExpressionInfo.Operator, exp)
 }
 
-func simplifyNumberCalExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyNumberCalExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	exp.NumberExpressionInfo.One = SimplifyExpression(exp.NumberExpressionInfo.One)
-	oneConst := exp.NumberExpressionInfo.One.ExpressionType == syntax.ExpressionTypeConst
+	oneConst := exp.NumberExpressionInfo.One.ExpressionType == entity.ExpressionTypeConst
 
 	exp.NumberExpressionInfo.Two = SimplifyExpression(exp.NumberExpressionInfo.Two)
-	twoConst := exp.NumberExpressionInfo.Two.ExpressionType == syntax.ExpressionTypeConst
+	twoConst := exp.NumberExpressionInfo.Two.ExpressionType == entity.ExpressionTypeConst
 
 	if !oneConst || !twoConst {
 		return exp
@@ -140,14 +140,14 @@ func simplifyNumberCalExpression(exp *syntax.SingleExpression) *syntax.SingleExp
 	return calTwoConstOperate(oneLiteral, twoLiteral, exp.NumberExpressionInfo.Operator, exp)
 }
 
-func simplifyCastExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyCastExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	exp.CastExpressionInfo.Source = SimplifyExpression(exp.CastExpressionInfo.Source)
-	if exp.CastExpressionInfo.Source.ExpressionType != syntax.ExpressionTypeConst {
+	if exp.CastExpressionInfo.Source.ExpressionType != entity.ExpressionTypeConst {
 		return exp
 	}
 
 	info := exp.CastExpressionInfo
-	if info.Type.MetaType != syntax.MetaTypeNumber {
+	if info.Type.MetaType != entity.MetaTypeNumber {
 		return exp
 	}
 
@@ -159,42 +159,42 @@ func simplifyCastExpression(exp *syntax.SingleExpression) *syntax.SingleExpressi
 	return castNumberConst(exp.CastExpressionInfo.Source.Terminal.Literal, info.Type.NumberMetaInfo)
 }
 
-func simplifyUnaryExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyUnaryExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	exp.UnaryExpressionInfo.Target = SimplifyExpression(exp.UnaryExpressionInfo.Target)
 	return exp
 }
 
-func simplifySizeOfExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifySizeOfExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	return exp
 }
 
-func simplifyArrayAccessExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyArrayAccessExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	exp.ArrayAccessExpressionInfo.Array = SimplifyExpression(exp.ArrayAccessExpressionInfo.Array)
 	exp.ArrayAccessExpressionInfo.Target = SimplifyExpression(exp.ArrayAccessExpressionInfo.Target)
 	return exp
 }
 
-func simplifyFunctionCallExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyFunctionCallExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	exp.FunctionCallExpressionInfo.Function = SimplifyExpression(exp.FunctionCallExpressionInfo.Function)
 	return exp
 }
 
-func simplifyStructAccessExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyStructAccessExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	exp.StructAccessExpressionInfo.Struct = SimplifyExpression(exp.StructAccessExpressionInfo.Struct)
 	return exp
 }
 
-func simplifyPostfixExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyPostfixExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	exp.PostfixExpressionInfo.Target = SimplifyExpression(exp.PostfixExpressionInfo.Target)
 	return exp
 }
 
-func simplifyConstructExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
+func simplifyConstructExpression(exp *entity.SingleExpression) *entity.SingleExpression {
 	return exp
 }
 
-func simplifyExpressionsExpression(exp *syntax.SingleExpression) *syntax.SingleExpression {
-	var res []*syntax.SingleExpression
+func simplifyExpressionsExpression(exp *entity.SingleExpression) *entity.SingleExpression {
+	var res []*entity.SingleExpression
 	for _, singleExpression := range exp.Expressions {
 		res = append(res, SimplifyExpression(singleExpression))
 	}
@@ -202,117 +202,117 @@ func simplifyExpressionsExpression(exp *syntax.SingleExpression) *syntax.SingleE
 	return exp
 }
 
-func castNumberConst(origin any, numberType *syntax.NumberMetaInfo) *syntax.SingleExpression {
+func castNumberConst(origin any, numberType *entity.NumberMetaInfo) *entity.SingleExpression {
 	switch numberType.BaseNumType {
-	case syntax.BaseNumTypeChar:
+	case entity.BaseNumTypeChar:
 		if numberType.Signed {
-			return &syntax.SingleExpression{
-				ExpressionType: syntax.ExpressionTypeConst,
+			return &entity.SingleExpression{
+				ExpressionType: entity.ExpressionTypeConst,
 				Terminal: &common.Token{
 					Typ:     common.INTEGER_CONSTANT,
 					Literal: convNumConstToInt8(origin),
 				},
 			}
 		}
-		return &syntax.SingleExpression{
-			ExpressionType: syntax.ExpressionTypeConst,
+		return &entity.SingleExpression{
+			ExpressionType: entity.ExpressionTypeConst,
 			Terminal: &common.Token{
 				Typ:     common.INTEGER_CONSTANT,
 				Literal: convNumConstToUint8(origin),
 			},
 		}
-	case syntax.BaseNumTypeShort:
+	case entity.BaseNumTypeShort:
 		if numberType.Signed {
-			return &syntax.SingleExpression{
-				ExpressionType: syntax.ExpressionTypeConst,
+			return &entity.SingleExpression{
+				ExpressionType: entity.ExpressionTypeConst,
 				Terminal: &common.Token{
 					Typ:     common.INTEGER_CONSTANT,
 					Literal: convNumConstToInt16(origin),
 				},
 			}
 		}
-		return &syntax.SingleExpression{
-			ExpressionType: syntax.ExpressionTypeConst,
+		return &entity.SingleExpression{
+			ExpressionType: entity.ExpressionTypeConst,
 			Terminal: &common.Token{
 				Typ:     common.INTEGER_CONSTANT,
 				Literal: convNumConstToUint16(origin),
 			},
 		}
-	case syntax.BaseNumTypeInt:
+	case entity.BaseNumTypeInt:
 		if numberType.Signed {
-			return &syntax.SingleExpression{
-				ExpressionType: syntax.ExpressionTypeConst,
+			return &entity.SingleExpression{
+				ExpressionType: entity.ExpressionTypeConst,
 				Terminal: &common.Token{
 					Typ:     common.INTEGER_CONSTANT,
 					Literal: convNumConstToInt32(origin),
 				},
 			}
 		}
-		return &syntax.SingleExpression{
-			ExpressionType: syntax.ExpressionTypeConst,
+		return &entity.SingleExpression{
+			ExpressionType: entity.ExpressionTypeConst,
 			Terminal: &common.Token{
 				Typ:     common.INTEGER_CONSTANT,
 				Literal: convNumConstToUint32(origin),
 			},
 		}
-	case syntax.BaseNumTypeLong:
+	case entity.BaseNumTypeLong:
 		if numberType.Signed {
-			return &syntax.SingleExpression{
-				ExpressionType: syntax.ExpressionTypeConst,
+			return &entity.SingleExpression{
+				ExpressionType: entity.ExpressionTypeConst,
 				Terminal: &common.Token{
 					Typ:     common.INTEGER_CONSTANT,
 					Literal: convNumConstToInt64(origin),
 				},
 			}
 		}
-		return &syntax.SingleExpression{
-			ExpressionType: syntax.ExpressionTypeConst,
+		return &entity.SingleExpression{
+			ExpressionType: entity.ExpressionTypeConst,
 			Terminal: &common.Token{
 				Typ:     common.INTEGER_CONSTANT,
 				Literal: convNumConstToUint64(origin),
 			},
 		}
-	case syntax.BaseNumTypeFloat:
-		return &syntax.SingleExpression{
-			ExpressionType: syntax.ExpressionTypeConst,
+	case entity.BaseNumTypeFloat:
+		return &entity.SingleExpression{
+			ExpressionType: entity.ExpressionTypeConst,
 			Terminal: &common.Token{
 				Typ:     common.FLOATING_CONSTANT,
 				Literal: convNumConstToFloat32(origin),
 			},
 		}
-	case syntax.BaseNumTypeDouble:
-		return &syntax.SingleExpression{
-			ExpressionType: syntax.ExpressionTypeConst,
+	case entity.BaseNumTypeDouble:
+		return &entity.SingleExpression{
+			ExpressionType: entity.ExpressionTypeConst,
 			Terminal: &common.Token{
 				Typ:     common.FLOATING_CONSTANT,
 				Literal: convNumConstToFloat64(origin),
 			},
 		}
-	case syntax.BaseNumTypeBool:
+	case entity.BaseNumTypeBool:
 		if cConstToBool(origin) {
 			return constructTrueExpression()
 		}
 		return constructFalseExpression()
-	case syntax.BaseNumTypeLongLong:
+	case entity.BaseNumTypeLongLong:
 		if numberType.Signed {
-			return &syntax.SingleExpression{
-				ExpressionType: syntax.ExpressionTypeConst,
+			return &entity.SingleExpression{
+				ExpressionType: entity.ExpressionTypeConst,
 				Terminal: &common.Token{
 					Typ:     common.INTEGER_CONSTANT,
 					Literal: convNumConstToInt64(origin),
 				},
 			}
 		}
-		return &syntax.SingleExpression{
-			ExpressionType: syntax.ExpressionTypeConst,
+		return &entity.SingleExpression{
+			ExpressionType: entity.ExpressionTypeConst,
 			Terminal: &common.Token{
 				Typ:     common.INTEGER_CONSTANT,
 				Literal: convNumConstToUint64(origin),
 			},
 		}
-	case syntax.BaseNumTypeLongDouble:
-		return &syntax.SingleExpression{
-			ExpressionType: syntax.ExpressionTypeConst,
+	case entity.BaseNumTypeLongDouble:
+		return &entity.SingleExpression{
+			ExpressionType: entity.ExpressionTypeConst,
 			Terminal: &common.Token{
 				Typ:     common.FLOATING_CONSTANT,
 				Literal: convNumConstToFloat64(origin),
@@ -351,16 +351,16 @@ func cConstToBool(num any) bool {
 	panic(nil)
 }
 
-func goBoolToExpression(b bool) *syntax.SingleExpression {
+func goBoolToExpression(b bool) *entity.SingleExpression {
 	if b {
 		return constructTrueExpression()
 	}
 	return constructFalseExpression()
 }
 
-func constructTrueExpression() *syntax.SingleExpression {
-	return &syntax.SingleExpression{
-		ExpressionType: syntax.ExpressionTypeConst,
+func constructTrueExpression() *entity.SingleExpression {
+	return &entity.SingleExpression{
+		ExpressionType: entity.ExpressionTypeConst,
 		Terminal: &common.Token{
 			Typ:     common.INTEGER_CONSTANT,
 			Literal: 1,
@@ -368,9 +368,9 @@ func constructTrueExpression() *syntax.SingleExpression {
 	}
 }
 
-func constructFalseExpression() *syntax.SingleExpression {
-	return &syntax.SingleExpression{
-		ExpressionType: syntax.ExpressionTypeConst,
+func constructFalseExpression() *entity.SingleExpression {
+	return &entity.SingleExpression{
+		ExpressionType: entity.ExpressionTypeConst,
 		Terminal: &common.Token{
 			Typ:     common.INTEGER_CONSTANT,
 			Literal: 0,
@@ -378,9 +378,9 @@ func constructFalseExpression() *syntax.SingleExpression {
 	}
 }
 
-func constructConstExpression(literal any) *syntax.SingleExpression {
-	return &syntax.SingleExpression{
-		ExpressionType: syntax.ExpressionTypeConst,
+func constructConstExpression(literal any) *entity.SingleExpression {
+	return &entity.SingleExpression{
+		ExpressionType: entity.ExpressionTypeConst,
 		Terminal: &common.Token{
 			Typ:     common.INTEGER_CONSTANT,
 			Literal: literal,
@@ -388,7 +388,7 @@ func constructConstExpression(literal any) *syntax.SingleExpression {
 	}
 }
 
-func calTwoConstOperate(one, two any, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
+func calTwoConstOperate(one, two any, op common.TokenType, origin *entity.SingleExpression) *entity.SingleExpression {
 	_, oneString := one.(string)
 	_, twoString := two.(string)
 
@@ -402,7 +402,7 @@ func calTwoConstOperate(one, two any, op common.TokenType, origin *syntax.Single
 	return calTwoNumberConstOperate(one, two, op, origin)
 }
 
-func calStringRelatedConstOperate(str string, two any, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
+func calStringRelatedConstOperate(str string, two any, op common.TokenType, origin *entity.SingleExpression) *entity.SingleExpression {
 	switch two.(type) {
 	case string, float32, float64:
 		panic("invalid operands to binary expression")
@@ -421,7 +421,7 @@ func calStringRelatedConstOperate(str string, two any, op common.TokenType, orig
 	return nil
 }
 
-func calTwoNumberConstOperate(one, two any, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
+func calTwoNumberConstOperate(one, two any, op common.TokenType, origin *entity.SingleExpression) *entity.SingleExpression {
 	_, oneFloat64 := one.(float64)
 	_, oneFloat32 := one.(float32)
 	_, oneUint64 := one.(uint64)
@@ -454,7 +454,7 @@ func calTwoNumberConstOperate(one, two any, op common.TokenType, origin *syntax.
 	}
 }
 
-func calIntegerConstOperate[T constraints.Integer](one, two T, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
+func calIntegerConstOperate[T constraints.Integer](one, two T, op common.TokenType, origin *entity.SingleExpression) *entity.SingleExpression {
 	switch op {
 	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
 		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
@@ -480,7 +480,7 @@ func calIntegerConstOperate[T constraints.Integer](one, two T, op common.TokenTy
 	panic("invalid operands to binary expression")
 }
 
-func calFloatConstOperate[T constraints.Float](one, two T, op common.TokenType, origin *syntax.SingleExpression) *syntax.SingleExpression {
+func calFloatConstOperate[T constraints.Float](one, two T, op common.TokenType, origin *entity.SingleExpression) *entity.SingleExpression {
 	switch op {
 	case common.EQUAL_EQUAL, common.NOT_EQUAL, common.LESS,
 		common.GREATER, common.LESS_EQUAL, common.GREATER_EQUAL:
@@ -506,7 +506,7 @@ func calFloatConstOperate[T constraints.Float](one, two T, op common.TokenType, 
 	panic("invalid operands to binary expression")
 }
 
-func calNumConstBitOperate[T constraints.Integer](one T, two T, op common.TokenType) *syntax.SingleExpression {
+func calNumConstBitOperate[T constraints.Integer](one T, two T, op common.TokenType) *entity.SingleExpression {
 	switch op {
 	case common.OR:
 		return constructConstExpression(one | two)
@@ -522,7 +522,7 @@ func calNumConstBitOperate[T constraints.Integer](one T, two T, op common.TokenT
 	panic("invalid operands to binary expression")
 }
 
-func calNumConstLogicOperate[T constraints.Integer | constraints.Float](one, two T, op common.TokenType) *syntax.SingleExpression {
+func calNumConstLogicOperate[T constraints.Integer | constraints.Float](one, two T, op common.TokenType) *entity.SingleExpression {
 	switch op {
 	case common.EQUAL_EQUAL:
 		if one == two {

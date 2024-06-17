@@ -1,4 +1,4 @@
-package syntax
+package entity
 
 type TranslationUnitType uint8
 

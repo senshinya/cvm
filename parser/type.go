@@ -3,7 +3,7 @@ package parser
 import (
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/parser/syntax"
+	"shinya.click/cvm/parser/entity"
 )
 
 type numSpecifierRecorder struct {
@@ -18,8 +18,8 @@ type numSpecifierRecorder struct {
 	bool_    int
 }
 
-func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*AstNode) syntax.Type {
-	typ := syntax.Type{}
+func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*AstNode) entity.Type {
+	typ := entity.Type{}
 	if len(specifiers) == 0 {
 		panic("need type specifiers")
 	}
@@ -28,32 +28,32 @@ func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*AstNode) syntax.
 	return typ
 }
 
-func parseTypeSpecifiers(specifiers []*AstNode, typ *syntax.Type) {
+func parseTypeSpecifiers(specifiers []*AstNode, typ *entity.Type) {
 	var numRec *numSpecifierRecorder
 	for _, specifier := range specifiers {
 		n := specifier.Children[0]
 		switch n.Typ {
 		case common.VOID:
-			if typ.MetaType != syntax.MetaTypeUnknown {
+			if typ.MetaType != entity.MetaTypeUnknown {
 				panic("conflict type declaration")
 			}
-			typ.MetaType = syntax.MetaTypeVoid
+			typ.MetaType = entity.MetaTypeVoid
 		case common.CHAR, common.SHORT, common.INT, common.LONG, common.FLOAT,
 			common.DOUBLE, common.SIGNED, common.UNSIGNED, common.BOOL:
 			// count keywords
-			if typ.MetaType != syntax.MetaTypeUnknown &&
-				typ.MetaType != syntax.MetaTypeNumber {
+			if typ.MetaType != entity.MetaTypeUnknown &&
+				typ.MetaType != entity.MetaTypeNumber {
 				panic("conflict type declaration")
 			}
-			if typ.MetaType == syntax.MetaTypeUnknown {
-				typ.MetaType = syntax.MetaTypeNumber
+			if typ.MetaType == entity.MetaTypeUnknown {
+				typ.MetaType = entity.MetaTypeNumber
 				numRec = &numSpecifierRecorder{}
 			}
 			countNumberTypeSpecifiers(n.Typ, numRec)
 		case common.COMPLEX:
 			// support complex?
 		case struct_or_union_specifier:
-			if typ.MetaType != syntax.MetaTypeUnknown {
+			if typ.MetaType != entity.MetaTypeUnknown {
 				panic("conflict type declaration")
 			}
 			parseStructOrUnion(n, typ)
@@ -61,60 +61,60 @@ func parseTypeSpecifiers(specifiers []*AstNode, typ *syntax.Type) {
 			// TODO enum declare
 		case typedef_name:
 			// TODO need a symbol table!
-			typ.MetaType = syntax.MetaTypeUserDefined
+			typ.MetaType = entity.MetaTypeUserDefined
 		}
 	}
-	if typ.MetaType == syntax.MetaTypeNumber {
+	if typ.MetaType == entity.MetaTypeNumber {
 		typ.NumberMetaInfo = parseNumberRec(numRec)
 	}
 }
 
-func parseNumberRec(numRec *numSpecifierRecorder) *syntax.NumberMetaInfo {
-	res := &syntax.NumberMetaInfo{}
+func parseNumberRec(numRec *numSpecifierRecorder) *entity.NumberMetaInfo {
+	res := &entity.NumberMetaInfo{}
 
 	// base type specifier
-	res.BaseNumType = syntax.BaseNumTypeInt
+	res.BaseNumType = entity.BaseNumTypeInt
 	if numRec.char+numRec.int_+numRec.float+numRec.double+numRec.bool_ > 1 {
 		panic("invalid number type combination")
 	}
 	switch {
 	case numRec.char == 1:
-		res.BaseNumType = syntax.BaseNumTypeChar
+		res.BaseNumType = entity.BaseNumTypeChar
 	case numRec.int_ == 1:
-		res.BaseNumType = syntax.BaseNumTypeInt
+		res.BaseNumType = entity.BaseNumTypeInt
 	case numRec.float == 1:
-		res.BaseNumType = syntax.BaseNumTypeFloat
+		res.BaseNumType = entity.BaseNumTypeFloat
 	case numRec.double == 1:
-		res.BaseNumType = syntax.BaseNumTypeDouble
+		res.BaseNumType = entity.BaseNumTypeDouble
 	case numRec.bool_ == 1:
-		res.BaseNumType = syntax.BaseNumTypeBool
+		res.BaseNumType = entity.BaseNumTypeBool
 	}
 
 	// extend type specifier
 	if numRec.short != 0 {
-		if res.BaseNumType != syntax.BaseNumTypeInt {
+		if res.BaseNumType != entity.BaseNumTypeInt {
 			panic("invalid number type combination")
 		}
-		res.BaseNumType = syntax.BaseNumTypeShort
+		res.BaseNumType = entity.BaseNumTypeShort
 	}
 	if numRec.long != 0 {
 		switch {
 		case numRec.long == 1:
-			if res.BaseNumType != syntax.BaseNumTypeInt &&
-				res.BaseNumType != syntax.BaseNumTypeDouble {
+			if res.BaseNumType != entity.BaseNumTypeInt &&
+				res.BaseNumType != entity.BaseNumTypeDouble {
 				panic("invalid number type combination")
 			}
-			if res.BaseNumType == syntax.BaseNumTypeInt {
-				res.BaseNumType = syntax.BaseNumTypeLong
+			if res.BaseNumType == entity.BaseNumTypeInt {
+				res.BaseNumType = entity.BaseNumTypeLong
 			}
-			if res.BaseNumType == syntax.BaseNumTypeDouble {
-				res.BaseNumType = syntax.BaseNumTypeLongDouble
+			if res.BaseNumType == entity.BaseNumTypeDouble {
+				res.BaseNumType = entity.BaseNumTypeLongDouble
 			}
 		case numRec.long == 2:
-			if res.BaseNumType != syntax.BaseNumTypeInt {
+			if res.BaseNumType != entity.BaseNumTypeInt {
 				panic("invalid number type combination")
 			}
-			res.BaseNumType = syntax.BaseNumTypeLongLong
+			res.BaseNumType = entity.BaseNumTypeLongLong
 		default:
 			panic("invalid number type combination")
 		}
@@ -125,10 +125,10 @@ func parseNumberRec(numRec *numSpecifierRecorder) *syntax.NumberMetaInfo {
 		panic("invalid number type combination")
 	}
 	if numRec.signed+numRec.unsigned == 1 {
-		if res.BaseNumType == syntax.BaseNumTypeFloat ||
-			res.BaseNumType == syntax.BaseNumTypeDouble ||
-			res.BaseNumType == syntax.BaseNumTypeBool ||
-			res.BaseNumType == syntax.BaseNumTypeLongDouble {
+		if res.BaseNumType == entity.BaseNumTypeFloat ||
+			res.BaseNumType == entity.BaseNumTypeDouble ||
+			res.BaseNumType == entity.BaseNumTypeBool ||
+			res.BaseNumType == entity.BaseNumTypeLongDouble {
 			panic("invalid number type combination")
 		}
 		if numRec.signed == 1 {
@@ -140,11 +140,11 @@ func parseNumberRec(numRec *numSpecifierRecorder) *syntax.NumberMetaInfo {
 	// handle default
 	if numRec.signed+numRec.unsigned == 0 {
 		switch res.BaseNumType {
-		case syntax.BaseNumTypeChar:
+		case entity.BaseNumTypeChar:
 			// default char is unsigned char
 			res.Unsigned = true
-		case syntax.BaseNumTypeShort, syntax.BaseNumTypeInt,
-			syntax.BaseNumTypeLong, syntax.BaseNumTypeLongLong:
+		case entity.BaseNumTypeShort, entity.BaseNumTypeInt,
+			entity.BaseNumTypeLong, entity.BaseNumTypeLongLong:
 			res.Signed = true
 		}
 	}
@@ -175,7 +175,7 @@ func countNumberTypeSpecifiers(typ common.TokenType, numRec *numSpecifierRecorde
 	}
 }
 
-func parseTypeQualifiers(qualifiers []*AstNode, typ *syntax.TypeQualifiers) {
+func parseTypeQualifiers(qualifiers []*AstNode, typ *entity.TypeQualifiers) {
 	for _, qualifier := range qualifiers {
 		n := qualifier.Children[0]
 		switch n.Typ {
@@ -189,22 +189,22 @@ func parseTypeQualifiers(qualifiers []*AstNode, typ *syntax.TypeQualifiers) {
 	}
 }
 
-func parseStructOrUnion(root *AstNode, typ *syntax.Type) {
+func parseStructOrUnion(root *AstNode, typ *entity.Type) {
 	structOrUnion := root.Children[0]
 	switch structOrUnion.Children[0].Typ {
 	case common.STRUCT:
 		// struct
-		typ.MetaType = syntax.MetaTypeStruct
+		typ.MetaType = entity.MetaTypeStruct
 		typ.StructMetaInfo = parseStructUnionMeta(root)
 	default:
 		// union
-		typ.MetaType = syntax.MetaTypeUnion
+		typ.MetaType = entity.MetaTypeUnion
 		typ.UnionMetaInfo = parseStructUnionMeta(root)
 	}
 }
 
-func parseStructUnionMeta(root *AstNode) *syntax.StructUnionMetaInfo {
-	meta := &syntax.StructUnionMetaInfo{}
+func parseStructUnionMeta(root *AstNode) *entity.StructUnionMetaInfo {
+	meta := &entity.StructUnionMetaInfo{}
 
 	prod := productions[root.ProdIndex]
 	switch {
@@ -224,10 +224,10 @@ func parseStructUnionMeta(root *AstNode) *syntax.StructUnionMetaInfo {
 	return meta
 }
 
-func parseStructDeclarationList(root *AstNode) []*syntax.FieldMetaInfo {
+func parseStructDeclarationList(root *AstNode) []*entity.FieldMetaInfo {
 	structDeclarations := flattenStructDeclarationList(root)
 
-	var res []*syntax.FieldMetaInfo
+	var res []*entity.FieldMetaInfo
 	for _, structDeclaration := range structDeclarations {
 		// struct_declaration := specifier_qualifier_list struct_declarator_list SEMICOLON
 		specifiersQualifiers := flattenSpecifiersQualifiers(structDeclaration.Children[0])
@@ -250,13 +250,13 @@ func parseStructDeclarationList(root *AstNode) []*syntax.FieldMetaInfo {
 				if err != nil {
 					panic(err)
 				}
-				res = append(res, &syntax.FieldMetaInfo{
+				res = append(res, &entity.FieldMetaInfo{
 					Type:       declare.Type,
 					Identifier: &declare.Identifier,
 				})
 			case 2:
 				// struct_declarator := COLON constant_expression
-				res = append(res, &syntax.FieldMetaInfo{
+				res = append(res, &entity.FieldMetaInfo{
 					Type:     midType,
 					BitWidth: ParseExpressionNode(structDeclarator.Children[1]),
 				})
@@ -266,7 +266,7 @@ func parseStructDeclarationList(root *AstNode) []*syntax.FieldMetaInfo {
 				if err != nil {
 					panic(err)
 				}
-				res = append(res, &syntax.FieldMetaInfo{
+				res = append(res, &entity.FieldMetaInfo{
 					Type:       declare.Type,
 					Identifier: &declare.Identifier,
 					BitWidth:   ParseExpressionNode(structDeclarator.Children[2]),
@@ -294,6 +294,6 @@ func flattenStructDeclarationList(root *AstNode) []*AstNode {
 	return append(flattenStructDeclarationList(root.Children[0]), root.Children[1])
 }
 
-func parseUnion(root *AstNode, typ *syntax.Type) {
-	typ.MetaType = syntax.MetaTypeUnion
+func parseUnion(root *AstNode, typ *entity.Type) {
+	typ.MetaType = entity.MetaTypeUnion
 }

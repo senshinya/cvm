@@ -5,7 +5,7 @@ import (
 	"github.com/mohae/deepcopy"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/parser/syntax"
+	"shinya.click/cvm/parser/entity"
 	"strings"
 )
 
@@ -16,7 +16,7 @@ type Parser struct {
 	StateStack       *Stack[int]
 	SymbolStack      *Stack[*AstNode]
 	CheckPointStack  *Stack[*CheckPoint]
-	TranslationUnits []syntax.TranslationUnit
+	TranslationUnits []entity.TranslationUnit
 }
 
 func NewParser(tokens []common.Token) *Parser {
@@ -28,7 +28,7 @@ type CheckPoint struct {
 	ChooseIndex      int
 	StateStackSnap   []int
 	SymbolStackSnap  []*AstNode
-	TranslationUnits []syntax.TranslationUnit
+	TranslationUnits []entity.TranslationUnit
 }
 
 func (p *Parser) Parse() error {
@@ -40,7 +40,7 @@ func (p *Parser) Parse() error {
 	p.StateStack = NewStack[int]()
 	p.SymbolStack = NewStack[*AstNode]()
 	p.CheckPointStack = NewStack[*CheckPoint]()
-	p.TranslationUnits = []syntax.TranslationUnit{}
+	p.TranslationUnits = []entity.TranslationUnit{}
 
 	p.StateStack.Push(0) // init state is always 0
 
@@ -142,7 +142,7 @@ func (p *Parser) Parse() error {
 	}
 	p.AST = res
 	for _, unit := range p.TranslationUnits {
-		if unit.GetUnitType() == syntax.UnitTypeDeclaration {
+		if unit.GetUnitType() == entity.UnitTypeDeclaration {
 			printDeclaration(unit)
 		}
 	}
@@ -158,7 +158,7 @@ func (p *Parser) addCheckPoint(chooseOp int) {
 		ChooseIndex:      chooseOp,
 		StateStackSnap:   deepcopy.Copy(stateAll).([]int),
 		SymbolStackSnap:  deepCopyAstNodeSlice(symAll),
-		TranslationUnits: deepcopy.Copy(p.TranslationUnits).([]syntax.TranslationUnit),
+		TranslationUnits: deepcopy.Copy(p.TranslationUnits).([]entity.TranslationUnit),
 	}
 	p.CheckPointStack.Push(&cp)
 }
@@ -239,8 +239,8 @@ func (p *Parser) parseTranslationUnit(unit *AstNode) error {
 	return nil
 }
 
-func printDeclaration(unit syntax.TranslationUnit) {
-	declares := unit.(*syntax.Declaration)
+func printDeclaration(unit entity.TranslationUnit) {
+	declares := unit.(*entity.Declaration)
 	for _, declare := range declares.Declarators {
 		fmt.Printf("declare %s as ", declare.Identifier)
 		typ := &declare.Type
@@ -249,7 +249,7 @@ func printDeclaration(unit syntax.TranslationUnit) {
 	}
 }
 
-func printType(typ *syntax.Type) {
+func printType(typ *entity.Type) {
 	if typ.TypeQualifiers.Const {
 		fmt.Print("const ")
 	}
@@ -260,10 +260,10 @@ func printType(typ *syntax.Type) {
 		fmt.Print("restrict ")
 	}
 	switch typ.MetaType {
-	case syntax.MetaTypeVoid:
+	case entity.MetaTypeVoid:
 		print("void")
 		return
-	case syntax.MetaTypeNumber:
+	case entity.MetaTypeNumber:
 		numMeta := typ.NumberMetaInfo
 		if numMeta.Signed {
 			print("signed ")
@@ -272,34 +272,34 @@ func printType(typ *syntax.Type) {
 			print("unsigned ")
 		}
 		switch numMeta.BaseNumType {
-		case syntax.BaseNumTypeChar:
+		case entity.BaseNumTypeChar:
 			print("char")
-		case syntax.BaseNumTypeShort:
+		case entity.BaseNumTypeShort:
 			print("short")
-		case syntax.BaseNumTypeInt:
+		case entity.BaseNumTypeInt:
 			print("int")
-		case syntax.BaseNumTypeLong:
+		case entity.BaseNumTypeLong:
 			print("long")
-		case syntax.BaseNumTypeFloat:
+		case entity.BaseNumTypeFloat:
 			print("float")
-		case syntax.BaseNumTypeDouble:
+		case entity.BaseNumTypeDouble:
 			print("double")
-		case syntax.BaseNumTypeBool:
+		case entity.BaseNumTypeBool:
 			print("bool")
-		case syntax.BaseNumTypeLongLong:
+		case entity.BaseNumTypeLongLong:
 			print("long long")
-		case syntax.BaseNumTypeLongDouble:
+		case entity.BaseNumTypeLongDouble:
 			print("long double")
 		}
 		return
-	case syntax.MetaTypeEnum:
-	case syntax.MetaTypePointer:
+	case entity.MetaTypeEnum:
+	case entity.MetaTypePointer:
 		print("pointer to ( ")
 		printType(typ.PointerInnerType)
 		print(" ) ")
-	case syntax.MetaTypeStruct:
-	case syntax.MetaTypeUnion:
-	case syntax.MetaTypeFunction:
+	case entity.MetaTypeStruct:
+	case entity.MetaTypeUnion:
+	case entity.MetaTypeFunction:
 		print("function with parameter ( ")
 		for i, param := range typ.FunctionMetaInfo.Parameters {
 			if i != 0 {
@@ -317,14 +317,14 @@ func printType(typ *syntax.Type) {
 		print("and returning ( ")
 		printType(typ.FunctionMetaInfo.ReturnType)
 		print(" ) ")
-	case syntax.MetaTypeArray:
+	case entity.MetaTypeArray:
 		print("array ")
 		sizeExp := typ.ArrayMetaInfo.Size
 		if sizeExp != nil {
-			if sizeExp.ExpressionType == syntax.ExpressionTypeConst {
+			if sizeExp.ExpressionType == entity.ExpressionTypeConst {
 				fmt.Printf("%+v ", sizeExp.Terminal.Literal)
 			}
-			if sizeExp.ExpressionType == syntax.ExpressionTypeSizeOf {
+			if sizeExp.ExpressionType == entity.ExpressionTypeSizeOf {
 				fmt.Printf("( with the size of type (")
 				printType(&sizeExp.SizeOfExpressionInfo.Type)
 				fmt.Printf(") ) ")
@@ -333,7 +333,7 @@ func printType(typ *syntax.Type) {
 		print("of ( ")
 		printType(typ.ArrayMetaInfo.InnerType)
 		print(" ) ")
-	case syntax.MetaTypeUserDefined:
+	case entity.MetaTypeUserDefined:
 		// TODO user defined
 		print("user defined")
 		return

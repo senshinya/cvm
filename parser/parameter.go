@@ -2,11 +2,11 @@ package parser
 
 import (
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/parser/syntax"
+	"shinya.click/cvm/parser/entity"
 )
 
-func parseFunctionMetaInfo(node *AstNode) *syntax.FunctionMetaInfo {
-	res := &syntax.FunctionMetaInfo{ReturnType: &syntax.Type{}}
+func parseFunctionMetaInfo(node *AstNode) *entity.FunctionMetaInfo {
+	res := &entity.FunctionMetaInfo{ReturnType: &entity.Type{}}
 	prod := productions[node.ProdIndex]
 	switch node.Typ {
 	case direct_declarator:
@@ -45,7 +45,7 @@ func parseFunctionMetaInfo(node *AstNode) *syntax.FunctionMetaInfo {
 	panic("unreachable")
 }
 
-func parseParameterTypeList(node *AstNode) ([]*syntax.FunctionParameter, bool) {
+func parseParameterTypeList(node *AstNode) ([]*entity.FunctionParameter, bool) {
 	variadic := false
 
 	prod := productions[node.ProdIndex]
@@ -55,22 +55,22 @@ func parseParameterTypeList(node *AstNode) ([]*syntax.FunctionParameter, bool) {
 	parameterList := node.Children[0]
 
 	parameterDeclarations := flattenParameterList(parameterList)
-	var params []*syntax.FunctionParameter
+	var params []*entity.FunctionParameter
 	for _, paramDeclare := range parameterDeclarations {
 		params = append(params, parseParamDeclare(paramDeclare))
 	}
 
-	if len(params) == 1 && params[0].Type.MetaType == syntax.MetaTypeVoid {
+	if len(params) == 1 && params[0].Type.MetaType == entity.MetaTypeVoid {
 		params = nil
 	}
 
 	return params, variadic
 }
 
-func parseParamDeclare(paramDeclare *AstNode) *syntax.FunctionParameter {
-	res := &syntax.FunctionParameter{}
+func parseParamDeclare(paramDeclare *AstNode) *entity.FunctionParameter {
+	res := &entity.FunctionParameter{}
 
-	tmp := &syntax.Declaration{}
+	tmp := &entity.Declaration{}
 	isTypeDef, err := parseDeclarationSpecifiers(paramDeclare.Children[0], tmp)
 	if isTypeDef {
 		panic("type def should not appear in parameter declaration")

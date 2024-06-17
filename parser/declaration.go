@@ -4,11 +4,11 @@ import (
 	"errors"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/parser/syntax"
+	"shinya.click/cvm/parser/entity"
 )
 
-func parseDeclaration(root *AstNode) (syntax.TranslationUnit, error) {
-	res := &syntax.Declaration{}
+func parseDeclaration(root *AstNode) (entity.TranslationUnit, error) {
+	res := &entity.Declaration{}
 
 	// parse specifiers
 	specifiers, midType, err := parseDeclarationSpecifiers(root.Children[0])
@@ -26,9 +26,9 @@ func parseDeclaration(root *AstNode) (syntax.TranslationUnit, error) {
 		// this production can only declare struct, union or enum
 		// otherwise "declaration does not declare anything" occurs
 		// we treat it as error
-		if res.MidType.MetaType != syntax.MetaTypeStruct &&
-			res.MidType.MetaType != syntax.MetaTypeUnion &&
-			res.MidType.MetaType != syntax.MetaTypeEnum {
+		if res.MidType.MetaType != entity.MetaTypeStruct &&
+			res.MidType.MetaType != entity.MetaTypeUnion &&
+			res.MidType.MetaType != entity.MetaTypeEnum {
 			return nil, errors.New("declaration does not declare anything")
 		}
 		return res, nil
@@ -43,8 +43,8 @@ func parseDeclaration(root *AstNode) (syntax.TranslationUnit, error) {
 	return res, nil
 }
 
-func parseDeclarationSpecifiers(specifiersNode *AstNode) (syntax.Specifiers, syntax.Type, error) {
-	specifiers, midType := syntax.Specifiers{}, syntax.Type{}
+func parseDeclarationSpecifiers(specifiersNode *AstNode) (entity.Specifiers, entity.Type, error) {
+	specifiers, midType := entity.Specifiers{}, entity.Type{}
 
 	specifierNodes := flattenDeclarationSpecifier(specifiersNode)
 
@@ -80,12 +80,12 @@ func parseDeclarationSpecifiers(specifiersNode *AstNode) (syntax.Specifiers, syn
 	return specifiers, midType, nil
 }
 
-func checkStorageClassSpecifiers(specifiers syntax.Specifiers) error {
+func checkStorageClassSpecifiers(specifiers entity.Specifiers) error {
 	// TODO check storage class specifiers conflict
 	return nil
 }
 
-func parseStorageClassSpecifier(storageSpecifier *AstNode, spe *syntax.Specifiers) {
+func parseStorageClassSpecifier(storageSpecifier *AstNode, spe *entity.Specifiers) {
 	n := storageSpecifier.Children[0]
 	switch n.Typ {
 	case common.TYPEDEF:
@@ -109,8 +109,8 @@ func flattenDeclarationSpecifier(specifiers *AstNode) []*AstNode {
 	return append(flattenDeclarationSpecifier(specifiers.Children[1]), specifiers.Children[0])
 }
 
-func parseInitDeclarators(declarators *AstNode, midType syntax.Type) ([]syntax.Declarator, error) {
-	var res []syntax.Declarator
+func parseInitDeclarators(declarators *AstNode, midType entity.Type) ([]entity.Declarator, error) {
+	var res []entity.Declarator
 	initDeclarators := flattenInitDeclarators(declarators)
 	for _, initDeclarator := range initDeclarators {
 		// parse declarator
@@ -137,8 +137,8 @@ func flattenInitDeclarators(declarators *AstNode) []*AstNode {
 	return append(flattenInitDeclarators(declarators.Children[0]), declarators.Children[2])
 }
 
-func parseDeclarator(root *AstNode, midType syntax.Type) (syntax.Declarator, error) {
-	res := syntax.Declarator{}
+func parseDeclarator(root *AstNode, midType entity.Type) (entity.Declarator, error) {
+	res := entity.Declarator{}
 
 	// 1. find the most inner direct_declarator node that contains only IDENTIFIER
 	currentNode := root
@@ -195,14 +195,14 @@ func parseDeclarator(root *AstNode, midType syntax.Type) (syntax.Declarator, err
 			continue
 		}
 		if currentNode.Children[1].Typ == common.LEFT_BRACKETS {
-			currentType.MetaType = syntax.MetaTypeArray
+			currentType.MetaType = entity.MetaTypeArray
 			currentType.ArrayMetaInfo = parseArrayMetaInfo(currentNode)
 			currentType = currentType.ArrayMetaInfo.InnerType
 			currentNode = currentNode.Parent
 			continue
 		}
 		if currentNode.Children[1].Typ == common.LEFT_PARENTHESES {
-			currentType.MetaType = syntax.MetaTypeFunction
+			currentType.MetaType = entity.MetaTypeFunction
 			currentType.FunctionMetaInfo = parseFunctionMetaInfo(currentNode)
 			currentType = currentType.FunctionMetaInfo.ReturnType
 			currentNode = currentNode.Parent
@@ -214,7 +214,7 @@ func parseDeclarator(root *AstNode, midType syntax.Type) (syntax.Declarator, err
 	return res, nil
 }
 
-func parsePointer(rootPointer *AstNode, currentType *syntax.Type) *syntax.Type {
+func parsePointer(rootPointer *AstNode, currentType *entity.Type) *entity.Type {
 	// find the most inner pointer
 	currentPointer := rootPointer
 	for {
@@ -236,8 +236,8 @@ func parsePointer(rootPointer *AstNode, currentType *syntax.Type) *syntax.Type {
 		if currentPointer == rootPointer {
 			break
 		}
-		currentType.MetaType = syntax.MetaTypePointer
-		currentType.PointerInnerType = &syntax.Type{}
+		currentType.MetaType = entity.MetaTypePointer
+		currentType.PointerInnerType = &entity.Type{}
 		prod := productions[currentPointer.ProdIndex]
 		if len(prod.Right) == 1 ||
 			(len(prod.Right) == 2 && currentPointer.Children[1].Typ == pointer) {
@@ -250,8 +250,8 @@ func parsePointer(rootPointer *AstNode, currentType *syntax.Type) *syntax.Type {
 		currentType = currentType.PointerInnerType
 		currentPointer = currentPointer.Parent
 	}
-	currentType.MetaType = syntax.MetaTypePointer
-	currentType.PointerInnerType = &syntax.Type{}
+	currentType.MetaType = entity.MetaTypePointer
+	currentType.PointerInnerType = &entity.Type{}
 	if len(rootPointer.Children) == 2 {
 		// parse the root qualifiers
 		typeQualifiers := flattenTypeQualifierList(rootPointer.Children[1])
@@ -267,8 +267,8 @@ func flattenTypeQualifierList(listNode *AstNode) []*AstNode {
 	return append(flattenTypeQualifierList(listNode.Children[0]), listNode.Children[1])
 }
 
-func parseArrayMetaInfo(arrayNode *AstNode) *syntax.ArrayMetaInfo {
-	res := &syntax.ArrayMetaInfo{InnerType: &syntax.Type{}}
+func parseArrayMetaInfo(arrayNode *AstNode) *entity.ArrayMetaInfo {
+	res := &entity.ArrayMetaInfo{InnerType: &entity.Type{}}
 	prod := productions[arrayNode.ProdIndex]
 	for i := 0; i < len(prod.Right); i++ {
 		child := arrayNode.Children[i]

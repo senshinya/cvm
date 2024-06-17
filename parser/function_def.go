@@ -1,7 +1,7 @@
 package parser
 
-import "shinya.click/cvm/parser/syntax"
+import "shinya.click/cvm/parser/entity"
 
-func parseFunctionDefinition(root *AstNode) (syntax.TranslationUnit, error) {
+func parseFunctionDefinition(root *AstNode) (entity.TranslationUnit, error) {
 	return nil, nil
 }

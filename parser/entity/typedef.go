@@ -1,4 +1,4 @@
-package syntax
+package entity
 
 type TypeDef struct {
 	MidType     Type
