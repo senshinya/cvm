@@ -19,6 +19,7 @@ func (n *AstNode) SetChildren(children []*AstNode) {
 
 type Production struct {
 	Left  common.TokenType
+	Index int64
 	Right []common.TokenType
 }
 

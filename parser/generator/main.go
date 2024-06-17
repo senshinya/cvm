@@ -15,6 +15,7 @@ import (
 	"log"
 	"os"
 	"shinya.click/cvm/common"
+	"strconv"
 	"strings"
 )
 
@@ -83,17 +84,33 @@ func readLines() []string {
 
 func genProductions(lines []string) *Productions {
 	// add dummy
-	lines = append([]string{"dummy := program"}, lines...)
+	lines = append([]string{"dummy := program|1"}, lines...)
 	var productions []*Production
+	lastLeft := ""
+	expectIdx := int64(1)
 	for _, line := range lines {
-		splits := strings.Split(line, ":=")
+		indexSplits := strings.Split(line, "|")
+		if len(indexSplits) != 2 {
+			log.Panicf("Invalid line format: %s", line)
+		}
+		idx, _ := strconv.ParseInt(indexSplits[1], 10, 64)
+		splits := strings.Split(indexSplits[0], ":=")
 		if len(splits) != 2 {
 			log.Panicf("Invalid line format: %s", line)
 		}
 		left := strings.TrimSpace(splits[0])
 		right := strings.Split(strings.TrimSpace(splits[1]), " ")
+		if left != lastLeft {
+			lastLeft = left
+			expectIdx = 1
+		}
+		if expectIdx != idx {
+			log.Panicf("Invalid line format: %s", line)
+		}
+		expectIdx++
 		productions = append(productions, &Production{
 			Left:  left,
+			Index: idx,
 			Right: right,
 		})
 	}
@@ -451,7 +468,7 @@ const (
 )
 
 var Productions = []entity.Production{
-{{ range $_, $v := .Productions }}	{ Left: {{if isTerminal $v.Left}}common.{{end}}{{ $v.Left }}, Right: []common.TokenType{ {{ range $i, $r := $v.Right }}{{if $i}},{{end}}{{if isTerminal $r}}common.{{end}}{{ $r }}{{ end }} } },
+{{ range $_, $v := .Productions }}	{ Left: {{if isTerminal $v.Left}}common.{{end}}{{ $v.Left }}, Index: {{ $v.Index }}, Right: []common.TokenType{ {{ range $i, $r := $v.Right }}{{if $i}},{{end}}{{if isTerminal $r}}common.{{end}}{{ $r }}{{ end }} } },
 {{ end }}
 }
 

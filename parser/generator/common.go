@@ -8,6 +8,7 @@ import (
 
 type Production struct {
 	Left  string
+	Index int64
 	Right []string
 }
 
