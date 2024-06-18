@@ -26,13 +26,13 @@ type Type struct {
 
 	MetaType MetaType
 
-	NumberMetaInfo   *NumberMetaInfo
-	PointerInnerType *Type
-	StructMetaInfo   *StructUnionMetaInfo
-	UnionMetaInfo    *StructUnionMetaInfo
-	FunctionMetaInfo *FunctionMetaInfo
-	ArrayMetaInfo    *ArrayMetaInfo
-	UserDefinedType  *Type
+	NumberMetaInfo      *NumberMetaInfo
+	PointerInnerType    *Type
+	StructMetaInfo      *StructUnionMetaInfo
+	UnionMetaInfo       *StructUnionMetaInfo
+	FunctionMetaInfo    *FunctionMetaInfo
+	ArrayMetaInfo       *ArrayMetaInfo
+	UserDefinedTypeName *string
 }
 
 type BaseNumType uint8

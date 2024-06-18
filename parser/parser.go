@@ -223,19 +223,17 @@ func printAST(ast *entity.AstNode, level int) {
 }
 
 func (p *Parser) parseTranslationUnit(unit *entity.AstNode) error {
-	switch glr.Productions[unit.ProdIndex].Right[0] {
-	case glr.FunctionDefinition:
-		funcDef, err := parseFunctionDefinition(unit.Children[0])
-		if err != nil {
-			return err
-		}
+	switch {
+	case unit.ReducedBy(glr.TranslationUnit, 1):
+		// translation_unit := function_definition
+		funcDef := parseFunctionDefinition(unit.Children[0])
 		p.TranslationUnits = append(p.TranslationUnits, funcDef)
-	case glr.Declaration:
-		res, err := parseDeclaration(unit.Children[0])
-		if err != nil {
-			return err
-		}
+	case unit.ReducedBy(glr.TranslationUnit, 2):
+		// translation_unit := declaration
+		res := parseDeclaration(unit.Children[0])
 		p.TranslationUnits = append(p.TranslationUnits, res)
+	default:
+		panic("unreachable")
 	}
 	return nil
 }

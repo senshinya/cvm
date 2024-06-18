@@ -1,6 +1,10 @@
 package entity
 
-import "shinya.click/cvm/common"
+import (
+	"fmt"
+	"github.com/thoas/go-funk"
+	"shinya.click/cvm/common"
+)
 
 type AstNode struct {
 	Parent     *AstNode
@@ -17,12 +21,17 @@ func (n *AstNode) SetChildren(children []*AstNode) {
 	}
 }
 
-func (n *AstNode) AssertNonTerminal(nonTerminal common.TokenType) bool {
-	return n.Production.Left == nonTerminal
+func (n *AstNode) AssertNonTerminal(nonTerminal ...common.TokenType) error {
+	for _, t := range nonTerminal {
+		if t == n.Typ {
+			return nil
+		}
+	}
+	return fmt.Errorf("unexpected %s", n.Typ)
 }
 
-func (n *AstNode) ReducedBy(nonTerminal common.TokenType, idx int64) bool {
-	return n.AssertNonTerminal(nonTerminal) && n.Production.Index == idx
+func (n *AstNode) ReducedBy(nonTerminal common.TokenType, idx ...int64) bool {
+	return n.Production.Left == nonTerminal && funk.ContainsInt64(idx, n.Production.Index)
 }
 
 type Production struct {

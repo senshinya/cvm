@@ -85,7 +85,8 @@ type UnaryExpressionInfo struct {
 }
 
 type SizeOfExpressionInfo struct {
-	Type Type
+	Type   Type
+	Target *SingleExpression
 }
 
 type ArrayAccessExpressionInfo struct {

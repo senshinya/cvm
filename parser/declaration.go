@@ -1,51 +1,41 @@
 package parser
 
 import (
-	"errors"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/entity"
 	"shinya.click/cvm/parser/glr"
 )
 
-func parseDeclaration(root *entity.AstNode) (entity.TranslationUnit, error) {
+func parseDeclaration(root *entity.AstNode) entity.TranslationUnit {
+	if err := root.AssertNonTerminal(glr.Declaration); err != nil {
+		panic(err)
+	}
+
 	res := &entity.Declaration{}
 
 	// parse specifiers
-	specifiers, midType, err := parseDeclarationSpecifiers(root.Children[0])
-	if err != nil {
-		return nil, err
-	}
-	if specifiers.TypeDef {
-		return parseTypeDef(root, specifiers, midType)
-	}
+	specifiers, midType := parseDeclarationSpecifiers(root.Children[0])
 	res.Specifiers = specifiers
 	res.MidType = midType
 
-	if len(glr.Productions[root.ProdIndex].Right) == 2 {
-		// reduced by declaration := declaration_specifiers SEMICOLON
-		// this production can only declare struct, union or enum
-		// otherwise "declaration does not declare anything" occurs
-		// we treat it as error
-		if res.MidType.MetaType != entity.MetaTypeStruct &&
-			res.MidType.MetaType != entity.MetaTypeUnion &&
-			res.MidType.MetaType != entity.MetaTypeEnum {
-			return nil, errors.New("declaration does not declare anything")
-		}
-		return res, nil
+	switch {
+	case root.ReducedBy(glr.Declaration, 1):
+		// declaration := declaration_specifiers SEMICOLON
+		return res
+	case root.ReducedBy(glr.Declaration, 2):
+		// declaration := declaration_specifiers init_declarator_list SEMICOLON
+		res.Declarators = parseInitDeclarators(root.Children[1], res.MidType)
+		return res
+	default:
+		panic("unreachable")
 	}
-
-	// parse init declarators
-	res.Declarators, err = parseInitDeclarators(root.Children[1], res.MidType)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
 }
 
-func parseDeclarationSpecifiers(specifiersNode *entity.AstNode) (entity.Specifiers, entity.Type, error) {
-	specifiers, midType := entity.Specifiers{}, entity.Type{}
+func parseDeclarationSpecifiers(specifiersNode *entity.AstNode) (specifiers entity.Specifiers, midType entity.Type, err error) {
+	if err = specifiersNode.AssertNonTerminal(glr.DeclarationSpecifiers); err != nil {
+		panic(err)
+	}
 
 	specifierNodes := flattenDeclarationSpecifier(specifiersNode)
 
@@ -56,12 +46,9 @@ func parseDeclarationSpecifiers(specifiersNode *entity.AstNode) (entity.Specifie
 	for _, storagesSpecifier := range storagesSpecifiers {
 		parseStorageClassSpecifier(storagesSpecifier, &specifiers)
 	}
-	if err := checkStorageClassSpecifiers(specifiers); err != nil {
-		return specifiers, midType, err
-	}
 
 	// parse type specifier and qualifiers
-	midType = parseTypeSpecifiersAndQualifiers(
+	midType, err = parseTypeSpecifiersAndQualifiers(
 		funk.Filter(specifierNodes, func(specifier *entity.AstNode) bool {
 			return specifier.Typ == glr.TypeSpecifier
 		}).([]*entity.AstNode),
@@ -69,6 +56,9 @@ func parseDeclarationSpecifiers(specifiersNode *entity.AstNode) (entity.Specifie
 			return specifier.Typ == glr.TypeQualifier
 		}).([]*entity.AstNode),
 	)
+	if err != nil {
+		return
+	}
 
 	// parse function specifier
 	functionSpecifiers := funk.Filter(specifierNodes, func(specifier *entity.AstNode) bool {
@@ -78,12 +68,7 @@ func parseDeclarationSpecifiers(specifiersNode *entity.AstNode) (entity.Specifie
 		specifiers.Inline = true
 	}
 
-	return specifiers, midType, nil
-}
-
-func checkStorageClassSpecifiers(specifiers entity.Specifiers) error {
-	// TODO check storage class specifiers conflict
-	return nil
+	return
 }
 
 func parseStorageClassSpecifier(storageSpecifier *entity.AstNode, spe *entity.Specifiers) {
@@ -102,67 +87,58 @@ func parseStorageClassSpecifier(storageSpecifier *entity.AstNode, spe *entity.Sp
 	}
 }
 
-func flattenDeclarationSpecifier(specifiers *entity.AstNode) []*entity.AstNode {
-	if len(glr.Productions[specifiers.ProdIndex].Right) == 1 {
-		return []*entity.AstNode{specifiers.Children[0]}
+func parseInitDeclarators(declarators *entity.AstNode, midType entity.Type) []entity.Declarator {
+	if err := declarators.AssertNonTerminal(glr.InitDeclaratorList); err != nil {
+		panic(err)
 	}
 
-	return append(flattenDeclarationSpecifier(specifiers.Children[1]), specifiers.Children[0])
-}
-
-func parseInitDeclarators(declarators *entity.AstNode, midType entity.Type) ([]entity.Declarator, error) {
 	var res []entity.Declarator
 	initDeclarators := flattenInitDeclarators(declarators)
 	for _, initDeclarator := range initDeclarators {
 		// parse declarator
-		declare, err := parseDeclarator(initDeclarator.Children[0], midType)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, declare)
+		res = append(res, parseDeclarator(initDeclarator.Children[0], midType))
 
-		if len(glr.Productions[initDeclarator.ProdIndex].Right) != 3 {
+		if initDeclarator.ReducedBy(glr.InitDeclarator, 1) {
 			continue
 		}
 
 		// TODO parse initializer
 	}
-	return res, nil
+	return res
 }
 
-func flattenInitDeclarators(declarators *entity.AstNode) []*entity.AstNode {
-	if len(glr.Productions[declarators.ProdIndex].Right) == 1 {
-		return []*entity.AstNode{declarators.Children[0]}
+func parseDeclarator(root *entity.AstNode, midType entity.Type) entity.Declarator {
+	if err := root.AssertNonTerminal(glr.Declarator); err != nil {
+		panic(err)
 	}
 
-	return append(flattenInitDeclarators(declarators.Children[0]), declarators.Children[2])
-}
-
-func parseDeclarator(root *entity.AstNode, midType entity.Type) (entity.Declarator, error) {
-	res := entity.Declarator{}
-
+	var res entity.Declarator
 	// 1. find the most inner direct_declarator node that contains only IDENTIFIER
 	currentNode := root
 	for {
-		if currentNode.Typ == glr.Declarator {
-			if len(glr.Productions[currentNode.ProdIndex].Right) == 2 {
-				// reduced by declarator := pointer direct_declarator
-				currentNode = currentNode.Children[1]
-				continue
-			}
+		gotcha := false
+		switch {
+		case currentNode.ReducedBy(glr.Declarator, 1):
+			// declarator := direct_declarator
 			currentNode = currentNode.Children[0]
-			continue
+		case currentNode.ReducedBy(glr.Declarator, 2):
+			// declarator := pointer direct_declarator
+			currentNode = currentNode.Children[1]
+		case currentNode.ReducedBy(glr.DirectDeclarator, 1):
+			// direct_declarator := IDENTIFIER
+			gotcha = true
+		case currentNode.ReducedBy(glr.DirectDeclarator, 2):
+			// direct_declarator := LEFT_PARENTHESES declarator RIGHT_PARENTHESES
+			currentNode = currentNode.Children[1]
+		case currentNode.ReducedBy(glr.DirectDeclarator, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14):
+			// direct_declarator := direct_declarator ...
+			currentNode = currentNode.Children[0]
+		default:
+			panic("unreachable")
 		}
-		// current node type is direct_declarator
-		if len(glr.Productions[currentNode.ProdIndex].Right) == 1 {
-			// gotcha
+		if gotcha {
 			break
 		}
-		if currentNode.Children[0].Typ == common.LEFT_PARENTHESES {
-			currentNode = currentNode.Children[1]
-			continue
-		}
-		currentNode = currentNode.Children[0]
 	}
 	res.Identifier = currentNode.Children[0].Terminal.Lexeme
 
@@ -172,64 +148,62 @@ func parseDeclarator(root *entity.AstNode, midType entity.Type) (entity.Declarat
 		if currentNode == root.Parent {
 			break
 		}
-		prod := glr.Productions[currentNode.ProdIndex]
-		if currentNode.Typ == glr.Declarator {
-			if len(prod.Right) == 1 {
-				// declarator := direct_declarator
-				currentNode = currentNode.Parent
-				continue
-			}
-			// reduced by declarator := pointer direct_declarator
+		switch {
+		case currentNode.ReducedBy(glr.Declarator, 1):
+			// declarator := direct_declarator
+			currentNode = currentNode.Parent
+		case currentNode.ReducedBy(glr.Declarator, 2):
+			// declarator := pointer direct_declarator
 			currentType = parsePointer(currentNode.Children[0], currentType).PointerInnerType
 			currentNode = currentNode.Parent
-			continue
-		}
-		// current node is direct declarator
-		if len(prod.Right) == 1 {
-			// reduced by direct_declarator := IDENTIFIER, do nothing
+		case currentNode.ReducedBy(glr.DirectDeclarator, 1):
+			// direct_declarator := IDENTIFIER, do nothing
 			currentNode = currentNode.Parent
-			continue
-		}
-		if currentNode.Children[0].Typ == common.LEFT_PARENTHESES {
-			// reduced by direct_declarator := LEFT_PARENTHESES declarator RIGHT_PARENTHESES, do nothing
+		case currentNode.ReducedBy(glr.DirectDeclarator, 2):
+			// direct_declarator := LEFT_PARENTHESES declarator RIGHT_PARENTHESES
 			currentNode = currentNode.Parent
-			continue
-		}
-		if currentNode.Children[1].Typ == common.LEFT_BRACKETS {
+		case currentNode.ReducedBy(glr.DirectDeclarator, 3, 4, 5, 6, 7, 8, 9, 10, 11):
 			currentType.MetaType = entity.MetaTypeArray
 			currentType.ArrayMetaInfo = parseArrayMetaInfo(currentNode)
 			currentType = currentType.ArrayMetaInfo.InnerType
 			currentNode = currentNode.Parent
-			continue
-		}
-		if currentNode.Children[1].Typ == common.LEFT_PARENTHESES {
+		case currentNode.ReducedBy(glr.DirectDeclarator, 12, 13, 14):
 			currentType.MetaType = entity.MetaTypeFunction
 			currentType.FunctionMetaInfo = parseFunctionMetaInfo(currentNode)
 			currentType = currentType.FunctionMetaInfo.ReturnType
 			currentNode = currentNode.Parent
-			continue
+		default:
+			panic("unreachable")
 		}
-		return res, errors.New("unknown current node type")
 	}
 	*currentType = midType
-	return res, nil
+	return res
 }
 
 func parsePointer(rootPointer *entity.AstNode, currentType *entity.Type) *entity.Type {
+	if err := rootPointer.AssertNonTerminal(glr.Pointer); err != nil {
+		panic(err)
+	}
 	// find the most inner pointer
 	currentPointer := rootPointer
 	for {
-		prod := glr.Productions[rootPointer.ProdIndex]
-		if len(prod.Right) == 1 ||
-			(len(prod.Right) == 2 && rootPointer.Children[1].Typ == glr.TypeQualifierList) {
-			// gotcha
-			break
+		gotcha := false
+		switch {
+		case currentPointer.ReducedBy(glr.Pointer, 1, 2):
+			// pointer := ASTERISK
+			// pointer := ASTERISK type_qualifier_list
+			gotcha = true
+		case currentPointer.ReducedBy(glr.Pointer, 3):
+			// pointer := ASTERISK pointer
+			currentPointer = currentPointer.Children[1]
+		case currentPointer.ReducedBy(glr.Pointer, 4):
+			// pointer := ASTERISK type_qualifier_list pointer
+			currentPointer = currentPointer.Children[2]
+		default:
+			panic("unreachable")
 		}
-		if len(prod.Right) == 2 {
-			currentPointer = rootPointer.Children[1]
-		} else {
-			// length = 3
-			currentPointer = rootPointer.Children[2]
+		if gotcha {
+			break
 		}
 	}
 
@@ -239,17 +213,22 @@ func parsePointer(rootPointer *entity.AstNode, currentType *entity.Type) *entity
 		}
 		currentType.MetaType = entity.MetaTypePointer
 		currentType.PointerInnerType = &entity.Type{}
-		prod := glr.Productions[currentPointer.ProdIndex]
-		if len(prod.Right) == 1 ||
-			(len(prod.Right) == 2 && currentPointer.Children[1].Typ == glr.Pointer) {
+		switch {
+		case currentPointer.ReducedBy(glr.Pointer, 1, 3):
+			// pointer := ASTERISK
+			// pointer := ASTERISK pointer
 			currentType = currentType.PointerInnerType
 			currentPointer = currentPointer.Parent
-			continue
+		case currentPointer.ReducedBy(glr.Pointer, 2, 4):
+			// pointer := ASTERISK type_qualifier_list
+			// pointer := ASTERISK type_qualifier_list pointer
+			typeQualifiers := flattenTypeQualifierList(currentPointer.Children[1])
+			parseTypeQualifiers(typeQualifiers, &currentType.TypeQualifiers)
+			currentType = currentType.PointerInnerType
+			currentPointer = currentPointer.Parent
+		default:
+			panic("unreachable")
 		}
-		typeQualifiers := flattenTypeQualifierList(currentPointer.Children[1])
-		parseTypeQualifiers(typeQualifiers, &currentType.TypeQualifiers)
-		currentType = currentType.PointerInnerType
-		currentPointer = currentPointer.Parent
 	}
 	currentType.MetaType = entity.MetaTypePointer
 	currentType.PointerInnerType = &entity.Type{}
@@ -259,46 +238,4 @@ func parsePointer(rootPointer *entity.AstNode, currentType *entity.Type) *entity
 		parseTypeQualifiers(typeQualifiers, &currentType.TypeQualifiers)
 	}
 	return currentType
-}
-
-func flattenTypeQualifierList(listNode *entity.AstNode) []*entity.AstNode {
-	if len(listNode.Children) == 1 {
-		return []*entity.AstNode{listNode.Children[0]}
-	}
-	return append(flattenTypeQualifierList(listNode.Children[0]), listNode.Children[1])
-}
-
-func parseArrayMetaInfo(arrayNode *entity.AstNode) *entity.ArrayMetaInfo {
-	res := &entity.ArrayMetaInfo{InnerType: &entity.Type{}}
-	prod := glr.Productions[arrayNode.ProdIndex]
-	for i := 0; i < len(prod.Right); i++ {
-		child := arrayNode.Children[i]
-		if child.Typ == glr.DirectAbstractDeclarator ||
-			child.Typ == glr.DirectDeclarator {
-			continue
-		}
-		if child.Typ == common.LEFT_BRACKETS ||
-			child.Typ == common.RIGHT_BRACKETS {
-			continue
-		}
-		if child.Typ == common.STATIC {
-			res.Static = true
-			continue
-		}
-		if child.Typ == common.ASTERISK {
-			res.Asterisk = true
-			continue
-		}
-		if child.Typ == glr.TypeQualifierList {
-			parseTypeQualifiers(flattenTypeQualifierList(child), &res.TypeQualifiers)
-			continue
-		}
-		// assignment_expression
-		res.Size = ParseExpressionNode(child)
-	}
-	if res.Size == nil {
-		res.Incomplete = true
-	}
-	// TODO Check MetaInfo
-	return res
 }

@@ -4,8 +4,7 @@ type TranslationUnitType uint8
 
 const (
 	UnitTypeDeclaration TranslationUnitType = 1
-	UnitTypeTypeDef     TranslationUnitType = 2
-	UnitTypeFunctionDef TranslationUnitType = 3
+	UnitTypeFunctionDef TranslationUnitType = 2
 )
 
 type TranslationUnit interface {
