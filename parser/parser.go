@@ -84,7 +84,7 @@ func (p *Parser) Parse() error {
 				}
 				rights = append(rights, sym)
 			}
-			newSym := &entity.AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
+			newSym := &entity.AstNode{Typ: prod.Left, Production: prod}
 			newSym.SetChildren(funk.Reverse(rights).([]*entity.AstNode))
 			p.SymbolStack.Push(newSym)
 			break
@@ -109,7 +109,7 @@ func (p *Parser) Parse() error {
 				}
 				rights = append(rights, sym)
 			}
-			newSym := &entity.AstNode{Typ: prod.Left, ProdIndex: op.ReduceIndex}
+			newSym := &entity.AstNode{Typ: prod.Left, Production: prod}
 			newSym.SetChildren(funk.Reverse(rights).([]*entity.AstNode))
 			p.SymbolStack.Push(newSym)
 
@@ -178,9 +178,9 @@ func deepCopyAstNodeSlice(origins []*entity.AstNode) []*entity.AstNode {
 
 func copyAstNode(origin *entity.AstNode) *entity.AstNode {
 	root := &entity.AstNode{
-		Typ:       origin.Typ,
-		Terminal:  origin.Terminal,
-		ProdIndex: origin.ProdIndex,
+		Typ:        origin.Typ,
+		Terminal:   origin.Terminal,
+		Production: origin.Production,
 	}
 	for _, child := range origin.Children {
 		root.Children = append(root.Children, copyAstNode(child))

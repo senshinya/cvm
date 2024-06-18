@@ -3,11 +3,11 @@ package entity
 import "shinya.click/cvm/common"
 
 type AstNode struct {
-	Parent    *AstNode
-	Typ       common.TokenType
-	Terminal  *common.Token
-	ProdIndex int // reduce by which production
-	Children  []*AstNode
+	Parent     *AstNode
+	Typ        common.TokenType
+	Terminal   *common.Token
+	Production Production
+	Children   []*AstNode
 }
 
 func (n *AstNode) SetChildren(children []*AstNode) {
@@ -15,6 +15,14 @@ func (n *AstNode) SetChildren(children []*AstNode) {
 	for _, child := range children {
 		child.Parent = n
 	}
+}
+
+func (n *AstNode) AssertNonTerminal(nonTerminal common.TokenType) bool {
+	return n.Production.Left == nonTerminal
+}
+
+func (n *AstNode) ReducedBy(nonTerminal common.TokenType, idx int64) bool {
+	return n.AssertNonTerminal(nonTerminal) && n.Production.Index == idx
 }
 
 type Production struct {
