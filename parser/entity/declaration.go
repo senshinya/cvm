@@ -11,7 +11,7 @@ func (d *Declaration) GetUnitType() TranslationUnitType {
 }
 
 type Declarator struct {
-	Identifier string
-
-	Type Type
+	Identifier  string
+	Type        Type
+	Initializer *Initializer
 }

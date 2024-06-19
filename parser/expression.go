@@ -247,15 +247,19 @@ func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
 	case node.ReducedBy(glr.PostfixExpression, 9, 10):
 		// postfix_expression := LEFT_PARENTHESES type_name RIGHT_PARENTHESES LEFT_BRACES initializer_list RIGHT_BRACES
 		// postfix_expression := LEFT_PARENTHESES type_name RIGHT_PARENTHESES LEFT_BRACES initializer_list COMMA RIGHT_BRACES
-		// TODO initializer_list
 		typ, err := ParseTypeName(node.Children[1])
+		if err != nil {
+			return nil, err
+		}
+		initList, err := ParseInitializerList(node.Children[4])
 		if err != nil {
 			return nil, err
 		}
 		return &entity.SingleExpression{
 			ExpressionType: entity.ExpressionTypeConstruct,
 			ConstructExpressionInfo: &entity.ConstructExpressionInfo{
-				Type: typ,
+				Type:         typ,
+				Initializers: initList,
 			},
 		}, nil
 	default:

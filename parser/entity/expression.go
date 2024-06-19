@@ -110,5 +110,6 @@ type StructAccessExpressionInfo struct {
 }
 
 type ConstructExpressionInfo struct {
-	Type Type
+	Type         Type
+	Initializers []*InitializerItem
 }

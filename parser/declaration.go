@@ -106,13 +106,22 @@ func parseInitDeclarators(declarators *entity.AstNode, midType entity.Type) ([]e
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, declarator)
 
-		if initDeclarator.ReducedBy(glr.InitDeclarator, 1) {
-			continue
+		switch {
+		case initDeclarator.ReducedBy(glr.InitDeclarator, 1):
+			// init_declarator := declarator
+		case initDeclarator.ReducedBy(glr.InitDeclarator, 2):
+			// init_declarator := declarator EQUAL initializer
+			initializer, err := ParseInitializer(initDeclarator.Children[2])
+			if err != nil {
+				return nil, err
+			}
+			declarator.Initializer = initializer
+		default:
+			panic("unreachable")
 		}
 
-		// TODO parse initializer
+		res = append(res, declarator)
 	}
 	return res, nil
 }

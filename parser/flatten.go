@@ -67,3 +67,11 @@ func flattenSpecifiersQualifiers(specifiersQualifiers *entity.AstNode) []*entity
 
 	return append(flattenSpecifiersQualifiers(specifiersQualifiers.Children[1]), specifiersQualifiers.Children[0])
 }
+
+func flattenDesignatorList(root *entity.AstNode) []*entity.AstNode {
+	if root.ReducedBy(glr.DesignatorList, 1) {
+		return []*entity.AstNode{root.Children[0]}
+	}
+
+	return append(flattenDesignatorList(root.Children[0]), root.Children[1])
+}
