@@ -292,24 +292,38 @@ func parseStructDeclarationList(root *entity.AstNode) ([]*entity.FieldMetaInfo, 
 			switch {
 			case structDeclarator.ReducedBy(glr.StructDeclarator, 1):
 				// struct_declarator := declarator
-				declare := parseDeclarator(structDeclarator.Children[0], midType)
+				declare, err := parseDeclarator(structDeclarator.Children[0], midType)
+				if err != nil {
+					return nil, err
+				}
 				res = append(res, &entity.FieldMetaInfo{
 					Type:       declare.Type,
 					Identifier: &declare.Identifier,
 				})
 			case structDeclarator.ReducedBy(glr.StructDeclarator, 2):
 				// struct_declarator := COLON constant_expression
+				bitWise, err := ParseExpressionNode(structDeclarator.Children[1])
+				if err != nil {
+					return nil, err
+				}
 				res = append(res, &entity.FieldMetaInfo{
 					Type:     midType,
-					BitWidth: ParseExpressionNode(structDeclarator.Children[1]),
+					BitWidth: bitWise,
 				})
 			case structDeclarator.ReducedBy(glr.StructDeclarator, 3):
 				// struct_declarator := declarator COLON constant_expression
-				declare := parseDeclarator(structDeclarator.Children[0], midType)
+				declare, err := parseDeclarator(structDeclarator.Children[0], midType)
+				if err != nil {
+					return nil, err
+				}
+				bitWise, err := ParseExpressionNode(structDeclarator.Children[2])
+				if err != nil {
+					return nil, err
+				}
 				res = append(res, &entity.FieldMetaInfo{
 					Type:       declare.Type,
 					Identifier: &declare.Identifier,
-					BitWidth:   ParseExpressionNode(structDeclarator.Children[2]),
+					BitWidth:   bitWise,
 				})
 			default:
 				panic("unreachable")

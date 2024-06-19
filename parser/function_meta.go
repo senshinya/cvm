@@ -5,7 +5,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func parseFunctionMetaInfo(node *entity.AstNode) *entity.FunctionMetaInfo {
+func parseFunctionMetaInfo(node *entity.AstNode) (*entity.FunctionMetaInfo, error) {
 	if err := node.AssertNonTerminal(glr.DirectAbstractDeclarator, glr.DirectDeclarator); err != nil {
 		panic(err)
 	}
@@ -14,41 +14,50 @@ func parseFunctionMetaInfo(node *entity.AstNode) *entity.FunctionMetaInfo {
 	switch {
 	case node.ReducedBy(glr.DirectDeclarator, 12):
 		// direct_declarator := direct_declarator LEFT_PARENTHESES parameter_type_list RIGHT_PARENTHESES
-		params, variadic := parseParameterTypeList(node.Children[2])
+		params, variadic, err := parseParameterTypeList(node.Children[2])
+		if err != nil {
+			return nil, err
+		}
 		res.Parameters = params
 		res.Variadic = variadic
-		return res
+		return res, nil
 	case node.ReducedBy(glr.DirectDeclarator, 13):
 		// direct_declarator := direct_declarator LEFT_PARENTHESES RIGHT_PARENTHESES
-		return res
+		return res, nil
 	case node.ReducedBy(glr.DirectDeclarator, 14):
 		// direct_declarator := direct_declarator LEFT_PARENTHESES identifier_list RIGHT_PARENTHESES
 		res.IdentifierList = parseIdentifierList(node.Children[2])
-		return res
+		return res, nil
 	case node.ReducedBy(glr.DirectAbstractDeclarator, 8):
 		// direct_abstract_declarator := LEFT_PARENTHESES RIGHT_PARENTHESES
-		return res
+		return res, nil
 	case node.ReducedBy(glr.DirectAbstractDeclarator, 9):
 		// direct_abstract_declarator := LEFT_PARENTHESES parameter_type_list RIGHT_PARENTHESES
-		params, variadic := parseParameterTypeList(node.Children[1])
+		params, variadic, err := parseParameterTypeList(node.Children[1])
+		if err != nil {
+			return nil, err
+		}
 		res.Parameters = params
 		res.Variadic = variadic
-		return res
+		return res, nil
 	case node.ReducedBy(glr.DirectAbstractDeclarator, 19):
 		// direct_abstract_declarator := direct_abstract_declarator LEFT_PARENTHESES RIGHT_PARENTHESES
-		return res
+		return res, nil
 	case node.ReducedBy(glr.DirectAbstractDeclarator, 20):
 		// direct_abstract_declarator := direct_abstract_declarator LEFT_PARENTHESES parameter_type_list RIGHT_PARENTHESES
-		params, variadic := parseParameterTypeList(node.Children[2])
+		params, variadic, err := parseParameterTypeList(node.Children[2])
+		if err != nil {
+			return nil, err
+		}
 		res.Parameters = params
 		res.Variadic = variadic
-		return res
+		return res, nil
 	default:
 		panic("unreachable")
 	}
 }
 
-func parseParameterTypeList(node *entity.AstNode) ([]*entity.FunctionParameter, bool) {
+func parseParameterTypeList(node *entity.AstNode) ([]*entity.FunctionParameter, bool, error) {
 	if err := node.AssertNonTerminal(glr.ParameterTypeList); err != nil {
 		panic(err)
 	}
@@ -59,24 +68,31 @@ func parseParameterTypeList(node *entity.AstNode) ([]*entity.FunctionParameter, 
 	parameterDeclarations := flattenParameterList(parameterList)
 	var params []*entity.FunctionParameter
 	for _, paramDeclare := range parameterDeclarations {
-		params = append(params, parseParameterDeclaration(paramDeclare))
+		param, err := parseParameterDeclaration(paramDeclare)
+		if err != nil {
+			return nil, false, err
+		}
+		params = append(params, param)
 	}
 
 	if len(params) == 1 && params[0].Type.MetaType == entity.MetaTypeVoid {
 		params = nil
 	}
 
-	return params, variadic
+	return params, variadic, nil
 }
 
-func parseParameterDeclaration(paramDeclare *entity.AstNode) *entity.FunctionParameter {
+func parseParameterDeclaration(paramDeclare *entity.AstNode) (*entity.FunctionParameter, error) {
 	if err := paramDeclare.AssertNonTerminal(glr.ParameterDeclaration); err != nil {
 		panic(err)
 	}
 
 	res := &entity.FunctionParameter{}
 
-	specifiers, midType := parseDeclarationSpecifiers(paramDeclare.Children[0])
+	specifiers, midType, err := parseDeclarationSpecifiers(paramDeclare.Children[0])
+	if err != nil {
+		return nil, err
+	}
 	res.Specifiers = specifiers
 
 	switch {
@@ -85,17 +101,23 @@ func parseParameterDeclaration(paramDeclare *entity.AstNode) *entity.FunctionPar
 		res.Type = midType
 	case paramDeclare.ReducedBy(glr.ParameterDeclaration, 2):
 		// parameter_declaration := declaration_specifiers declarator
-		declare := parseDeclarator(paramDeclare.Children[1], midType)
+		declare, err := parseDeclarator(paramDeclare.Children[1], midType)
+		if err != nil {
+			return nil, err
+		}
 		res.Identifier = &declare.Identifier
 		res.Type = declare.Type
 	case paramDeclare.ReducedBy(glr.ParameterDeclaration, 3):
 		// parameter_declaration := declaration_specifiers abstract_declarator
-		res.Type = ParseAbstractDeclarator(paramDeclare.Children[1], midType)
+		res.Type, err = ParseAbstractDeclarator(paramDeclare.Children[1], midType)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		panic("unreachable")
 	}
 
-	return res
+	return res, nil
 }
 
 func parseIdentifierList(node *entity.AstNode) []string {

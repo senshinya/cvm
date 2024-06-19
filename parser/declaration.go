@@ -7,7 +7,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func parseDeclaration(root *entity.AstNode) entity.TranslationUnit {
+func parseDeclaration(root *entity.AstNode) (entity.TranslationUnit, error) {
 	if err := root.AssertNonTerminal(glr.Declaration); err != nil {
 		panic(err)
 	}
@@ -15,18 +15,24 @@ func parseDeclaration(root *entity.AstNode) entity.TranslationUnit {
 	res := &entity.Declaration{}
 
 	// parse specifiers
-	specifiers, midType := parseDeclarationSpecifiers(root.Children[0])
+	specifiers, midType, err := parseDeclarationSpecifiers(root.Children[0])
+	if err != nil {
+		return nil, err
+	}
 	res.Specifiers = specifiers
 	res.MidType = midType
 
 	switch {
 	case root.ReducedBy(glr.Declaration, 1):
 		// declaration := declaration_specifiers SEMICOLON
-		return res
+		return res, nil
 	case root.ReducedBy(glr.Declaration, 2):
 		// declaration := declaration_specifiers init_declarator_list SEMICOLON
-		res.Declarators = parseInitDeclarators(root.Children[1], res.MidType)
-		return res
+		res.Declarators, err = parseInitDeclarators(root.Children[1], res.MidType)
+		if err != nil {
+			return nil, err
+		}
+		return res, nil
 	default:
 		panic("unreachable")
 	}
@@ -87,7 +93,7 @@ func parseStorageClassSpecifier(storageSpecifier *entity.AstNode, spe *entity.Sp
 	}
 }
 
-func parseInitDeclarators(declarators *entity.AstNode, midType entity.Type) []entity.Declarator {
+func parseInitDeclarators(declarators *entity.AstNode, midType entity.Type) ([]entity.Declarator, error) {
 	if err := declarators.AssertNonTerminal(glr.InitDeclaratorList); err != nil {
 		panic(err)
 	}
@@ -96,7 +102,11 @@ func parseInitDeclarators(declarators *entity.AstNode, midType entity.Type) []en
 	initDeclarators := flattenInitDeclarators(declarators)
 	for _, initDeclarator := range initDeclarators {
 		// parse declarator
-		res = append(res, parseDeclarator(initDeclarator.Children[0], midType))
+		declarator, err := parseDeclarator(initDeclarator.Children[0], midType)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, declarator)
 
 		if initDeclarator.ReducedBy(glr.InitDeclarator, 1) {
 			continue
@@ -104,15 +114,14 @@ func parseInitDeclarators(declarators *entity.AstNode, midType entity.Type) []en
 
 		// TODO parse initializer
 	}
-	return res
+	return res, nil
 }
 
-func parseDeclarator(root *entity.AstNode, midType entity.Type) entity.Declarator {
-	if err := root.AssertNonTerminal(glr.Declarator); err != nil {
+func parseDeclarator(root *entity.AstNode, midType entity.Type) (res entity.Declarator, err error) {
+	if err = root.AssertNonTerminal(glr.Declarator); err != nil {
 		panic(err)
 	}
 
-	var res entity.Declarator
 	// 1. find the most inner direct_declarator node that contains only IDENTIFIER
 	currentNode := root
 	for {
@@ -164,12 +173,18 @@ func parseDeclarator(root *entity.AstNode, midType entity.Type) entity.Declarato
 			currentNode = currentNode.Parent
 		case currentNode.ReducedBy(glr.DirectDeclarator, 3, 4, 5, 6, 7, 8, 9, 10, 11):
 			currentType.MetaType = entity.MetaTypeArray
-			currentType.ArrayMetaInfo = parseArrayMetaInfo(currentNode)
+			currentType.ArrayMetaInfo, err = parseArrayMetaInfo(currentNode)
+			if err != nil {
+				return res, err
+			}
 			currentType = currentType.ArrayMetaInfo.InnerType
 			currentNode = currentNode.Parent
 		case currentNode.ReducedBy(glr.DirectDeclarator, 12, 13, 14):
 			currentType.MetaType = entity.MetaTypeFunction
-			currentType.FunctionMetaInfo = parseFunctionMetaInfo(currentNode)
+			currentType.FunctionMetaInfo, err = parseFunctionMetaInfo(currentNode)
+			if err != nil {
+				return res, err
+			}
 			currentType = currentType.FunctionMetaInfo.ReturnType
 			currentNode = currentNode.Parent
 		default:
@@ -177,7 +192,7 @@ func parseDeclarator(root *entity.AstNode, midType entity.Type) entity.Declarato
 		}
 	}
 	*currentType = midType
-	return res
+	return res, nil
 }
 
 func parsePointer(rootPointer *entity.AstNode, currentType *entity.Type) *entity.Type {

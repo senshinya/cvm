@@ -230,7 +230,10 @@ func (p *Parser) parseTranslationUnit(unit *entity.AstNode) error {
 		p.TranslationUnits = append(p.TranslationUnits, funcDef)
 	case unit.ReducedBy(glr.TranslationUnit, 2):
 		// translation_unit := declaration
-		res := parseDeclaration(unit.Children[0])
+		res, err := parseDeclaration(unit.Children[0])
+		if err != nil {
+			return err
+		}
 		p.TranslationUnits = append(p.TranslationUnits, res)
 	default:
 		panic("unreachable")

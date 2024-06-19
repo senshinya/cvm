@@ -32,14 +32,15 @@ func ParseTypeName(typeNameNode *entity.AstNode) (typ entity.Type, err error) {
 		return midType, nil
 	case typeNameNode.ReducedBy(glr.TypeName, 2):
 		// type_name := specifier_qualifier_list abstract_declarator
-		return ParseAbstractDeclarator(typeNameNode.Children[1], midType), nil
+		typ, err = ParseAbstractDeclarator(typeNameNode.Children[1], midType)
+		return
 	default:
 		panic("unreachable")
 	}
 }
 
-func ParseAbstractDeclarator(root *entity.AstNode, midType entity.Type) (res entity.Type) {
-	if err := root.AssertNonTerminal(glr.AbstractDeclarator); err != nil {
+func ParseAbstractDeclarator(root *entity.AstNode, midType entity.Type) (res entity.Type, err error) {
+	if err = root.AssertNonTerminal(glr.AbstractDeclarator); err != nil {
 		panic(err)
 	}
 
@@ -63,14 +64,20 @@ func ParseAbstractDeclarator(root *entity.AstNode, midType entity.Type) (res ent
 			currentNode = currentNode.Parent
 		case currentNode.ReducedBy(glr.DirectAbstractDeclarator, 1, 2, 3, 4, 5, 6, 7):
 			currentType.MetaType = entity.MetaTypeArray
-			currentType.ArrayMetaInfo = parseArrayMetaInfo(currentNode)
+			currentType.ArrayMetaInfo, err = parseArrayMetaInfo(currentNode)
+			if err != nil {
+				return res, err
+			}
 			currentType = currentType.ArrayMetaInfo.InnerType
 			currentNode = currentNode.Parent
 		case currentNode.ReducedBy(glr.DirectAbstractDeclarator, 8, 9):
 			// direct_abstract_declarator := LEFT_PARENTHESES RIGHT_PARENTHESES
 			// direct_abstract_declarator := LEFT_PARENTHESES parameter_type_list RIGHT_PARENTHESES
 			currentType.MetaType = entity.MetaTypeFunction
-			currentType.FunctionMetaInfo = parseFunctionMetaInfo(currentNode)
+			currentType.FunctionMetaInfo, err = parseFunctionMetaInfo(currentNode)
+			if err != nil {
+				return res, err
+			}
 			currentType = currentType.FunctionMetaInfo.ReturnType
 			currentNode = currentNode.Parent
 		case currentNode.ReducedBy(glr.DirectAbstractDeclarator, 10):
@@ -78,14 +85,20 @@ func ParseAbstractDeclarator(root *entity.AstNode, midType entity.Type) (res ent
 			currentNode = currentNode.Parent
 		case currentNode.ReducedBy(glr.DirectAbstractDeclarator, 11, 12, 13, 14, 15, 16, 17, 18):
 			currentType.MetaType = entity.MetaTypeArray
-			currentType.ArrayMetaInfo = parseArrayMetaInfo(currentNode)
+			currentType.ArrayMetaInfo, err = parseArrayMetaInfo(currentNode)
+			if err != nil {
+				return res, err
+			}
 			currentType = currentType.ArrayMetaInfo.InnerType
 			currentNode = currentNode.Parent
 		case currentNode.ReducedBy(glr.DirectAbstractDeclarator, 19, 20):
 			// direct_abstract_declarator := direct_abstract_declarator LEFT_PARENTHESES RIGHT_PARENTHESES
 			// direct_abstract_declarator := direct_abstract_declarator LEFT_PARENTHESES parameter_type_list RIGHT_PARENTHESES
 			currentType.MetaType = entity.MetaTypeFunction
-			currentType.FunctionMetaInfo = parseFunctionMetaInfo(currentNode)
+			currentType.FunctionMetaInfo, err = parseFunctionMetaInfo(currentNode)
+			if err != nil {
+				return res, err
+			}
 			currentType = currentType.FunctionMetaInfo.ReturnType
 			currentNode = currentNode.Parent
 		default:
@@ -93,7 +106,7 @@ func ParseAbstractDeclarator(root *entity.AstNode, midType entity.Type) (res ent
 		}
 	}
 	*currentType = midType
-	return res
+	return res, nil
 }
 
 func findMostInnerNode(root *entity.AstNode) *entity.AstNode {
