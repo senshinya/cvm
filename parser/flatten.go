@@ -75,3 +75,19 @@ func flattenDesignatorList(root *entity.AstNode) []*entity.AstNode {
 
 	return append(flattenDesignatorList(root.Children[0]), root.Children[1])
 }
+
+func flattenEnumerators(root *entity.AstNode) []*entity.AstNode {
+	if root.ReducedBy(glr.EnumeratorList, 1) {
+		return []*entity.AstNode{root.Children[0]}
+	}
+
+	return append(flattenEnumerators(root.Children[0]), root.Children[2])
+}
+
+func flattenArgumentExpressions(root *entity.AstNode) []*entity.AstNode {
+	if root.ReducedBy(glr.ArgumentExpressionList, 1) {
+		return []*entity.AstNode{root.Children[0]}
+	}
+
+	return append(flattenArgumentExpressions(root.Children[0]), root.Children[2])
+}

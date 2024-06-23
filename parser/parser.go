@@ -336,8 +336,7 @@ func printType(typ *entity.Type) {
 		printType(typ.ArrayMetaInfo.InnerType)
 		print(" ) ")
 	case entity.MetaTypeUserDefined:
-		// TODO user defined
-		print("user defined")
+		fmt.Printf("user defined %s ", *typ.UserDefinedTypeName)
 		return
 	}
 

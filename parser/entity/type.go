@@ -30,6 +30,7 @@ type Type struct {
 	PointerInnerType    *Type
 	StructMetaInfo      *StructUnionMetaInfo
 	UnionMetaInfo       *StructUnionMetaInfo
+	EnumMetaInfo        *EnumMetaInfo
 	FunctionMetaInfo    *FunctionMetaInfo
 	ArrayMetaInfo       *ArrayMetaInfo
 	UserDefinedTypeName *string
@@ -57,7 +58,7 @@ type NumberMetaInfo struct {
 }
 
 type StructUnionMetaInfo struct {
-	Identifier string
+	Identifier *string
 
 	Incomplete    bool
 	FieldMetaInfo []*FieldMetaInfo
@@ -67,6 +68,19 @@ type FieldMetaInfo struct {
 	Type       Type
 	Identifier *string
 	BitWidth   *SingleExpression
+}
+
+type EnumMetaInfo struct {
+	Identifier *string
+
+	Incomplete bool
+	EnumFields []*EnumFieldMetaInfo
+}
+
+type EnumFieldMetaInfo struct {
+	Identifier string
+
+	Value *SingleExpression
 }
 
 type ArrayMetaInfo struct {

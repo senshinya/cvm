@@ -67,7 +67,15 @@ func parseTypeSpecifiers(specifiers []*entity.AstNode, typ *entity.Type) (err er
 			}
 		case specifier.ReducedBy(glr.TypeSpecifier, 13):
 			// type_specifier := enum_specifier
-			// // TODO enum declare
+			if typ.MetaType != entity.MetaTypeUnknown {
+				err = errors.New("conflict type declaration")
+				return
+			}
+			typ.MetaType = entity.MetaTypeEnum
+			typ.EnumMetaInfo, err = parseEnumSpecifier(n.Children[0])
+			if err != nil {
+				return
+			}
 		case specifier.ReducedBy(glr.TypeSpecifier, 14):
 			// type_specifier := typedef_name
 			if typ.MetaType != entity.MetaTypeUnknown {
@@ -248,11 +256,11 @@ func parseStructUnionMeta(root *entity.AstNode) (*entity.StructUnionMetaInfo, er
 		meta.FieldMetaInfo, err = parseStructDeclarationList(root.Children[2])
 	case root.ReducedBy(glr.StructOrUnionSpecifier, 2):
 		// struct_or_union_specifier := struct_or_union IDENTIFIER LEFT_BRACES struct_declaration_list RIGHT_BRACES
-		meta.Identifier = root.Children[1].Terminal.Lexeme
+		meta.Identifier = &root.Children[1].Terminal.Lexeme
 		meta.FieldMetaInfo, err = parseStructDeclarationList(root.Children[3])
 	case root.ReducedBy(glr.StructOrUnionSpecifier, 3):
 		// struct_or_union_specifier := struct_or_union IDENTIFIER
-		meta.Identifier = root.Children[1].Terminal.Lexeme
+		meta.Identifier = &root.Children[1].Terminal.Lexeme
 		meta.Incomplete = true
 	default:
 		panic("unreachable")
@@ -329,6 +337,89 @@ func parseStructDeclarationList(root *entity.AstNode) ([]*entity.FieldMetaInfo, 
 				panic("unreachable")
 			}
 		}
+	}
+
+	return res, nil
+}
+
+func parseEnumSpecifier(root *entity.AstNode) (*entity.EnumMetaInfo, error) {
+	if err := root.AssertNonTerminal(glr.EnumSpecifier); err != nil {
+		panic(err)
+	}
+
+	res := &entity.EnumMetaInfo{}
+	var err error
+	switch {
+	case root.ReducedBy(glr.EnumSpecifier, 1):
+		// enum_specifier := ENUM LEFT_BRACES enumerator_list RIGHT_BRACES
+		res.EnumFields, err = parseEnumeratorList(root.Children[2])
+		if err != nil {
+			return nil, err
+		}
+	case root.ReducedBy(glr.EnumSpecifier, 2):
+		// enum_specifier := ENUM IDENTIFIER LEFT_BRACES enumerator_list RIGHT_BRACES
+		res.Identifier = &root.Children[1].Terminal.Lexeme
+		res.EnumFields, err = parseEnumeratorList(root.Children[3])
+		if err != nil {
+			return nil, err
+		}
+	case root.ReducedBy(glr.EnumSpecifier, 3):
+		// enum_specifier := ENUM LEFT_BRACES enumerator_list COMMA RIGHT_BRACES
+		res.EnumFields, err = parseEnumeratorList(root.Children[2])
+		if err != nil {
+			return nil, err
+		}
+	case root.ReducedBy(glr.EnumSpecifier, 4):
+		// enum_specifier := ENUM IDENTIFIER LEFT_BRACES enumerator_list COMMA RIGHT_BRACES
+		res.Identifier = &root.Children[1].Terminal.Lexeme
+	case root.ReducedBy(glr.EnumSpecifier, 5):
+		// enum_specifier := ENUM IDENTIFIER
+		res.Incomplete = true
+		res.Identifier = &root.Children[1].Terminal.Lexeme
+	default:
+		panic("unreachable")
+	}
+
+	return res, nil
+}
+
+func parseEnumeratorList(root *entity.AstNode) ([]*entity.EnumFieldMetaInfo, error) {
+	if err := root.AssertNonTerminal(glr.EnumeratorList); err != nil {
+		panic(err)
+	}
+
+	enumerators := flattenEnumerators(root)
+	var res []*entity.EnumFieldMetaInfo
+	for _, enumerator := range enumerators {
+		field, err := parseEnumerator(enumerator)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, field)
+	}
+	return res, nil
+}
+
+func parseEnumerator(root *entity.AstNode) (*entity.EnumFieldMetaInfo, error) {
+	if err := root.AssertNonTerminal(glr.Enumerator); err != nil {
+		panic(err)
+	}
+
+	res := &entity.EnumFieldMetaInfo{}
+	switch {
+	case root.ReducedBy(glr.Enumerator, 1):
+		// enumerator := enumeration_constant
+		res.Identifier = root.Children[0].Terminal.Lexeme
+	case root.ReducedBy(glr.Enumerator, 2):
+		// enumerator := enumeration_constant EQUAL constant_expression
+		res.Identifier = root.Children[0].Terminal.Lexeme
+		var err error
+		res.Value, err = ParseExpressionNode(root.Children[2])
+		if err != nil {
+			return nil, err
+		}
+	default:
+		panic("unreachable")
 	}
 
 	return res, nil

@@ -100,7 +100,8 @@ type PostfixExpressionInfo struct {
 }
 
 type FunctionCallExpressionInfo struct {
-	Function *SingleExpression
+	Function  *SingleExpression
+	Arguments []*SingleExpression
 }
 
 type StructAccessExpressionInfo struct {

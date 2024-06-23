@@ -215,10 +215,8 @@ func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
 				Target: target,
 			},
 		}, nil
-	case node.ReducedBy(glr.PostfixExpression, 3, 4):
+	case node.ReducedBy(glr.PostfixExpression, 3):
 		// postfix_expression := postfix_expression LEFT_PARENTHESES RIGHT_PARENTHESES
-		// postfix_expression := postfix_expression LEFT_PARENTHESES argument_expression_list RIGHT_PARENTHESES
-		// TODO function call
 		fun, err := parseExpressionNodeInner(node.Children[0])
 		if err != nil {
 			return nil, err
@@ -227,6 +225,23 @@ func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
 			ExpressionType: entity.ExpressionTypeFunctionCall,
 			FunctionCallExpressionInfo: &entity.FunctionCallExpressionInfo{
 				Function: fun,
+			},
+		}, nil
+	case node.ReducedBy(glr.PostfixExpression, 4):
+		// postfix_expression := postfix_expression LEFT_PARENTHESES argument_expression_list RIGHT_PARENTHESES
+		fun, err := parseExpressionNodeInner(node.Children[0])
+		if err != nil {
+			return nil, err
+		}
+		arguments, err := parseArgumentExpressionList(node.Children[2])
+		if err != nil {
+			return nil, err
+		}
+		return &entity.SingleExpression{
+			ExpressionType: entity.ExpressionTypeFunctionCall,
+			FunctionCallExpressionInfo: &entity.FunctionCallExpressionInfo{
+				Function:  fun,
+				Arguments: arguments,
 			},
 		}, nil
 	case node.ReducedBy(glr.PostfixExpression, 5, 6):
@@ -327,4 +342,22 @@ func parseUnary(node *entity.AstNode) (*entity.SingleExpression, error) {
 	default:
 		panic("unreachable")
 	}
+}
+
+func parseArgumentExpressionList(root *entity.AstNode) ([]*entity.SingleExpression, error) {
+	if err := root.AssertNonTerminal(glr.ArgumentExpressionList); err != nil {
+		panic(err)
+	}
+
+	var res []*entity.SingleExpression
+	expNodes := flattenArgumentExpressions(root)
+	for _, expNode := range expNodes {
+		exp, err := ParseExpressionNode(expNode)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, exp)
+	}
+
+	return res, nil
 }
