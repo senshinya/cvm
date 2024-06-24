@@ -226,7 +226,10 @@ func (p *Parser) parseTranslationUnit(unit *entity.AstNode) error {
 	switch {
 	case unit.ReducedBy(glr.TranslationUnit, 1):
 		// translation_unit := function_definition
-		funcDef := parseFunctionDefinition(unit.Children[0])
+		funcDef, err := parseFunctionDefinition(unit.Children[0])
+		if err != nil {
+			return err
+		}
 		p.TranslationUnits = append(p.TranslationUnits, funcDef)
 	case unit.ReducedBy(glr.TranslationUnit, 2):
 		// translation_unit := declaration

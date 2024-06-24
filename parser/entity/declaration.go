@@ -1,5 +1,10 @@
 package entity
 
+import (
+	"shinya.click/cvm/common"
+	"shinya.click/cvm/parser/glr"
+)
+
 type Declaration struct {
 	Specifiers  Specifiers
 	MidType     Type
@@ -8,6 +13,10 @@ type Declaration struct {
 
 func (d *Declaration) GetUnitType() TranslationUnitType {
 	return UnitTypeDeclaration
+}
+
+func (d *Declaration) GetBlockItemType() common.TokenType {
+	return glr.Declaration
 }
 
 type Declarator struct {
