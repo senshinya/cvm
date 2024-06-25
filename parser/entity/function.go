@@ -4,15 +4,14 @@ import (
 	"shinya.click/cvm/common"
 )
 
-type FunctionDef struct {
+type FunctionDefinition struct {
 	Specifiers   Specifiers
-	MidType      Type
 	Declarator   Declarator
 	Declarations []*Declaration
 	BlockItems   []BlockItem
 }
 
-func (d *FunctionDef) GetUnitType() TranslationUnitType {
+func (d *FunctionDefinition) GetUnitType() TranslationUnitType {
 	return UnitTypeFunctionDef
 }
 

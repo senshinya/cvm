@@ -7,7 +7,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func parseDeclaration(root *entity.AstNode) (entity.TranslationUnit, error) {
+func parseDeclaration(root *entity.AstNode) (*entity.Declaration, error) {
 	if err := root.AssertNonTerminal(glr.Declaration); err != nil {
 		panic(err)
 	}
@@ -262,4 +262,23 @@ func parsePointer(rootPointer *entity.AstNode, currentType *entity.Type) *entity
 		parseTypeQualifiers(typeQualifiers, &currentType.TypeQualifiers)
 	}
 	return currentType
+}
+
+func ParseDeclarationList(root *entity.AstNode) ([]*entity.Declaration, error) {
+	if err := root.AssertNonTerminal(glr.DeclarationList); err != nil {
+		panic(err)
+	}
+
+	declarationNodes := flattenDeclarationList(root)
+
+	var res []*entity.Declaration
+	for _, node := range declarationNodes {
+		declaration, err := parseDeclaration(node)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, declaration.(*entity.Declaration))
+	}
+
+	return res, nil
 }

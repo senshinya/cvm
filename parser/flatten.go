@@ -91,3 +91,19 @@ func flattenArgumentExpressions(root *entity.AstNode) []*entity.AstNode {
 
 	return append(flattenArgumentExpressions(root.Children[0]), root.Children[2])
 }
+
+func flattenDeclarationList(root *entity.AstNode) []*entity.AstNode {
+	if root.ReducedBy(glr.DeclarationList, 1) {
+		return []*entity.AstNode{root}
+	}
+
+	return append(flattenDeclarationList(root.Children[0]), root.Children[1])
+}
+
+func flattenBlockItemList(root *entity.AstNode) []*entity.AstNode {
+	if root.ReducedBy(glr.BlockItemList, 1) {
+		return []*entity.AstNode{root}
+	}
+
+	return append(flattenBlockItemList(root.Children[0]), root.Children[1])
+}

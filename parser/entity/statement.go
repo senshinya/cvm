@@ -25,7 +25,7 @@ const (
 	StmtTypeReturn
 )
 
-type Stmt struct {
+type Statement struct {
 	StmtType StmtType
 
 	LabeledStmtMetaInfo    *LabeledStmtMetaInfo
@@ -45,19 +45,20 @@ type Stmt struct {
 
 type LabeledStmtMetaInfo struct {
 	Identifier string
+	Body       *Statement
 }
 
 type CaseStmtMetaInfo struct {
 	Condition *SingleExpression
-	Body      *Stmt
+	Body      *Statement
 }
 
 type DefaultStmtMetaInfo struct {
-	Body *Stmt
+	Body *Statement
 }
 
 type CompoundStmtMetaInfo struct {
-	Stmts []*Stmt
+	BlockItems []BlockItem
 }
 
 type ExpressionStmtMetaInfo struct {
@@ -66,27 +67,27 @@ type ExpressionStmtMetaInfo struct {
 
 type IfStmtMetaInfo struct {
 	Condition *SingleExpression
-	Body      *Stmt
+	Body      *Statement
 }
 
 type IfElseStmtMetaInfo struct {
 	Condition *SingleExpression
-	Body      *Stmt
-	ElseBody  *Stmt
+	Body      *Statement
+	ElseBody  *Statement
 }
 
 type SwitchStmtMetaInfo struct {
 	Expression *SingleExpression
-	Body       *Stmt
+	Body       *Statement
 }
 
 type WhileStmtMetaInfo struct {
 	Condition *SingleExpression
-	Body      *Stmt
+	Body      *Statement
 }
 
 type DoWhileStmtMetaInfo struct {
-	Body      *Stmt
+	Body      *Statement
 	Condition *SingleExpression
 }
 
@@ -94,7 +95,7 @@ type ForStmtMetaInfo struct {
 	Initialization *SingleExpression
 	Condition      *SingleExpression
 	AfterThought   *SingleExpression
-	Body           *Stmt
+	Body           *Statement
 }
 
 type GotoStmtMetaInfo struct {
@@ -105,6 +106,6 @@ type ReturnStmtMetaInfo struct {
 	Value *SingleExpression
 }
 
-func (s *Stmt) GetBlockItemType() common.TokenType {
+func (s *Statement) GetBlockItemType() common.TokenType {
 	return glr.Statement
 }
