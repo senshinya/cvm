@@ -77,8 +77,8 @@ type IfElseStmtMetaInfo struct {
 }
 
 type SwitchStmtMetaInfo struct {
-	Expression *SingleExpression
-	Body       *Statement
+	Condition *SingleExpression
+	Body      *Statement
 }
 
 type WhileStmtMetaInfo struct {
@@ -92,7 +92,7 @@ type DoWhileStmtMetaInfo struct {
 }
 
 type ForStmtMetaInfo struct {
-	Initialization *SingleExpression
+	Initialization BlockItem
 	Condition      *SingleExpression
 	AfterThought   *SingleExpression
 	Body           *Statement
