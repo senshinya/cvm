@@ -6,7 +6,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func ParseInitializer(root *entity.AstNode) (*entity.Initializer, error) {
+func ParseInitializer(root *entity.RawAstNode) (*entity.Initializer, error) {
 	if err := root.AssertNonTerminal(glr.Initializer); err != nil {
 		panic(err)
 	}
@@ -36,7 +36,7 @@ func ParseInitializer(root *entity.AstNode) (*entity.Initializer, error) {
 	return res, nil
 }
 
-func ParseInitializerList(listNode *entity.AstNode) ([]*entity.InitializerItem, error) {
+func ParseInitializerList(listNode *entity.RawAstNode) ([]*entity.InitializerItem, error) {
 	if err := listNode.AssertNonTerminal(glr.InitializerList); err != nil {
 		panic(err)
 	}
@@ -102,7 +102,7 @@ func ParseInitializerList(listNode *entity.AstNode) ([]*entity.InitializerItem, 
 	return funk.Reverse(res).([]*entity.InitializerItem), nil
 }
 
-func ParseDesignation(root *entity.AstNode) ([]*entity.Designator, error) {
+func ParseDesignation(root *entity.RawAstNode) ([]*entity.Designator, error) {
 	if err := root.AssertNonTerminal(glr.Designation); err != nil {
 		panic(err)
 	}

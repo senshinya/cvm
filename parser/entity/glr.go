@@ -6,22 +6,30 @@ import (
 	"shinya.click/cvm/common"
 )
 
-type AstNode struct {
-	Parent     *AstNode
+type RawAstNode struct {
+	Parent     *RawAstNode
 	Typ        common.TokenType
 	Terminal   *common.Token
 	Production Production
-	Children   []*AstNode
+	Children   []*RawAstNode
+	common.SourceRange
 }
 
-func (n *AstNode) SetChildren(children []*AstNode) {
+func (n *RawAstNode) SetChildren(children []*RawAstNode) {
 	n.Children = children
 	for _, child := range children {
 		child.Parent = n
 	}
+	// set the source range
+	startSym := children[0]
+	endSym := children[len(children)-1]
+	n.SourceRange = common.SourceRange{
+		SourceStart: startSym.SourceRange.SourceStart,
+		SourceEnd:   endSym.SourceRange.SourceEnd,
+	}
 }
 
-func (n *AstNode) AssertNonTerminal(nonTerminal ...common.TokenType) error {
+func (n *RawAstNode) AssertNonTerminal(nonTerminal ...common.TokenType) error {
 	for _, t := range nonTerminal {
 		if t == n.Typ {
 			return nil
@@ -30,7 +38,7 @@ func (n *AstNode) AssertNonTerminal(nonTerminal ...common.TokenType) error {
 	return fmt.Errorf("unexpected %s", n.Typ)
 }
 
-func (n *AstNode) ReducedBy(nonTerminal common.TokenType, idx ...int64) bool {
+func (n *RawAstNode) ReducedBy(nonTerminal common.TokenType, idx ...int64) bool {
 	return n.Production.Left == nonTerminal && funk.ContainsInt64(idx, n.Production.Index)
 }
 

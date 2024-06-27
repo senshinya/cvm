@@ -9,6 +9,7 @@ type FunctionDefinition struct {
 	Declarator   Declarator
 	Declarations []*Declaration
 	BlockItems   []BlockItem
+	common.SourceRange
 }
 
 func (d *FunctionDefinition) GetUnitType() TranslationUnitType {

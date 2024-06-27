@@ -23,7 +23,7 @@ const (
 	ExpressionTypeExpressions
 )
 
-type SingleExpression struct {
+type Expression struct {
 	ExpressionType ExpressionType
 
 	Terminal *common.Token
@@ -41,71 +41,73 @@ type SingleExpression struct {
 	FunctionCallExpressionInfo *FunctionCallExpressionInfo
 	StructAccessExpressionInfo *StructAccessExpressionInfo
 	ConstructExpressionInfo    *ConstructExpressionInfo
-	Expressions                []*SingleExpression
+	Expressions                []*Expression
+
+	common.SourceRange
 }
 
 type AssignmentExpressionInfo struct {
-	LValue   *SingleExpression
+	LValue   *Expression
 	Operator common.TokenType
-	RValue   *SingleExpression
+	RValue   *Expression
 }
 
 type ConditionExpressionInfo struct {
-	Condition   *SingleExpression
-	TrueBranch  *SingleExpression
-	FalseBranch *SingleExpression
+	Condition   *Expression
+	TrueBranch  *Expression
+	FalseBranch *Expression
 }
 
 type LogicExpressionInfo struct {
 	Operator common.TokenType
-	One      *SingleExpression
-	Two      *SingleExpression
+	One      *Expression
+	Two      *Expression
 }
 
 type BitExpressionInfo struct {
 	Operator common.TokenType
-	One      *SingleExpression
-	Two      *SingleExpression
+	One      *Expression
+	Two      *Expression
 }
 
 type NumberExpressionInfo struct {
 	Operator common.TokenType
-	One      *SingleExpression
-	Two      *SingleExpression
+	One      *Expression
+	Two      *Expression
 }
 
 type CastExpressionInfo struct {
 	Type   Type
-	Source *SingleExpression
+	Source *Expression
 }
 
 type UnaryExpressionInfo struct {
 	Operator common.TokenType
-	Target   *SingleExpression
+	Target   *Expression
 }
 
 type SizeOfExpressionInfo struct {
 	Type   Type
-	Target *SingleExpression
+	Target *Expression
 }
 
 type ArrayAccessExpressionInfo struct {
-	Array  *SingleExpression
-	Target *SingleExpression
+	Array  *Expression
+	Target *Expression
 }
 
 type PostfixExpressionInfo struct {
 	Operator common.TokenType
-	Target   *SingleExpression
+	Target   *Expression
 }
 
 type FunctionCallExpressionInfo struct {
-	Function  *SingleExpression
-	Arguments []*SingleExpression
+	Function  *Expression
+	Arguments []*Expression
 }
 
 type StructAccessExpressionInfo struct {
-	Struct *SingleExpression
+	Struct *Expression
 	Field  string
 	Access common.TokenType
 }

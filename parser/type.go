@@ -20,7 +20,7 @@ type numSpecifierRecorder struct {
 	bool_    int
 }
 
-func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*entity.AstNode) (typ entity.Type, err error) {
+func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*entity.RawAstNode) (typ entity.Type, err error) {
 	if len(specifiers) == 0 {
 		panic("need type specifiers")
 	}
@@ -29,7 +29,7 @@ func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*entity.AstNode) 
 	return
 }
 
-func parseTypeSpecifiers(specifiers []*entity.AstNode, typ *entity.Type) (err error) {
+func parseTypeSpecifiers(specifiers []*entity.RawAstNode, typ *entity.Type) (err error) {
 	var numRec *numSpecifierRecorder
 	for _, specifier := range specifiers {
 		n := specifier.Children[0]
@@ -203,7 +203,7 @@ func countNumberTypeSpecifiers(typ common.TokenType, numRec *numSpecifierRecorde
 	}
 }
 
-func parseTypeQualifiers(qualifiers []*entity.AstNode, typ *entity.TypeQualifiers) {
+func parseTypeQualifiers(qualifiers []*entity.RawAstNode, typ *entity.TypeQualifiers) {
 	for _, qualifier := range qualifiers {
 		switch {
 		case qualifier.ReducedBy(glr.TypeQualifier, 1):
@@ -221,7 +221,7 @@ func parseTypeQualifiers(qualifiers []*entity.AstNode, typ *entity.TypeQualifier
 	}
 }
 
-func parseStructOrUnion(root *entity.AstNode, typ *entity.Type) error {
+func parseStructOrUnion(root *entity.RawAstNode, typ *entity.Type) error {
 	if err := root.AssertNonTerminal(glr.StructOrUnionSpecifier); err != nil {
 		panic(err)
 	}
@@ -243,7 +243,7 @@ func parseStructOrUnion(root *entity.AstNode, typ *entity.Type) error {
 	return err
 }
 
-func parseStructUnionMeta(root *entity.AstNode) (*entity.StructUnionMetaInfo, error) {
+func parseStructUnionMeta(root *entity.RawAstNode) (*entity.StructUnionMetaInfo, error) {
 	if err := root.AssertNonTerminal(glr.StructOrUnionSpecifier); err != nil {
 		panic(err)
 	}
@@ -272,7 +272,7 @@ func parseStructUnionMeta(root *entity.AstNode) (*entity.StructUnionMetaInfo, er
 	return meta, nil
 }
 
-func parseStructDeclarationList(root *entity.AstNode) ([]*entity.FieldMetaInfo, error) {
+func parseStructDeclarationList(root *entity.RawAstNode) ([]*entity.FieldMetaInfo, error) {
 	if err := root.AssertNonTerminal(glr.StructDeclarationList); err != nil {
 		panic(err)
 	}
@@ -284,12 +284,12 @@ func parseStructDeclarationList(root *entity.AstNode) ([]*entity.FieldMetaInfo, 
 		// struct_declaration := specifier_qualifier_list struct_declarator_list SEMICOLON
 		specifiersQualifiers := flattenSpecifiersQualifiers(structDeclaration.Children[0])
 		midType, err := parseTypeSpecifiersAndQualifiers(
-			funk.Filter(specifiersQualifiers, func(specifier *entity.AstNode) bool {
+			funk.Filter(specifiersQualifiers, func(specifier *entity.RawAstNode) bool {
 				return specifier.Typ == glr.TypeSpecifier
-			}).([]*entity.AstNode),
-			funk.Filter(specifiersQualifiers, func(specifier *entity.AstNode) bool {
+			}).([]*entity.RawAstNode),
+			funk.Filter(specifiersQualifiers, func(specifier *entity.RawAstNode) bool {
 				return specifier.Typ == glr.TypeQualifier
-			}).([]*entity.AstNode),
+			}).([]*entity.RawAstNode),
 		)
 		if err != nil {
 			return nil, err
@@ -342,7 +342,7 @@ func parseStructDeclarationList(root *entity.AstNode) ([]*entity.FieldMetaInfo, 
 	return res, nil
 }
 
-func parseEnumSpecifier(root *entity.AstNode) (*entity.EnumMetaInfo, error) {
+func parseEnumSpecifier(root *entity.RawAstNode) (*entity.EnumMetaInfo, error) {
 	if err := root.AssertNonTerminal(glr.EnumSpecifier); err != nil {
 		panic(err)
 	}
@@ -383,7 +383,7 @@ func parseEnumSpecifier(root *entity.AstNode) (*entity.EnumMetaInfo, error) {
 	return res, nil
 }
 
-func parseEnumeratorList(root *entity.AstNode) ([]*entity.EnumFieldMetaInfo, error) {
+func parseEnumeratorList(root *entity.RawAstNode) ([]*entity.EnumFieldMetaInfo, error) {
 	if err := root.AssertNonTerminal(glr.EnumeratorList); err != nil {
 		panic(err)
 	}
@@ -400,7 +400,7 @@ func parseEnumeratorList(root *entity.AstNode) ([]*entity.EnumFieldMetaInfo, err
 	return res, nil
 }
 
-func parseEnumerator(root *entity.AstNode) (*entity.EnumFieldMetaInfo, error) {
+func parseEnumerator(root *entity.RawAstNode) (*entity.EnumFieldMetaInfo, error) {
 	if err := root.AssertNonTerminal(glr.Enumerator); err != nil {
 		panic(err)
 	}

@@ -1,5 +1,7 @@
 package entity
 
+import "shinya.click/cvm/common"
+
 type InitializerType int64
 
 const (
@@ -10,16 +12,19 @@ const (
 type Initializer struct {
 	Type InitializerType
 
-	Expression      *SingleExpression
+	Expression      *Expression
 	InitializerList []*InitializerItem
+	common.SourceRange
 }
 
 type InitializerItem struct {
 	Designators []*Designator
 	Initializer *Initializer
+	common.SourceRange
 }
 
 type Designator struct {
-	Expression *SingleExpression
+	Expression *Expression
 	Identifier *string
+	common.SourceRange
 }

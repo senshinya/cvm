@@ -10,17 +10,3 @@ const (
 type TranslationUnit interface {
 	GetUnitType() TranslationUnitType
 }
-
-type Specifiers struct {
-	// storage class specifier
-	Extern   bool
-	Static   bool
-	Auto     bool
-	Register bool
-
-	// typedef
-	TypeDef bool
-
-	// function specifier
-	Inline bool
-}

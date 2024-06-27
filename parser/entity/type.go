@@ -1,5 +1,7 @@
 package entity
 
+import "shinya.click/cvm/common"
+
 type MetaType uint8
 
 const (
@@ -19,6 +21,8 @@ type TypeQualifiers struct {
 	Const    bool
 	Restrict bool
 	Volatile bool
+
+	common.SourceRange
 }
 
 type Type struct {
@@ -34,6 +38,8 @@ type Type struct {
 	FunctionMetaInfo    *FunctionMetaInfo
 	ArrayMetaInfo       *ArrayMetaInfo
 	UserDefinedTypeName *string
+
+	common.SourceRange
 }
 
 type BaseNumType uint8
@@ -67,7 +73,7 @@ type StructUnionMetaInfo struct {
 type FieldMetaInfo struct {
 	Type       Type
 	Identifier *string
-	BitWidth   *SingleExpression
+	BitWidth   *Expression
 }
 
 type EnumMetaInfo struct {
@@ -80,7 +86,7 @@ type EnumMetaInfo struct {
 type EnumFieldMetaInfo struct {
 	Identifier string
 
-	Value *SingleExpression
+	Value *Expression
 }
 
 type ArrayMetaInfo struct {
@@ -92,13 +98,15 @@ type ArrayMetaInfo struct {
 	Asterisk bool
 
 	Incomplete bool
-	Size       *SingleExpression
+	Size       *Expression
 }
 
 type FunctionParameter struct {
 	Specifiers Specifiers
 	Type       Type
 	Identifier *string
+
+	common.SourceRange
 }
 
 type FunctionMetaInfo struct {

@@ -7,7 +7,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func parseDeclaration(root *entity.AstNode) (*entity.Declaration, error) {
+func parseDeclaration(root *entity.RawAstNode) (*entity.Declaration, error) {
 	if err := root.AssertNonTerminal(glr.Declaration); err != nil {
 		panic(err)
 	}
@@ -38,7 +38,7 @@ func parseDeclaration(root *entity.AstNode) (*entity.Declaration, error) {
 	}
 }
 
-func parseDeclarationSpecifiers(specifiersNode *entity.AstNode) (specifiers entity.Specifiers, midType entity.Type, err error) {
+func parseDeclarationSpecifiers(specifiersNode *entity.RawAstNode) (specifiers entity.Specifiers, midType entity.Type, err error) {
 	if err = specifiersNode.AssertNonTerminal(glr.DeclarationSpecifiers); err != nil {
 		panic(err)
 	}
@@ -46,30 +46,30 @@ func parseDeclarationSpecifiers(specifiersNode *entity.AstNode) (specifiers enti
 	specifierNodes := flattenDeclarationSpecifier(specifiersNode)
 
 	// parse storage class specifier
-	storagesSpecifiers := funk.Filter(specifierNodes, func(specifier *entity.AstNode) bool {
+	storagesSpecifiers := funk.Filter(specifierNodes, func(specifier *entity.RawAstNode) bool {
 		return specifier.Typ == glr.StorageClassSpecifier
-	}).([]*entity.AstNode)
+	}).([]*entity.RawAstNode)
 	for _, storagesSpecifier := range storagesSpecifiers {
 		parseStorageClassSpecifier(storagesSpecifier, &specifiers)
 	}
 
 	// parse type specifier and qualifiers
 	midType, err = parseTypeSpecifiersAndQualifiers(
-		funk.Filter(specifierNodes, func(specifier *entity.AstNode) bool {
+		funk.Filter(specifierNodes, func(specifier *entity.RawAstNode) bool {
 			return specifier.Typ == glr.TypeSpecifier
-		}).([]*entity.AstNode),
-		funk.Filter(specifierNodes, func(specifier *entity.AstNode) bool {
+		}).([]*entity.RawAstNode),
+		funk.Filter(specifierNodes, func(specifier *entity.RawAstNode) bool {
 			return specifier.Typ == glr.TypeQualifier
-		}).([]*entity.AstNode),
+		}).([]*entity.RawAstNode),
 	)
 	if err != nil {
 		return
 	}
 
 	// parse function specifier
-	functionSpecifiers := funk.Filter(specifierNodes, func(specifier *entity.AstNode) bool {
+	functionSpecifiers := funk.Filter(specifierNodes, func(specifier *entity.RawAstNode) bool {
 		return specifier.Typ == glr.FunctionSpecifier
-	}).([]*entity.AstNode)
+	}).([]*entity.RawAstNode)
 	if len(functionSpecifiers) != 0 {
 		specifiers.Inline = true
 	}
@@ -77,7 +77,7 @@ func parseDeclarationSpecifiers(specifiersNode *entity.AstNode) (specifiers enti
 	return
 }
 
-func parseStorageClassSpecifier(storageSpecifier *entity.AstNode, spe *entity.Specifiers) {
+func parseStorageClassSpecifier(storageSpecifier *entity.RawAstNode, spe *entity.Specifiers) {
 	n := storageSpecifier.Children[0]
 	switch n.Typ {
 	case common.TYPEDEF:
@@ -93,7 +93,7 @@ func parseStorageClassSpecifier(storageSpecifier *entity.AstNode, spe *entity.Sp
 	}
 }
 
-func parseInitDeclarators(declarators *entity.AstNode, midType entity.Type) ([]entity.Declarator, error) {
+func parseInitDeclarators(declarators *entity.RawAstNode, midType entity.Type) ([]entity.Declarator, error) {
 	if err := declarators.AssertNonTerminal(glr.InitDeclaratorList); err != nil {
 		panic(err)
 	}
@@ -126,7 +126,7 @@ func parseInitDeclarators(declarators *entity.AstNode, midType entity.Type) ([]e
 	return res, nil
 }
 
-func parseDeclarator(root *entity.AstNode, midType entity.Type) (res entity.Declarator, err error) {
+func parseDeclarator(root *entity.RawAstNode, midType entity.Type) (res entity.Declarator, err error) {
 	if err = root.AssertNonTerminal(glr.Declarator); err != nil {
 		panic(err)
 	}
@@ -204,7 +204,7 @@ func parseDeclarator(root *entity.AstNode, midType entity.Type) (res entity.Decl
 	return res, nil
 }
 
-func parsePointer(rootPointer *entity.AstNode, currentType *entity.Type) *entity.Type {
+func parsePointer(rootPointer *entity.RawAstNode, currentType *entity.Type) *entity.Type {
 	if err := rootPointer.AssertNonTerminal(glr.Pointer); err != nil {
 		panic(err)
 	}
@@ -264,7 +264,7 @@ func parsePointer(rootPointer *entity.AstNode, currentType *entity.Type) *entity
 	return currentType
 }
 
-func ParseDeclarationList(root *entity.AstNode) ([]*entity.Declaration, error) {
+func ParseDeclarationList(root *entity.RawAstNode) ([]*entity.Declaration, error) {
 	if err := root.AssertNonTerminal(glr.DeclarationList); err != nil {
 		panic(err)
 	}
@@ -277,7 +277,7 @@ func ParseDeclarationList(root *entity.AstNode) ([]*entity.Declaration, error) {
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, declaration.(*entity.Declaration))
+		res = append(res, declaration)
 	}
 
 	return res, nil

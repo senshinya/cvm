@@ -6,20 +6,20 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func ParseExpressionNode(node *entity.AstNode) (*entity.SingleExpression, error) {
+func ParseExpressionNode(node *entity.RawAstNode) (*entity.Expression, error) {
 	return parseExpressionNodeInner(node)
 }
 
-func parseExpressionNodeInner(node *entity.AstNode) (*entity.SingleExpression, error) {
+func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, error) {
 	if node.Typ == common.IDENTIFIER {
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeIdentifier,
 			Terminal:       node.Terminal,
 		}, nil
 	}
 	if node.Typ == common.STRING || node.Typ == common.CHARACTER ||
 		node.Typ == common.INTEGER_CONSTANT || node.Typ == common.FLOATING_CONSTANT {
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeConst,
 			Terminal:       node.Terminal,
 		}, nil
@@ -41,7 +41,7 @@ func parseExpressionNodeInner(node *entity.AstNode) (*entity.SingleExpression, e
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeAssignment,
 			AssignmentExpressionInfo: &entity.AssignmentExpressionInfo{
 				LValue:   lv,
@@ -63,7 +63,7 @@ func parseExpressionNodeInner(node *entity.AstNode) (*entity.SingleExpression, e
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeCondition,
 			ConditionExpressionInfo: &entity.ConditionExpressionInfo{
 				Condition:   cond,
@@ -84,7 +84,7 @@ func parseExpressionNodeInner(node *entity.AstNode) (*entity.SingleExpression, e
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeLogic,
 			LogicExpressionInfo: &entity.LogicExpressionInfo{
 				Operator: node.Children[1].Typ,
@@ -105,7 +105,7 @@ func parseExpressionNodeInner(node *entity.AstNode) (*entity.SingleExpression, e
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeBit,
 			BitExpressionInfo: &entity.BitExpressionInfo{
 				Operator: node.Children[1].Typ,
@@ -124,7 +124,7 @@ func parseExpressionNodeInner(node *entity.AstNode) (*entity.SingleExpression, e
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeNumber,
 			NumberExpressionInfo: &entity.NumberExpressionInfo{
 				Operator: node.Children[1].Typ,
@@ -142,7 +142,7 @@ func parseExpressionNodeInner(node *entity.AstNode) (*entity.SingleExpression, e
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeCast,
 			CastExpressionInfo: &entity.CastExpressionInfo{
 				Type:   typ,
@@ -154,7 +154,7 @@ func parseExpressionNodeInner(node *entity.AstNode) (*entity.SingleExpression, e
 		return parseExpressionNodeInner(node.Children[1])
 	case node.ReducedBy(glr.Expression, 2):
 		// expression := expression COMMA assignment_expression
-		var exps []*entity.SingleExpression
+		var exps []*entity.Expression
 		for _, n := range flattenExpression(node) {
 			exp, err := parseExpressionNodeInner(n)
 			if err != nil {
@@ -165,7 +165,7 @@ func parseExpressionNodeInner(node *entity.AstNode) (*entity.SingleExpression, e
 		if len(exps) == 1 {
 			return exps[0], nil
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeExpressions,
 			Expressions:    exps,
 		}, nil
@@ -178,7 +178,7 @@ func parseExpressionNodeInner(node *entity.AstNode) (*entity.SingleExpression, e
 	}
 }
 
-func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
+func parsePostfix(node *entity.RawAstNode) (*entity.Expression, error) {
 	if err := node.AssertNonTerminal(glr.PostfixExpression); err != nil {
 		panic(err)
 	}
@@ -191,7 +191,7 @@ func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypePostfix,
 			PostfixExpressionInfo: &entity.PostfixExpressionInfo{
 				Operator: node.Children[1].Typ,
@@ -208,7 +208,7 @@ func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeArrayAccess,
 			ArrayAccessExpressionInfo: &entity.ArrayAccessExpressionInfo{
 				Array:  arr,
@@ -221,7 +221,7 @@ func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeFunctionCall,
 			FunctionCallExpressionInfo: &entity.FunctionCallExpressionInfo{
 				Function: fun,
@@ -237,7 +237,7 @@ func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeFunctionCall,
 			FunctionCallExpressionInfo: &entity.FunctionCallExpressionInfo{
 				Function:  fun,
@@ -251,7 +251,7 @@ func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeStructAccess,
 			StructAccessExpressionInfo: &entity.StructAccessExpressionInfo{
 				Struct: str,
@@ -270,7 +270,7 @@ func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeConstruct,
 			ConstructExpressionInfo: &entity.ConstructExpressionInfo{
 				Type:         typ,
@@ -282,7 +282,7 @@ func parsePostfix(node *entity.AstNode) (*entity.SingleExpression, error) {
 	}
 }
 
-func parseUnary(node *entity.AstNode) (*entity.SingleExpression, error) {
+func parseUnary(node *entity.RawAstNode) (*entity.Expression, error) {
 	if err := node.AssertNonTerminal(glr.UnaryExpression); err != nil {
 		panic(err)
 	}
@@ -294,7 +294,7 @@ func parseUnary(node *entity.AstNode) (*entity.SingleExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeSizeOf,
 			SizeOfExpressionInfo: &entity.SizeOfExpressionInfo{
 				Type: typ,
@@ -306,7 +306,7 @@ func parseUnary(node *entity.AstNode) (*entity.SingleExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeSizeOf,
 			SizeOfExpressionInfo: &entity.SizeOfExpressionInfo{
 				Target: target,
@@ -318,7 +318,7 @@ func parseUnary(node *entity.AstNode) (*entity.SingleExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeUnary,
 			UnaryExpressionInfo: &entity.UnaryExpressionInfo{
 				Operator: node.Children[0].Children[0].Typ,
@@ -332,7 +332,7 @@ func parseUnary(node *entity.AstNode) (*entity.SingleExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &entity.SingleExpression{
+		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeUnary,
 			UnaryExpressionInfo: &entity.UnaryExpressionInfo{
 				Operator: node.Children[0].Typ,
@@ -344,12 +344,12 @@ func parseUnary(node *entity.AstNode) (*entity.SingleExpression, error) {
 	}
 }
 
-func parseArgumentExpressionList(root *entity.AstNode) ([]*entity.SingleExpression, error) {
+func parseArgumentExpressionList(root *entity.RawAstNode) ([]*entity.Expression, error) {
 	if err := root.AssertNonTerminal(glr.ArgumentExpressionList); err != nil {
 		panic(err)
 	}
 
-	var res []*entity.SingleExpression
+	var res []*entity.Expression
 	expNodes := flattenArgumentExpressions(root)
 	for _, expNode := range expNodes {
 		exp, err := ParseExpressionNode(expNode)

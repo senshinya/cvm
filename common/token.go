@@ -205,25 +205,38 @@ var terminals = map[string]struct{}{
 }
 
 type Token struct {
-	Typ         TokenType
-	Lexeme      string
-	Literal     any
-	Line        int
-	StartColumn int
-	EndColumn   int
+	Typ     TokenType
+	Lexeme  string
+	Literal any
+	SourceRange
 }
 
 func NewToken(typ TokenType, lexeme string, literal any, line, sc, ec int) Token {
 	return Token{
-		Typ:         typ,
-		Lexeme:      lexeme,
-		Literal:     literal,
-		Line:        line,
-		StartColumn: sc,
-		EndColumn:   ec,
+		Typ:     typ,
+		Lexeme:  lexeme,
+		Literal: literal,
+		SourceRange: SourceRange{
+			SourceStart: SourcePos{Line: line, Column: sc},
+			SourceEnd:   SourcePos{Line: line, Column: ec},
+		},
 	}
 }
 
 func (t Token) string() string {
 	return fmt.Sprintf("%s %s %v", t.Typ, t.Lexeme, t.Literal)
+}
+
+type SourcePos struct {
+	Line   int
+	Column int
+}
+
+type SourceRange struct {
+	SourceStart SourcePos
+	SourceEnd   SourcePos
+}
+
+func (r SourceRange) GetSourceRange() SourceRange {
+	return r
 }

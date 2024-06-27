@@ -41,6 +41,8 @@ type Statement struct {
 	ForStmtMetaInfo        *ForStmtMetaInfo
 	GotoStmtMetaInfo       *GotoStmtMetaInfo
 	ReturnStmtMetaInfo     *ReturnStmtMetaInfo
+
+	common.SourceRange
 }
 
 type LabeledStmtMetaInfo struct {
@@ -49,7 +51,7 @@ type LabeledStmtMetaInfo struct {
 }
 
 type CaseStmtMetaInfo struct {
-	Condition *SingleExpression
+	Condition *Expression
 	Body      *Statement
 }
 
@@ -62,39 +64,39 @@ type CompoundStmtMetaInfo struct {
 }
 
 type ExpressionStmtMetaInfo struct {
-	Expression *SingleExpression
+	Expression *Expression
 }
 
 type IfStmtMetaInfo struct {
-	Condition *SingleExpression
+	Condition *Expression
 	Body      *Statement
 }
 
 type IfElseStmtMetaInfo struct {
-	Condition *SingleExpression
+	Condition *Expression
 	Body      *Statement
 	ElseBody  *Statement
 }
 
 type SwitchStmtMetaInfo struct {
-	Condition *SingleExpression
+	Condition *Expression
 	Body      *Statement
 }
 
 type WhileStmtMetaInfo struct {
-	Condition *SingleExpression
+	Condition *Expression
 	Body      *Statement
 }
 
 type DoWhileStmtMetaInfo struct {
 	Body      *Statement
-	Condition *SingleExpression
+	Condition *Expression
 }
 
 type ForStmtMetaInfo struct {
 	Initialization BlockItem
-	Condition      *SingleExpression
-	AfterThought   *SingleExpression
+	Condition      *Expression
+	AfterThought   *Expression
 	Body           *Statement
 }
 
@@ -103,7 +105,7 @@ type GotoStmtMetaInfo struct {
 }
 
 type ReturnStmtMetaInfo struct {
-	Value *SingleExpression
+	Value *Expression
 }
 
 func (s *Statement) GetBlockItemType() common.TokenType {

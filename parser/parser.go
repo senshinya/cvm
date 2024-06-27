@@ -13,9 +13,9 @@ import (
 type Parser struct {
 	Tokens           []common.Token
 	TokenIndex       int
-	AST              *entity.AstNode
+	AST              *entity.RawAstNode
 	StateStack       *Stack[int]
-	SymbolStack      *Stack[*entity.AstNode]
+	SymbolStack      *Stack[*entity.RawAstNode]
 	CheckPointStack  *Stack[*CheckPoint]
 	TranslationUnits []entity.TranslationUnit
 }
@@ -28,7 +28,7 @@ type CheckPoint struct {
 	TokenIndex       int
 	ChooseIndex      int
 	StateStackSnap   []int
-	SymbolStackSnap  []*entity.AstNode
+	SymbolStackSnap  []*entity.RawAstNode
 	TranslationUnits []entity.TranslationUnit
 }
 
@@ -39,7 +39,7 @@ func (p *Parser) Parse() error {
 
 	p.TokenIndex = 0
 	p.StateStack = NewStack[int]()
-	p.SymbolStack = NewStack[*entity.AstNode]()
+	p.SymbolStack = NewStack[*entity.RawAstNode]()
 	p.CheckPointStack = NewStack[*CheckPoint]()
 	p.TranslationUnits = []entity.TranslationUnit{}
 
@@ -74,7 +74,7 @@ func (p *Parser) Parse() error {
 		op := ops[chooseOp]
 		if op.OperatorType == entity.ACC {
 			prod := glr.Productions[op.ReduceIndex]
-			var rights []*entity.AstNode
+			var rights []*entity.RawAstNode
 			for i := 0; i < len(prod.Right); i++ {
 				p.StateStack.Pop()
 				sym, ok := p.SymbolStack.Pop()
@@ -84,22 +84,22 @@ func (p *Parser) Parse() error {
 				}
 				rights = append(rights, sym)
 			}
-			newSym := &entity.AstNode{Typ: prod.Left, Production: prod}
-			newSym.SetChildren(funk.Reverse(rights).([]*entity.AstNode))
+			newSym := &entity.RawAstNode{Typ: prod.Left, Production: prod}
+			newSym.SetChildren(funk.Reverse(rights).([]*entity.RawAstNode))
 			p.SymbolStack.Push(newSym)
 			break
 		}
 		switch op.OperatorType {
 		case entity.SHIFT:
 			p.StateStack.Push(op.StateIndex)
-			p.SymbolStack.Push(&entity.AstNode{
+			p.SymbolStack.Push(&entity.RawAstNode{
 				Typ:      token.Typ,
 				Terminal: &token,
 			})
 			p.TokenIndex++
 		case entity.REDUCE:
 			prod := glr.Productions[op.ReduceIndex]
-			var rights []*entity.AstNode
+			var rights []*entity.RawAstNode
 			for i := 0; i < len(prod.Right); i++ {
 				p.StateStack.Pop()
 				sym, ok := p.SymbolStack.Pop()
@@ -109,8 +109,8 @@ func (p *Parser) Parse() error {
 				}
 				rights = append(rights, sym)
 			}
-			newSym := &entity.AstNode{Typ: prod.Left, Production: prod}
-			newSym.SetChildren(funk.Reverse(rights).([]*entity.AstNode))
+			newSym := &entity.RawAstNode{Typ: prod.Left, Production: prod}
+			newSym.SetChildren(funk.Reverse(rights).([]*entity.RawAstNode))
 			p.SymbolStack.Push(newSym)
 
 			if prod.Left == glr.TranslationUnit {
@@ -164,9 +164,9 @@ func (p *Parser) addCheckPoint(chooseOp int) {
 	p.CheckPointStack.Push(&cp)
 }
 
-func deepCopyAstNodeSlice(origins []*entity.AstNode) []*entity.AstNode {
+func deepCopyAstNodeSlice(origins []*entity.RawAstNode) []*entity.RawAstNode {
 	// due to a node contains parent and children, it cannot be deepcopy.Copy(), or stack overflow
-	var res []*entity.AstNode
+	var res []*entity.RawAstNode
 	for _, origin := range origins {
 		res = append(res, copyAstNode(origin))
 	}
@@ -176,8 +176,8 @@ func deepCopyAstNodeSlice(origins []*entity.AstNode) []*entity.AstNode {
 	return res
 }
 
-func copyAstNode(origin *entity.AstNode) *entity.AstNode {
-	root := &entity.AstNode{
+func copyAstNode(origin *entity.RawAstNode) *entity.RawAstNode {
+	root := &entity.RawAstNode{
 		Typ:        origin.Typ,
 		Terminal:   origin.Terminal,
 		Production: origin.Production,
@@ -188,7 +188,7 @@ func copyAstNode(origin *entity.AstNode) *entity.AstNode {
 	return root
 }
 
-func fillAstParent(node *entity.AstNode, parent *entity.AstNode) {
+func fillAstParent(node *entity.RawAstNode, parent *entity.RawAstNode) {
 	node.Parent = parent
 	for _, child := range node.Children {
 		fillAstParent(child, node)
@@ -202,13 +202,13 @@ func (p *Parser) restore() int {
 	}
 	p.TokenIndex = checkPoint.TokenIndex
 	p.StateStack = NewStackWithElements[int](checkPoint.StateStackSnap)
-	p.SymbolStack = NewStackWithElements[*entity.AstNode](checkPoint.SymbolStackSnap)
+	p.SymbolStack = NewStackWithElements[*entity.RawAstNode](checkPoint.SymbolStackSnap)
 	p.TranslationUnits = checkPoint.TranslationUnits
 
 	return checkPoint.ChooseIndex + 1
 }
 
-func printAST(ast *entity.AstNode, level int) {
+func printAST(ast *entity.RawAstNode, level int) {
 	for i := 0; i < level; i++ {
 		fmt.Print("  ")
 	}
@@ -222,7 +222,7 @@ func printAST(ast *entity.AstNode, level int) {
 	}
 }
 
-func (p *Parser) parseTranslationUnit(unit *entity.AstNode) error {
+func (p *Parser) parseTranslationUnit(unit *entity.RawAstNode) error {
 	switch {
 	case unit.ReducedBy(glr.TranslationUnit, 1):
 		// translation_unit := function_definition

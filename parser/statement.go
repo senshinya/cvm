@@ -5,7 +5,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func ParseCompoundStatement(root *entity.AstNode) (*entity.Statement, error) {
+func ParseCompoundStatement(root *entity.RawAstNode) (*entity.Statement, error) {
 	if err := root.AssertNonTerminal(glr.CompoundStatement); err != nil {
 		panic(err)
 	}
@@ -34,7 +34,7 @@ func ParseCompoundStatement(root *entity.AstNode) (*entity.Statement, error) {
 	return res, nil
 }
 
-func parseBlockItem(root *entity.AstNode) (entity.BlockItem, error) {
+func parseBlockItem(root *entity.RawAstNode) (entity.BlockItem, error) {
 	switch {
 	case root.ReducedBy(glr.BlockItem, 1):
 		// block_item := declaration
@@ -55,7 +55,7 @@ func parseBlockItem(root *entity.AstNode) (entity.BlockItem, error) {
 	}
 }
 
-func ParseStatement(root *entity.AstNode) (res *entity.Statement, err error) {
+func ParseStatement(root *entity.RawAstNode) (res *entity.Statement, err error) {
 	if err = root.AssertNonTerminal(glr.Statement); err != nil {
 		panic(err)
 	}
@@ -104,7 +104,7 @@ func ParseStatement(root *entity.AstNode) (res *entity.Statement, err error) {
 	return res, nil
 }
 
-func ParseLabeledStatement(root *entity.AstNode) (*entity.Statement, error) {
+func ParseLabeledStatement(root *entity.RawAstNode) (*entity.Statement, error) {
 	if err := root.AssertNonTerminal(glr.LabeledStatement); err != nil {
 		panic(err)
 	}
@@ -155,7 +155,7 @@ func ParseLabeledStatement(root *entity.AstNode) (*entity.Statement, error) {
 	return res, nil
 }
 
-func ParseExpressionStatement(root *entity.AstNode) (*entity.Statement, error) {
+func ParseExpressionStatement(root *entity.RawAstNode) (*entity.Statement, error) {
 	if err := root.AssertNonTerminal(glr.ExpressionStatement); err != nil {
 		panic(err)
 	}
@@ -182,7 +182,7 @@ func ParseExpressionStatement(root *entity.AstNode) (*entity.Statement, error) {
 	return res, nil
 }
 
-func ParseSelectionStatement(root *entity.AstNode) (*entity.Statement, error) {
+func ParseSelectionStatement(root *entity.RawAstNode) (*entity.Statement, error) {
 	if err := root.AssertNonTerminal(glr.SelectionStatement); err != nil {
 		panic(err)
 	}
@@ -247,7 +247,7 @@ func ParseSelectionStatement(root *entity.AstNode) (*entity.Statement, error) {
 	return res, nil
 }
 
-func ParseIterationStatement(root *entity.AstNode) (*entity.Statement, error) {
+func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error) {
 	if err := root.AssertNonTerminal(glr.IterationStatement); err != nil {
 		panic(err)
 	}
@@ -512,7 +512,7 @@ func ParseIterationStatement(root *entity.AstNode) (*entity.Statement, error) {
 	return res, nil
 }
 
-func ParseJumpStatement(root *entity.AstNode) (*entity.Statement, error) {
+func ParseJumpStatement(root *entity.RawAstNode) (*entity.Statement, error) {
 	if err := root.AssertNonTerminal(glr.JumpStatement); err != nil {
 		panic(err)
 	}
