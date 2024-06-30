@@ -93,8 +93,9 @@ func (p *Parser) Parse() error {
 		case glr.SHIFT:
 			p.StateStack.Push(op.StateIndex)
 			p.SymbolStack.Push(&glr.RawAstNode{
-				Typ:      token.Typ,
-				Terminal: &token,
+				Typ:         token.Typ,
+				Terminal:    &token,
+				SourceRange: token.GetSourceRange(),
 			})
 			p.TokenIndex++
 		case glr.REDUCE:

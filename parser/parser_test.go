@@ -46,8 +46,7 @@ func TestFunctionDeclaration3(t *testing.T) {
 }
 
 func TestSimpleFib(t *testing.T) {
-	tokens, err := lexer.NewLexer(`
-int Fibon1(int n){
+	tokens, err := lexer.NewLexer(`int Fibon1(int n){
     if (n == 1 || n == 2){
         return 1;
     } else{
@@ -65,5 +64,9 @@ int main(){
 	if err != nil {
 		panic(err)
 	}
-	NewParser(tokens).Parse()
+	p := NewParser(tokens)
+	err = p.Parse()
+	if err != nil {
+		panic(err)
+	}
 }
