@@ -5,7 +5,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func parseFunctionDefinition(root *entity.RawAstNode) (*entity.FunctionDefinition, error) {
+func parseFunctionDefinition(root *glr.RawAstNode) (*entity.FunctionDefinition, error) {
 	if err := root.AssertNonTerminal(glr.FunctionDefinition); err != nil {
 		panic(err)
 	}

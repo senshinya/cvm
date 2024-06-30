@@ -6,7 +6,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func parseFunctionMetaInfo(node *entity.RawAstNode) (*entity.FunctionMetaInfo, error) {
+func parseFunctionMetaInfo(node *glr.RawAstNode) (*entity.FunctionMetaInfo, error) {
 	if err := node.AssertNonTerminal(glr.DirectAbstractDeclarator, glr.DirectDeclarator); err != nil {
 		panic(err)
 	}
@@ -58,7 +58,7 @@ func parseFunctionMetaInfo(node *entity.RawAstNode) (*entity.FunctionMetaInfo, e
 	}
 }
 
-func parseParameterTypeList(node *entity.RawAstNode) ([]*entity.FunctionParameter, bool, error) {
+func parseParameterTypeList(node *glr.RawAstNode) ([]*entity.FunctionParameter, bool, error) {
 	if err := node.AssertNonTerminal(glr.ParameterTypeList); err != nil {
 		panic(err)
 	}
@@ -83,7 +83,7 @@ func parseParameterTypeList(node *entity.RawAstNode) ([]*entity.FunctionParamete
 	return params, variadic, nil
 }
 
-func parseFunctionParameter(paramDeclare *entity.RawAstNode) (*entity.FunctionParameter, error) {
+func parseFunctionParameter(paramDeclare *glr.RawAstNode) (*entity.FunctionParameter, error) {
 	if err := paramDeclare.AssertNonTerminal(glr.ParameterDeclaration); err != nil {
 		panic(err)
 	}
@@ -121,7 +121,7 @@ func parseFunctionParameter(paramDeclare *entity.RawAstNode) (*entity.FunctionPa
 	return res, nil
 }
 
-func parseIdentifierList(node *entity.RawAstNode) []*common.Token {
+func parseIdentifierList(node *glr.RawAstNode) []*common.Token {
 	if err := node.AssertNonTerminal(glr.IdentifierList); err != nil {
 		panic(err)
 	}

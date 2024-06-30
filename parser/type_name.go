@@ -6,7 +6,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func ParseTypeName(typeNameNode *entity.RawAstNode) (typ entity.Type, err error) {
+func ParseTypeName(typeNameNode *glr.RawAstNode) (typ entity.Type, err error) {
 	if err = typeNameNode.AssertNonTerminal(glr.TypeName); err != nil {
 		panic(err)
 	}
@@ -15,12 +15,12 @@ func ParseTypeName(typeNameNode *entity.RawAstNode) (typ entity.Type, err error)
 	specifierNodes := flattenSpecifiersQualifiers(specifiersQualifiers)
 
 	midType, err := parseTypeSpecifiersAndQualifiers(
-		funk.Filter(specifierNodes, func(specifier *entity.RawAstNode) bool {
+		funk.Filter(specifierNodes, func(specifier *glr.RawAstNode) bool {
 			return specifier.Typ == glr.TypeSpecifier
-		}).([]*entity.RawAstNode),
-		funk.Filter(specifierNodes, func(specifier *entity.RawAstNode) bool {
+		}).([]*glr.RawAstNode),
+		funk.Filter(specifierNodes, func(specifier *glr.RawAstNode) bool {
 			return specifier.Typ == glr.TypeQualifier
-		}).([]*entity.RawAstNode),
+		}).([]*glr.RawAstNode),
 	)
 	midType.SourceRange = specifiersQualifiers.GetSourceRange()
 	if err != nil {
@@ -40,7 +40,7 @@ func ParseTypeName(typeNameNode *entity.RawAstNode) (typ entity.Type, err error)
 	}
 }
 
-func ParseAbstractDeclarator(root *entity.RawAstNode, midType entity.Type) (res entity.Type, err error) {
+func ParseAbstractDeclarator(root *glr.RawAstNode, midType entity.Type) (res entity.Type, err error) {
 	if err = root.AssertNonTerminal(glr.AbstractDeclarator); err != nil {
 		panic(err)
 	}
@@ -111,7 +111,7 @@ func ParseAbstractDeclarator(root *entity.RawAstNode, midType entity.Type) (res 
 	return res, nil
 }
 
-func findMostInnerNode(root *entity.RawAstNode) *entity.RawAstNode {
+func findMostInnerNode(root *glr.RawAstNode) *glr.RawAstNode {
 	current := root
 	for {
 		switch {

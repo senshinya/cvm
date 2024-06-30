@@ -6,7 +6,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func parseArrayMetaInfo(arrayNode *entity.RawAstNode) (*entity.ArrayMetaInfo, error) {
+func parseArrayMetaInfo(arrayNode *glr.RawAstNode) (*entity.ArrayMetaInfo, error) {
 	if err := arrayNode.AssertNonTerminal(glr.DirectAbstractDeclarator, glr.DirectDeclarator); err != nil {
 		panic(err)
 	}

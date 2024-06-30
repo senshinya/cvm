@@ -459,7 +459,6 @@ package glr
 
 import (
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/parser/entity"
 )
 
 const (
@@ -467,13 +466,13 @@ const (
 {{ end }}
 )
 
-var Productions = []entity.Production{
+var Productions = []Production{
 {{ range $_, $v := .Productions }}	{ Left: {{if isTerminal $v.Left}}common.{{end}}{{ $v.Left }}, Index: {{ $v.Index }}, Right: []common.TokenType{ {{ range $i, $r := $v.Right }}{{if $i}},{{end}}{{if isTerminal $r}}common.{{end}}{{ $r }}{{ end }} } },
 {{ end }}
 }
 
-var LalrAction = map[int]map[common.TokenType][]entity.DFAOperator{
-{{ range $index, $allOps := .Action }}	{{ $index }}: { {{ $first := true }}{{ range $k, $ops := $allOps }}{{if not $first}}, {{else}}{{$first = false}}{{end}}common.{{ $k }}: []entity.DFAOperator{ {{ $lfirst := true }}{{ range $_, $op := $ops }} {{if not $lfirst}}, {{else}}{{$lfirst = false}}{{end}} { {{ if eq $op.OperatorType 1 }}OperatorType: entity.SHIFT, StateIndex: {{ $op.StateIndex }}{{ else if eq $op.OperatorType 2 }}OperatorType: entity.REDUCE, ReduceIndex: {{ $op.ReduceIndex }}{{ else }}OperatorType: entity.ACC, ReduceIndex: {{ $op.ReduceIndex }}{{ end }} } {{end}} } {{end}}},
+var LalrAction = map[int]map[common.TokenType][]DFAOperator{
+{{ range $index, $allOps := .Action }}	{{ $index }}: { {{ $first := true }}{{ range $k, $ops := $allOps }}{{if not $first}}, {{else}}{{$first = false}}{{end}}common.{{ $k }}: []DFAOperator{ {{ $lfirst := true }}{{ range $_, $op := $ops }} {{if not $lfirst}}, {{else}}{{$lfirst = false}}{{end}} { {{ if eq $op.OperatorType 1 }}OperatorType: SHIFT, StateIndex: {{ $op.StateIndex }}{{ else if eq $op.OperatorType 2 }}OperatorType: REDUCE, ReduceIndex: {{ $op.ReduceIndex }}{{ else }}OperatorType: ACC, ReduceIndex: {{ $op.ReduceIndex }}{{ end }} } {{end}} } {{end}}},
 {{ end }}
 }
 

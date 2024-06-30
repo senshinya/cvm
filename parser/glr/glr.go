@@ -1,9 +1,10 @@
-package entity
+package glr
 
 import (
 	"fmt"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
+	"strings"
 )
 
 type RawAstNode struct {
@@ -46,6 +47,14 @@ type Production struct {
 	Left  common.TokenType
 	Index int64
 	Right []common.TokenType
+}
+
+func (p Production) String() string {
+	var rights []string
+	for _, t := range p.Right {
+		rights = append(rights, string(t))
+	}
+	return fmt.Sprintf("%s -> %s", p.Left, strings.Join(rights, " "))
 }
 
 type OperatorType uint

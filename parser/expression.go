@@ -6,7 +6,7 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func ParseExpression(node *entity.RawAstNode) (*entity.Expression, error) {
+func ParseExpression(node *glr.RawAstNode) (*entity.Expression, error) {
 	if node.Typ == common.IDENTIFIER {
 		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeIdentifier,
@@ -183,7 +183,7 @@ func ParseExpression(node *entity.RawAstNode) (*entity.Expression, error) {
 	}
 }
 
-func parsePostfix(node *entity.RawAstNode) (*entity.Expression, error) {
+func parsePostfix(node *glr.RawAstNode) (*entity.Expression, error) {
 	if err := node.AssertNonTerminal(glr.PostfixExpression); err != nil {
 		panic(err)
 	}
@@ -293,7 +293,7 @@ func parsePostfix(node *entity.RawAstNode) (*entity.Expression, error) {
 	}
 }
 
-func parseUnary(node *entity.RawAstNode) (*entity.Expression, error) {
+func parseUnary(node *glr.RawAstNode) (*entity.Expression, error) {
 	if err := node.AssertNonTerminal(glr.UnaryExpression); err != nil {
 		panic(err)
 	}
@@ -359,7 +359,7 @@ func parseUnary(node *entity.RawAstNode) (*entity.Expression, error) {
 	}
 }
 
-func parseArgumentExpressionList(root *entity.RawAstNode) ([]*entity.Expression, error) {
+func parseArgumentExpressionList(root *glr.RawAstNode) ([]*entity.Expression, error) {
 	if err := root.AssertNonTerminal(glr.ArgumentExpressionList); err != nil {
 		panic(err)
 	}
