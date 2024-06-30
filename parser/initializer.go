@@ -11,13 +11,13 @@ func ParseInitializer(root *entity.RawAstNode) (*entity.Initializer, error) {
 		panic(err)
 	}
 
-	res := &entity.Initializer{}
+	res := &entity.Initializer{SourceRange: root.GetSourceRange()}
 	var err error
 	switch {
 	case root.ReducedBy(glr.Initializer, 1):
 		// initializer := assignment_expression
 		res.Type = entity.InitializerTypeExpression
-		res.Expression, err = ParseExpressionNode(root.Children[0])
+		res.Expression, err = ParseExpression(root.Children[0])
 		if err != nil {
 			return nil, err
 		}
@@ -47,10 +47,10 @@ func ParseInitializerList(listNode *entity.RawAstNode) ([]*entity.InitializerIte
 	)
 	for {
 		endLoop := false
+		item := &entity.InitializerItem{SourceRange: listNode.GetSourceRange()}
 		switch {
 		case listNode.ReducedBy(glr.InitializerList, 1):
 			// initializer_list := initializer
-			item := &entity.InitializerItem{}
 			item.Initializer, err = ParseInitializer(listNode.Children[0])
 			if err != nil {
 				return nil, err
@@ -59,7 +59,6 @@ func ParseInitializerList(listNode *entity.RawAstNode) ([]*entity.InitializerIte
 			endLoop = true
 		case listNode.ReducedBy(glr.InitializerList, 2):
 			// initializer_list := designation initializer
-			item := &entity.InitializerItem{}
 			item.Designators, err = ParseDesignation(listNode.Children[0])
 			if err != nil {
 				return nil, err
@@ -72,7 +71,6 @@ func ParseInitializerList(listNode *entity.RawAstNode) ([]*entity.InitializerIte
 			endLoop = true
 		case listNode.ReducedBy(glr.InitializerList, 3):
 			// initializer_list := initializer_list COMMA initializer
-			item := &entity.InitializerItem{}
 			item.Initializer, err = ParseInitializer(listNode.Children[2])
 			if err != nil {
 				return nil, err
@@ -81,7 +79,6 @@ func ParseInitializerList(listNode *entity.RawAstNode) ([]*entity.InitializerIte
 			listNode = listNode.Children[0]
 		case listNode.ReducedBy(glr.InitializerList, 4):
 			// initializer_list := initializer_list COMMA designation initializer
-			item := &entity.InitializerItem{}
 			item.Designators, err = ParseDesignation(listNode.Children[2])
 			if err != nil {
 				return nil, err
@@ -115,17 +112,19 @@ func ParseDesignation(root *entity.RawAstNode) ([]*entity.Designator, error) {
 		switch {
 		case designatorNode.ReducedBy(glr.Designator, 1):
 			// designator := LEFT_BRACKETS constant_expression RIGHT_BRACKETS
-			exp, err := ParseExpressionNode(designatorNode.Children[1])
+			exp, err := ParseExpression(designatorNode.Children[1])
 			if err != nil {
 				return nil, err
 			}
 			res = append(res, &entity.Designator{
-				Expression: exp,
+				Expression:  exp,
+				SourceRange: designatorNode.GetSourceRange(),
 			})
 		case designatorNode.ReducedBy(glr.Designator, 2):
 			// designator := PERIOD IDENTIFIER
 			res = append(res, &entity.Designator{
-				Identifier: &designatorNode.Children[1].Terminal.Lexeme,
+				Identifier:  designatorNode.Children[1].Terminal,
+				SourceRange: designatorNode.GetSourceRange(),
 			})
 		default:
 			panic("unreachable")

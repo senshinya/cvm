@@ -12,15 +12,14 @@ func parseDeclaration(root *entity.RawAstNode) (*entity.Declaration, error) {
 		panic(err)
 	}
 
-	res := &entity.Declaration{}
+	res := &entity.Declaration{SourceRange: root.GetSourceRange()}
 
 	// parse specifiers
-	specifiers, midType, err := parseDeclarationSpecifiers(root.Children[0])
+	var err error
+	res.Specifiers, res.MidType, err = parseDeclarationSpecifiers(root.Children[0])
 	if err != nil {
 		return nil, err
 	}
-	res.Specifiers = specifiers
-	res.MidType = midType
 
 	switch {
 	case root.ReducedBy(glr.Declaration, 1):
@@ -28,7 +27,7 @@ func parseDeclaration(root *entity.RawAstNode) (*entity.Declaration, error) {
 		return res, nil
 	case root.ReducedBy(glr.Declaration, 2):
 		// declaration := declaration_specifiers init_declarator_list SEMICOLON
-		res.Declarators, err = parseInitDeclarators(root.Children[1], res.MidType)
+		res.InitDeclarators, err = parseInitDeclarators(root.Children[1], res.MidType)
 		if err != nil {
 			return nil, err
 		}
@@ -42,6 +41,8 @@ func parseDeclarationSpecifiers(specifiersNode *entity.RawAstNode) (specifiers e
 	if err = specifiersNode.AssertNonTerminal(glr.DeclarationSpecifiers); err != nil {
 		panic(err)
 	}
+	specifiers.SourceRange = specifiersNode.GetSourceRange()
+	midType.SourceRange = specifiersNode.GetSourceRange()
 
 	specifierNodes := flattenDeclarationSpecifier(specifiersNode)
 
@@ -93,43 +94,47 @@ func parseStorageClassSpecifier(storageSpecifier *entity.RawAstNode, spe *entity
 	}
 }
 
-func parseInitDeclarators(declarators *entity.RawAstNode, midType entity.Type) ([]entity.Declarator, error) {
+func parseInitDeclarators(declarators *entity.RawAstNode, midType entity.Type) ([]entity.InitDeclarator, error) {
 	if err := declarators.AssertNonTerminal(glr.InitDeclaratorList); err != nil {
 		panic(err)
 	}
 
-	var res []entity.Declarator
+	var res []entity.InitDeclarator
 	initDeclarators := flattenInitDeclarators(declarators)
-	for _, initDeclarator := range initDeclarators {
+	for _, initDeclaratorNode := range initDeclarators {
+		initDeclarator := entity.InitDeclarator{SourceRange: initDeclaratorNode.GetSourceRange()}
+
+		var err error
 		// parse declarator
-		declarator, err := parseDeclarator(initDeclarator.Children[0], midType)
+		initDeclarator.Declarator, err = parseDeclarator(initDeclaratorNode.Children[0], midType)
 		if err != nil {
 			return nil, err
 		}
 
 		switch {
-		case initDeclarator.ReducedBy(glr.InitDeclarator, 1):
+		case initDeclaratorNode.ReducedBy(glr.InitDeclarator, 1):
 			// init_declarator := declarator
-		case initDeclarator.ReducedBy(glr.InitDeclarator, 2):
+		case initDeclaratorNode.ReducedBy(glr.InitDeclarator, 2):
 			// init_declarator := declarator EQUAL initializer
-			initializer, err := ParseInitializer(initDeclarator.Children[2])
+			initDeclarator.Initializer, err = ParseInitializer(initDeclaratorNode.Children[2])
 			if err != nil {
 				return nil, err
 			}
-			declarator.Initializer = initializer
 		default:
 			panic("unreachable")
 		}
 
-		res = append(res, declarator)
+		res = append(res, initDeclarator)
 	}
 	return res, nil
 }
 
-func parseDeclarator(root *entity.RawAstNode, midType entity.Type) (res entity.Declarator, err error) {
+func parseDeclarator(root *entity.RawAstNode, midType entity.Type) (res *entity.Declarator, err error) {
 	if err = root.AssertNonTerminal(glr.Declarator); err != nil {
 		panic(err)
 	}
+
+	res = &entity.Declarator{SourceRange: root.GetSourceRange()}
 
 	// 1. find the most inner direct_declarator node that contains only IDENTIFIER
 	currentNode := root
@@ -158,7 +163,7 @@ func parseDeclarator(root *entity.RawAstNode, midType entity.Type) (res entity.D
 			break
 		}
 	}
-	res.Identifier = currentNode.Children[0].Terminal.Lexeme
+	res.Identifier = currentNode.Children[0].Terminal
 
 	currentType := &res.Type
 	for {
@@ -201,6 +206,7 @@ func parseDeclarator(root *entity.RawAstNode, midType entity.Type) (res entity.D
 		}
 	}
 	*currentType = midType
+	res.Type.SourceRange = root.GetSourceRange()
 	return res, nil
 }
 

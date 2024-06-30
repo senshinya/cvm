@@ -46,7 +46,7 @@ type Statement struct {
 }
 
 type LabeledStmtMetaInfo struct {
-	Identifier string
+	Identifier *common.Token
 	Body       *Statement
 }
 
@@ -101,7 +101,7 @@ type ForStmtMetaInfo struct {
 }
 
 type GotoStmtMetaInfo struct {
-	Identifier string
+	Identifier *common.Token
 }
 
 type ReturnStmtMetaInfo struct {

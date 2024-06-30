@@ -7,7 +7,7 @@ import (
 )
 
 func ParseTypeName(typeNameNode *entity.RawAstNode) (typ entity.Type, err error) {
-	if err := typeNameNode.AssertNonTerminal(glr.TypeName); err != nil {
+	if err = typeNameNode.AssertNonTerminal(glr.TypeName); err != nil {
 		panic(err)
 	}
 
@@ -22,6 +22,7 @@ func ParseTypeName(typeNameNode *entity.RawAstNode) (typ entity.Type, err error)
 			return specifier.Typ == glr.TypeQualifier
 		}).([]*entity.RawAstNode),
 	)
+	midType.SourceRange = specifiersQualifiers.GetSourceRange()
 	if err != nil {
 		return
 	}
@@ -106,6 +107,7 @@ func ParseAbstractDeclarator(root *entity.RawAstNode, midType entity.Type) (res 
 		}
 	}
 	*currentType = midType
+	res.SourceRange = root.GetSourceRange()
 	return res, nil
 }
 

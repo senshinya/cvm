@@ -256,11 +256,11 @@ func parseStructUnionMeta(root *entity.RawAstNode) (*entity.StructUnionMetaInfo,
 		meta.FieldMetaInfo, err = parseStructDeclarationList(root.Children[2])
 	case root.ReducedBy(glr.StructOrUnionSpecifier, 2):
 		// struct_or_union_specifier := struct_or_union IDENTIFIER LEFT_BRACES struct_declaration_list RIGHT_BRACES
-		meta.Identifier = &root.Children[1].Terminal.Lexeme
+		meta.Identifier = root.Children[1].Terminal
 		meta.FieldMetaInfo, err = parseStructDeclarationList(root.Children[3])
 	case root.ReducedBy(glr.StructOrUnionSpecifier, 3):
 		// struct_or_union_specifier := struct_or_union IDENTIFIER
-		meta.Identifier = &root.Children[1].Terminal.Lexeme
+		meta.Identifier = root.Children[1].Terminal
 		meta.Incomplete = true
 	default:
 		panic("unreachable")
@@ -291,6 +291,7 @@ func parseStructDeclarationList(root *entity.RawAstNode) ([]*entity.FieldMetaInf
 				return specifier.Typ == glr.TypeQualifier
 			}).([]*entity.RawAstNode),
 		)
+		midType.SourceRange = structDeclaration.Children[0].GetSourceRange()
 		if err != nil {
 			return nil, err
 		}
@@ -305,18 +306,20 @@ func parseStructDeclarationList(root *entity.RawAstNode) ([]*entity.FieldMetaInf
 					return nil, err
 				}
 				res = append(res, &entity.FieldMetaInfo{
-					Type:       declare.Type,
-					Identifier: &declare.Identifier,
+					Type:        declare.Type,
+					Identifier:  declare.Identifier,
+					SourceRange: root.GetSourceRange(),
 				})
 			case structDeclarator.ReducedBy(glr.StructDeclarator, 2):
 				// struct_declarator := COLON constant_expression
-				bitWise, err := ParseExpressionNode(structDeclarator.Children[1])
+				bitWise, err := ParseExpression(structDeclarator.Children[1])
 				if err != nil {
 					return nil, err
 				}
 				res = append(res, &entity.FieldMetaInfo{
-					Type:     midType,
-					BitWidth: bitWise,
+					Type:        midType,
+					BitWidth:    bitWise,
+					SourceRange: root.GetSourceRange(),
 				})
 			case structDeclarator.ReducedBy(glr.StructDeclarator, 3):
 				// struct_declarator := declarator COLON constant_expression
@@ -324,14 +327,15 @@ func parseStructDeclarationList(root *entity.RawAstNode) ([]*entity.FieldMetaInf
 				if err != nil {
 					return nil, err
 				}
-				bitWise, err := ParseExpressionNode(structDeclarator.Children[2])
+				bitWise, err := ParseExpression(structDeclarator.Children[2])
 				if err != nil {
 					return nil, err
 				}
 				res = append(res, &entity.FieldMetaInfo{
-					Type:       declare.Type,
-					Identifier: &declare.Identifier,
-					BitWidth:   bitWise,
+					Type:        declare.Type,
+					Identifier:  declare.Identifier,
+					BitWidth:    bitWise,
+					SourceRange: root.GetSourceRange(),
 				})
 			default:
 				panic("unreachable")
@@ -358,7 +362,7 @@ func parseEnumSpecifier(root *entity.RawAstNode) (*entity.EnumMetaInfo, error) {
 		}
 	case root.ReducedBy(glr.EnumSpecifier, 2):
 		// enum_specifier := ENUM IDENTIFIER LEFT_BRACES enumerator_list RIGHT_BRACES
-		res.Identifier = &root.Children[1].Terminal.Lexeme
+		res.Identifier = root.Children[1].Terminal
 		res.EnumFields, err = parseEnumeratorList(root.Children[3])
 		if err != nil {
 			return nil, err
@@ -371,11 +375,11 @@ func parseEnumSpecifier(root *entity.RawAstNode) (*entity.EnumMetaInfo, error) {
 		}
 	case root.ReducedBy(glr.EnumSpecifier, 4):
 		// enum_specifier := ENUM IDENTIFIER LEFT_BRACES enumerator_list COMMA RIGHT_BRACES
-		res.Identifier = &root.Children[1].Terminal.Lexeme
+		res.Identifier = root.Children[1].Terminal
 	case root.ReducedBy(glr.EnumSpecifier, 5):
 		// enum_specifier := ENUM IDENTIFIER
 		res.Incomplete = true
-		res.Identifier = &root.Children[1].Terminal.Lexeme
+		res.Identifier = root.Children[1].Terminal
 	default:
 		panic("unreachable")
 	}
@@ -405,16 +409,16 @@ func parseEnumerator(root *entity.RawAstNode) (*entity.EnumFieldMetaInfo, error)
 		panic(err)
 	}
 
-	res := &entity.EnumFieldMetaInfo{}
+	res := &entity.EnumFieldMetaInfo{SourceRange: root.GetSourceRange()}
 	switch {
 	case root.ReducedBy(glr.Enumerator, 1):
 		// enumerator := enumeration_constant
-		res.Identifier = root.Children[0].Terminal.Lexeme
+		res.Identifier = root.Children[0].Terminal
 	case root.ReducedBy(glr.Enumerator, 2):
 		// enumerator := enumeration_constant EQUAL constant_expression
-		res.Identifier = root.Children[0].Terminal.Lexeme
+		res.Identifier = root.Children[0].Terminal
 		var err error
-		res.Value, err = ParseExpressionNode(root.Children[2])
+		res.Value, err = ParseExpression(root.Children[2])
 		if err != nil {
 			return nil, err
 		}

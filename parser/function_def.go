@@ -10,7 +10,7 @@ func parseFunctionDefinition(root *entity.RawAstNode) (*entity.FunctionDefinitio
 		panic(err)
 	}
 
-	res := &entity.FunctionDefinition{}
+	res := &entity.FunctionDefinition{SourceRange: root.GetSourceRange()}
 
 	// parse specifiers
 	specifiers, midType, err := parseDeclarationSpecifiers(root.Children[0])

@@ -36,7 +36,7 @@ func parseArrayMetaInfo(arrayNode *entity.RawAstNode) (*entity.ArrayMetaInfo, er
 		}
 		// assignment_expression
 		var err error
-		res.Size, err = ParseExpressionNode(child)
+		res.Size, err = ParseExpression(child)
 		if err != nil {
 			return nil, err
 		}

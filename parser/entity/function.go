@@ -6,7 +6,7 @@ import (
 
 type FunctionDefinition struct {
 	Specifiers   Specifiers
-	Declarator   Declarator
+	Declarator   *Declarator
 	Declarations []*Declaration
 	BlockItems   []BlockItem
 	common.SourceRange

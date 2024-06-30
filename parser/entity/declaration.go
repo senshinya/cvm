@@ -6,9 +6,9 @@ import (
 )
 
 type Declaration struct {
-	Specifiers  Specifiers
-	MidType     Type
-	Declarators []Declarator
+	Specifiers      Specifiers
+	MidType         Type
+	InitDeclarators []InitDeclarator
 	common.SourceRange
 }
 
@@ -21,8 +21,13 @@ func (d *Declaration) GetBlockItemType() common.TokenType {
 }
 
 type Declarator struct {
-	Identifier  string
-	Type        Type
+	Identifier *common.Token
+	Type       Type
+	common.SourceRange
+}
+
+type InitDeclarator struct {
+	Declarator  *Declarator
 	Initializer *Initializer
 	common.SourceRange
 }

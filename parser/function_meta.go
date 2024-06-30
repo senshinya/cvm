@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/entity"
 	"shinya.click/cvm/parser/glr"
 )
@@ -68,7 +69,7 @@ func parseParameterTypeList(node *entity.RawAstNode) ([]*entity.FunctionParamete
 	parameterDeclarations := flattenParameterList(parameterList)
 	var params []*entity.FunctionParameter
 	for _, paramDeclare := range parameterDeclarations {
-		param, err := parseParameterDeclaration(paramDeclare)
+		param, err := parseFunctionParameter(paramDeclare)
 		if err != nil {
 			return nil, false, err
 		}
@@ -82,12 +83,12 @@ func parseParameterTypeList(node *entity.RawAstNode) ([]*entity.FunctionParamete
 	return params, variadic, nil
 }
 
-func parseParameterDeclaration(paramDeclare *entity.RawAstNode) (*entity.FunctionParameter, error) {
+func parseFunctionParameter(paramDeclare *entity.RawAstNode) (*entity.FunctionParameter, error) {
 	if err := paramDeclare.AssertNonTerminal(glr.ParameterDeclaration); err != nil {
 		panic(err)
 	}
 
-	res := &entity.FunctionParameter{}
+	res := &entity.FunctionParameter{SourceRange: paramDeclare.GetSourceRange()}
 
 	specifiers, midType, err := parseDeclarationSpecifiers(paramDeclare.Children[0])
 	if err != nil {
@@ -105,7 +106,7 @@ func parseParameterDeclaration(paramDeclare *entity.RawAstNode) (*entity.Functio
 		if err != nil {
 			return nil, err
 		}
-		res.Identifier = &declare.Identifier
+		res.Identifier = declare.Identifier
 		res.Type = declare.Type
 	case paramDeclare.ReducedBy(glr.ParameterDeclaration, 3):
 		// parameter_declaration := declaration_specifiers abstract_declarator
@@ -120,13 +121,13 @@ func parseParameterDeclaration(paramDeclare *entity.RawAstNode) (*entity.Functio
 	return res, nil
 }
 
-func parseIdentifierList(node *entity.RawAstNode) []string {
+func parseIdentifierList(node *entity.RawAstNode) []*common.Token {
 	if err := node.AssertNonTerminal(glr.IdentifierList); err != nil {
 		panic(err)
 	}
 	if node.ReducedBy(glr.IdentifierList, 1) {
-		return []string{node.Children[0].Terminal.Lexeme}
+		return []*common.Token{node.Children[0].Terminal}
 	}
 
-	return append(parseIdentifierList(node.Children[0]), node.Children[2].Terminal.Lexeme)
+	return append(parseIdentifierList(node.Children[0]), node.Children[2].Terminal)
 }

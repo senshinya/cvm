@@ -6,15 +6,12 @@ import (
 	"shinya.click/cvm/parser/glr"
 )
 
-func ParseExpressionNode(node *entity.RawAstNode) (*entity.Expression, error) {
-	return parseExpressionNodeInner(node)
-}
-
-func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, error) {
+func ParseExpression(node *entity.RawAstNode) (*entity.Expression, error) {
 	if node.Typ == common.IDENTIFIER {
 		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeIdentifier,
 			Terminal:       node.Terminal,
+			SourceRange:    node.GetSourceRange(),
 		}, nil
 	}
 	if node.Typ == common.STRING || node.Typ == common.CHARACTER ||
@@ -22,22 +19,23 @@ func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, erro
 		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeConst,
 			Terminal:       node.Terminal,
+			SourceRange:    node.GetSourceRange(),
 		}, nil
 	}
 
 	// production like assignment_expression := conditional_expression
 	if len(node.Children) == 1 {
-		return parseExpressionNodeInner(node.Children[0])
+		return ParseExpression(node.Children[0])
 	}
 
 	switch {
 	case node.ReducedBy(glr.AssignmentExpression, 2):
 		// assignment_expression := unary_expression assignment_operator assignment_expression
-		lv, err := parseExpressionNodeInner(node.Children[0])
+		lv, err := ParseExpression(node.Children[0])
 		if err != nil {
 			return nil, err
 		}
-		rv, err := parseExpressionNodeInner(node.Children[2])
+		rv, err := ParseExpression(node.Children[2])
 		if err != nil {
 			return nil, err
 		}
@@ -48,18 +46,19 @@ func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, erro
 				Operator: node.Children[1].Children[0].Typ,
 				RValue:   rv,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.ConditionalExpression, 2):
 		// conditional_expression := logical_or_expression QUESTION expression COLON conditional_expression
-		cond, err := parseExpressionNodeInner(node.Children[0])
+		cond, err := ParseExpression(node.Children[0])
 		if err != nil {
 			return nil, err
 		}
-		tr, err := parseExpressionNodeInner(node.Children[2])
+		tr, err := ParseExpression(node.Children[2])
 		if err != nil {
 			return nil, err
 		}
-		fa, err := parseExpressionNodeInner(node.Children[4])
+		fa, err := ParseExpression(node.Children[4])
 		if err != nil {
 			return nil, err
 		}
@@ -70,17 +69,18 @@ func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, erro
 				TrueBranch:  tr,
 				FalseBranch: fa,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.LogicalOrExpression, 2),
 		node.ReducedBy(glr.LogicalAndExpression, 2),
 		node.ReducedBy(glr.EqualityExpression, 2, 3),
 		node.ReducedBy(glr.RelationalExpression, 2, 3, 4, 5):
 		// logical_or_expression := logical_or_expression OR_OR logical_and_expression
-		one, err := parseExpressionNodeInner(node.Children[0])
+		one, err := ParseExpression(node.Children[0])
 		if err != nil {
 			return nil, err
 		}
-		two, err := parseExpressionNodeInner(node.Children[2])
+		two, err := ParseExpression(node.Children[2])
 		if err != nil {
 			return nil, err
 		}
@@ -91,17 +91,18 @@ func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, erro
 				One:      one,
 				Two:      two,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.InclusiveOrExpression, 2),
 		node.ReducedBy(glr.AndExpression, 2),
 		node.ReducedBy(glr.ExclusiveOrExpression, 2),
 		node.ReducedBy(glr.ShiftExpression, 2, 3):
 		// inclusive_or_expression := inclusive_or_expression OR exclusive_or_expression
-		one, err := parseExpressionNodeInner(node.Children[0])
+		one, err := ParseExpression(node.Children[0])
 		if err != nil {
 			return nil, err
 		}
-		two, err := parseExpressionNodeInner(node.Children[2])
+		two, err := ParseExpression(node.Children[2])
 		if err != nil {
 			return nil, err
 		}
@@ -112,15 +113,16 @@ func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, erro
 				One:      one,
 				Two:      two,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.AdditiveExpression, 2, 3),
 		node.ReducedBy(glr.MultiplicativeExpression, 2, 3, 4):
 		// additive_expression := additive_expression PLUS multiplicative_expression
-		one, err := parseExpressionNodeInner(node.Children[0])
+		one, err := ParseExpression(node.Children[0])
 		if err != nil {
 			return nil, err
 		}
-		two, err := parseExpressionNodeInner(node.Children[2])
+		two, err := ParseExpression(node.Children[2])
 		if err != nil {
 			return nil, err
 		}
@@ -131,6 +133,7 @@ func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, erro
 				One:      one,
 				Two:      two,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.CastExpression, 2):
 		// cast_expression := LEFT_PARENTHESES type_name RIGHT_PARENTHESES cast_expression
@@ -138,7 +141,7 @@ func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, erro
 		if err != nil {
 			return nil, err
 		}
-		source, err := parseExpressionNodeInner(node.Children[3])
+		source, err := ParseExpression(node.Children[3])
 		if err != nil {
 			return nil, err
 		}
@@ -148,15 +151,16 @@ func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, erro
 				Type:   typ,
 				Source: source,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.PrimaryExpression, 6):
 		// primary_expression := LEFT_PARENTHESES expression RIGHT_PARENTHESES
-		return parseExpressionNodeInner(node.Children[1])
+		return ParseExpression(node.Children[1])
 	case node.ReducedBy(glr.Expression, 2):
 		// expression := expression COMMA assignment_expression
 		var exps []*entity.Expression
 		for _, n := range flattenExpression(node) {
-			exp, err := parseExpressionNodeInner(n)
+			exp, err := ParseExpression(n)
 			if err != nil {
 				return nil, err
 			}
@@ -168,6 +172,7 @@ func parseExpressionNodeInner(node *entity.RawAstNode) (*entity.Expression, erro
 		return &entity.Expression{
 			ExpressionType: entity.ExpressionTypeExpressions,
 			Expressions:    exps,
+			SourceRange:    node.GetSourceRange(),
 		}, nil
 	case node.Typ == glr.UnaryExpression:
 		return parseUnary(node)
@@ -187,7 +192,7 @@ func parsePostfix(node *entity.RawAstNode) (*entity.Expression, error) {
 	case node.ReducedBy(glr.PostfixExpression, 7, 8):
 		// postfix_expression := postfix_expression PLUS_PLUS
 		// postfix_expression := postfix_expression MINUS_MINUS
-		target, err := parseExpressionNodeInner(node.Children[0])
+		target, err := ParseExpression(node.Children[0])
 		if err != nil {
 			return nil, err
 		}
@@ -197,14 +202,15 @@ func parsePostfix(node *entity.RawAstNode) (*entity.Expression, error) {
 				Operator: node.Children[1].Typ,
 				Target:   target,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.PostfixExpression, 2):
 		// postfix_expression := postfix_expression LEFT_BRACKETS expression RIGHT_BRACKETS
-		arr, err := parseExpressionNodeInner(node.Children[0])
+		arr, err := ParseExpression(node.Children[0])
 		if err != nil {
 			return nil, err
 		}
-		target, err := parseExpressionNodeInner(node.Children[2])
+		target, err := ParseExpression(node.Children[2])
 		if err != nil {
 			return nil, err
 		}
@@ -214,10 +220,11 @@ func parsePostfix(node *entity.RawAstNode) (*entity.Expression, error) {
 				Array:  arr,
 				Target: target,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.PostfixExpression, 3):
 		// postfix_expression := postfix_expression LEFT_PARENTHESES RIGHT_PARENTHESES
-		fun, err := parseExpressionNodeInner(node.Children[0])
+		fun, err := ParseExpression(node.Children[0])
 		if err != nil {
 			return nil, err
 		}
@@ -226,10 +233,11 @@ func parsePostfix(node *entity.RawAstNode) (*entity.Expression, error) {
 			FunctionCallExpressionInfo: &entity.FunctionCallExpressionInfo{
 				Function: fun,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.PostfixExpression, 4):
 		// postfix_expression := postfix_expression LEFT_PARENTHESES argument_expression_list RIGHT_PARENTHESES
-		fun, err := parseExpressionNodeInner(node.Children[0])
+		fun, err := ParseExpression(node.Children[0])
 		if err != nil {
 			return nil, err
 		}
@@ -243,11 +251,12 @@ func parsePostfix(node *entity.RawAstNode) (*entity.Expression, error) {
 				Function:  fun,
 				Arguments: arguments,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.PostfixExpression, 5, 6):
 		// postfix_expression := postfix_expression PERIOD IDENTIFIER
 		// postfix_expression := postfix_expression ARROW IDENTIFIER
-		str, err := parseExpressionNodeInner(node.Children[0])
+		str, err := ParseExpression(node.Children[0])
 		if err != nil {
 			return nil, err
 		}
@@ -258,6 +267,7 @@ func parsePostfix(node *entity.RawAstNode) (*entity.Expression, error) {
 				Field:  node.Children[2].Terminal.Lexeme,
 				Access: node.Children[1].Typ,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.PostfixExpression, 9, 10):
 		// postfix_expression := LEFT_PARENTHESES type_name RIGHT_PARENTHESES LEFT_BRACES initializer_list RIGHT_BRACES
@@ -276,6 +286,7 @@ func parsePostfix(node *entity.RawAstNode) (*entity.Expression, error) {
 				Type:         typ,
 				Initializers: initList,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	default:
 		panic("unreachable")
@@ -299,10 +310,11 @@ func parseUnary(node *entity.RawAstNode) (*entity.Expression, error) {
 			SizeOfExpressionInfo: &entity.SizeOfExpressionInfo{
 				Type: typ,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.UnaryExpression, 5):
 		// unary_expression := SIZEOF unary_expression
-		target, err := parseExpressionNodeInner(node.Children[1])
+		target, err := ParseExpression(node.Children[1])
 		if err != nil {
 			return nil, err
 		}
@@ -311,10 +323,11 @@ func parseUnary(node *entity.RawAstNode) (*entity.Expression, error) {
 			SizeOfExpressionInfo: &entity.SizeOfExpressionInfo{
 				Target: target,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.UnaryExpression, 4):
 		// unary_expression := unary_operator cast_expression
-		target, err := parseExpressionNodeInner(node.Children[1])
+		target, err := ParseExpression(node.Children[1])
 		if err != nil {
 			return nil, err
 		}
@@ -324,11 +337,12 @@ func parseUnary(node *entity.RawAstNode) (*entity.Expression, error) {
 				Operator: node.Children[0].Children[0].Typ,
 				Target:   target,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	case node.ReducedBy(glr.UnaryExpression, 2, 3):
 		// unary_expression := PLUS_PLUS unary_expression
 		// unary_expression := MINUS_MINUS unary_expression
-		target, err := parseExpressionNodeInner(node.Children[1])
+		target, err := ParseExpression(node.Children[1])
 		if err != nil {
 			return nil, err
 		}
@@ -338,6 +352,7 @@ func parseUnary(node *entity.RawAstNode) (*entity.Expression, error) {
 				Operator: node.Children[0].Typ,
 				Target:   target,
 			},
+			SourceRange: node.GetSourceRange(),
 		}, nil
 	default:
 		panic("unreachable")
@@ -352,7 +367,7 @@ func parseArgumentExpressionList(root *entity.RawAstNode) ([]*entity.Expression,
 	var res []*entity.Expression
 	expNodes := flattenArgumentExpressions(root)
 	for _, expNode := range expNodes {
-		exp, err := ParseExpressionNode(expNode)
+		exp, err := ParseExpression(expNode)
 		if err != nil {
 			return nil, err
 		}

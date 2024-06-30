@@ -25,6 +25,6 @@ type InitializerItem struct {
 
 type Designator struct {
 	Expression *Expression
-	Identifier *string
+	Identifier *common.Token
 	common.SourceRange
 }

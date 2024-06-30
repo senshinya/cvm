@@ -10,7 +10,7 @@ func ParseCompoundStatement(root *entity.RawAstNode) (*entity.Statement, error) 
 		panic(err)
 	}
 
-	res := &entity.Statement{StmtType: entity.StmtTypeCompound}
+	res := &entity.Statement{StmtType: entity.StmtTypeCompound, SourceRange: root.GetSourceRange()}
 	meta := &entity.CompoundStmtMetaInfo{}
 
 	switch {
@@ -109,7 +109,7 @@ func ParseLabeledStatement(root *entity.RawAstNode) (*entity.Statement, error) {
 		panic(err)
 	}
 
-	res := &entity.Statement{}
+	res := &entity.Statement{SourceRange: root.GetSourceRange()}
 
 	switch {
 	case root.ReducedBy(glr.LabeledStatement, 1):
@@ -120,13 +120,13 @@ func ParseLabeledStatement(root *entity.RawAstNode) (*entity.Statement, error) {
 			return nil, err
 		}
 		res.LabeledStmtMetaInfo = &entity.LabeledStmtMetaInfo{
-			Identifier: root.Children[0].Terminal.Lexeme,
+			Identifier: root.Children[0].Terminal,
 			Body:       stmt,
 		}
 	case root.ReducedBy(glr.LabeledStatement, 2):
 		// labeled_statement := CASE constant_expression COLON statement
 		res.StmtType = entity.StmtTypeCase
-		cond, err := ParseExpressionNode(root.Children[1])
+		cond, err := ParseExpression(root.Children[1])
 		if err != nil {
 			return nil, err
 		}
@@ -160,7 +160,7 @@ func ParseExpressionStatement(root *entity.RawAstNode) (*entity.Statement, error
 		panic(err)
 	}
 
-	res := &entity.Statement{StmtType: entity.StmtTypeExpression}
+	res := &entity.Statement{StmtType: entity.StmtTypeExpression, SourceRange: root.GetSourceRange()}
 
 	switch {
 	case root.ReducedBy(glr.ExpressionStatement, 1):
@@ -168,7 +168,7 @@ func ParseExpressionStatement(root *entity.RawAstNode) (*entity.Statement, error
 		res.ExpressionStmtMetaInfo = &entity.ExpressionStmtMetaInfo{}
 	case root.ReducedBy(glr.ExpressionStatement, 2):
 		// expression_statement := expression SEMICOLON
-		exp, err := ParseExpressionNode(root.Children[0])
+		exp, err := ParseExpression(root.Children[0])
 		if err != nil {
 			return nil, err
 		}
@@ -187,13 +187,13 @@ func ParseSelectionStatement(root *entity.RawAstNode) (*entity.Statement, error)
 		panic(err)
 	}
 
-	res := &entity.Statement{}
+	res := &entity.Statement{SourceRange: root.GetSourceRange()}
 
 	switch {
 	case root.ReducedBy(glr.SelectionStatement, 1):
 		// selection_statement := IF LEFT_PARENTHESES expression RIGHT_PARENTHESES statement
 		res.StmtType = entity.StmtTypeIf
-		cond, err := ParseExpressionNode(root.Children[2])
+		cond, err := ParseExpression(root.Children[2])
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +208,7 @@ func ParseSelectionStatement(root *entity.RawAstNode) (*entity.Statement, error)
 	case root.ReducedBy(glr.SelectionStatement, 2):
 		// selection_statement := IF LEFT_PARENTHESES expression RIGHT_PARENTHESES statement ELSE statement
 		res.StmtType = entity.StmtTypeIfElse
-		cond, err := ParseExpressionNode(root.Children[2])
+		cond, err := ParseExpression(root.Children[2])
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +228,7 @@ func ParseSelectionStatement(root *entity.RawAstNode) (*entity.Statement, error)
 	case root.ReducedBy(glr.SelectionStatement, 3):
 		// selection_statement := SWITCH LEFT_PARENTHESES expression RIGHT_PARENTHESES statement
 		res.StmtType = entity.StmtTypeSwitch
-		cond, err := ParseExpressionNode(root.Children[2])
+		cond, err := ParseExpression(root.Children[2])
 		if err != nil {
 			return nil, err
 		}
@@ -252,13 +252,13 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 		panic(err)
 	}
 
-	res := &entity.Statement{}
+	res := &entity.Statement{SourceRange: root.GetSourceRange()}
 
 	switch {
 	case root.ReducedBy(glr.IterationStatement, 1):
 		// iteration_statement := WHILE LEFT_PARENTHESES expression RIGHT_PARENTHESES statement
 		res.StmtType = entity.StmtTypeWhile
-		cond, err := ParseExpressionNode(root.Children[2])
+		cond, err := ParseExpression(root.Children[2])
 		if err != nil {
 			return nil, err
 		}
@@ -277,7 +277,7 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 		if err != nil {
 			return nil, err
 		}
-		cond, err := ParseExpressionNode(root.Children[4])
+		cond, err := ParseExpression(root.Children[4])
 		if err != nil {
 			return nil, err
 		}
@@ -313,7 +313,7 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 	case root.ReducedBy(glr.IterationStatement, 5):
 		// iteration_statement := FOR LEFT_PARENTHESES SEMICOLON expression SEMICOLON RIGHT_PARENTHESES statement
 		res.StmtType = entity.StmtTypeFor
-		cond, err := ParseExpressionNode(root.Children[3])
+		cond, err := ParseExpression(root.Children[3])
 		if err != nil {
 			return nil, err
 		}
@@ -328,7 +328,7 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 	case root.ReducedBy(glr.IterationStatement, 6):
 		// iteration_statement := FOR LEFT_PARENTHESES SEMICOLON SEMICOLON expression RIGHT_PARENTHESES statement
 		res.StmtType = entity.StmtTypeFor
-		afterThought, err := ParseExpressionNode(root.Children[4])
+		afterThought, err := ParseExpression(root.Children[4])
 		if err != nil {
 			return nil, err
 		}
@@ -347,7 +347,7 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 		if err != nil {
 			return nil, err
 		}
-		cond, err := ParseExpressionNode(root.Children[4])
+		cond, err := ParseExpression(root.Children[4])
 		if err != nil {
 			return nil, err
 		}
@@ -367,7 +367,7 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 		if err != nil {
 			return nil, err
 		}
-		afterThought, err := ParseExpressionNode(root.Children[5])
+		afterThought, err := ParseExpression(root.Children[5])
 		if err != nil {
 			return nil, err
 		}
@@ -383,11 +383,11 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 	case root.ReducedBy(glr.IterationStatement, 9):
 		// iteration_statement := FOR LEFT_PARENTHESES SEMICOLON expression SEMICOLON expression RIGHT_PARENTHESES statement
 		res.StmtType = entity.StmtTypeFor
-		cond, err := ParseExpressionNode(root.Children[3])
+		cond, err := ParseExpression(root.Children[3])
 		if err != nil {
 			return nil, err
 		}
-		afterThought, err := ParseExpressionNode(root.Children[5])
+		afterThought, err := ParseExpression(root.Children[5])
 		if err != nil {
 			return nil, err
 		}
@@ -407,11 +407,11 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 		if err != nil {
 			return nil, err
 		}
-		cond, err := ParseExpressionNode(root.Children[4])
+		cond, err := ParseExpression(root.Children[4])
 		if err != nil {
 			return nil, err
 		}
-		afterThought, err := ParseExpressionNode(root.Children[6])
+		afterThought, err := ParseExpression(root.Children[6])
 		if err != nil {
 			return nil, err
 		}
@@ -447,7 +447,7 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 		if err != nil {
 			return nil, err
 		}
-		cond, err := ParseExpressionNode(root.Children[3])
+		cond, err := ParseExpression(root.Children[3])
 		if err != nil {
 			return nil, err
 		}
@@ -467,7 +467,7 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 		if err != nil {
 			return nil, err
 		}
-		afterThought, err := ParseExpressionNode(root.Children[4])
+		afterThought, err := ParseExpression(root.Children[4])
 		if err != nil {
 			return nil, err
 		}
@@ -487,11 +487,11 @@ func ParseIterationStatement(root *entity.RawAstNode) (*entity.Statement, error)
 		if err != nil {
 			return nil, err
 		}
-		cond, err := ParseExpressionNode(root.Children[3])
+		cond, err := ParseExpression(root.Children[3])
 		if err != nil {
 			return nil, err
 		}
-		afterThought, err := ParseExpressionNode(root.Children[5])
+		afterThought, err := ParseExpression(root.Children[5])
 		if err != nil {
 			return nil, err
 		}
@@ -517,14 +517,14 @@ func ParseJumpStatement(root *entity.RawAstNode) (*entity.Statement, error) {
 		panic(err)
 	}
 
-	res := &entity.Statement{}
+	res := &entity.Statement{SourceRange: root.GetSourceRange()}
 
 	switch {
 	case root.ReducedBy(glr.JumpStatement, 1):
 		// jump_statement := GOTO IDENTIFIER SEMICOLON
 		res.StmtType = entity.StmtTypeGoto
 		res.GotoStmtMetaInfo = &entity.GotoStmtMetaInfo{
-			Identifier: root.Children[1].Terminal.Lexeme,
+			Identifier: root.Children[1].Terminal,
 		}
 	case root.ReducedBy(glr.JumpStatement, 2):
 		// jump_statement := CONTINUE SEMICOLON
@@ -539,7 +539,7 @@ func ParseJumpStatement(root *entity.RawAstNode) (*entity.Statement, error) {
 	case root.ReducedBy(glr.JumpStatement, 5):
 		// jump_statement := RETURN expression SEMICOLON
 		res.StmtType = entity.StmtTypeReturn
-		returnValue, err := ParseExpressionNode(root.Children[1])
+		returnValue, err := ParseExpression(root.Children[1])
 		if err != nil {
 			return nil, err
 		}

@@ -246,9 +246,9 @@ func (p *Parser) parseTranslationUnit(unit *entity.RawAstNode) error {
 
 func printDeclaration(unit entity.TranslationUnit) {
 	declares := unit.(*entity.Declaration)
-	for _, declare := range declares.Declarators {
-		fmt.Printf("declare %s as ", declare.Identifier)
-		typ := &declare.Type
+	for _, initDeclare := range declares.InitDeclarators {
+		fmt.Printf("declare %s as ", initDeclare.Declarator.Identifier.Lexeme)
+		typ := &initDeclare.Declarator.Type
 		printType(typ)
 		fmt.Println()
 	}
@@ -313,7 +313,11 @@ func printType(typ *entity.Type) {
 			printType(&param.Type)
 		}
 		if len(typ.FunctionMetaInfo.IdentifierList) != 0 {
-			print(strings.Join(typ.FunctionMetaInfo.IdentifierList, ", "))
+			var identifiers []string
+			for _, identifier := range typ.FunctionMetaInfo.IdentifierList {
+				identifiers = append(identifiers, identifier.Lexeme)
+			}
+			print(strings.Join(identifiers, ", "))
 		}
 		print(" ) ")
 		if typ.FunctionMetaInfo.Variadic {

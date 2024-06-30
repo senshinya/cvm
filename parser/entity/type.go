@@ -64,7 +64,7 @@ type NumberMetaInfo struct {
 }
 
 type StructUnionMetaInfo struct {
-	Identifier *string
+	Identifier *common.Token
 
 	Incomplete    bool
 	FieldMetaInfo []*FieldMetaInfo
@@ -72,21 +72,23 @@ type StructUnionMetaInfo struct {
 
 type FieldMetaInfo struct {
 	Type       Type
-	Identifier *string
+	Identifier *common.Token
 	BitWidth   *Expression
+	common.SourceRange
 }
 
 type EnumMetaInfo struct {
-	Identifier *string
+	Identifier *common.Token
 
 	Incomplete bool
 	EnumFields []*EnumFieldMetaInfo
 }
 
 type EnumFieldMetaInfo struct {
-	Identifier string
+	Identifier *common.Token
 
 	Value *Expression
+	common.SourceRange
 }
 
 type ArrayMetaInfo struct {
@@ -104,7 +106,7 @@ type ArrayMetaInfo struct {
 type FunctionParameter struct {
 	Specifiers Specifiers
 	Type       Type
-	Identifier *string
+	Identifier *common.Token
 
 	common.SourceRange
 }
@@ -113,5 +115,5 @@ type FunctionMetaInfo struct {
 	ReturnType     *Type
 	Parameters     []*FunctionParameter
 	Variadic       bool
-	IdentifierList []string
+	IdentifierList []*common.Token
 }
