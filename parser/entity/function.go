@@ -12,8 +12,8 @@ type FunctionDefinition struct {
 	common.SourceRange
 }
 
-func (d *FunctionDefinition) GetUnitType() TranslationUnitType {
-	return UnitTypeFunctionDef
+func (d *FunctionDefinition) GetExternalDeclarationType() ExternalDeclarationType {
+	return ExternalDeclarationTypeFunctionDef
 }
 
 type BlockItem interface {

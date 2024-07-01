@@ -12,8 +12,8 @@ type Declaration struct {
 	common.SourceRange
 }
 
-func (d *Declaration) GetUnitType() TranslationUnitType {
-	return UnitTypeDeclaration
+func (d *Declaration) GetExternalDeclarationType() ExternalDeclarationType {
+	return ExternalDeclarationTypeDeclaration
 }
 
 func (d *Declaration) GetBlockItemType() common.TokenType {

@@ -1,8 +1,8 @@
-program := program_units|1
-program_units := translation_unit|1
-program_units := program_units translation_unit|2
-translation_unit := function_definition|1
-translation_unit := declaration|2
+program := translation_unit|1
+translation_unit := external_declaration|1
+translation_unit := translation_unit external_declaration|2
+external_declaration := function_definition|1
+external_declaration := declaration|2
 function_definition := declaration_specifiers declarator compound_statement|1
 function_definition := declaration_specifiers declarator declaration_list compound_statement|2
 block_item_list := block_item|1

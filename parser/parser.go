@@ -11,13 +11,13 @@ import (
 )
 
 type Parser struct {
-	Tokens           []common.Token
-	TokenIndex       int
-	AST              *glr.RawAstNode
-	StateStack       *Stack[int]
-	SymbolStack      *Stack[*glr.RawAstNode]
-	CheckPointStack  *Stack[*CheckPoint]
-	TranslationUnits []entity.TranslationUnit
+	Tokens               []common.Token
+	TokenIndex           int
+	AST                  *glr.RawAstNode
+	StateStack           *Stack[int]
+	SymbolStack          *Stack[*glr.RawAstNode]
+	CheckPointStack      *Stack[*CheckPoint]
+	ExternalDeclarations []entity.ExternalDeclaration
 }
 
 func NewParser(tokens []common.Token) *Parser {
@@ -25,11 +25,11 @@ func NewParser(tokens []common.Token) *Parser {
 }
 
 type CheckPoint struct {
-	TokenIndex       int
-	ChooseIndex      int
-	StateStackSnap   []int
-	SymbolStackSnap  []*glr.RawAstNode
-	TranslationUnits []entity.TranslationUnit
+	TokenIndex           int
+	ChooseIndex          int
+	StateStackSnap       []int
+	SymbolStackSnap      []*glr.RawAstNode
+	ExternalDeclarations []entity.ExternalDeclaration
 }
 
 func (p *Parser) Parse() error {
@@ -41,7 +41,7 @@ func (p *Parser) Parse() error {
 	p.StateStack = NewStack[int]()
 	p.SymbolStack = NewStack[*glr.RawAstNode]()
 	p.CheckPointStack = NewStack[*CheckPoint]()
-	p.TranslationUnits = []entity.TranslationUnit{}
+	p.ExternalDeclarations = []entity.ExternalDeclaration{}
 
 	p.StateStack.Push(0) // init state is always 0
 
@@ -114,9 +114,9 @@ func (p *Parser) Parse() error {
 			newSym.SetChildren(funk.Reverse(rights).([]*glr.RawAstNode))
 			p.SymbolStack.Push(newSym)
 
-			if prod.Left == glr.TranslationUnit {
+			if prod.Left == glr.ExternalDeclaration {
 				//printAST(newSym, 0)
-				err := p.parseTranslationUnit(newSym)
+				err := p.parseExternalDeclaration(newSym)
 				if err != nil {
 					chooseOp = p.restore()
 					continue
@@ -143,9 +143,9 @@ func (p *Parser) Parse() error {
 		panic("symbolStack is empty")
 	}
 	p.AST = res
-	for _, unit := range p.TranslationUnits {
-		if unit.GetUnitType() == entity.UnitTypeDeclaration {
-			printDeclaration(unit)
+	for _, declare := range p.ExternalDeclarations {
+		if declare.GetExternalDeclarationType() == entity.ExternalDeclarationTypeDeclaration {
+			printDeclaration(declare)
 		}
 	}
 
@@ -156,11 +156,11 @@ func (p *Parser) addCheckPoint(chooseOp int) {
 	stateAll := p.StateStack.DumpAll()
 	symAll := p.SymbolStack.DumpAll()
 	cp := CheckPoint{
-		TokenIndex:       p.TokenIndex,
-		ChooseIndex:      chooseOp,
-		StateStackSnap:   deepcopy.Copy(stateAll).([]int),
-		SymbolStackSnap:  deepCopyAstNodeSlice(symAll),
-		TranslationUnits: deepcopy.Copy(p.TranslationUnits).([]entity.TranslationUnit),
+		TokenIndex:           p.TokenIndex,
+		ChooseIndex:          chooseOp,
+		StateStackSnap:       deepcopy.Copy(stateAll).([]int),
+		SymbolStackSnap:      deepCopyAstNodeSlice(symAll),
+		ExternalDeclarations: deepcopy.Copy(p.ExternalDeclarations).([]entity.ExternalDeclaration),
 	}
 	p.CheckPointStack.Push(&cp)
 }
@@ -204,7 +204,7 @@ func (p *Parser) restore() int {
 	p.TokenIndex = checkPoint.TokenIndex
 	p.StateStack = NewStackWithElements[int](checkPoint.StateStackSnap)
 	p.SymbolStack = NewStackWithElements[*glr.RawAstNode](checkPoint.SymbolStackSnap)
-	p.TranslationUnits = checkPoint.TranslationUnits
+	p.ExternalDeclarations = checkPoint.ExternalDeclarations
 
 	return checkPoint.ChooseIndex + 1
 }
@@ -223,29 +223,29 @@ func printAST(ast *glr.RawAstNode, level int) {
 	}
 }
 
-func (p *Parser) parseTranslationUnit(unit *glr.RawAstNode) error {
+func (p *Parser) parseExternalDeclaration(declare *glr.RawAstNode) error {
 	switch {
-	case unit.ReducedBy(glr.TranslationUnit, 1):
-		// translation_unit := function_definition
-		funcDef, err := parseFunctionDefinition(unit.Children[0])
+	case declare.ReducedBy(glr.ExternalDeclaration, 1):
+		// external_declaration := function_definition
+		funcDef, err := parseFunctionDefinition(declare.Children[0])
 		if err != nil {
 			return err
 		}
-		p.TranslationUnits = append(p.TranslationUnits, funcDef)
-	case unit.ReducedBy(glr.TranslationUnit, 2):
-		// translation_unit := declaration
-		res, err := parseDeclaration(unit.Children[0])
+		p.ExternalDeclarations = append(p.ExternalDeclarations, funcDef)
+	case declare.ReducedBy(glr.ExternalDeclaration, 2):
+		// external_declaration := declaration
+		res, err := parseDeclaration(declare.Children[0])
 		if err != nil {
 			return err
 		}
-		p.TranslationUnits = append(p.TranslationUnits, res)
+		p.ExternalDeclarations = append(p.ExternalDeclarations, res)
 	default:
 		panic("unreachable")
 	}
 	return nil
 }
 
-func printDeclaration(unit entity.TranslationUnit) {
+func printDeclaration(unit entity.ExternalDeclaration) {
 	declares := unit.(*entity.Declaration)
 	for _, initDeclare := range declares.InitDeclarators {
 		fmt.Printf("declare %s as ", initDeclare.Declarator.Identifier.Lexeme)
