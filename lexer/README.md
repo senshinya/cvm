@@ -1,4 +1,4 @@
-# lexer
+# Lexer (Lexical Analysis)
 
 Support all C99 lexical grammar except:
 
@@ -7,3 +7,5 @@ Support all C99 lexical grammar except:
 - [alternative punctuators](https://en.cppreference.com/w/cpp/language/operator_alternative): <:  :>  <%  %>  %:  %:%:
 
 and limit the source character set to ASCII
+
+Lexical grammar from _ISO/IEC 9899:TC3 A.1 Lexical grammar_
