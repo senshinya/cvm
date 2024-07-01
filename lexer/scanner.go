@@ -84,7 +84,7 @@ func (b *ScannerBuilder) transferInterceptor(transferInterceptor transferInterce
 func (b *ScannerBuilder) Build() *Scanner {
 	s := b.scanner
 	if err := checkScannerValid(s.stateTable, s.conditionTable, s.startState, s.endState); err != nil {
-		panic(common.NewVmError(common.ErrInvalidStateMachine, "Invalid %s Scanner: %s", b.scanner.name, err.Error()))
+		panic(common.NewInitError(common.ErrInvalidStateMachine, "Invalid %s Scanner: %s", b.scanner.name, err.Error()))
 	}
 	return s
 }

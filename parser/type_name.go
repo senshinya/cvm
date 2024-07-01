@@ -21,6 +21,7 @@ func ParseTypeName(typeNameNode *glr.RawAstNode) (typ entity.Type, err error) {
 		funk.Filter(specifierNodes, func(specifier *glr.RawAstNode) bool {
 			return specifier.Typ == glr.TypeQualifier
 		}).([]*glr.RawAstNode),
+		specifiersQualifiers,
 	)
 	midType.SourceRange = specifiersQualifiers.GetSourceRange()
 	if err != nil {

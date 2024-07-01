@@ -12,11 +12,12 @@ const (
 
 func NewLexerError(typ common.ErrType, l, sc, ec int, message string, a ...any) common.CvmError {
 	return common.CvmError{
-		Stage:         "LEXER",
-		ErrType:       typ,
-		Line:          &l,
-		StartColumn:   &sc,
-		EndColumn:     &ec,
+		Stage:   "LEXER",
+		ErrType: typ,
+		SourceRange: &common.SourceRange{
+			SourceStart: common.SourcePos{Line: l, Column: sc},
+			SourceEnd:   common.SourcePos{Line: l, Column: ec},
+		},
 		CustomMessage: fmt.Sprintf(message, a...),
 	}
 }

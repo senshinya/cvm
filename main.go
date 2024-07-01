@@ -18,12 +18,12 @@ func main() {
 func runFile(filePath string) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		panic(common.NewVmError(common.ErrOpenFile, err.Error()))
+		panic(common.NewInitError(common.ErrOpenFile, err.Error()))
 	}
 	defer file.Close()
 	bytes, err := io.ReadAll(file)
 	if err != nil {
-		panic(common.NewVmError(common.ErrReadFile, err.Error()))
+		panic(common.NewInitError(common.ErrReadFile, err.Error()))
 	}
 	run(string(bytes))
 }

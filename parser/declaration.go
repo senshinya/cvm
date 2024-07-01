@@ -41,8 +41,6 @@ func parseDeclarationSpecifiers(specifiersNode *glr.RawAstNode) (specifiers enti
 	if err = specifiersNode.AssertNonTerminal(glr.DeclarationSpecifiers); err != nil {
 		panic(err)
 	}
-	specifiers.SourceRange = specifiersNode.GetSourceRange()
-	midType.SourceRange = specifiersNode.GetSourceRange()
 
 	specifierNodes := flattenDeclarationSpecifier(specifiersNode)
 
@@ -62,10 +60,13 @@ func parseDeclarationSpecifiers(specifiersNode *glr.RawAstNode) (specifiers enti
 		funk.Filter(specifierNodes, func(specifier *glr.RawAstNode) bool {
 			return specifier.Typ == glr.TypeQualifier
 		}).([]*glr.RawAstNode),
+		specifiersNode,
 	)
 	if err != nil {
 		return
 	}
+	specifiers.SourceRange = specifiersNode.GetSourceRange()
+	midType.SourceRange = specifiersNode.GetSourceRange()
 
 	// parse function specifier
 	functionSpecifiers := funk.Filter(specifierNodes, func(specifier *glr.RawAstNode) bool {

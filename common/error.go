@@ -13,27 +13,23 @@ const (
 )
 
 type CvmError struct {
-	Stage                  CvmStage
-	ErrType                ErrType
-	Line                   *int
-	StartColumn, EndColumn *int
-	CustomMessage          string
+	Stage         CvmStage
+	ErrType       ErrType
+	SourceRange   *SourceRange
+	CustomMessage string
 }
 
-func NewVmError(typ ErrType, message string, a ...any) CvmError {
+func NewInitError(typ ErrType, message string, a ...any) CvmError {
 	return CvmError{
-		Stage:         "VM",
+		Stage:         "Init",
 		ErrType:       typ,
 		CustomMessage: fmt.Sprintf(message, a...),
 	}
 }
 
 func (e CvmError) Error() string {
-	if e.Line == nil && e.StartColumn == nil {
+	if e.SourceRange == nil {
 		return fmt.Sprintf("Stage %s - %s %s", e.Stage, e.ErrType, e.CustomMessage)
 	}
-	if e.Line != nil && e.StartColumn == nil {
-		return fmt.Sprintf("Stage %s - %s at Line %d - %s", e.Stage, e.ErrType, *e.Line, e.CustomMessage)
-	}
-	return fmt.Sprintf("Stage %s - %s from %d:%d to %d:%d - %s", e.Stage, e.ErrType, *e.Line, *e.StartColumn, *e.Line, *e.EndColumn, e.CustomMessage)
+	return fmt.Sprintf("Stage %s - %s from %d:%d to %d:%d - %s", e.Stage, e.ErrType, e.SourceRange.SourceStart.Line, e.SourceRange.SourceStart.Column, e.SourceRange.SourceEnd.Line, e.SourceRange.SourceEnd.Column, e.CustomMessage)
 }

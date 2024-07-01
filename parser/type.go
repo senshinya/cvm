@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"errors"
 	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/parser/entity"
@@ -20,16 +19,16 @@ type numSpecifierRecorder struct {
 	bool_    int
 }
 
-func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*glr.RawAstNode) (typ entity.Type, err error) {
+func parseTypeSpecifiersAndQualifiers(specifiers, qualifiers []*glr.RawAstNode, raw *glr.RawAstNode) (typ entity.Type, err error) {
 	if len(specifiers) == 0 {
 		panic("need type specifiers")
 	}
 	parseTypeQualifiers(qualifiers, &typ.TypeQualifiers)
-	err = parseTypeSpecifiers(specifiers, &typ)
+	err = parseTypeSpecifiers(specifiers, &typ, raw)
 	return
 }
 
-func parseTypeSpecifiers(specifiers []*glr.RawAstNode, typ *entity.Type) (err error) {
+func parseTypeSpecifiers(specifiers []*glr.RawAstNode, typ *entity.Type, raw *glr.RawAstNode) (err error) {
 	var numRec *numSpecifierRecorder
 	for _, specifier := range specifiers {
 		n := specifier.Children[0]
@@ -37,14 +36,14 @@ func parseTypeSpecifiers(specifiers []*glr.RawAstNode, typ *entity.Type) (err er
 		case specifier.ReducedBy(glr.TypeSpecifier, 1):
 			// type_specifier := VOID
 			if typ.MetaType != entity.MetaTypeUnknown {
-				err = errors.New("conflict type declaration")
+				err = NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "conflict type declaration")
 				return
 			}
 			typ.MetaType = entity.MetaTypeVoid
 		case specifier.ReducedBy(glr.TypeSpecifier, 2, 3, 4, 5, 6, 7, 8, 9, 10):
 			if typ.MetaType != entity.MetaTypeUnknown &&
 				typ.MetaType != entity.MetaTypeNumber {
-				err = errors.New("conflict type declaration")
+				err = NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "conflict type declaration")
 				return
 			}
 			if typ.MetaType == entity.MetaTypeUnknown {
@@ -58,7 +57,7 @@ func parseTypeSpecifiers(specifiers []*glr.RawAstNode, typ *entity.Type) (err er
 		case specifier.ReducedBy(glr.TypeSpecifier, 12):
 			// type_specifier := struct_or_union_specifier
 			if typ.MetaType != entity.MetaTypeUnknown {
-				err = errors.New("conflict type declaration")
+				err = NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "conflict type declaration")
 				return
 			}
 			err = parseStructOrUnion(n, typ)
@@ -68,7 +67,7 @@ func parseTypeSpecifiers(specifiers []*glr.RawAstNode, typ *entity.Type) (err er
 		case specifier.ReducedBy(glr.TypeSpecifier, 13):
 			// type_specifier := enum_specifier
 			if typ.MetaType != entity.MetaTypeUnknown {
-				err = errors.New("conflict type declaration")
+				err = NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "conflict type declaration")
 				return
 			}
 			typ.MetaType = entity.MetaTypeEnum
@@ -79,7 +78,7 @@ func parseTypeSpecifiers(specifiers []*glr.RawAstNode, typ *entity.Type) (err er
 		case specifier.ReducedBy(glr.TypeSpecifier, 14):
 			// type_specifier := typedef_name
 			if typ.MetaType != entity.MetaTypeUnknown {
-				err = errors.New("conflict type declaration")
+				err = NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "conflict type declaration")
 				return
 			}
 			typ.MetaType = entity.MetaTypeUserDefined
@@ -89,7 +88,7 @@ func parseTypeSpecifiers(specifiers []*glr.RawAstNode, typ *entity.Type) (err er
 		}
 	}
 	if typ.MetaType == entity.MetaTypeNumber {
-		typ.NumberMetaInfo, err = parseNumberRec(numRec)
+		typ.NumberMetaInfo, err = parseNumberRec(numRec, raw)
 		if err != nil {
 			return
 		}
@@ -97,13 +96,13 @@ func parseTypeSpecifiers(specifiers []*glr.RawAstNode, typ *entity.Type) (err er
 	return
 }
 
-func parseNumberRec(numRec *numSpecifierRecorder) (*entity.NumberMetaInfo, error) {
+func parseNumberRec(numRec *numSpecifierRecorder, raw *glr.RawAstNode) (*entity.NumberMetaInfo, error) {
 	res := &entity.NumberMetaInfo{}
 
 	// base type specifier
 	res.BaseNumType = entity.BaseNumTypeInt
 	if numRec.char+numRec.int_+numRec.float+numRec.double+numRec.bool_ > 1 {
-		return nil, errors.New("invalid number type combination")
+		return nil, NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "invalid number type combination")
 	}
 	switch {
 	case numRec.char == 1:
@@ -121,7 +120,7 @@ func parseNumberRec(numRec *numSpecifierRecorder) (*entity.NumberMetaInfo, error
 	// extend type specifier
 	if numRec.short != 0 {
 		if res.BaseNumType != entity.BaseNumTypeInt {
-			return nil, errors.New("invalid number type combination")
+			return nil, NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "invalid number type combination")
 		}
 		res.BaseNumType = entity.BaseNumTypeShort
 	}
@@ -130,7 +129,7 @@ func parseNumberRec(numRec *numSpecifierRecorder) (*entity.NumberMetaInfo, error
 		case numRec.long == 1:
 			if res.BaseNumType != entity.BaseNumTypeInt &&
 				res.BaseNumType != entity.BaseNumTypeDouble {
-				return nil, errors.New("invalid number type combination")
+				return nil, NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "invalid number type combination")
 			}
 			if res.BaseNumType == entity.BaseNumTypeInt {
 				res.BaseNumType = entity.BaseNumTypeLong
@@ -140,24 +139,24 @@ func parseNumberRec(numRec *numSpecifierRecorder) (*entity.NumberMetaInfo, error
 			}
 		case numRec.long == 2:
 			if res.BaseNumType != entity.BaseNumTypeInt {
-				return nil, errors.New("invalid number type combination")
+				return nil, NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "invalid number type combination")
 			}
 			res.BaseNumType = entity.BaseNumTypeLongLong
 		default:
-			return nil, errors.New("invalid number type combination")
+			return nil, NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "invalid number type combination")
 		}
 	}
 
 	// signed or unsigned
 	if numRec.signed+numRec.unsigned > 1 {
-		return nil, errors.New("invalid number type combination")
+		return nil, NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "invalid number type combination")
 	}
 	if numRec.signed+numRec.unsigned == 1 {
 		if res.BaseNumType == entity.BaseNumTypeFloat ||
 			res.BaseNumType == entity.BaseNumTypeDouble ||
 			res.BaseNumType == entity.BaseNumTypeBool ||
 			res.BaseNumType == entity.BaseNumTypeLongDouble {
-			return nil, errors.New("invalid number type combination")
+			return nil, NewParserError(ErrInvalidSpecifiers, raw.GetSourceRange(), "invalid number type combination")
 		}
 		if numRec.signed == 1 {
 			res.Signed = true
@@ -290,6 +289,7 @@ func parseStructDeclarationList(root *glr.RawAstNode) ([]*entity.FieldMetaInfo, 
 			funk.Filter(specifiersQualifiers, func(specifier *glr.RawAstNode) bool {
 				return specifier.Typ == glr.TypeQualifier
 			}).([]*glr.RawAstNode),
+			structDeclaration.Children[0],
 		)
 		midType.SourceRange = structDeclaration.Children[0].GetSourceRange()
 		if err != nil {
