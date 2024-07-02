@@ -21,9 +21,14 @@ type Object struct {
 	FunctionDefinition *entity.FunctionDefinition
 	StructMemberType   *entity.FieldMetaInfo
 	UnionMemberType    *entity.FieldMetaInfo
-	EnumConstantValue  *int64
+	EnumConstant       *EnumConstantInfo
 	TypedefType        *entity.Type
 	LabeledStatement   *entity.Statement
+}
+
+type EnumConstantInfo struct {
+	Value    int64
+	MetaInfo *entity.EnumFieldMetaInfo
 }
 
 type TagType int8
@@ -35,4 +40,6 @@ const (
 
 type Tag struct {
 	Type TagType
+
+	Declarator *entity.Declarator
 }

@@ -1,4 +1,4 @@
-package parser
+package common
 
 type Stack[T any] struct {
 	elements []T

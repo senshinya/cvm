@@ -14,9 +14,9 @@ type Parser struct {
 	Tokens               []common.Token
 	TokenIndex           int
 	AST                  *glr.RawAstNode
-	StateStack           *Stack[int]
-	SymbolStack          *Stack[*glr.RawAstNode]
-	CheckPointStack      *Stack[*CheckPoint]
+	StateStack           *common.Stack[int]
+	SymbolStack          *common.Stack[*glr.RawAstNode]
+	CheckPointStack      *common.Stack[*CheckPoint]
 	ExternalDeclarations []entity.ExternalDeclaration
 }
 
@@ -38,9 +38,9 @@ func (p *Parser) Parse() error {
 	}
 
 	p.TokenIndex = 0
-	p.StateStack = NewStack[int]()
-	p.SymbolStack = NewStack[*glr.RawAstNode]()
-	p.CheckPointStack = NewStack[*CheckPoint]()
+	p.StateStack = common.NewStack[int]()
+	p.SymbolStack = common.NewStack[*glr.RawAstNode]()
+	p.CheckPointStack = common.NewStack[*CheckPoint]()
 	p.ExternalDeclarations = []entity.ExternalDeclaration{}
 
 	p.StateStack.Push(0) // init state is always 0
@@ -202,8 +202,8 @@ func (p *Parser) restore() int {
 		panic("total dead!")
 	}
 	p.TokenIndex = checkPoint.TokenIndex
-	p.StateStack = NewStackWithElements[int](checkPoint.StateStackSnap)
-	p.SymbolStack = NewStackWithElements[*glr.RawAstNode](checkPoint.SymbolStackSnap)
+	p.StateStack = common.NewStackWithElements[int](checkPoint.StateStackSnap)
+	p.SymbolStack = common.NewStackWithElements[*glr.RawAstNode](checkPoint.SymbolStackSnap)
 	p.ExternalDeclarations = checkPoint.ExternalDeclarations
 
 	return checkPoint.ChooseIndex + 1
