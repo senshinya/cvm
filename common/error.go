@@ -10,6 +10,9 @@ const (
 	ErrOpenFile            ErrType = "ErrOpenFile"
 	ErrReadFile            ErrType = "ErrReadFile"
 	ErrInvalidStateMachine ErrType = "ErrInvalidStateMachine"
+
+	ErrUnidentifiableToken ErrType = "ErrUnidentifiableToken"
+	ErrInvalidCharacter    ErrType = "ErrInvalidCharacter"
 )
 
 type CvmError struct {
@@ -32,4 +35,16 @@ func (e CvmError) Error() string {
 		return fmt.Sprintf("Stage %s - %s %s", e.Stage, e.ErrType, e.CustomMessage)
 	}
 	return fmt.Sprintf("Stage %s - %s from %d:%d to %d:%d - %s", e.Stage, e.ErrType, e.SourceRange.SourceStart.Line, e.SourceRange.SourceStart.Column, e.SourceRange.SourceEnd.Line, e.SourceRange.SourceEnd.Column, e.CustomMessage)
+}
+
+func NewLexerError(typ ErrType, l, sc, ec int, message string, a ...any) CvmError {
+	return CvmError{
+		Stage:   "LEXER",
+		ErrType: typ,
+		SourceRange: &SourceRange{
+			SourceStart: SourcePos{Line: l, Column: sc},
+			SourceEnd:   SourcePos{Line: l, Column: ec},
+		},
+		CustomMessage: fmt.Sprintf(message, a...),
+	}
 }

@@ -2,9 +2,8 @@ package lexer
 
 import (
 	"fmt"
-	"github.com/thoas/go-funk"
+	mapset "github.com/deckarep/golang-set/v2"
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/lexer/util"
 )
 
 type state string
@@ -38,7 +37,7 @@ type Scanner struct {
 	conditionTable      conditionTable
 	tokenConstructor    tokenConstructor
 	startState          state
-	endState            map[state]struct{}
+	endState            mapset.Set[state]
 	transferInterceptor transferInterceptor
 	store               interface{}
 }
@@ -70,9 +69,10 @@ func (b *ScannerBuilder) StartState(startState state) *ScannerBuilder {
 }
 
 func (b *ScannerBuilder) EndState(endState []state) *ScannerBuilder {
-	b.scanner.endState = funk.Map(endState, func(s state) (state, struct{}) {
-		return s, struct{}{}
-	}).(map[state]struct{})
+	b.scanner.endState = mapset.NewSet[state]()
+	for _, s := range endState {
+		b.scanner.endState.Add(s)
+	}
 	return b
 }
 
@@ -83,7 +83,7 @@ func (b *ScannerBuilder) transferInterceptor(transferInterceptor transferInterce
 
 func (b *ScannerBuilder) Build() *Scanner {
 	s := b.scanner
-	if err := checkScannerValid(s.stateTable, s.conditionTable, s.startState, s.endState); err != nil {
+	if err := s.checkScannerValid(); err != nil {
 		panic(common.NewInitError(common.ErrInvalidStateMachine, "Invalid %s Scanner: %s", b.scanner.name, err.Error()))
 	}
 	return s
@@ -118,36 +118,34 @@ func (s *Scanner) scan(lexState *Lexer) (common.Token, error) {
 			continue
 		}
 		// cannot transfer, see if cState is an end state
-		if _, canEnd := s.endState[cState]; canEnd {
+		if s.endState.Contains(cState) {
 			return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, lexState.sColumn, lexState.cColumn, cState, s.store)
 		}
 		// unknown token
-		return emptyToken, util.NewLexerError(util.ErrUnidentifiableToken, lexState.line, lexState.sColumn, lexState.cColumn, lexState.source[lexState.start:lexState.current])
+		return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, lexState.line, lexState.sColumn, lexState.cColumn, lexState.source[lexState.start:lexState.current])
 	}
 
 	// read to the end, see if cState is an end state
-	if _, canEnd := s.endState[cState]; canEnd {
+	if s.endState.Contains(cState) {
 		return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, lexState.sColumn, lexState.cColumn, cState, s.store)
 	}
 	// unknown token
-	return emptyToken, util.NewLexerError(util.ErrUnidentifiableToken, lexState.line, lexState.sColumn, lexState.cColumn, lexState.source[lexState.start:lexState.current])
+	return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, lexState.line, lexState.sColumn, lexState.cColumn, lexState.source[lexState.start:lexState.current])
 }
 
 func (s *Scanner) Store(store interface{}) {
 	s.store = store
 }
 
-func checkScannerValid(stateTable stateTable, conditionTable conditionTable, startState state, endState map[state]struct{}) error {
-	states := funk.Map(stateTable, func(s state, _ []Edge) (state, struct{}) {
-		return s, struct{}{}
-	}).(map[state]struct{})
+func (s *Scanner) checkScannerValid() error {
+	states := mapset.NewSetFromMapKeys(s.stateTable)
 	conditions := map[condition]struct{}{}
 
 	// check if all states in stateTable are defined
-	for _, edges := range stateTable {
+	for _, edges := range s.stateTable {
 		for _, edge := range edges {
 			conditions[edge.condition] = struct{}{}
-			if _, ok := states[edge.state]; !ok {
+			if !states.Contains(edge.state) {
 				return fmt.Errorf("unknown state: %s", edge.state)
 			}
 		}
@@ -155,19 +153,17 @@ func checkScannerValid(stateTable stateTable, conditionTable conditionTable, sta
 
 	// check if all conditions in stateTable are defined
 	for cond := range conditions {
-		if _, ok := conditionTable[cond]; !ok {
+		if _, ok := s.conditionTable[cond]; !ok {
 			return fmt.Errorf("unknown condition: %s", cond)
 		}
 	}
 
 	// check if start state and end states are defined
-	for s := range endState {
-		if _, ok := states[s]; !ok {
-			return fmt.Errorf("unknown end state: %s", s)
-		}
+	if !s.endState.IsSubset(states) {
+		return fmt.Errorf("end states contain undefined state")
 	}
-	if _, ok := states[startState]; !ok {
-		return fmt.Errorf("unknown start state: %s", startState)
+	if !states.Contains(s.startState) {
+		return fmt.Errorf("unknown start state: %s", s.startState)
 	}
 
 	return nil

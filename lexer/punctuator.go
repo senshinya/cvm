@@ -2,7 +2,6 @@ package lexer
 
 import (
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/lexer/util"
 )
 
 var punctuatorStateTable = stateTable{
@@ -141,7 +140,7 @@ func isPunctuatorPrefix(b byte) bool {
 func punctuatorConstructor(s string, l, sc, ec int, _ state, _ interface{}) (common.Token, error) {
 	tokenType, ok := punctuatorTokenMap[s]
 	if !ok {
-		return emptyToken, util.NewLexerError(util.ErrUnidentifiableToken, l, sc, ec, "Unknown Punctuator: %s", s)
+		return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, l, sc, ec, "Unknown Punctuator: %s", s)
 	}
 	return common.NewToken(tokenType, s, nil, l, sc, ec), nil
 }

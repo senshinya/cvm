@@ -2,7 +2,6 @@ package lexer
 
 import (
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/lexer/util"
 )
 
 var stringLiteralStateTable = stateTable{
@@ -34,9 +33,9 @@ var stringLiteralConditionTable = conditionTable{
 	"x": func(b byte) bool {
 		return b == 'x'
 	},
-	"escape_suffix": util.IsSimpleEscapeSuffix,
-	"oct":           util.IsOctDigit,
-	"hex":           util.IsHexDigit,
+	"escape_suffix": common.IsSimpleEscapeSuffix,
+	"oct":           common.IsOctDigit,
+	"hex":           common.IsHexDigit,
 }
 
 type stringLiteralStore struct {
@@ -53,9 +52,9 @@ func stringLiteralTransferInterceptor(before, next state, char byte, store inter
 			(before.in([]state{"B", "FB", "GB", "HB", "IB"}) && next == "B")) {
 		// a character has been read!
 		// check if out of range
-		b, err := util.CheckAndUnquoteCharacterInString(cs.currentBytes)
+		b, err := common.CheckAndUnquoteCharacterInString(cs.currentBytes)
 		if err != nil {
-			return util.NewLexerError(util.ErrInvalidCharacter, l, ec-len(cs.currentBytes)+1, ec, err.Error())
+			return common.NewLexerError(common.ErrInvalidCharacter, l, ec-len(cs.currentBytes)+1, ec, err.Error())
 		}
 		cs.currentBytes = ""
 		cs.result += string(b)
