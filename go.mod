@@ -12,3 +12,5 @@ require (
 require github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 
 require github.com/iancoleman/strcase v0.3.0
+
+require github.com/hyphennn/glambda v0.6.0

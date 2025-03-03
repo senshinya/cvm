@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"shinya.click/cvm/common"
+	"shinya.click/cvm/entity"
 	"strconv"
 	"strings"
 )
@@ -67,7 +68,7 @@ var floatEndStates = map[state]struct{}{
 	"I": {}, "L": {}, "M": {}, "V": {},
 }
 
-func numberLiteralConstructor(s string, l, sc, ec int, endState state, _ interface{}) (common.Token, error) {
+func numberLiteralConstructor(s string, l, sc, ec int, endState state, _ interface{}) (entity.Token, error) {
 	if _, ok := integerEndStates[endState]; ok {
 		return constructIntegerToken(s, l, sc, ec)
 	}
@@ -77,7 +78,7 @@ func numberLiteralConstructor(s string, l, sc, ec int, endState state, _ interfa
 	return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, l, sc, ec, "Unknown number literal: %s", s)
 }
 
-func constructIntegerToken(rawStr string, l, sc, ec int) (common.Token, error) {
+func constructIntegerToken(rawStr string, l, sc, ec int) (entity.Token, error) {
 	s := rawStr
 
 	// check integer suffix
@@ -114,19 +115,19 @@ func constructIntegerToken(rawStr string, l, sc, ec int) (common.Token, error) {
 		return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, l, sc, ec, "Unparseable Integer: %s", err.Error())
 	}
 	if long && unsigned {
-		return common.NewToken(common.INTEGER_CONSTANT, rawStr, raw, l, sc, ec), nil
+		return entity.NewToken(entity.INTEGER_CONSTANT, rawStr, raw, l, sc, ec), nil
 	}
 	if !long && unsigned {
-		return common.NewToken(common.INTEGER_CONSTANT, rawStr, uint32(raw), l, sc, ec), nil
+		return entity.NewToken(entity.INTEGER_CONSTANT, rawStr, uint32(raw), l, sc, ec), nil
 	}
 	if long && !unsigned {
-		return common.NewToken(common.INTEGER_CONSTANT, rawStr, int64(raw), l, sc, ec), nil
+		return entity.NewToken(entity.INTEGER_CONSTANT, rawStr, int64(raw), l, sc, ec), nil
 	}
 	// !long && !unsigned
-	return common.NewToken(common.INTEGER_CONSTANT, rawStr, int32(raw), l, sc, ec), nil
+	return entity.NewToken(entity.INTEGER_CONSTANT, rawStr, int32(raw), l, sc, ec), nil
 }
 
-func constructFloatToken(rawStr string, l, sc, ec int) (common.Token, error) {
+func constructFloatToken(rawStr string, l, sc, ec int) (entity.Token, error) {
 	s := rawStr
 
 	// check float suffix
@@ -145,9 +146,9 @@ func constructFloatToken(rawStr string, l, sc, ec int) (common.Token, error) {
 		return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, l, sc, ec, "Unparseable Float: %s", err.Error())
 	}
 	if float {
-		return common.NewToken(common.FLOATING_CONSTANT, rawStr, float32(raw), l, sc, ec), nil
+		return entity.NewToken(entity.FLOATING_CONSTANT, rawStr, float32(raw), l, sc, ec), nil
 	}
-	return common.NewToken(common.FLOATING_CONSTANT, rawStr, raw, l, sc, ec), nil
+	return entity.NewToken(entity.FLOATING_CONSTANT, rawStr, raw, l, sc, ec), nil
 }
 
 var numberLiteralEndStates = []state{

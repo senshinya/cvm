@@ -4,6 +4,7 @@ import (
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
 	"shinya.click/cvm/common"
+	"shinya.click/cvm/entity"
 )
 
 type state string
@@ -11,7 +12,7 @@ type stateTable map[state][]Edge
 type condition string
 type conditionFunc func(byte) bool
 type conditionTable map[condition]conditionFunc
-type tokenConstructor func(lexeme string, line, sc, ec int, endState state, literal interface{}) (common.Token, error)
+type tokenConstructor func(lexeme string, line, sc, ec int, endState state, literal interface{}) (entity.Token, error)
 type transferInterceptor func(before, after state, char byte, store interface{}, l, sc, ec int) error
 type Edge struct {
 	condition condition
@@ -89,9 +90,9 @@ func (b *ScannerBuilder) Build() *Scanner {
 	return s
 }
 
-var emptyToken = common.Token{}
+var emptyToken = entity.Token{}
 
-func (s *Scanner) scan(lexState *Lexer) (common.Token, error) {
+func (s *Scanner) scan(lexState *Lexer) (entity.Token, error) {
 	cState := s.startState
 	for !lexState.isAtEnd() {
 		cByte := lexState.peek()

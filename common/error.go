@@ -1,6 +1,9 @@
 package common
 
-import "fmt"
+import (
+	"fmt"
+	"shinya.click/cvm/entity"
+)
 
 type CvmStage string
 
@@ -18,7 +21,7 @@ const (
 type CvmError struct {
 	Stage         CvmStage
 	ErrType       ErrType
-	SourceRange   *SourceRange
+	SourceRange   *entity.SourceRange
 	CustomMessage string
 }
 
@@ -41,10 +44,23 @@ func NewLexerError(typ ErrType, l, sc, ec int, message string, a ...any) CvmErro
 	return CvmError{
 		Stage:   "LEXER",
 		ErrType: typ,
-		SourceRange: &SourceRange{
-			SourceStart: SourcePos{Line: l, Column: sc},
-			SourceEnd:   SourcePos{Line: l, Column: ec},
+		SourceRange: &entity.SourceRange{
+			SourceStart: entity.SourcePos{Line: l, Column: sc},
+			SourceEnd:   entity.SourcePos{Line: l, Column: ec},
 		},
+		CustomMessage: fmt.Sprintf(message, a...),
+	}
+}
+
+const (
+	ErrInvalidSpecifiers ErrType = "ErrInvalidSpecifiers"
+)
+
+func NewParserError(typ ErrType, sourceRange entity.SourceRange, message string, a ...any) CvmError {
+	return CvmError{
+		Stage:         "PARSER",
+		ErrType:       typ,
+		SourceRange:   &sourceRange,
 		CustomMessage: fmt.Sprintf(message, a...),
 	}
 }

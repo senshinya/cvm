@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
-	"shinya.click/cvm/common"
+	"shinya.click/cvm/entity"
 )
 
 type Production struct {
@@ -18,7 +18,7 @@ type Productions struct {
 }
 
 func (p Productions) first(symbol string) []string {
-	if common.IsTerminalSymbol(symbol) {
+	if entity.IsTerminalSymbol(symbol) {
 		return []string{symbol}
 	}
 	result := mapset.NewSet[string]()

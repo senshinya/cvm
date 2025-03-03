@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"shinya.click/cvm/common"
+	"shinya.click/cvm/entity"
 )
 
 var punctuatorStateTable = stateTable{
@@ -75,55 +76,55 @@ var punctuatorConditionTable = conditionTable{
 	},
 }
 
-var punctuatorTokenMap = map[string]common.TokenType{
-	"[":   common.LEFT_BRACKETS,
-	"]":   common.RIGHT_BRACKETS,
-	"(":   common.LEFT_PARENTHESES,
-	")":   common.RIGHT_PARENTHESES,
-	"{":   common.LEFT_BRACES,
-	"}":   common.RIGHT_BRACES,
-	".":   common.PERIOD,
-	"->":  common.ARROW,
-	"++":  common.PLUS_PLUS,
-	"--":  common.MINUS_MINUS,
-	"&":   common.AND,
-	"*":   common.ASTERISK,
-	"+":   common.PLUS,
-	"-":   common.MINUS,
-	"~":   common.TILDE,
-	"!":   common.EXCLAMATION,
-	"/":   common.SLASH,
-	"%":   common.PERCENT,
-	"<<":  common.LEFT_SHIFT,
-	">>":  common.RIGHT_SHIFT,
-	"<":   common.LESS,
-	">":   common.GREATER,
-	"<=":  common.LESS_EQUAL,
-	">=":  common.GREATER_EQUAL,
-	"==":  common.EQUAL_EQUAL,
-	"!=":  common.NOT_EQUAL,
-	"^":   common.XOR,
-	"|":   common.OR,
-	"&&":  common.AND_AND,
-	"||":  common.OR_OR,
-	"?":   common.QUESTION,
-	":":   common.COLON,
-	";":   common.SEMICOLON,
-	"...": common.VARIADIC,
-	"=":   common.EQUAL,
-	"*=":  common.MULTIPLY_EQUAL,
-	"/=":  common.DIVIDE_EQUAL,
-	"%=":  common.MOD_EQUAL,
-	"+=":  common.PLUS_EQUAL,
-	"-=":  common.MINUS_EQUAL,
-	"<<=": common.LEFT_SHIFT_EQUAL,
-	">>=": common.RIGHT_SHIFT_EQUAL,
-	"&=":  common.AND_EQUAL,
-	"^=":  common.XOR_EQUAL,
-	"|=":  common.OR_EQUAL,
-	",":   common.COMMA,
-	"#":   common.SHARP,
-	"##":  common.SHARP_SHARP,
+var punctuatorTokenMap = map[string]entity.TokenType{
+	"[":   entity.LEFT_BRACKETS,
+	"]":   entity.RIGHT_BRACKETS,
+	"(":   entity.LEFT_PARENTHESES,
+	")":   entity.RIGHT_PARENTHESES,
+	"{":   entity.LEFT_BRACES,
+	"}":   entity.RIGHT_BRACES,
+	".":   entity.PERIOD,
+	"->":  entity.ARROW,
+	"++":  entity.PLUS_PLUS,
+	"--":  entity.MINUS_MINUS,
+	"&":   entity.AND,
+	"*":   entity.ASTERISK,
+	"+":   entity.PLUS,
+	"-":   entity.MINUS,
+	"~":   entity.TILDE,
+	"!":   entity.EXCLAMATION,
+	"/":   entity.SLASH,
+	"%":   entity.PERCENT,
+	"<<":  entity.LEFT_SHIFT,
+	">>":  entity.RIGHT_SHIFT,
+	"<":   entity.LESS,
+	">":   entity.GREATER,
+	"<=":  entity.LESS_EQUAL,
+	">=":  entity.GREATER_EQUAL,
+	"==":  entity.EQUAL_EQUAL,
+	"!=":  entity.NOT_EQUAL,
+	"^":   entity.XOR,
+	"|":   entity.OR,
+	"&&":  entity.AND_AND,
+	"||":  entity.OR_OR,
+	"?":   entity.QUESTION,
+	":":   entity.COLON,
+	";":   entity.SEMICOLON,
+	"...": entity.VARIADIC,
+	"=":   entity.EQUAL,
+	"*=":  entity.MULTIPLY_EQUAL,
+	"/=":  entity.DIVIDE_EQUAL,
+	"%=":  entity.MOD_EQUAL,
+	"+=":  entity.PLUS_EQUAL,
+	"-=":  entity.MINUS_EQUAL,
+	"<<=": entity.LEFT_SHIFT_EQUAL,
+	">>=": entity.RIGHT_SHIFT_EQUAL,
+	"&=":  entity.AND_EQUAL,
+	"^=":  entity.XOR_EQUAL,
+	"|=":  entity.OR_EQUAL,
+	",":   entity.COMMA,
+	"#":   entity.SHARP,
+	"##":  entity.SHARP_SHARP,
 }
 
 func isPunctuatorPrefix(b byte) bool {
@@ -137,12 +138,12 @@ func isPunctuatorPrefix(b byte) bool {
 	return ok
 }
 
-func punctuatorConstructor(s string, l, sc, ec int, _ state, _ interface{}) (common.Token, error) {
+func punctuatorConstructor(s string, l, sc, ec int, _ state, _ interface{}) (entity.Token, error) {
 	tokenType, ok := punctuatorTokenMap[s]
 	if !ok {
 		return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, l, sc, ec, "Unknown Punctuator: %s", s)
 	}
-	return common.NewToken(tokenType, s, nil, l, sc, ec), nil
+	return entity.NewToken(tokenType, s, nil, l, sc, ec), nil
 }
 
 var punctuatorScanner *Scanner

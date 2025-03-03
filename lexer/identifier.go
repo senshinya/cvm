@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"shinya.click/cvm/common"
+	"shinya.click/cvm/entity"
 )
 
 var identifierStateTable = stateTable{
@@ -14,11 +15,11 @@ var identifierConditionTable = conditionTable{
 	"digit":   common.IsDigit,
 }
 
-func identifierConstructor(s string, l, sc, ec int, _ state, _ interface{}) (common.Token, error) {
+func identifierConstructor(s string, l, sc, ec int, _ state, _ interface{}) (entity.Token, error) {
 	if tokenType, ok := keywords[s]; ok {
-		return common.NewToken(tokenType, s, nil, l, sc, ec), nil
+		return entity.NewToken(tokenType, s, nil, l, sc, ec), nil
 	}
-	return common.NewToken(common.IDENTIFIER, s, nil, l, sc, ec), nil
+	return entity.NewToken(entity.IDENTIFIER, s, nil, l, sc, ec), nil
 }
 
 var identifierScanner *Scanner
@@ -41,42 +42,42 @@ func newIdentifierScanner() *Scanner {
 		Build()
 }
 
-var keywords = map[string]common.TokenType{
-	"auto":       common.AUTO,
-	"break":      common.BREAK,
-	"case":       common.CASE,
-	"char":       common.CHAR,
-	"const":      common.CONST,
-	"continue":   common.CONTINUE,
-	"default":    common.DEFAULT,
-	"do":         common.DO,
-	"double":     common.DOUBLE,
-	"else":       common.ELSE,
-	"enum":       common.ENUM,
-	"extern":     common.EXTERN,
-	"float":      common.FLOAT,
-	"for":        common.FOR,
-	"goto":       common.GOTO,
-	"if":         common.IF,
-	"inline":     common.INLINE,
-	"int":        common.INT,
-	"long":       common.LONG,
-	"register":   common.REGISTER,
-	"restrict":   common.RESTRICT,
-	"return":     common.RETURN,
-	"short":      common.SHORT,
-	"signed":     common.SIGNED,
-	"sizeof":     common.SIZEOF,
-	"static":     common.STATIC,
-	"struct":     common.STRUCT,
-	"switch":     common.SWITCH,
-	"typedef":    common.TYPEDEF,
-	"union":      common.UNION,
-	"unsigned":   common.UNSIGNED,
-	"void":       common.VOID,
-	"volatile":   common.VOLATILE,
-	"while":      common.WHILE,
-	"_Bool":      common.BOOL,
-	"_Complex":   common.COMPLEX,
-	"_Imaginary": common.IMAGINARY,
+var keywords = map[string]entity.TokenType{
+	"auto":       entity.AUTO,
+	"break":      entity.BREAK,
+	"case":       entity.CASE,
+	"char":       entity.CHAR,
+	"const":      entity.CONST,
+	"continue":   entity.CONTINUE,
+	"default":    entity.DEFAULT,
+	"do":         entity.DO,
+	"double":     entity.DOUBLE,
+	"else":       entity.ELSE,
+	"enum":       entity.ENUM,
+	"extern":     entity.EXTERN,
+	"float":      entity.FLOAT,
+	"for":        entity.FOR,
+	"goto":       entity.GOTO,
+	"if":         entity.IF,
+	"inline":     entity.INLINE,
+	"int":        entity.INT,
+	"long":       entity.LONG,
+	"register":   entity.REGISTER,
+	"restrict":   entity.RESTRICT,
+	"return":     entity.RETURN,
+	"short":      entity.SHORT,
+	"signed":     entity.SIGNED,
+	"sizeof":     entity.SIZEOF,
+	"static":     entity.STATIC,
+	"struct":     entity.STRUCT,
+	"switch":     entity.SWITCH,
+	"typedef":    entity.TYPEDEF,
+	"union":      entity.UNION,
+	"unsigned":   entity.UNSIGNED,
+	"void":       entity.VOID,
+	"volatile":   entity.VOLATILE,
+	"while":      entity.WHILE,
+	"_Bool":      entity.BOOL,
+	"_Complex":   entity.COMPLEX,
+	"_Imaginary": entity.IMAGINARY,
 }

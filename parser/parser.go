@@ -2,51 +2,46 @@ package parser
 
 import (
 	"fmt"
-	"github.com/mohae/deepcopy"
-	"github.com/thoas/go-funk"
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/parser/entity"
-	"shinya.click/cvm/parser/glr"
-	"strings"
+	"shinya.click/cvm/entity"
+	"slices"
 )
 
 type Parser struct {
-	Tokens               []common.Token
-	TokenIndex           int
-	AST                  *glr.RawAstNode
-	StateStack           *common.Stack[int]
-	SymbolStack          *common.Stack[*glr.RawAstNode]
-	CheckPointStack      *common.Stack[*CheckPoint]
-	ExternalDeclarations []entity.ExternalDeclaration
+	Tokens          []entity.Token
+	TokenIndex      int
+	StateStack      *common.Stack[int]
+	SymbolStack     *common.Stack[*entity.AstNode]
+	CheckPointStack *common.Stack[*CheckPoint]
+	CandidateASTs   []*entity.AstNode
 }
 
-func NewParser(tokens []common.Token) *Parser {
+func NewParser(tokens []entity.Token) *Parser {
 	return &Parser{Tokens: tokens}
 }
 
 type CheckPoint struct {
-	TokenIndex           int
-	ChooseIndex          int
-	StateStackSnap       []int
-	SymbolStackSnap      []*glr.RawAstNode
-	ExternalDeclarations []entity.ExternalDeclaration
+	ChooseIndex     int
+	TokenIndex      int
+	StateStackSnap  []int
+	SymbolStackSnap []*entity.AstNode
 }
 
-func (p *Parser) Parse() error {
-	if p.AST != nil {
-		return nil
-	}
-
+func (p *Parser) Parse() (*entity.AstNode, error) {
 	p.TokenIndex = 0
 	p.StateStack = common.NewStack[int]()
-	p.SymbolStack = common.NewStack[*glr.RawAstNode]()
+	p.SymbolStack = common.NewStack[*entity.AstNode]()
 	p.CheckPointStack = common.NewStack[*CheckPoint]()
-	p.ExternalDeclarations = []entity.ExternalDeclaration{}
 
 	p.StateStack.Push(0) // init state is always 0
 
 	chooseOp := 0
+parserIter:
 	for {
+		if chooseOp == -1 {
+			// no checkpoint to restore
+			break
+		}
 		// read to the end before reduce program
 		if p.TokenIndex >= len(p.Tokens) {
 			chooseOp = p.restore()
@@ -59,7 +54,7 @@ func (p *Parser) Parse() error {
 			continue
 		}
 
-		ops, ok := glr.LalrAction[state][token.Typ]
+		ops, ok := LalrAction[state][token.Typ]
 		if !ok {
 			chooseOp = p.restore()
 			continue
@@ -72,63 +67,57 @@ func (p *Parser) Parse() error {
 			p.addCheckPoint(chooseOp)
 		}
 		op := ops[chooseOp]
-		if op.OperatorType == glr.ACC {
-			prod := glr.Productions[op.ReduceIndex]
-			var rights []*glr.RawAstNode
+		if op.OperatorType == common.ACC {
+			prod := Productions[op.ReduceIndex]
+			var rights []*entity.AstNode
 			for i := 0; i < len(prod.Right); i++ {
 				p.StateStack.Pop()
 				sym, ok := p.SymbolStack.Pop()
 				if !ok {
 					chooseOp = p.restore()
-					continue
+					continue parserIter
 				}
 				rights = append(rights, sym)
 			}
-			newSym := &glr.RawAstNode{Typ: prod.Left, Production: prod}
-			newSym.SetChildren(funk.Reverse(rights).([]*glr.RawAstNode))
-			p.SymbolStack.Push(newSym)
-			break
+			slices.Reverse(rights)
+			newSym := &entity.AstNode{Typ: prod.Left}
+			newSym.SetBranch(prod, rights)
+			p.CandidateASTs = append(p.CandidateASTs, newSym)
+			chooseOp = p.restore()
+			continue
 		}
 		switch op.OperatorType {
-		case glr.SHIFT:
+		case common.SHIFT:
 			p.StateStack.Push(op.StateIndex)
-			p.SymbolStack.Push(&glr.RawAstNode{
+			p.SymbolStack.Push(&entity.AstNode{
 				Typ:         token.Typ,
 				Terminal:    &token,
 				SourceRange: token.GetSourceRange(),
 			})
 			p.TokenIndex++
-		case glr.REDUCE:
-			prod := glr.Productions[op.ReduceIndex]
-			var rights []*glr.RawAstNode
+		case common.REDUCE:
+			prod := Productions[op.ReduceIndex]
+			var rights []*entity.AstNode
 			for i := 0; i < len(prod.Right); i++ {
 				p.StateStack.Pop()
 				sym, ok := p.SymbolStack.Pop()
 				if !ok {
 					chooseOp = p.restore()
-					continue
+					continue parserIter
 				}
 				rights = append(rights, sym)
 			}
-			newSym := &glr.RawAstNode{Typ: prod.Left, Production: prod}
-			newSym.SetChildren(funk.Reverse(rights).([]*glr.RawAstNode))
+			slices.Reverse(rights)
+			newSym := &entity.AstNode{Typ: prod.Left}
+			newSym.SetBranch(prod, rights)
 			p.SymbolStack.Push(newSym)
-
-			if prod.Left == glr.ExternalDeclaration {
-				//printAST(newSym, 0)
-				err := p.parseExternalDeclaration(newSym)
-				if err != nil {
-					chooseOp = p.restore()
-					continue
-				}
-			}
 
 			nowHeadState, ok := p.StateStack.Peek()
 			if !ok {
 				chooseOp = p.restore()
 				continue
 			}
-			gotoState, ok := glr.LalrGoto[nowHeadState][newSym.Typ]
+			gotoState, ok := LalrGoto[nowHeadState][newSym.Typ]
 			if !ok {
 				chooseOp = p.restore()
 				continue
@@ -138,214 +127,80 @@ func (p *Parser) Parse() error {
 		chooseOp = 0
 	}
 
-	res, ok := p.SymbolStack.Pop()
-	if !ok {
-		panic("symbolStack is empty")
-	}
-	p.AST = res
-	for _, declare := range p.ExternalDeclarations {
-		if declare.GetExternalDeclarationType() == entity.ExternalDeclarationTypeDeclaration {
-			printDeclaration(declare)
-		}
+	if len(p.CandidateASTs) == 0 {
+		panic("dead end")
 	}
 
-	return nil
+	// merge all candidate ASTs
+	res := p.CandidateASTs[0]
+	for i, ast := range p.CandidateASTs {
+		if i == 0 {
+			continue
+		}
+		res.Merge(ast)
+	}
+
+	// fill parent pointer
+	fillAstParent(res, nil)
+	printAST(res, 0)
+	return res, nil
 }
 
 func (p *Parser) addCheckPoint(chooseOp int) {
 	stateAll := p.StateStack.DumpAll()
 	symAll := p.SymbolStack.DumpAll()
 	cp := CheckPoint{
-		TokenIndex:           p.TokenIndex,
-		ChooseIndex:          chooseOp,
-		StateStackSnap:       deepcopy.Copy(stateAll).([]int),
-		SymbolStackSnap:      deepCopyAstNodeSlice(symAll),
-		ExternalDeclarations: deepcopy.Copy(p.ExternalDeclarations).([]entity.ExternalDeclaration),
+		TokenIndex:      p.TokenIndex,
+		ChooseIndex:     chooseOp,
+		StateStackSnap:  common.DeepCopy(stateAll),
+		SymbolStackSnap: common.DeepCopy(symAll),
 	}
 	p.CheckPointStack.Push(&cp)
 }
 
-func deepCopyAstNodeSlice(origins []*glr.RawAstNode) []*glr.RawAstNode {
-	// due to a node contains parent and children, it cannot be deepcopy.Copy(), or stack overflow
-	var res []*glr.RawAstNode
-	for _, origin := range origins {
-		res = append(res, copyAstNode(origin))
-	}
-	for _, node := range res {
-		fillAstParent(node, nil)
-	}
-	return res
-}
-
-func copyAstNode(origin *glr.RawAstNode) *glr.RawAstNode {
-	root := &glr.RawAstNode{
-		Typ:        origin.Typ,
-		Terminal:   origin.Terminal,
-		Production: origin.Production,
-	}
-	for _, child := range origin.Children {
-		root.Children = append(root.Children, copyAstNode(child))
-	}
-	return root
-}
-
-func fillAstParent(node *glr.RawAstNode, parent *glr.RawAstNode) {
+func fillAstParent(node *entity.AstNode, parent *entity.AstNode) {
 	node.Parent = parent
-	for _, child := range node.Children {
-		fillAstParent(child, node)
+	for _, branch := range node.PossibleBranches {
+		for _, child := range branch.Children {
+			fillAstParent(child, node)
+		}
 	}
 }
 
 func (p *Parser) restore() int {
 	checkPoint, ok := p.CheckPointStack.Pop()
 	if !ok {
-		panic("total dead!")
+		return -1
 	}
 	p.TokenIndex = checkPoint.TokenIndex
 	p.StateStack = common.NewStackWithElements[int](checkPoint.StateStackSnap)
-	p.SymbolStack = common.NewStackWithElements[*glr.RawAstNode](checkPoint.SymbolStackSnap)
-	p.ExternalDeclarations = checkPoint.ExternalDeclarations
+	p.SymbolStack = common.NewStackWithElements[*entity.AstNode](checkPoint.SymbolStackSnap)
 
 	return checkPoint.ChooseIndex + 1
 }
 
-func printAST(ast *glr.RawAstNode, level int) {
+func printAST(ast *entity.AstNode, level int) {
 	for i := 0; i < level; i++ {
 		fmt.Print("  ")
 	}
 	fmt.Print(ast.Typ)
-	if common.IsTerminalSymbol(string(ast.Typ)) {
+	if entity.IsTerminalSymbol(string(ast.Typ)) {
 		fmt.Print(" - " + ast.Terminal.Lexeme)
 	}
 	fmt.Println()
-	for _, child := range ast.Children {
-		printAST(child, level+1)
-	}
-}
-
-func (p *Parser) parseExternalDeclaration(declare *glr.RawAstNode) error {
-	switch {
-	case declare.ReducedBy(glr.ExternalDeclaration, 1):
-		// external_declaration := function_definition
-		funcDef, err := parseFunctionDefinition(declare.Children[0])
-		if err != nil {
-			return err
+	if len(ast.PossibleBranches) == 1 {
+		for _, child := range ast.PossibleBranches[0].Children {
+			printAST(child, level+1)
 		}
-		p.ExternalDeclarations = append(p.ExternalDeclarations, funcDef)
-	case declare.ReducedBy(glr.ExternalDeclaration, 2):
-		// external_declaration := declaration
-		res, err := parseDeclaration(declare.Children[0])
-		if err != nil {
-			return err
-		}
-		p.ExternalDeclarations = append(p.ExternalDeclarations, res)
-	default:
-		panic("unreachable")
-	}
-	return nil
-}
-
-func printDeclaration(unit entity.ExternalDeclaration) {
-	declares := unit.(*entity.Declaration)
-	for _, initDeclare := range declares.InitDeclarators {
-		fmt.Printf("declare %s as ", initDeclare.Declarator.Identifier.Lexeme)
-		typ := &initDeclare.Declarator.Type
-		printType(typ)
-		fmt.Println()
-	}
-}
-
-func printType(typ *entity.Type) {
-	if typ.TypeQualifiers.Const {
-		fmt.Print("const ")
-	}
-	if typ.TypeQualifiers.Volatile {
-		fmt.Print("volatile ")
-	}
-	if typ.TypeQualifiers.Restrict {
-		fmt.Print("restrict ")
-	}
-	switch typ.MetaType {
-	case entity.MetaTypeVoid:
-		print("void")
-		return
-	case entity.MetaTypeNumber:
-		numMeta := typ.NumberMetaInfo
-		if numMeta.Signed {
-			print("signed ")
-		}
-		if numMeta.Unsigned {
-			print("unsigned ")
-		}
-		switch numMeta.BaseNumType {
-		case entity.BaseNumTypeChar:
-			print("char")
-		case entity.BaseNumTypeShort:
-			print("short")
-		case entity.BaseNumTypeInt:
-			print("int")
-		case entity.BaseNumTypeLong:
-			print("long")
-		case entity.BaseNumTypeFloat:
-			print("float")
-		case entity.BaseNumTypeDouble:
-			print("double")
-		case entity.BaseNumTypeBool:
-			print("bool")
-		case entity.BaseNumTypeLongLong:
-			print("long long")
-		case entity.BaseNumTypeLongDouble:
-			print("long double")
-		}
-		return
-	case entity.MetaTypeEnum:
-	case entity.MetaTypePointer:
-		print("pointer to ( ")
-		printType(typ.PointerInnerType)
-		print(" ) ")
-	case entity.MetaTypeStruct:
-	case entity.MetaTypeUnion:
-	case entity.MetaTypeFunction:
-		print("function with parameter ( ")
-		for i, param := range typ.FunctionMetaInfo.Parameters {
-			if i != 0 {
-				print(" , ")
+	} else {
+		for i, branch := range ast.PossibleBranches {
+			for j := 0; j < level; j++ {
+				fmt.Print("  ")
 			}
-			printType(&param.Type)
-		}
-		if len(typ.FunctionMetaInfo.IdentifierList) != 0 {
-			var identifiers []string
-			for _, identifier := range typ.FunctionMetaInfo.IdentifierList {
-				identifiers = append(identifiers, identifier.Lexeme)
-			}
-			print(strings.Join(identifiers, ", "))
-		}
-		print(" ) ")
-		if typ.FunctionMetaInfo.Variadic {
-			print("... ")
-		}
-		print("and returning ( ")
-		printType(typ.FunctionMetaInfo.ReturnType)
-		print(" ) ")
-	case entity.MetaTypeArray:
-		print("array ")
-		sizeExp := typ.ArrayMetaInfo.Size
-		if sizeExp != nil {
-			if sizeExp.ExpressionType == entity.ExpressionTypeConst {
-				fmt.Printf("%+v ", sizeExp.Terminal.Literal)
-			}
-			if sizeExp.ExpressionType == entity.ExpressionTypeSizeOf {
-				fmt.Printf("( with the size of type (")
-				printType(&sizeExp.SizeOfExpressionInfo.Type)
-				fmt.Printf(") ) ")
+			fmt.Printf("branch %d\n", i)
+			for _, child := range branch.Children {
+				printAST(child, level+1)
 			}
 		}
-		print("of ( ")
-		printType(typ.ArrayMetaInfo.InnerType)
-		print(" ) ")
-	case entity.MetaTypeUserDefined:
-		fmt.Printf("user defined %s ", *typ.UserDefinedTypeName)
-		return
 	}
-
 }

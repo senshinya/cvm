@@ -1,5 +1,8 @@
 package entity
 
-import "shinya.click/cvm/common"
+import (
+	"shinya.click/cvm/common"
+	entity2 "shinya.click/cvm/entity"
+)
 
-type ConstantPool map[int64]*common.Token
+type ConstantPool map[int64]*entity2.Token

@@ -2,11 +2,12 @@ package lexer
 
 import (
 	"shinya.click/cvm/common"
+	"shinya.click/cvm/entity"
 )
 
 type Lexer struct {
 	source  string
-	tokens  []common.Token
+	tokens  []entity.Token
 	start   int
 	current int
 	sColumn int
@@ -18,7 +19,7 @@ func NewLexer(source string) *Lexer {
 	return &Lexer{source: source, line: 1}
 }
 
-func (l *Lexer) ScanTokens() ([]common.Token, error) {
+func (l *Lexer) ScanTokens() ([]entity.Token, error) {
 	for !l.isAtEnd() {
 		if l.currentEmpty() {
 			l.moveNext()
@@ -31,7 +32,7 @@ func (l *Lexer) ScanTokens() ([]common.Token, error) {
 		}
 	}
 
-	l.tokens = append(l.tokens, common.NewToken(common.EOF, "", nil, l.line, l.cColumn, l.cColumn))
+	l.tokens = append(l.tokens, entity.NewToken(entity.EOF, "", nil, l.line, l.cColumn, l.cColumn))
 	return l.tokens, nil
 }
 

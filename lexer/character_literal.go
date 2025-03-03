@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"shinya.click/cvm/common"
+	"shinya.click/cvm/entity"
 )
 
 var characterLiteralStateTable = stateTable{
@@ -82,9 +83,9 @@ func newCharacterLiteralScanner() *Scanner {
 	return NewScannerBuilder("Character Literal").
 		StateTable(characterLiteralStateTable).
 		ConditionTable(characterLiteralConditionTable).
-		TokenConstructor(func(s string, l, sc, ec int, _ state, store interface{}) (common.Token, error) {
+		TokenConstructor(func(s string, l, sc, ec int, _ state, store interface{}) (entity.Token, error) {
 			cs := store.(*characterLiteralStore)
-			return common.NewToken(common.CHARACTER, s, cs.last, l, sc, ec), nil
+			return entity.NewToken(entity.CHARACTER, s, cs.last, l, sc, ec), nil
 		}).
 		StartState("A").
 		EndState([]state{"N"}).

@@ -65,7 +65,7 @@ int main(){
 		panic(err)
 	}
 	p := NewParser(tokens)
-	err = p.Parse()
+	_, err = p.Parse()
 	if err != nil {
 		panic(err)
 	}
@@ -92,8 +92,18 @@ func TestSqrt(t *testing.T) {
 		panic(err)
 	}
 	p := NewParser(tokens)
-	err = p.Parse()
+	_, err = p.Parse()
 	if err != nil {
 		panic(err)
 	}
+}
+
+func TestAmbiguous(t *testing.T) {
+	tokens, err := lexer.NewLexer(`int main() {
+	a*b;
+}`).ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	NewParser(tokens).Parse()
 }
