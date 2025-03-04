@@ -2,6 +2,7 @@ package entity
 
 import (
 	"fmt"
+	"github.com/hyphennn/glambda/gslice"
 	"strings"
 )
 
@@ -10,7 +11,13 @@ type AstNode struct {
 	Typ              TokenType
 	Terminal         *Token
 	PossibleBranches []*Branch
+	GLRLabel
 	SourceRange
+}
+type GLRLabel struct {
+	// Declaration 使用，规约出 Declaration 后消除
+	TypeDef      bool     // 是否是 TypeDef
+	DeclaratorID []string // 包含的 Identifier
 }
 
 type Branch struct {
@@ -18,10 +25,27 @@ type Branch struct {
 	Children   []*AstNode
 }
 
+func (n *AstNode) GetProductionBranch(left TokenType, index int64) *Branch {
+	for _, branch := range n.PossibleBranches {
+		if branch.Production.Left == left && branch.Production.Index == index {
+			return branch
+		}
+	}
+	return nil
+}
+
 func (n *AstNode) SetBranch(production Production, children []*AstNode) {
 	branch := &Branch{Production: production, Children: children}
 	// set parent later in case of deepcopy error
 	n.PossibleBranches = append(n.PossibleBranches, branch)
+	// set glr label
+	gslice.ForEach(children, func(child *AstNode) {
+		if child.TypeDef {
+			n.TypeDef = true
+		}
+		n.DeclaratorID = append(n.DeclaratorID, child.DeclaratorID...)
+	})
+	// set source range
 	n.SourceRange = SourceRange{
 		SourceStart: children[0].SourceRange.SourceStart,
 		SourceEnd:   children[len(children)-1].SourceRange.SourceEnd,

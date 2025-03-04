@@ -107,3 +107,36 @@ func TestAmbiguous(t *testing.T) {
 	}
 	NewParser(tokens).Parse()
 }
+
+func TestSizeOf(t *testing.T) {
+	tokens, err := lexer.NewLexer(`int main() {
+	sizeof(a);
+}`).ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	NewParser(tokens).Parse()
+}
+
+func TestTwoFunc(t *testing.T) {
+	tokens, err := lexer.NewLexer(`int main() {
+}
+
+int b;`).ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	NewParser(tokens).Parse()
+}
+
+func TestTypeDef(t *testing.T) {
+	tokens, err := lexer.NewLexer(`typedef int a;
+
+typedef struct abc{
+	int c;
+} ccc;`).ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	NewParser(tokens).Parse()
+}
