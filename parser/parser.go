@@ -1,55 +1,26 @@
 package parser
 
 import (
-	"errors"
 	"fmt"
-	"github.com/hyphennn/glambda/gslice"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/entity"
 	"slices"
 )
 
 type Parser struct {
-	Tokens             []entity.Token
-	TokenIndex         int
-	StateStack         *common.Stack[int]
-	SymbolStack        *common.Stack[*entity.AstNode]
-	TypeDefSymbolTable *SymbolTable
-	CheckPointStack    *common.Stack[*CheckPoint]
-	CandidateASTs      []*entity.AstNode
+	Tokens          []entity.Token
+	TokenIndex      int
+	StateStack      *common.Stack[int]
+	SymbolStack     *common.Stack[*entity.AstNode]
+	CheckPointStack *common.Stack[*CheckPoint]
+	CandidateASTs   []*entity.AstNode
 }
 
 type CheckPoint struct {
-	ChooseIndex        int
-	TokenIndex         int
-	StateStackSnap     []int
-	SymbolStackSnap    []*entity.AstNode
-	TypeDefSymbolTable *SymbolTable
-}
-
-type SymbolTable struct {
-	Stack [][]string
-}
-
-func (st *SymbolTable) Push(sym ...string) {
-	st.Stack[len(st.Stack)-1] = append(st.Stack[len(st.Stack)-1], sym...)
-}
-
-func (st *SymbolTable) Contain(sym string) bool {
-	for i := len(st.Stack) - 1; i >= 0; i-- {
-		if gslice.Contains(st.Stack[i], sym) {
-			return true
-		}
-	}
-	return false
-}
-
-func (st *SymbolTable) EnterScope() {
-	st.Stack = append(st.Stack, []string{})
-}
-
-func (st *SymbolTable) LeaveScope() {
-	st.Stack = st.Stack[:len(st.Stack)-1]
+	ChooseIndex     int
+	TokenIndex      int
+	StateStackSnap  []int
+	SymbolStackSnap []*entity.AstNode
 }
 
 func NewParser(tokens []entity.Token) *Parser {
@@ -61,9 +32,6 @@ func (p *Parser) Parse() (*entity.AstNode, error) {
 	p.StateStack = common.NewStack[int]()
 	p.StateStack.Push(0) // init state is always 0
 	p.SymbolStack = common.NewStack[*entity.AstNode]()
-	p.TypeDefSymbolTable = &SymbolTable{
-		Stack: [][]string{{}},
-	}
 
 	p.CheckPointStack = common.NewStack[*CheckPoint]()
 
@@ -113,7 +81,7 @@ parserIter:
 			}
 			slices.Reverse(rights)
 			newSym := &entity.AstNode{Typ: prod.Left}
-			newSym.SetBranch(prod, rights)
+			newSym.SetChildren(prod, rights)
 			p.CandidateASTs = append(p.CandidateASTs, newSym)
 			chooseOp = p.restore()
 			continue
@@ -146,7 +114,7 @@ parserIter:
 			}
 			slices.Reverse(rights)
 			newSym := &entity.AstNode{Typ: prod.Left}
-			newSym.SetBranch(prod, rights)
+			newSym.SetChildren(prod, rights)
 			p.SymbolStack.Push(newSym)
 			if err := p.operatePostProcess(newSym); err != nil {
 				chooseOp = p.restore()
@@ -172,41 +140,28 @@ parserIter:
 		panic("dead end")
 	}
 
-	// merge all candidate ASTs
-	res := p.CandidateASTs[0]
-	for i, ast := range p.CandidateASTs {
-		if i == 0 {
-			continue
-		}
-		res.Merge(ast)
+	// eliminate the wrong tree
+	candidates, latestErr := shaveForest(p.CandidateASTs)
+	if len(candidates) == 0 {
+		return nil, latestErr
 	}
-
-	// fill parent pointer
-	fillAstParent(res, nil)
-	printAST(res, 0)
-	return res, nil
+	for _, tree := range candidates {
+		fillAstParent(tree, nil)
+	}
+	//printAST(p.CandidateASTs[0], 0)
+	return candidates[0], nil
 }
 
 func (p *Parser) addCheckPoint(chooseOp int) {
 	stateAll := p.StateStack.DumpAll()
 	symAll := p.SymbolStack.DumpAll()
 	cp := CheckPoint{
-		TokenIndex:         p.TokenIndex,
-		ChooseIndex:        chooseOp,
-		StateStackSnap:     common.DeepCopy(stateAll),
-		SymbolStackSnap:    common.DeepCopy(symAll),
-		TypeDefSymbolTable: common.DeepCopy(p.TypeDefSymbolTable),
+		TokenIndex:      p.TokenIndex,
+		ChooseIndex:     chooseOp,
+		StateStackSnap:  common.DeepCopy(stateAll),
+		SymbolStackSnap: common.DeepCopy(symAll),
 	}
 	p.CheckPointStack.Push(&cp)
-}
-
-func fillAstParent(node *entity.AstNode, parent *entity.AstNode) {
-	node.Parent = parent
-	for _, branch := range node.PossibleBranches {
-		for _, child := range branch.Children {
-			fillAstParent(child, node)
-		}
-	}
 }
 
 func (p *Parser) restore() int {
@@ -217,9 +172,15 @@ func (p *Parser) restore() int {
 	p.TokenIndex = checkPoint.TokenIndex
 	p.StateStack = common.NewStackWithElements[int](checkPoint.StateStackSnap)
 	p.SymbolStack = common.NewStackWithElements[*entity.AstNode](checkPoint.SymbolStackSnap)
-	p.TypeDefSymbolTable = checkPoint.TypeDefSymbolTable
 
 	return checkPoint.ChooseIndex + 1
+}
+
+func fillAstParent(node *entity.AstNode, parent *entity.AstNode) {
+	node.Parent = parent
+	for _, child := range node.Children {
+		fillAstParent(child, node)
+	}
 }
 
 func printAST(ast *entity.AstNode, level int) {
@@ -230,63 +191,70 @@ func printAST(ast *entity.AstNode, level int) {
 	if entity.IsTerminalSymbol(string(ast.Typ)) {
 		fmt.Print(" - " + ast.Terminal.Lexeme)
 	}
+	fmt.Printf(" %v %v", ast.TypeDef, ast.DeclaratorID)
 	fmt.Println()
-	if len(ast.PossibleBranches) == 1 {
-		for _, child := range ast.PossibleBranches[0].Children {
-			printAST(child, level+1)
-		}
-	} else {
-		for i, branch := range ast.PossibleBranches {
-			for j := 0; j < level; j++ {
-				fmt.Print("  ")
-			}
-			fmt.Printf("branch %d\n", i)
-			for _, child := range branch.Children {
-				printAST(child, level+1)
-			}
-		}
+	for _, child := range ast.Children {
+		printAST(child, level+1)
 	}
 }
 
 func (p *Parser) operatePostProcess(node *entity.AstNode) error {
 	switch node.Typ {
 	case DirectDeclarator:
-		// direct_declarator := IDENTIFIER
-		branch := node.GetProductionBranch(DirectDeclarator, 1)
-		if branch == nil {
-			return nil
+		switch {
+		case node.ReducedBy(DirectDeclarator, 1):
+			// direct_declarator := IDENTIFIER
+			node.DeclaratorID = []*entity.Token{node.Children[0].Terminal}
+		case node.ReducedBy(DirectDeclarator, 2):
+			// direct_declarator := LEFT_PARENTHESES declarator RIGHT_PARENTHESES
+			node.DeclaratorID = nil
+		default:
+			// direct_declarator := direct_declarator ...
+			node.DeclaratorID = node.Children[0].DeclaratorID
 		}
-		node.DeclaratorID = append(node.DeclaratorID, branch.Children[0].Terminal.Lexeme)
+	case IdentifierList:
+		if node.ReducedBy(IdentifierList, 1) {
+			// identifier_list := IDENTIFIER
+			node.DeclaratorID = []*entity.Token{node.Children[0].Terminal}
+		}
+	case StructOrUnionSpecifier, EnumSpecifier:
+		node.DeclaratorID = nil
+	//case StructOrUnionSpecifier:
+	//	if node.ReducedBy(StructOrUnionSpecifier, 1) {
+	//		// struct_or_union_specifier := struct_or_union LEFT_BRACES struct_declaration_list RIGHT_BRACES
+	//		node.DeclaratorID = nil
+	//	}
+	//	if node.ReducedBy(StructOrUnionSpecifier, 2) {
+	//		// struct_or_union_specifier := struct_or_union IDENTIFIER LEFT_BRACES struct_declaration_list RIGHT_BRACES
+	//		node.DeclaratorID = []string{node.Children[1].Terminal.Lexeme}
+	//	}
+	//	if node.ReducedBy(StructOrUnionSpecifier, 3) {
+	//		// struct_or_union_specifier := struct_or_union IDENTIFIER
+	//		node.DeclaratorID = []string{node.Children[1].Terminal.Lexeme}
+	//	}
+	case EnumerationConstant:
+		// enumeration_constant := IDENTIFIER
+		node.DeclaratorID = []*entity.Token{node.Children[0].Terminal}
+	//case EnumSpecifier:
+	//	node.DeclaratorID = nil
+	//	if node.ReducedBy(EnumSpecifier, 2) ||
+	//		node.ReducedBy(EnumSpecifier, 4) ||
+	//		node.ReducedBy(EnumSpecifier, 5) {
+	//		// enum_specifier := ENUM IDENTIFIER...
+	//		node.DeclaratorID = []string{node.Children[1].Terminal.Lexeme}
+	//	}
+	case AbstractDeclarator:
+		// prevent ids in abstract declarator from passing to the parent node
+		node.DeclaratorID = nil
 	case StorageClassSpecifier:
 		// storage_class_specifier := TYPEDEF
-		branch := node.GetProductionBranch(StorageClassSpecifier, 1)
-		if branch == nil {
-			return nil
+		if node.ReducedBy(StorageClassSpecifier, 1) {
+			node.TypeDef = true
 		}
-		node.TypeDef = true
-	case Declaration:
-		// declaration := declaration_specifiers init_declarator_list SEMICOLON
-		branch := node.GetProductionBranch(Declaration, 2)
-		if branch != nil && branch.Children[0].TypeDef {
-			// typedef declaration
-			p.TypeDefSymbolTable.Push(branch.Children[1].DeclaratorID...)
-		}
+	case Declaration, FunctionDefinition:
 		// clear label
 		node.TypeDef = false
 		node.DeclaratorID = nil
-	case entity.LEFT_BRACES:
-		p.TypeDefSymbolTable.EnterScope()
-	case entity.RIGHT_BRACES:
-		p.TypeDefSymbolTable.LeaveScope()
-	case TypedefName:
-		// typedef_name := IDENTIFIER
-		branch := node.GetProductionBranch(TypedefName, 1)
-		if branch == nil {
-			return errors.New("typedef_name := IDENTIFIER branch not found")
-		}
-		if !p.TypeDefSymbolTable.Contain(branch.Children[0].Terminal.Lexeme) {
-			return fmt.Errorf("type name %s not found", branch.Children[0].Terminal.Lexeme)
-		}
 	}
 	return nil
 }

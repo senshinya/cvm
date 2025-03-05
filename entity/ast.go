@@ -7,37 +7,28 @@ import (
 )
 
 type AstNode struct {
-	Parent           *AstNode
-	Typ              TokenType
-	Terminal         *Token
-	PossibleBranches []*Branch
+	Parent     *AstNode
+	Typ        TokenType
+	Terminal   *Token
+	Production Production
+	Children   []*AstNode
 	GLRLabel
 	SourceRange
 }
 type GLRLabel struct {
 	// Declaration 使用，规约出 Declaration 后消除
 	TypeDef      bool     // 是否是 TypeDef
-	DeclaratorID []string // 包含的 Identifier
+	DeclaratorID []*Token // 包含的 Identifier
 }
 
-type Branch struct {
-	Production Production
-	Children   []*AstNode
+func (n *AstNode) ReducedBy(left TokenType, index int64) bool {
+	return n.Production.Left == left && n.Production.Index == index
 }
 
-func (n *AstNode) GetProductionBranch(left TokenType, index int64) *Branch {
-	for _, branch := range n.PossibleBranches {
-		if branch.Production.Left == left && branch.Production.Index == index {
-			return branch
-		}
-	}
-	return nil
-}
-
-func (n *AstNode) SetBranch(production Production, children []*AstNode) {
-	branch := &Branch{Production: production, Children: children}
+func (n *AstNode) SetChildren(production Production, children []*AstNode) {
 	// set parent later in case of deepcopy error
-	n.PossibleBranches = append(n.PossibleBranches, branch)
+	n.Production = production
+	n.Children = children
 	// set glr label
 	gslice.ForEach(children, func(child *AstNode) {
 		if child.TypeDef {
@@ -49,32 +40,6 @@ func (n *AstNode) SetBranch(production Production, children []*AstNode) {
 	n.SourceRange = SourceRange{
 		SourceStart: children[0].SourceRange.SourceStart,
 		SourceEnd:   children[len(children)-1].SourceRange.SourceEnd,
-	}
-}
-
-func (n *AstNode) Merge(ast *AstNode) {
-	if n.Typ != ast.Typ {
-		return
-	}
-	branches := map[int64]*Branch{}
-	for _, branch := range n.PossibleBranches {
-		prod := branch.Production
-		branches[prod.Index] = branch
-	}
-	for _, branch := range ast.PossibleBranches {
-		prod := branch.Production
-		originBranch, ok := branches[prod.Index]
-		if ok {
-			// same branch, merge recursively
-			for i, originNode := range originBranch.Children {
-				node := branch.Children[i]
-				originNode.Merge(node)
-			}
-		}
-		if !ok {
-			// different branch, add
-			n.PossibleBranches = append(n.PossibleBranches, branch)
-		}
 	}
 }
 

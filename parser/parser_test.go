@@ -99,7 +99,8 @@ func TestSqrt(t *testing.T) {
 }
 
 func TestAmbiguous(t *testing.T) {
-	tokens, err := lexer.NewLexer(`int main() {
+	tokens, err := lexer.NewLexer(`typedef int a;
+int main() {
 	a*b;
 }`).ScanTokens()
 	if err != nil {
@@ -129,12 +130,19 @@ int b;`).ScanTokens()
 	NewParser(tokens).Parse()
 }
 
-func TestTypeDef(t *testing.T) {
-	tokens, err := lexer.NewLexer(`typedef int a;
+func TestStructEnumDef(t *testing.T) {
+	tokens, err := lexer.NewLexer(`typedef struct Point {
+    float x, y;
+} Point;
 
-typedef struct abc{
-	int c;
-} ccc;`).ScanTokens()
+typedef enum Color {
+    RED,
+    GREEN,
+    BLUE,
+    YELLOW = 10,
+    WHITE,
+    BLACK
+} Color;`).ScanTokens()
 	if err != nil {
 		panic(err)
 	}
