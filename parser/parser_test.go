@@ -130,6 +130,17 @@ int b;`).ScanTokens()
 	NewParser(tokens).Parse()
 }
 
+func TestFuncDef(t *testing.T) {
+	tokens, err := lexer.NewLexer(`struct Point {
+int a;
+int b;
+};`).ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	NewParser(tokens).Parse()
+}
+
 func TestStructEnumDef(t *testing.T) {
 	tokens, err := lexer.NewLexer(`typedef struct Point {
     float x, y;

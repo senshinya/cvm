@@ -141,14 +141,20 @@ parserIter:
 	}
 
 	// eliminate the wrong tree
-	candidates, latestErr := shaveForest(p.CandidateASTs)
+	candidates, latestErr := chopForest(p.CandidateASTs)
 	if len(candidates) == 0 {
 		return nil, latestErr
 	}
 	for _, tree := range candidates {
 		fillAstParent(tree, nil)
 	}
-	//printAST(p.CandidateASTs[0], 0)
+	fmt.Printf("Parse Result: %d candidates\n", len(candidates))
+	for i, candidate := range candidates {
+		fmt.Printf("Tree %d\n", i)
+		printAST(candidate, 0)
+		fmt.Println()
+		fmt.Println()
+	}
 	return candidates[0], nil
 }
 
@@ -217,32 +223,15 @@ func (p *Parser) operatePostProcess(node *entity.AstNode) error {
 			// identifier_list := IDENTIFIER
 			node.DeclaratorID = []*entity.Token{node.Children[0].Terminal}
 		}
-	case StructOrUnionSpecifier, EnumSpecifier:
+		if node.ReducedBy(IdentifierList, 2) {
+			// identifier_list := identifier_list COMMA IDENTIFIER
+			node.DeclaratorID = append(node.DeclaratorID, node.Children[2].Terminal)
+		}
+	case StructOrUnionSpecifier:
 		node.DeclaratorID = nil
-	//case StructOrUnionSpecifier:
-	//	if node.ReducedBy(StructOrUnionSpecifier, 1) {
-	//		// struct_or_union_specifier := struct_or_union LEFT_BRACES struct_declaration_list RIGHT_BRACES
-	//		node.DeclaratorID = nil
-	//	}
-	//	if node.ReducedBy(StructOrUnionSpecifier, 2) {
-	//		// struct_or_union_specifier := struct_or_union IDENTIFIER LEFT_BRACES struct_declaration_list RIGHT_BRACES
-	//		node.DeclaratorID = []string{node.Children[1].Terminal.Lexeme}
-	//	}
-	//	if node.ReducedBy(StructOrUnionSpecifier, 3) {
-	//		// struct_or_union_specifier := struct_or_union IDENTIFIER
-	//		node.DeclaratorID = []string{node.Children[1].Terminal.Lexeme}
-	//	}
 	case EnumerationConstant:
 		// enumeration_constant := IDENTIFIER
 		node.DeclaratorID = []*entity.Token{node.Children[0].Terminal}
-	//case EnumSpecifier:
-	//	node.DeclaratorID = nil
-	//	if node.ReducedBy(EnumSpecifier, 2) ||
-	//		node.ReducedBy(EnumSpecifier, 4) ||
-	//		node.ReducedBy(EnumSpecifier, 5) {
-	//		// enum_specifier := ENUM IDENTIFIER...
-	//		node.DeclaratorID = []string{node.Children[1].Terminal.Lexeme}
-	//	}
 	case AbstractDeclarator:
 		// prevent ids in abstract declarator from passing to the parent node
 		node.DeclaratorID = nil

@@ -223,8 +223,8 @@ func NewToken(typ TokenType, lexeme string, literal any, line, sc, ec int) Token
 	}
 }
 
-func (t Token) string() string {
-	return fmt.Sprintf("%s %s %v", t.Typ, t.Lexeme, t.Literal)
+func (t Token) String() string {
+	return fmt.Sprintf("<%s %s>", t.Typ, t.Lexeme)
 }
 
 type SourcePos struct {

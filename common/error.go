@@ -53,7 +53,9 @@ func NewLexerError(typ ErrType, l, sc, ec int, message string, a ...any) CvmErro
 }
 
 const (
-	ErrInvalidSpecifiers ErrType = "ErrInvalidSpecifiers"
+	ErrSymbolRedefinition ErrType = "ErrSymbolRedefinition"
+	ErrSymbolKindMismatch ErrType = "ErrSymbolKindMismatch"
+	ErrSymbolNotFound     ErrType = "ErrSymbolNotFound"
 )
 
 func NewParserError(typ ErrType, sourceRange entity.SourceRange, message string, a ...any) CvmError {
