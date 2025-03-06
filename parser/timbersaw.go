@@ -14,6 +14,8 @@ func chopForest(forest []*entity.AstNode) ([]*entity.AstNode, error) {
 	for _, root := range forest {
 		err := NewTimberSaw().Chop(root)
 		if err != nil {
+			printAST(root, 0)
+			fmt.Printf("Chop Error: %s\n\n", err)
 			latestErr = err
 			continue
 		}

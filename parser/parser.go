@@ -27,7 +27,7 @@ func NewParser(tokens []entity.Token) *Parser {
 	return &Parser{Tokens: tokens}
 }
 
-func (p *Parser) Parse() (*entity.AstNode, error) {
+func (p *Parser) Parse() ([]*entity.AstNode, error) {
 	p.TokenIndex = 0
 	p.StateStack = common.NewStack[int]()
 	p.StateStack.Push(0) // init state is always 0
@@ -148,14 +148,14 @@ parserIter:
 	for _, tree := range candidates {
 		fillAstParent(tree, nil)
 	}
-	fmt.Printf("Parse Result: %d candidates\n", len(candidates))
+	fmt.Printf("Chop Result: %d candidates\n", len(candidates))
 	for i, candidate := range candidates {
 		fmt.Printf("Tree %d\n", i)
 		printAST(candidate, 0)
 		fmt.Println()
 		fmt.Println()
 	}
-	return candidates[0], nil
+	return candidates, nil
 }
 
 func (p *Parser) addCheckPoint(chooseOp int) {
@@ -244,6 +244,33 @@ func (p *Parser) operatePostProcess(node *entity.AstNode) error {
 		// clear label
 		node.TypeDef = false
 		node.DeclaratorID = nil
+		if node.Typ == Declaration {
+			// when Declaration contains typedef name, it should be the only type specifier
+			typeSpecifiers := getAllTypeSpecifiers(node.Children[0])
+			for _, typeSpecifier := range typeSpecifiers {
+				if typeSpecifier.ReducedBy(TypeSpecifier, 14) && len(typeSpecifiers) > 1 {
+					// type_specifier := typedef_name
+					return common.NewParserError(common.ErrInvalidTypeSpecifier, node.SourceRange, "Invalid Type Specifier")
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func getAllTypeSpecifiers(node *entity.AstNode) []*entity.AstNode {
+	switch {
+	case node.ReducedBy(DeclarationSpecifiers, 2):
+		// declaration_specifiers := type_specifier
+		return []*entity.AstNode{node.Children[0]}
+	case node.ReducedBy(DeclarationSpecifiers, 6):
+		// declaration_specifiers := type_specifier declaration_specifiers
+		return append(getAllTypeSpecifiers(node.Children[1]), node.Children[0])
+	case node.ReducedBy(DeclarationSpecifiers, 5),
+		node.ReducedBy(DeclarationSpecifiers, 7),
+		node.ReducedBy(DeclarationSpecifiers, 8):
+		// declaration_specifiers := ... declaration_specifiers
+		return getAllTypeSpecifiers(node.Children[1])
 	}
 	return nil
 }

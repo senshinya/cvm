@@ -101,6 +101,8 @@ func TestSqrt(t *testing.T) {
 func TestAmbiguous(t *testing.T) {
 	tokens, err := lexer.NewLexer(`typedef int a;
 int main() {
+	int a;
+	int b;
 	a*b;
 }`).ScanTokens()
 	if err != nil {
