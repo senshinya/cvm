@@ -3,7 +3,6 @@ package lexer
 import (
 	"fmt"
 	mapset "github.com/deckarep/golang-set/v2"
-	"shinya.click/cvm/common"
 	"shinya.click/cvm/entity"
 )
 
@@ -85,7 +84,7 @@ func (b *ScannerBuilder) transferInterceptor(transferInterceptor transferInterce
 func (b *ScannerBuilder) Build() *Scanner {
 	s := b.scanner
 	if err := s.checkScannerValid(); err != nil {
-		panic(common.NewInitError(common.ErrInvalidStateMachine, "Invalid %s Scanner: %s", b.scanner.name, err.Error()))
+		panic(fmt.Sprintf("Invalid %s Scanner: %s", b.scanner.name, err.Error()))
 	}
 	return s
 }
@@ -123,7 +122,7 @@ func (s *Scanner) scan(lexState *Lexer) (entity.Token, error) {
 			return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, lexState.sColumn, lexState.cColumn, cState, s.store)
 		}
 		// unknown token
-		return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, lexState.line, lexState.sColumn, lexState.cColumn, lexState.source[lexState.start:lexState.current])
+		return emptyToken, UnidentifiedToken(lexState.line, lexState.sColumn)
 	}
 
 	// read to the end, see if cState is an end state
@@ -131,7 +130,7 @@ func (s *Scanner) scan(lexState *Lexer) (entity.Token, error) {
 		return s.tokenConstructor(lexState.source[lexState.start:lexState.current], lexState.line, lexState.sColumn, lexState.cColumn, cState, s.store)
 	}
 	// unknown token
-	return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, lexState.line, lexState.sColumn, lexState.cColumn, lexState.source[lexState.start:lexState.current])
+	return emptyToken, UnidentifiedToken(lexState.line, lexState.sColumn)
 }
 
 func (s *Scanner) Store(store interface{}) {

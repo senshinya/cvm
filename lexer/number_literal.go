@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"shinya.click/cvm/common"
 	"shinya.click/cvm/entity"
 	"strconv"
 	"strings"
@@ -43,20 +42,20 @@ var numberLiteralConditionTable = conditionTable{
 		return ok
 	},
 	"0":         func(b byte) bool { return b == '0' },
-	"digit":     common.IsDigit,
+	"digit":     IsDigit,
 	"L/l":       func(b byte) bool { return b == 'L' || b == 'l' },
 	"U/u":       func(b byte) bool { return b == 'U' || b == 'u' },
 	".":         func(b byte) bool { return b == '.' },
 	"E/e":       func(b byte) bool { return b == 'E' || b == 'e' },
 	"+/-":       func(b byte) bool { return b == '+' || b == '-' },
 	"F/L/f/l":   func(b byte) bool { return b == 'F' || b == 'L' || b == 'f' || b == 'l' },
-	"oct_digit": common.IsOctDigit,
+	"oct_digit": IsOctDigit,
 	"nooct_digit": func(b byte) bool {
-		return common.IsDigit(b) && !common.IsOctDigit(b)
+		return IsDigit(b) && !IsOctDigit(b)
 	},
 	"X/x":       func(b byte) bool { return b == 'X' || b == 'x' },
 	"P/p":       func(b byte) bool { return b == 'P' || b == 'p' },
-	"hex_digit": common.IsHexDigit,
+	"hex_digit": IsHexDigit,
 }
 
 var integerEndStates = map[state]struct{}{
@@ -75,7 +74,7 @@ func numberLiteralConstructor(s string, l, sc, ec int, endState state, _ interfa
 	if _, ok := floatEndStates[endState]; ok {
 		return constructFloatToken(s, l, sc, ec)
 	}
-	return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, l, sc, ec, "Unknown number literal: %s", s)
+	return emptyToken, UnidentifiedToken(l, sc)
 }
 
 func constructIntegerToken(rawStr string, l, sc, ec int) (entity.Token, error) {
@@ -112,7 +111,7 @@ func constructIntegerToken(rawStr string, l, sc, ec int) (entity.Token, error) {
 		raw, err = strconv.ParseUint(s, 10, 64)
 	}
 	if err != nil {
-		return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, l, sc, ec, "Unparseable Integer: %s", err.Error())
+		return emptyToken, UnidentifiedToken(l, sc)
 	}
 	if long && unsigned {
 		return entity.NewToken(entity.INTEGER_CONSTANT, rawStr, raw, l, sc, ec), nil
@@ -143,7 +142,7 @@ func constructFloatToken(rawStr string, l, sc, ec int) (entity.Token, error) {
 
 	raw, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return emptyToken, common.NewLexerError(common.ErrUnidentifiableToken, l, sc, ec, "Unparseable Float: %s", err.Error())
+		return emptyToken, UnidentifiedToken(l, sc)
 	}
 	if float {
 		return entity.NewToken(entity.FLOATING_CONSTANT, rawStr, float32(raw), l, sc, ec), nil

@@ -458,7 +458,6 @@ func generateFile(dfa LRDFA, productions *Productions) {
 package parser
 
 import (
-	"shinya.click/cvm/common"
     "shinya.click/cvm/entity"
 )
 
@@ -472,8 +471,8 @@ var Productions = []entity.Production{
 {{ end }}
 }
 
-var LalrAction = map[int]map[entity.TokenType][]common.DFAOperator{
-{{ range $index, $allOps := .Action }}	{{ $index }}: { {{ $first := true }}{{ range $k, $ops := $allOps }}{{if not $first}}, {{else}}{{$first = false}}{{end}}entity.{{ $k }}: []common.DFAOperator{ {{ $lfirst := true }}{{ range $_, $op := $ops }} {{if not $lfirst}}, {{else}}{{$lfirst = false}}{{end}} { {{ if eq $op.OperatorType 1 }}OperatorType: common.SHIFT, StateIndex: {{ $op.StateIndex }}{{ else if eq $op.OperatorType 2 }}OperatorType: common.REDUCE, ReduceIndex: {{ $op.ReduceIndex }}{{ else }}OperatorType: common.ACC, ReduceIndex: {{ $op.ReduceIndex }}{{ end }} } {{end}} } {{end}}},
+var LalrAction = map[int]map[entity.TokenType][]DFAOperator{
+{{ range $index, $allOps := .Action }}	{{ $index }}: { {{ $first := true }}{{ range $k, $ops := $allOps }}{{if not $first}}, {{else}}{{$first = false}}{{end}}entity.{{ $k }}: []DFAOperator{ {{ $lfirst := true }}{{ range $_, $op := $ops }} {{if not $lfirst}}, {{else}}{{$lfirst = false}}{{end}} { {{ if eq $op.OperatorType 1 }}OperatorType: SHIFT, StateIndex: {{ $op.StateIndex }}{{ else if eq $op.OperatorType 2 }}OperatorType: REDUCE, ReduceIndex: {{ $op.ReduceIndex }}{{ else }}OperatorType: ACC, ReduceIndex: {{ $op.ReduceIndex }}{{ end }} } {{end}} } {{end}}},
 {{ end }}
 }
 

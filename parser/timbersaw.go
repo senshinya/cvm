@@ -15,7 +15,7 @@ func chopForest(forest []*entity.AstNode) ([]*entity.AstNode, error) {
 		err := NewTimberSaw().Chop(root)
 		if err != nil {
 			printAST(root, 0)
-			fmt.Printf("Chop Error: %s\n\n", err)
+			common.DebugPrintf("Chop Error: %s\n\n", err)
 			latestErr = err
 			continue
 		}
@@ -69,8 +69,7 @@ func (s *symbolStack) PushVar(token *entity.Token, depth int) error {
 		s.resize(depth + 1)
 	}
 	if previous, ok := s.stack[depth].TypeNames[name]; ok {
-		return common.NewParserError(common.ErrSymbolRedefinition, token.SourceRange,
-			"%d:%d: previous definition is here", previous.SourceStart.Line, previous.SourceStart.Column)
+		return RedefinitionSymbol(token.SourceStart, previous.SourceStart, token.Lexeme)
 	}
 	s.stack[depth].VarNames[name] = token
 	return nil
@@ -82,8 +81,7 @@ func (s *symbolStack) PushType(token *entity.Token, depth int) error {
 		s.resize(depth + 1)
 	}
 	if previous, ok := s.stack[depth].VarNames[name]; ok {
-		return common.NewParserError(common.ErrSymbolRedefinition, token.SourceRange,
-			"%d:%d: previous definition is here", previous.SourceStart.Line, previous.SourceStart.Column)
+		return RedefinitionSymbol(token.SourceStart, previous.SourceStart, token.Lexeme)
 	}
 	s.stack[depth].TypeNames[name] = token
 	return nil
@@ -92,29 +90,25 @@ func (s *symbolStack) PushType(token *entity.Token, depth int) error {
 func (s *symbolStack) CheckVar(token *entity.Token, depth int) error {
 	for i := depth; i >= 0; i-- {
 		if previous, ok := s.stack[i].TypeNames[token.Lexeme]; ok {
-			return common.NewParserError(common.ErrSymbolKindMismatch, token.SourceRange,
-				"%d:%d: previous symbol is a typedef name", previous.SourceStart.Line, previous.SourceStart.Column)
+			return InvalidSymbolKind(token.SourceStart, previous.SourceStart, token.Lexeme)
 		}
 		if _, ok := s.stack[i].VarNames[token.Lexeme]; ok {
 			return nil
 		}
 	}
-	//return nil
-	return common.NewParserError(common.ErrSymbolNotFound, token.SourceRange, "symbol %s not found", token.Lexeme)
+	return UndeclaredIdentifier(token.SourceStart, token.Lexeme)
 }
 
 func (s *symbolStack) CheckType(token *entity.Token, depth int) error {
 	for i := depth; i >= 0; i-- {
 		if previous, ok := s.stack[i].VarNames[token.Lexeme]; ok {
-			return common.NewParserError(common.ErrSymbolKindMismatch, token.SourceRange,
-				"%d:%d: previous symbol is a variable name", previous.SourceStart.Line, previous.SourceStart.Column)
+			return InvalidSymbolKind(token.SourceStart, previous.SourceStart, token.Lexeme)
 		}
 		if _, ok := s.stack[i].TypeNames[token.Lexeme]; ok {
 			return nil
 		}
 	}
-	//return nil
-	return common.NewParserError(common.ErrSymbolNotFound, token.SourceRange, "symbol %s not found", token.Lexeme)
+	return UndeclaredIdentifier(token.SourceStart, token.Lexeme)
 }
 
 func NewScopeSymbols() *ScopeSymbols {

@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"github.com/hyphennn/glambda/gslice"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/entity"
@@ -38,6 +37,7 @@ func (p *Parser) Parse() ([]*entity.AstNode, error) {
 	p.TypeDefSymbols = [][]string{{}}
 
 	p.CheckPointStack = common.NewStack[*CheckPoint]()
+	var latestError error
 
 	chooseOp := 0
 parserIter:
@@ -71,7 +71,7 @@ parserIter:
 			p.addCheckPoint(chooseOp)
 		}
 		op := ops[chooseOp]
-		if op.OperatorType == common.ACC {
+		if op.OperatorType == ACC {
 			prod := Productions[op.ReduceIndex]
 			var rights []*entity.AstNode
 			for i := 0; i < len(prod.Right); i++ {
@@ -91,7 +91,7 @@ parserIter:
 			continue
 		}
 		switch op.OperatorType {
-		case common.SHIFT:
+		case SHIFT:
 			p.StateStack.Push(op.StateIndex)
 			node := &entity.AstNode{
 				Typ:         token.Typ,
@@ -100,11 +100,12 @@ parserIter:
 			}
 			p.SymbolStack.Push(node)
 			if err := p.operatePostProcess(node); err != nil {
+				latestError = err
 				chooseOp = p.restore()
 				continue
 			}
 			p.TokenIndex++
-		case common.REDUCE:
+		case REDUCE:
 			prod := Productions[op.ReduceIndex]
 			var rights []*entity.AstNode
 			for i := 0; i < len(prod.Right); i++ {
@@ -121,6 +122,7 @@ parserIter:
 			newSym.SetChildren(prod, rights)
 			p.SymbolStack.Push(newSym)
 			if err := p.operatePostProcess(newSym); err != nil {
+				latestError = err
 				chooseOp = p.restore()
 				continue
 			}
@@ -141,24 +143,25 @@ parserIter:
 	}
 
 	if len(p.CandidateASTs) == 0 {
-		panic("dead end")
+		return nil, latestError
 	}
 
 	// eliminate the wrong tree
-	fmt.Printf("Chop Start: %d candidates\n", len(p.CandidateASTs))
-	candidates, latestErr := chopForest(p.CandidateASTs)
+	common.DebugPrintf("Chop Start: %d candidates\n", len(p.CandidateASTs))
+	candidates, err := chopForest(p.CandidateASTs)
 	if len(candidates) == 0 {
-		return nil, latestErr
+		latestError = err
+		return nil, latestError
 	}
 	for _, tree := range candidates {
 		fillAstParent(tree, nil)
 	}
-	fmt.Printf("Chop Result: %d candidates\n", len(candidates))
+	common.DebugPrintf("Chop Result: %d candidates\n", len(candidates))
 	for i, candidate := range candidates {
-		fmt.Printf("Tree %d\n", i)
+		common.DebugPrintf("Tree %d\n", i)
 		printAST(candidate, 0)
-		fmt.Println()
-		fmt.Println()
+		common.DebugPrintln()
+		common.DebugPrintln()
 	}
 	return candidates, nil
 }
@@ -198,14 +201,14 @@ func fillAstParent(node *entity.AstNode, parent *entity.AstNode) {
 
 func printAST(ast *entity.AstNode, level int) {
 	for i := 0; i < level; i++ {
-		fmt.Print("  ")
+		common.DebugPrint("  ")
 	}
-	fmt.Print(ast.Typ)
+	common.DebugPrint(string(ast.Typ))
 	if entity.IsTerminalSymbol(string(ast.Typ)) {
-		fmt.Print(" - " + ast.Terminal.Lexeme)
+		common.DebugPrint(" - " + ast.Terminal.Lexeme)
 	}
-	fmt.Printf(" %v %v", ast.TypeDef, ast.DeclaratorID)
-	fmt.Println()
+	common.DebugPrintf(" %v %v", ast.TypeDef, ast.DeclaratorID)
+	common.DebugPrintln()
 	for _, child := range ast.Children {
 		printAST(child, level+1)
 	}
@@ -279,7 +282,7 @@ func (p *Parser) operatePostProcess(node *entity.AstNode) error {
 				return nil
 			}
 		}
-		return common.NewParserError(common.ErrSymbolNotFound, node.SourceRange, "symbol %s not found", id)
+		return UndeclaredIdentifier(node.SourceStart, id)
 	}
 	return nil
 }
@@ -292,7 +295,7 @@ func checkDeclarationSpecifiers(node *entity.AstNode) error {
 	for _, typeSpecifier := range typeSpecifiers {
 		if typeSpecifier.ReducedBy(TypeSpecifier, 14) && len(typeSpecifiers) > 1 {
 			// type_specifier := typedef_name
-			return common.NewParserError(common.ErrInvalidTypeSpecifier, node.SourceRange, "Invalid Type Specifier")
+			return InvalidTypeSpecifier(node.SourceStart)
 		}
 	}
 	return nil

@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"shinya.click/cvm/common"
 	"shinya.click/cvm/entity"
 )
 
@@ -11,8 +10,8 @@ var identifierStateTable = stateTable{
 }
 
 var identifierConditionTable = conditionTable{
-	"letter_": common.IsLetter_,
-	"digit":   common.IsDigit,
+	"letter_": IsLetter_,
+	"digit":   IsDigit,
 }
 
 func identifierConstructor(s string, l, sc, ec int, _ state, _ interface{}) (entity.Token, error) {

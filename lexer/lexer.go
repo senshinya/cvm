@@ -1,7 +1,6 @@
 package lexer
 
 import (
-	"shinya.click/cvm/common"
 	"shinya.click/cvm/entity"
 )
 
@@ -47,16 +46,16 @@ func (l *Lexer) scanToken() error {
 		sc = CharacterLiteralScanner()
 	case l.peek() == '"':
 		sc = StringLiteralScanner()
-	case common.IsLetter_(l.peek()):
+	case IsLetter_(l.peek()):
 		sc = IdentifierScanner()
-	case l.peek() == '.' && common.IsDigit(l.lookForward(1)):
+	case l.peek() == '.' && IsDigit(l.lookForward(1)):
 		sc = NumberLiteralScanner()
 	case isPunctuatorPrefix(l.peek()):
 		sc = PunctuatorScanner()
-	case common.IsDigit(l.peek()):
+	case IsDigit(l.peek()):
 		sc = NumberLiteralScanner()
 	default:
-		return common.NewLexerError(common.ErrUnidentifiableToken, l.line, l.sColumn, l.cColumn, string(l.peek()))
+		return UnidentifiedToken(l.line, l.sColumn)
 	}
 	token, err := sc.scan(l)
 	if err != nil {

@@ -1,4 +1,4 @@
-package common
+package parser
 
 type OperatorType uint
 
