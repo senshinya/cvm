@@ -161,3 +161,11 @@ typedef enum Color {
 	}
 	NewParser(tokens).Parse()
 }
+
+func TestComplexTypeDef(t *testing.T) {
+	tokens, err := lexer.NewLexer(`typedef int (*(*a)(void))(void);`).ScanTokens()
+	if err != nil {
+		panic(err)
+	}
+	NewParser(tokens).Parse()
+}

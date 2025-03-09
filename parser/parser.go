@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"github.com/hyphennn/glambda/gslice"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/entity"
 	"slices"
@@ -12,15 +13,17 @@ type Parser struct {
 	TokenIndex      int
 	StateStack      *common.Stack[int]
 	SymbolStack     *common.Stack[*entity.AstNode]
+	TypeDefSymbols  [][]string
 	CheckPointStack *common.Stack[*CheckPoint]
 	CandidateASTs   []*entity.AstNode
 }
 
 type CheckPoint struct {
-	ChooseIndex     int
-	TokenIndex      int
-	StateStackSnap  []int
-	SymbolStackSnap []*entity.AstNode
+	ChooseIndex        int
+	TokenIndex         int
+	StateStackSnap     []int
+	SymbolStackSnap    []*entity.AstNode
+	TypeDefSymbolsSnap [][]string
 }
 
 func NewParser(tokens []entity.Token) *Parser {
@@ -32,6 +35,7 @@ func (p *Parser) Parse() ([]*entity.AstNode, error) {
 	p.StateStack = common.NewStack[int]()
 	p.StateStack.Push(0) // init state is always 0
 	p.SymbolStack = common.NewStack[*entity.AstNode]()
+	p.TypeDefSymbols = [][]string{{}}
 
 	p.CheckPointStack = common.NewStack[*CheckPoint]()
 
@@ -141,6 +145,7 @@ parserIter:
 	}
 
 	// eliminate the wrong tree
+	fmt.Printf("Chop Start: %d candidates\n", len(p.CandidateASTs))
 	candidates, latestErr := chopForest(p.CandidateASTs)
 	if len(candidates) == 0 {
 		return nil, latestErr
@@ -162,10 +167,11 @@ func (p *Parser) addCheckPoint(chooseOp int) {
 	stateAll := p.StateStack.DumpAll()
 	symAll := p.SymbolStack.DumpAll()
 	cp := CheckPoint{
-		TokenIndex:      p.TokenIndex,
-		ChooseIndex:     chooseOp,
-		StateStackSnap:  common.DeepCopy(stateAll),
-		SymbolStackSnap: common.DeepCopy(symAll),
+		TokenIndex:         p.TokenIndex,
+		ChooseIndex:        chooseOp,
+		StateStackSnap:     common.DeepCopy(stateAll),
+		SymbolStackSnap:    common.DeepCopy(symAll),
+		TypeDefSymbolsSnap: common.DeepCopy(p.TypeDefSymbols),
 	}
 	p.CheckPointStack.Push(&cp)
 }
@@ -178,6 +184,7 @@ func (p *Parser) restore() int {
 	p.TokenIndex = checkPoint.TokenIndex
 	p.StateStack = common.NewStackWithElements[int](checkPoint.StateStackSnap)
 	p.SymbolStack = common.NewStackWithElements[*entity.AstNode](checkPoint.SymbolStackSnap)
+	p.TypeDefSymbols = checkPoint.TypeDefSymbolsSnap
 
 	return checkPoint.ChooseIndex + 1
 }
@@ -244,15 +251,48 @@ func (p *Parser) operatePostProcess(node *entity.AstNode) error {
 		// clear label
 		node.TypeDef = false
 		node.DeclaratorID = nil
-		if node.Typ == Declaration {
-			// when Declaration contains typedef name, it should be the only type specifier
-			typeSpecifiers := getAllTypeSpecifiers(node.Children[0])
-			for _, typeSpecifier := range typeSpecifiers {
-				if typeSpecifier.ReducedBy(TypeSpecifier, 14) && len(typeSpecifiers) > 1 {
-					// type_specifier := typedef_name
-					return common.NewParserError(common.ErrInvalidTypeSpecifier, node.SourceRange, "Invalid Type Specifier")
-				}
+		// when Declaration specifier contains typedef name, it should be the only type specifier
+		if err := checkDeclarationSpecifiers(node.Children[0]); err != nil {
+			return err
+		}
+		// add typedef name to the typedef stack
+		if node.Children[0].TypeDef {
+			p.TypeDefSymbols[len(p.TypeDefSymbols)-1] = append(p.TypeDefSymbols[len(p.TypeDefSymbols)-1],
+				gslice.Map(node.Children[1].DeclaratorID, func(token *entity.Token) string {
+					return token.Lexeme
+				})...)
+		}
+	case ParameterDeclaration:
+		if err := checkDeclarationSpecifiers(node.Children[0]); err != nil {
+			return err
+		}
+	case entity.LEFT_BRACES:
+		p.TypeDefSymbols = append(p.TypeDefSymbols, []string{})
+	case entity.RIGHT_BRACES:
+		p.TypeDefSymbols = p.TypeDefSymbols[:len(p.TypeDefSymbols)-1]
+	case TypedefName:
+		// typedef_name := IDENTIFIER
+		// check if the typedef name is in the typedef stack
+		id := node.Children[0].Terminal.Lexeme
+		for _, symbols := range p.TypeDefSymbols {
+			if slices.Contains(symbols, id) {
+				return nil
 			}
+		}
+		return common.NewParserError(common.ErrSymbolNotFound, node.SourceRange, "symbol %s not found", id)
+	}
+	return nil
+}
+
+func checkDeclarationSpecifiers(node *entity.AstNode) error {
+	if node.Typ != DeclarationSpecifiers {
+		return nil
+	}
+	typeSpecifiers := getAllTypeSpecifiers(node)
+	for _, typeSpecifier := range typeSpecifiers {
+		if typeSpecifier.ReducedBy(TypeSpecifier, 14) && len(typeSpecifiers) > 1 {
+			// type_specifier := typedef_name
+			return common.NewParserError(common.ErrInvalidTypeSpecifier, node.SourceRange, "Invalid Type Specifier")
 		}
 	}
 	return nil
