@@ -57,3 +57,10 @@ func TestKAndRFunctionDeclaration(t *testing.T) {
 	int ccc = a;
 }`)
 }
+
+func TestFunctionParameterShadow(t *testing.T) {
+	(&Compiler{}).RunSource(`typedef int a;
+void example(int a) {
+	a*b;
+}`)
+}

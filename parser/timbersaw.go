@@ -49,8 +49,10 @@ func (s *symbolStack) resize(length int) {
 	}
 }
 
-func (s *symbolStack) PopScope() {
-	s.stack = s.stack[:len(s.stack)-1]
+// EnterScope resize the stack to depth+1
+func (s *symbolStack) EnterScope(depth int) {
+	s.resize(depth + 1)
+	s.currentSymbolStackDepth = depth
 }
 
 // SwitchScope only expand but not shrink the stack
@@ -145,9 +147,11 @@ func (s *TimberSaw) Chop(node *entity.AstNode) error {
 				return err
 			}
 		}
+		currentSymbolStackDepth := s.symbolStack.currentSymbolStackDepth
 		if err := s.Chop(node.Children[len(node.Children)-1]); err != nil {
 			return err
 		}
+		s.symbolStack.EnterScope(currentSymbolStackDepth)
 	case Declaration:
 		typedef := node.Children[0].TypeDef
 		ids := node.Children[0].DeclaratorID // enum constants in declaration_specifiers
@@ -192,11 +196,11 @@ func (s *TimberSaw) Chop(node *entity.AstNode) error {
 		if err := s.Chop(node.Children[len(node.Children)-1]); err != nil {
 			return err
 		}
+		s.symbolStack.EnterScope(currentSymbolStackDepth)
 	case entity.LEFT_BRACES:
-		s.symbolStack.SwitchScope(s.symbolStack.currentSymbolStackDepth + 1)
+		s.symbolStack.EnterScope(s.symbolStack.currentSymbolStackDepth + 1)
 	case entity.RIGHT_BRACES:
-		s.symbolStack.PopScope()
-		s.symbolStack.currentSymbolStackDepth--
+		s.symbolStack.EnterScope(s.symbolStack.currentSymbolStackDepth - 1)
 	case PrimaryExpression:
 		if node.ReducedBy(PrimaryExpression, 1) {
 			// primary_expression := IDENTIFIER
