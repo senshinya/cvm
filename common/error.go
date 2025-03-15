@@ -1,7 +1,10 @@
 package common
 
 import (
+	"fmt"
+	"github.com/hyphennn/glambda/gslice"
 	"shinya.click/cvm/entity"
+	"strings"
 )
 
 type MessageLevel int
@@ -38,8 +41,9 @@ type CvmError struct {
 }
 
 func (e *CvmError) Error() string {
-	// just for implementing interface
-	return ""
+	return strings.Join(gslice.Map(e.Messages, func(m *CvmErrorMessages) string {
+		return fmt.Sprintf("%d:%d: %s", m.SourcePos.Line, m.SourcePos.Column, m.CustomMessage)
+	}), "\n")
 }
 
 func NewCvmError(messages ...*CvmErrorMessages) *CvmError {

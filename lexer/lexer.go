@@ -20,6 +20,12 @@ func NewLexer(source string) *Lexer {
 
 func (l *Lexer) ScanTokens() ([]entity.Token, error) {
 	for !l.isAtEnd() {
+		if l.peek() == '\t' {
+			// handle \t
+			l.cColumn += 4
+			l.current++
+			continue
+		}
 		if l.currentEmpty() {
 			l.moveNext()
 			continue
@@ -79,8 +85,6 @@ func (l *Lexer) currentEmpty() bool {
 	case ' ':
 		fallthrough
 	case '\r':
-		fallthrough
-	case '\t':
 		return true
 	case '\n':
 		l.line++

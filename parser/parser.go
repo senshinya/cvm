@@ -203,7 +203,7 @@ func printAST(ast *entity.AstNode, level int) {
 	for i := 0; i < level; i++ {
 		common.DebugPrint("  ")
 	}
-	common.DebugPrint(string(ast.Typ))
+	common.DebugPrint(ast.Typ)
 	if entity.IsTerminalSymbol(string(ast.Typ)) {
 		common.DebugPrint(" - " + ast.Terminal.Lexeme)
 	}
@@ -223,7 +223,7 @@ func (p *Parser) operatePostProcess(node *entity.AstNode) error {
 			node.DeclaratorID = []*entity.Token{node.Children[0].Terminal}
 		case node.ReducedBy(DirectDeclarator, 2):
 			// direct_declarator := LEFT_PARENTHESES declarator RIGHT_PARENTHESES
-			node.DeclaratorID = nil
+			node.DeclaratorID = node.Children[1].DeclaratorID
 		default:
 			// direct_declarator := direct_declarator ...
 			node.DeclaratorID = node.Children[0].DeclaratorID
@@ -237,38 +237,36 @@ func (p *Parser) operatePostProcess(node *entity.AstNode) error {
 			// identifier_list := identifier_list COMMA IDENTIFIER
 			node.DeclaratorID = append(node.DeclaratorID, node.Children[2].Terminal)
 		}
-	case StructOrUnionSpecifier:
-		node.DeclaratorID = nil
 	case EnumerationConstant:
 		// enumeration_constant := IDENTIFIER
 		node.DeclaratorID = []*entity.Token{node.Children[0].Terminal}
-	case AbstractDeclarator:
-		// prevent ids in abstract declarator from passing to the parent node
+	case StructOrUnionSpecifier:
+		// clear DeclaratorID
 		node.DeclaratorID = nil
+	case ParameterDeclaration:
+		if err := checkDeclarationSpecifiers(node.Children[0]); err != nil {
+			return err
+		}
 	case StorageClassSpecifier:
 		// storage_class_specifier := TYPEDEF
 		if node.ReducedBy(StorageClassSpecifier, 1) {
 			node.TypeDef = true
 		}
 	case Declaration, FunctionDefinition:
-		// clear label
-		node.TypeDef = false
-		node.DeclaratorID = nil
+		// add typedef name to the typedef stack
+		if node.TypeDef {
+			p.TypeDefSymbols[len(p.TypeDefSymbols)-1] = append(p.TypeDefSymbols[len(p.TypeDefSymbols)-1],
+				gslice.Map(node.DeclaratorID, func(token *entity.Token) string {
+					return token.Lexeme
+				})...)
+		}
 		// when Declaration specifier contains typedef name, it should be the only type specifier
 		if err := checkDeclarationSpecifiers(node.Children[0]); err != nil {
 			return err
 		}
-		// add typedef name to the typedef stack
-		if node.Children[0].TypeDef {
-			p.TypeDefSymbols[len(p.TypeDefSymbols)-1] = append(p.TypeDefSymbols[len(p.TypeDefSymbols)-1],
-				gslice.Map(node.Children[1].DeclaratorID, func(token *entity.Token) string {
-					return token.Lexeme
-				})...)
-		}
-	case ParameterDeclaration:
-		if err := checkDeclarationSpecifiers(node.Children[0]); err != nil {
-			return err
-		}
+		// clear label
+		node.TypeDef = false
+		node.DeclaratorID = nil
 	case entity.LEFT_BRACES:
 		p.TypeDefSymbols = append(p.TypeDefSymbols, []string{})
 	case entity.RIGHT_BRACES:
