@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"github.com/hyphennn/glambda/gslice"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/entity"
@@ -15,6 +16,9 @@ type Parser struct {
 	TypeDefSymbols  [][]string
 	CheckPointStack *common.Stack[*CheckPoint]
 	CandidateASTs   []*entity.AstNode
+	bestError       error
+	bestErrorPos    entity.SourcePos
+	ForkCount       int
 }
 
 type CheckPoint struct {
@@ -37,7 +41,9 @@ func (p *Parser) Parse() ([]*entity.AstNode, error) {
 	p.TypeDefSymbols = [][]string{{}}
 
 	p.CheckPointStack = common.NewStack[*CheckPoint]()
-	var latestError error
+	p.bestError = nil
+	p.bestErrorPos = entity.SourcePos{}
+	p.ForkCount = 0
 
 	chooseOp := 0
 parserIter:
@@ -60,10 +66,15 @@ parserIter:
 
 		ops, ok := LalrAction[state][token.Typ]
 		if !ok {
+			p.recordError(UnexpectedToken(token.SourceStart, token.Lexeme))
 			chooseOp = p.restore()
 			continue
 		}
+		if len(ops) > 1 {
+			ops = p.pruneTypedefFork(token, ops)
+		}
 		if chooseOp >= len(ops) {
+			p.recordError(UnexpectedToken(token.SourceStart, token.Lexeme))
 			chooseOp = p.restore()
 			continue
 		}
@@ -100,7 +111,7 @@ parserIter:
 			}
 			p.SymbolStack.Push(node)
 			if err := p.operatePostProcess(node); err != nil {
-				latestError = err
+				p.recordError(err)
 				chooseOp = p.restore()
 				continue
 			}
@@ -122,7 +133,7 @@ parserIter:
 			newSym.SetChildren(prod, rights)
 			p.SymbolStack.Push(newSym)
 			if err := p.operatePostProcess(newSym); err != nil {
-				latestError = err
+				p.recordError(err)
 				chooseOp = p.restore()
 				continue
 			}
@@ -143,15 +154,17 @@ parserIter:
 	}
 
 	if len(p.CandidateASTs) == 0 {
-		return nil, latestError
+		return nil, p.bestError
 	}
 
 	// eliminate the wrong tree
 	common.DebugPrintf("Chop Start: %d candidates\n", len(p.CandidateASTs))
-	candidates, err := chopForest(p.CandidateASTs)
+	candidates, chopErrs := chopForest(p.CandidateASTs)
+	for _, err := range chopErrs {
+		p.recordError(err)
+	}
 	if len(candidates) == 0 {
-		latestError = err
-		return nil, latestError
+		return nil, p.bestError
 	}
 	for _, tree := range candidates {
 		fillAstParent(tree, nil)
@@ -177,6 +190,7 @@ func (p *Parser) addCheckPoint(chooseOp int) {
 		TypeDefSymbolsSnap: common.DeepCopy(p.TypeDefSymbols),
 	}
 	p.CheckPointStack.Push(&cp)
+	p.ForkCount++
 }
 
 func (p *Parser) restore() int {
@@ -297,6 +311,114 @@ func checkDeclarationSpecifiers(node *entity.AstNode) error {
 		}
 	}
 	return nil
+}
+
+// recordError keeps the error from the deepest source position seen so far.
+// Branches that fail very early produce noisy, misleading errors; the error
+// from the branch that consumed the most input is usually the closest to the
+// real syntax problem.
+func (p *Parser) recordError(err error) {
+	if err == nil {
+		return
+	}
+	pos := errorPos(err)
+	if p.bestError == nil || comparePos(pos, p.bestErrorPos) > 0 {
+		p.bestError = err
+		p.bestErrorPos = pos
+	}
+}
+
+func errorPos(err error) entity.SourcePos {
+	var cvmErr *common.CvmError
+	if errors.As(err, &cvmErr) && len(cvmErr.Messages) > 0 {
+		return cvmErr.Messages[0].SourcePos
+	}
+	return entity.SourcePos{}
+}
+
+func comparePos(a, b entity.SourcePos) int {
+	if a.Line != b.Line {
+		return a.Line - b.Line
+	}
+	return a.Column - b.Column
+}
+
+// pruneTypedefFork resolves the two known typedef-name conflicts at fork time
+// using p.TypeDefSymbols.
+//
+// Pattern A: SHIFT vs REDUCE on lookahead IDENTIFIER. SHIFT consumes IDENTIFIER
+// as a typedef_name continuation of declaration_specifiers; REDUCE finalizes
+// the existing declaration_specifiers and treats IDENTIFIER as the declarator.
+//
+// Pattern B: REDUCE[typedef_name -> IDENTIFIER] vs REDUCE[primary_expression
+// -> IDENTIFIER] on lookahead LEFT_PARENTHESES. The IDENTIFIER is already on
+// the symbol stack.
+//
+// Pruning is asymmetric on purpose. TypeDefSymbols only ever appends typedef
+// declarations and never tracks variable declarations that shadow them, so:
+//   - Identifier NOT in stack -> definitely not a typedef -> drop typedef branch.
+//   - Identifier IN stack -> might be a typedef OR a shadowed name -> keep both
+//     branches but reorder so the typedef branch runs first.
+//
+// The shadowing case must remain forkable for the future semantic layer to pick
+// the right tree.
+func (p *Parser) pruneTypedefFork(token entity.Token, ops []DFAOperator) []DFAOperator {
+	if len(ops) != 2 {
+		return ops
+	}
+
+	// Pattern B: both REDUCE, exactly one is the typedef_name reduction.
+	if ops[0].OperatorType == REDUCE && ops[1].OperatorType == REDUCE {
+		typedefIdx, otherIdx := -1, -1
+		for i, op := range ops {
+			if Productions[op.ReduceIndex].Left == TypedefName {
+				typedefIdx = i
+			} else {
+				otherIdx = i
+			}
+		}
+		if typedefIdx == -1 || otherIdx == -1 {
+			return ops
+		}
+		top, ok := p.SymbolStack.Peek()
+		if !ok || top.Terminal == nil {
+			return ops
+		}
+		if p.isTypedefName(top.Terminal.Lexeme) {
+			return []DFAOperator{ops[typedefIdx], ops[otherIdx]}
+		}
+		return []DFAOperator{ops[otherIdx]}
+	}
+
+	// Pattern A: one SHIFT, one REDUCE, lookahead IDENTIFIER.
+	if token.Typ != entity.IDENTIFIER {
+		return ops
+	}
+	shiftIdx, reduceIdx := -1, -1
+	for i, op := range ops {
+		switch op.OperatorType {
+		case SHIFT:
+			shiftIdx = i
+		case REDUCE:
+			reduceIdx = i
+		}
+	}
+	if shiftIdx == -1 || reduceIdx == -1 {
+		return ops
+	}
+	if p.isTypedefName(token.Lexeme) {
+		return []DFAOperator{ops[shiftIdx], ops[reduceIdx]}
+	}
+	return []DFAOperator{ops[reduceIdx]}
+}
+
+func (p *Parser) isTypedefName(name string) bool {
+	for _, symbols := range p.TypeDefSymbols {
+		if slices.Contains(symbols, name) {
+			return true
+		}
+	}
+	return false
 }
 
 func getAllTypeSpecifiers(node *entity.AstNode) []*entity.AstNode {

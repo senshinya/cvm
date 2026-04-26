@@ -6,22 +6,22 @@ import (
 	"shinya.click/cvm/entity"
 )
 
-func chopForest(forest []*entity.AstNode) ([]*entity.AstNode, error) {
+func chopForest(forest []*entity.AstNode) ([]*entity.AstNode, []error) {
 	var (
-		latestErr error
-		result    []*entity.AstNode
+		errs   []error
+		result []*entity.AstNode
 	)
 	for _, root := range forest {
 		err := NewTimberSaw().Chop(root)
 		if err != nil {
 			printAST(root, 0)
 			common.DebugPrintf("Chop Error: %s\n\n", err)
-			latestErr = err
+			errs = append(errs, err)
 			continue
 		}
 		result = append(result, root)
 	}
-	return result, latestErr
+	return result, errs
 }
 
 type TimberSaw struct {

@@ -25,7 +25,7 @@ func main() {
 	checkProductions(productions)
 	dfa := constructLR0(productions)
 	addLookAheadSymbol(dfa, productions)
-	//shaveDFA(dfa)
+	shaveDFA(dfa)
 	//checkDFA(dfa)
 	generateFile(dfa, productions)
 }

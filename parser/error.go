@@ -31,3 +31,9 @@ func InvalidTypeSpecifier(pos entity.SourcePos) *common.CvmError {
 		common.NewErrorMessage(pos, "invalid type specifier"),
 	)
 }
+
+func UnexpectedToken(pos entity.SourcePos, lexeme string) *common.CvmError {
+	return common.NewCvmError(
+		common.NewErrorMessage(pos, fmt.Sprintf("unexpected token '%s'", lexeme)),
+	)
+}
