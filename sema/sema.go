@@ -7,12 +7,17 @@ import (
 )
 
 type Sema struct {
-	Types  *TypeTable
-	SymTab *SymbolTable
-	scope  *Scope
-	errors []*common.CvmError
+	Types   *TypeTable
+	SymTab  *SymbolTable
+	Options SemaOptions
+	scope   *Scope
+	errors  []*common.CvmError
 
 	pendingFuncs []*pendingFunc
+}
+
+type SemaOptions struct {
+	PedanticErrors bool
 }
 
 type pendingFunc struct {
@@ -27,7 +32,11 @@ type SemaResult struct {
 }
 
 func NewSema() *Sema {
-	s := &Sema{Types: NewTypeTable(), SymTab: NewSymbolTable()}
+	return NewSemaWithOptions(SemaOptions{})
+}
+
+func NewSemaWithOptions(opts SemaOptions) *Sema {
+	s := &Sema{Types: NewTypeTable(), SymTab: NewSymbolTable(), Options: opts}
 	s.scope = s.SymTab.File
 	return s
 }
@@ -105,6 +114,9 @@ func (s *Sema) walkDeclaration(node *entity.AstNode, prog *Program) {
 	}
 	spec := s.parseSpec(node.Children[0])
 	if node.ReducedBy(parser.Declaration, 1) {
+		if s.Options.PedanticErrors && hasEnumReferenceSpecifier(node.Children[0]) {
+			s.report(InvalidTypeSpec(node.SourceStart, "ISO C forbids forward references to enum types"))
+		}
 		if isTagType(spec.Type) {
 			prog.Globals = append(prog.Globals, &TagDecl{T: spec.Type, Range: node.SourceRange})
 		}
@@ -122,6 +134,10 @@ func (s *Sema) typeStaticAssert(node *entity.AstNode) {
 	}
 	if cv.Int == 0 {
 		s.report(InvalidTypeSpec(node.SourceStart, "static assertion failed"))
+		return
+	}
+	if s.Options.PedanticErrors {
+		s.report(InvalidTypeSpec(node.SourceStart, "ISO C99 does not support '_Static_assert'"))
 	}
 }
 
@@ -129,6 +145,21 @@ func isTagType(t Type) bool {
 	switch unqual(t).(type) {
 	case *StructType, *UnionType, *EnumType:
 		return true
+	}
+	return false
+}
+
+func hasEnumReferenceSpecifier(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	if node.ReducedBy(parser.TypeSpecifier, 13) {
+		return node.Children[0].ReducedBy(parser.EnumSpecifier, 5)
+	}
+	for _, child := range node.Children {
+		if hasEnumReferenceSpecifier(child) {
+			return true
+		}
 	}
 	return false
 }

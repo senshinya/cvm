@@ -101,6 +101,10 @@ func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) E
 	}
 	if pf, ok := unqual(from).(*PointerType); ok {
 		if pt, ok := unqual(target).(*PointerType); ok {
+			if discardsConstQualifier(pf.Pointee, pt.Pointee) {
+				s.report(IncompatibleAssignment(pos, from.String(), target.String()))
+				return e
+			}
 			if isVoidPointer(pf) || isVoidPointer(pt) {
 				return s.castVoidPointerConversion(e, target)
 			}
@@ -112,6 +116,12 @@ func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) E
 	}
 	s.report(IncompatibleAssignment(pos, from.String(), target.String()))
 	return e
+}
+
+func discardsConstQualifier(from, target Type) bool {
+	fq, fromConst := from.(*QualType)
+	tq, targetConst := target.(*QualType)
+	return unqual(from) == unqual(target) && fromConst && fq.Const && (!targetConst || !tq.Const)
 }
 
 func (s *Sema) arithmeticConversion(e Expr, target Type) Expr {

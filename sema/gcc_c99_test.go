@@ -83,7 +83,9 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			src := stripGCCDirectives(string(srcBytes))
+			originalSrc := string(srcBytes)
+			opts := SemaOptions{PedanticErrors: gccPedanticErrors(originalSrc)}
+			src := stripGCCDirectives(originalSrc)
 			tokens, err := lexer.NewLexer(src).ScanTokens()
 			if err != nil {
 				if !wantAccept {
@@ -99,17 +101,21 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 				t.Fatalf("parser rejected GCC C99 case %s: %v", path, err)
 			}
 			if wantAccept {
-				if _, err := Analyze(candidates); err != nil {
+				if _, err := AnalyzeWithOptions(candidates, opts); err != nil {
 					t.Fatalf("lexer+parser+sema rejected GCC C99 case %s: %v", path, err)
 				}
 				return
 			}
-			if _, err := Analyze(candidates); err != nil {
+			if _, err := AnalyzeWithOptions(candidates, opts); err != nil {
 				return
 			}
 			t.Fatalf("lexer+parser+sema accepted GCC reject case %s", path)
 		})
 	}
+}
+
+func gccPedanticErrors(src string) bool {
+	return strings.Contains(src, "-pedantic-errors")
 }
 
 func countCFiles(t *testing.T, root string) int {

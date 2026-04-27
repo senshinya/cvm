@@ -11,6 +11,10 @@ import (
 // Analyze 是公开的候选森林入口：先执行 PreFilter，再并发分析每棵保留下来的语法树。
 // 返回唯一通过语义检查的 Program；若没有干净结果，则返回最有用的错误。
 func Analyze(candidates []*entity.AstNode) (*Program, error) {
+	return AnalyzeWithOptions(candidates, SemaOptions{})
+}
+
+func AnalyzeWithOptions(candidates []*entity.AstNode, opts SemaOptions) (*Program, error) {
 	survivors, prefilterErrs := PreFilter(candidates)
 	if len(survivors) == 0 {
 		if len(prefilterErrs) > 0 {
@@ -25,7 +29,7 @@ func Analyze(candidates []*entity.AstNode) (*Program, error) {
 		wg.Add(1)
 		go func(i int, tree *entity.AstNode) {
 			defer wg.Done()
-			results[i] = NewSema().analyzeOne(tree)
+			results[i] = NewSemaWithOptions(opts).analyzeOne(tree)
 		}(i, tree)
 	}
 	wg.Wait()

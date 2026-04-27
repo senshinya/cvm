@@ -91,6 +91,9 @@ func (s *Sema) collectInitList(node *entity.AstNode, target Type, out *InitList)
 }
 
 func (s *Sema) makeInitElem(ds []Designator, value *entity.AstNode, elemType Type) InitElem {
+	if at, ok := unqual(elemType).(*ArrayType); ok && at.SizeKind == ArrayUnsized {
+		s.report(InvalidTypeSpec(value.SourceStart, "cannot initialize flexible array member"))
+	}
 	return InitElem{Designators: ds, Value: s.typeInitializer(value, elemType)}
 }
 

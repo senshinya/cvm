@@ -100,6 +100,9 @@ func (s *Sema) walkBlockDecl(node *entity.AstNode, scope *Scope, ctx *funcCtx, o
 	}
 	spec := s.parseSpec(node.Children[0])
 	if node.ReducedBy(parser.Declaration, 1) {
+		if s.Options.PedanticErrors && hasEnumReferenceSpecifier(node.Children[0]) {
+			s.report(InvalidTypeSpec(node.SourceStart, "ISO C forbids forward references to enum types"))
+		}
 		if isTagType(spec.Type) {
 			*out = append(*out, &TagDecl{T: spec.Type, Range: node.SourceRange})
 		}
