@@ -48,3 +48,16 @@ func TestScopeNamespaceIsolation(t *testing.T) {
 		t.Fatalf("tag 'foo' lost")
 	}
 }
+
+func TestScopeInsertRedeclarationError(t *testing.T) {
+	s := NewScope(ScopeFile, nil)
+	intT := NewTypeTable().Builtin(Int)
+	pos1 := entity.SourcePos{Line: 1}
+	pos2 := entity.SourcePos{Line: 2}
+	if err := s.InsertChecked("x", &Symbol{Name: "x", Kind: SymVar, T: intT, Pos: pos1}); err != nil {
+		t.Fatalf("first insert errored: %v", err)
+	}
+	if err := s.InsertChecked("x", &Symbol{Name: "x", Kind: SymTypedef, T: intT, Pos: pos2}); err == nil {
+		t.Fatalf("second insert with different kind should error")
+	}
+}

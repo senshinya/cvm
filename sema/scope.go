@@ -120,3 +120,18 @@ func (s *Scope) Insert(name string, sym *Symbol) {
 func (s *Scope) InsertTag(name string, info *TagInfo) {
 	s.Tags[name] = info
 }
+
+// InsertChecked 插入普通命名空间符号；如果当前作用域里同名符号的 kind 不同，
+// 返回重定义错误。同 kind 的再次声明暂时只合并到 Defs，占位给 Plan B 的完整类型
+// 兼容性检查使用。
+func (s *Scope) InsertChecked(name string, sym *Symbol) error {
+	if existing, ok := s.Ordinary[name]; ok {
+		if existing.Kind != sym.Kind {
+			return RedefinitionSymbol(sym.Pos, existing.Pos, name)
+		}
+		existing.Defs = append(existing.Defs, sym.Decl)
+		return nil
+	}
+	s.Ordinary[name] = sym
+	return nil
+}
