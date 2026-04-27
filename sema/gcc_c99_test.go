@@ -51,31 +51,16 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 				}
 				t.Fatalf("parser rejected GCC C99 case %s: %v", path, err)
 			}
-			survivors, _ := PreFilter(candidates)
-			if len(survivors) == 0 {
-				if !wantAccept {
-					return
-				}
-				t.Fatalf("PreFilter rejected every AST candidate for %s", path)
-			}
-			var lastErrs []string
-			for _, cand := range survivors {
-				r := NewSema().Analyze(cand)
-				if wantAccept && len(r.Errors) == 0 {
-					return
-				}
-				if !wantAccept && len(r.Errors) > 0 {
-					return
-				}
-				lastErrs = lastErrs[:0]
-				for _, e := range r.Errors {
-					lastErrs = append(lastErrs, e.Error())
-				}
-			}
 			if wantAccept {
-				t.Fatalf("Sema rejected every candidate for %s:\n%s", path, strings.Join(lastErrs, "\n"))
+				if _, err := Analyze(candidates); err != nil {
+					t.Fatalf("lexer+parser+sema rejected GCC C99 case %s: %v", path, err)
+				}
+				return
 			}
-			t.Fatalf("Sema accepted every candidate for GCC reject case %s", path)
+			if _, err := Analyze(candidates); err != nil {
+				return
+			}
+			t.Fatalf("lexer+parser+sema accepted GCC reject case %s", path)
 		})
 	}
 }

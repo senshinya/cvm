@@ -147,8 +147,15 @@ func unqual(t Type) Type {
 }
 
 func unqualifiedBuiltin(t Type) (*BuiltinType, bool) {
-	bt, ok := unqual(t).(*BuiltinType)
-	return bt, ok
+	switch x := unqual(t).(type) {
+	case *BuiltinType:
+		return x, true
+	case *EnumType:
+		if x.Underlying != nil {
+			return unqualifiedBuiltin(x.Underlying)
+		}
+	}
+	return nil, false
 }
 
 func arithmeticRank(t Type) int {

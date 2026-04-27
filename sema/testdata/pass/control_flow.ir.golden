@@ -1,0 +1,52 @@
+Program
+  FuncDef name="main" type=int ()
+    Param name="" type=void
+    Block
+      DeclStmt
+        VarDecl name="x" type=int storage=1
+      IfStmt
+        cond:
+          ImplicitCast kind=14 from=int to=_Bool
+            ImplicitCast kind=0 from=int to=int
+              VarRef name="x" type=int
+        then:
+          ReturnStmt
+            IntLit value=1 type=int
+      WhileStmt
+        cond:
+          ImplicitCast kind=14 from=int to=_Bool
+            BinOp op=16 type=int
+              ImplicitCast kind=0 from=int to=int
+                VarRef name="x" type=int
+              IntLit value=0 type=int
+        body:
+          ExprStmt
+            AssignExpr type=int
+              VarRef name="x" type=int
+              BinOp op=1 type=int
+                ImplicitCast kind=0 from=int to=int
+                  VarRef name="x" type=int
+                IntLit value=1 type=int
+      ForStmt
+        init:
+          DeclStmt
+            VarDecl name="i" type=int storage=1
+              init:
+                IntLit value=0 type=int
+        cond:
+          ImplicitCast kind=14 from=int to=_Bool
+            BinOp op=14 type=int
+              ImplicitCast kind=0 from=int to=int
+                VarRef name="i" type=int
+              IntLit value=10 type=int
+        post:
+          AssignExpr type=int
+            VarRef name="i" type=int
+            BinOp op=0 type=int
+              ImplicitCast kind=0 from=int to=int
+                VarRef name="i" type=int
+              IntLit value=1 type=int
+        body:
+          Block
+      ReturnStmt
+        IntLit value=0 type=int

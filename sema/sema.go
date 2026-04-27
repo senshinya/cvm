@@ -32,7 +32,7 @@ func NewSema() *Sema {
 	return s
 }
 
-func (s *Sema) Analyze(root *entity.AstNode) *SemaResult {
+func (s *Sema) analyzeOne(root *entity.AstNode) *SemaResult {
 	prog := &Program{Types: s.Types, SymTab: s.SymTab}
 	s.walkTranslationUnit(root, prog)
 	for _, pf := range s.pendingFuncs {
