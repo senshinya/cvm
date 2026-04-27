@@ -293,7 +293,13 @@ func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {
 }
 
 func TestC99AcceptsArithmeticConstantStaticInitializer(t *testing.T) {
+	mustAnalyze(t, `static int x = (int)(1.0 + 2.0);`)
+	mustAnalyze(t, `static int x = { (int)(1.0 + 2.0) };`)
 	mustAnalyze(t, `static int y = { (int)+1.0 };`)
+}
+
+func TestC99AcceptsUnsignedLeftShiftIntegerConstantExpression(t *testing.T) {
+	mustAnalyze(t, `static unsigned x = (unsigned)-1 << 0;`)
 }
 
 func TestC99UnaryFloatCastArrayBoundsRemainVLA(t *testing.T) {

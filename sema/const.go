@@ -166,7 +166,7 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		if !rok {
 			return ConstValue{}, false
 		}
-		if x.Op == OpShl && l.Int < 0 {
+		if x.Op == OpShl && isSignedIntegerType(x.L.GetType()) && l.Int < 0 {
 			return ConstValue{}, false
 		}
 		v, ok := evalBinOpInt(x.Op, l.Int, r.Int)
@@ -224,7 +224,7 @@ func (e *Evaluator) EvalC99ArraySizeConstantExpression(expr Expr) (ConstValue, b
 		return cv, true
 	}
 	if x, ok := expr.(*ExplicitCast); ok && isInteger(x.To) {
-		if cv, ok := e.evalC99CastArithmeticConstant(x.X, true); ok {
+		if cv, ok := e.evalC99CastArithmeticConstant(x.X, true, false); ok {
 			if cv.Kind == ConstFloat {
 				v := int64(cv.Float)
 				return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, true
@@ -236,8 +236,8 @@ func (e *Evaluator) EvalC99ArraySizeConstantExpression(expr Expr) (ConstValue, b
 }
 
 // GCC/C99 把直接的 (int)1.0 当作 ICE；一元 +/- 或 (double) 这类中间算术 cast
-// 只能作为普通算术常量表达式，用于初始化或数组大小正负检查，不能把数组固定化。
-func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat bool) (ConstValue, bool) {
+// 只能作为普通算术常量表达式。数组大小正负检查还要避免把浮点二元表达式当作已知值。
+func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, allowFloatBinOp bool) (ConstValue, bool) {
 	switch x := expr.(type) {
 	case *FloatLit:
 		return ConstValue{Kind: ConstFloat, Float: x.Value, T: x.T}, true
@@ -245,7 +245,7 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat boo
 		if !isArithmetic(x.To) {
 			return ConstValue{}, false
 		}
-		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat)
+		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat, allowFloatBinOp)
 		if !ok {
 			return ConstValue{}, false
 		}
@@ -254,13 +254,13 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat boo
 		if !isArithmetic(x.To) {
 			return ConstValue{}, false
 		}
-		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat)
+		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat, allowFloatBinOp)
 		if !ok {
 			return ConstValue{}, false
 		}
 		return castC99ArithmeticConstant(cv, x.To)
 	case *UnOp:
-		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat)
+		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat, allowFloatBinOp)
 		if !ok {
 			return ConstValue{}, false
 		}
@@ -279,10 +279,60 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat boo
 			}
 			return ConstValue{Kind: ConstInt, Int: -cv.Int, Uint: uint64(-cv.Int), T: x.T}, true
 		}
+	case *BinOp:
+		return e.evalC99ArithmeticBinOp(x, allowUnaryFloat, allowFloatBinOp)
 	default:
 		return e.evalC99IntegerConstantExpression(expr)
 	}
 	return ConstValue{}, false
+}
+
+func (e *Evaluator) evalC99ArithmeticBinOp(x *BinOp, allowUnaryFloat, allowFloatBinOp bool) (ConstValue, bool) {
+	l, lok := e.evalC99CastArithmeticConstant(x.L, allowUnaryFloat, allowFloatBinOp)
+	if !lok {
+		return ConstValue{}, false
+	}
+	// 算术常量表达式同样遵循短路求值；未求值右侧不应触发约束错误。
+	switch x.Op {
+	case OpLAnd:
+		if !constNonZero(l) {
+			return ConstValue{Kind: ConstInt, Int: 0, Uint: 0, T: x.T}, true
+		}
+		r, ok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp)
+		if !ok {
+			return ConstValue{}, false
+		}
+		v := boolToInt(constNonZero(r))
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
+	case OpLOr:
+		if constNonZero(l) {
+			return ConstValue{Kind: ConstInt, Int: 1, Uint: 1, T: x.T}, true
+		}
+		r, ok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp)
+		if !ok {
+			return ConstValue{}, false
+		}
+		v := boolToInt(constNonZero(r))
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
+	}
+	r, rok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp)
+	if !rok {
+		return ConstValue{}, false
+	}
+	if l.Kind == ConstFloat || r.Kind == ConstFloat {
+		if !allowFloatBinOp {
+			return ConstValue{}, false
+		}
+		return evalC99FloatArithmeticBinOp(x.Op, constToFloat(l), constToFloat(r), x.T)
+	}
+	if x.Op == OpShl && isSignedIntegerType(x.L.GetType()) && l.Int < 0 {
+		return ConstValue{}, false
+	}
+	v, ok := evalBinOpInt(x.Op, l.Int, r.Int)
+	if !ok {
+		return ConstValue{}, false
+	}
+	return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
 }
 
 func castC99ArithmeticConstant(cv ConstValue, to Type) (ConstValue, bool) {
@@ -300,6 +350,67 @@ func castC99ArithmeticConstant(cv ConstValue, to Type) (ConstValue, bool) {
 		return ConstValue{Kind: ConstFloat, Float: cv.Float, T: to}, true
 	}
 	return ConstValue{Kind: ConstFloat, Float: float64(cv.Int), T: to}, true
+}
+
+func evalC99FloatArithmeticBinOp(op BinaryOp, l, r float64, t Type) (ConstValue, bool) {
+	switch op {
+	case OpAdd:
+		return ConstValue{Kind: ConstFloat, Float: l + r, T: t}, true
+	case OpSub:
+		return ConstValue{Kind: ConstFloat, Float: l - r, T: t}, true
+	case OpMul:
+		return ConstValue{Kind: ConstFloat, Float: l * r, T: t}, true
+	case OpDiv:
+		if r == 0 {
+			return ConstValue{}, false
+		}
+		return ConstValue{Kind: ConstFloat, Float: l / r, T: t}, true
+	case OpEq:
+		v := boolToInt(l == r)
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: t}, true
+	case OpNe:
+		v := boolToInt(l != r)
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: t}, true
+	case OpLt:
+		v := boolToInt(l < r)
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: t}, true
+	case OpLe:
+		v := boolToInt(l <= r)
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: t}, true
+	case OpGt:
+		v := boolToInt(l > r)
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: t}, true
+	case OpGe:
+		v := boolToInt(l >= r)
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: t}, true
+	}
+	return ConstValue{}, false
+}
+
+func constToFloat(cv ConstValue) float64 {
+	if cv.Kind == ConstFloat {
+		return cv.Float
+	}
+	return float64(cv.Int)
+}
+
+func constNonZero(cv ConstValue) bool {
+	if cv.Kind == ConstFloat {
+		return cv.Float != 0
+	}
+	return cv.Int != 0
+}
+
+func isSignedIntegerType(t Type) bool {
+	bt, ok := unqualifiedBuiltin(t)
+	if !ok || !isInteger(t) {
+		return false
+	}
+	switch bt.Kind {
+	case Bool, UChar, UShort, UInt, ULong, ULongLong:
+		return false
+	}
+	return true
 }
 
 func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
@@ -354,7 +465,7 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 		return e.EvalConstant(x.X)
 	case *ExplicitCast:
 		if isArithmetic(x.To) {
-			if cv, ok := e.evalC99CastArithmeticConstant(x.X, true); ok {
+			if cv, ok := e.evalC99CastArithmeticConstant(x.X, true, true); ok {
 				return castC99ArithmeticConstant(cv, x.To)
 			}
 		}
