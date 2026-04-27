@@ -24,6 +24,17 @@ func TestC99StringLiteralInitializesCharacterArray(t *testing.T) {
 	`)
 }
 
+func TestC99UnbracedStringLiteralInitializesCharacterArrays(t *testing.T) {
+	mustAnalyze(t, `
+		char a[] = "foo";
+		signed char b[] = "foo";
+		unsigned char c[] = "foo";
+		int main(void) {
+			return a[0] + b[0] + c[0];
+		}
+	`)
+}
+
 func TestC99ForwardEnumWarningOnlyIsAccepted(t *testing.T) {
 	mustAnalyze(t, `
 		enum e1;

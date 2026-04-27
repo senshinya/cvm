@@ -64,7 +64,7 @@ gcc/testsuite/gcc.dg/c99-fordecl-3.c	skipped	reject	current semantic layer accep
 gcc/testsuite/gcc.dg/c99-func-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-func-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-func-3.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-func-4.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-func-4.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-hexfloat-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-hexfloat-2.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-hexfloat-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: lexer-error
@@ -113,10 +113,10 @@ gcc/testsuite/gcc.dg/c99-stdint-5.c	skipped	accept	requires preprocessor or syst
 gcc/testsuite/gcc.dg/c99-stdint-6.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-stdint-7.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-stdint-8.c	skipped	accept	requires preprocessor or system macro handling
-gcc/testsuite/gcc.dg/c99-tag-1.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-tag-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-tag-2.c	skipped	reject	current semantic layer accepts this GCC reject case
 gcc/testsuite/gcc.dg/c99-tag-3.c	skipped	reject	current semantic layer accepts this GCC reject case
-gcc/testsuite/gcc.dg/c99-tag-4.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-tag-4.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-tag-5.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-tag-6.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-tgmath-1.c	skipped	accept	requires preprocessor or system macro handling

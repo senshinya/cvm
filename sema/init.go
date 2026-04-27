@@ -25,6 +25,13 @@ func (s *Sema) tryStringArrayInitializer(node *entity.AstNode, target Type) Expr
 	if !ok || !isCharacterType(unqual(at.Elem)) {
 		return nil
 	}
+	if node.ReducedBy(parser.Initializer, 1) {
+		expr := s.typeExpr(node.Children[0], s.scope)
+		if _, ok := expr.(*StringLit); ok {
+			return expr
+		}
+		return nil
+	}
 	if !node.ReducedBy(parser.Initializer, 2) && !node.ReducedBy(parser.Initializer, 3) {
 		return nil
 	}
