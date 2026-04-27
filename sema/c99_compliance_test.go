@@ -250,6 +250,9 @@ func TestC99RejectsInvalidIntegerConstantExpressions(t *testing.T) {
 	mustReject(t, `void f(void) { int a[(int)(double)0.0]; }`)
 	mustReject(t, `enum E { A = -1 << 0 };`)
 	mustReject(t, `enum { A = (int)(double)1.0 };`)
+	mustReject(t, `int n; enum { A = (1 ? 1 : n) };`)
+	mustReject(t, `int n; enum { A = (1 || n) };`)
+	mustReject(t, `int n; enum { A = (0 && n) };`)
 	mustReject(t, `int i = -1 << 0;`)
 	mustReject(t, `void f(void) { static int i = -1 << 0; }`)
 	mustReject(t, `static int i = { -1 << 0 };`)
@@ -261,7 +264,20 @@ func TestC99RejectsInvalidIntegerConstantExpressions(t *testing.T) {
 
 func TestC99AcceptsShortCircuitIntegerConstantExpressions(t *testing.T) {
 	mustAnalyze(t, `enum { A = 1 || (1/0) };`)
+	mustAnalyze(t, `enum { A = 1 || (-1 << 0) };`)
+	mustAnalyze(t, `enum { A = 1 ? 1 : (1/0) };`)
+	mustAnalyze(t, `enum { A = 1 ? 1 : (-1 << 0) };`)
 	mustAnalyze(t, `int f(int n) { switch (n) { case 1 || (1/0): return 1; } return 0; }`)
+}
+
+func TestC99RejectsNonConstantOperandsInUnevaluatedIntegerConstantExpression(t *testing.T) {
+	mustReject(t, `int n; int f(int x) { switch (x) { case 1 || n: return 1; } return 0; }`)
+	mustReject(t, `int n; int f(int x) { switch (x) { case 0 && n: return 1; } return 0; }`)
+	mustReject(t, `int n; int f(int x) { switch (x) { case 1 ? 1 : n: return 1; } return 0; }`)
+}
+
+func TestC99ShortCircuitArrayBoundCanRemainVLA(t *testing.T) {
+	mustAnalyze(t, `int n; void f(void) { int a[(1 || n)]; (void)a; }`)
 }
 
 func TestC99SizeofPointerToVLAIsIntegerConstantExpression(t *testing.T) {

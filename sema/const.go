@@ -139,10 +139,13 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		if !lok {
 			return ConstValue{}, false
 		}
-		// C99 常量表达式按实际求值路径检查，&& 和 || 的右侧在短路时不能被递归诊断。
+		// C99 短路分支不求值，但仍必须只由常量表达式允许的操作数组成。
 		switch x.Op {
 		case OpLAnd:
 			if l.Int == 0 {
+				if !e.isC99UnevaluatedIntegerConstantOperand(x.R) {
+					return ConstValue{}, false
+				}
 				return ConstValue{Kind: ConstInt, Int: 0, Uint: 0, T: x.T}, true
 			}
 			r, ok := e.evalC99IntegerConstantExpression(x.R)
@@ -153,6 +156,9 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 			return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
 		case OpLOr:
 			if l.Int != 0 {
+				if !e.isC99UnevaluatedIntegerConstantOperand(x.R) {
+					return ConstValue{}, false
+				}
 				return ConstValue{Kind: ConstInt, Int: 1, Uint: 1, T: x.T}, true
 			}
 			r, ok := e.evalC99IntegerConstantExpression(x.R)
@@ -195,7 +201,13 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 			return ConstValue{}, false
 		}
 		if c.Int != 0 {
+			if !e.isC99UnevaluatedIntegerConstantOperand(x.Else) {
+				return ConstValue{}, false
+			}
 			return e.evalC99IntegerConstantExpression(x.Then)
+		}
+		if !e.isC99UnevaluatedIntegerConstantOperand(x.Then) {
+			return ConstValue{}, false
 		}
 		return e.evalC99IntegerConstantExpression(x.Else)
 	case *ImplicitCast:
@@ -217,6 +229,50 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		}
 	}
 	return ConstValue{}, false
+}
+
+func (e *Evaluator) isC99UnevaluatedIntegerConstantOperand(expr Expr) bool {
+	switch x := expr.(type) {
+	case *IntLit, *CharLit, *EnumRef:
+		return true
+	case *SizeofExpr:
+		if x.Operand.Type != nil {
+			return !typeHasVariableSize(x.Operand.Type) && sizeofType(x.Operand.Type) > 0
+		}
+		if x.Operand.Expr != nil {
+			return !typeHasVariableSize(x.Operand.Expr.GetType()) && sizeofType(x.Operand.Expr.GetType()) > 0
+		}
+	case *BinOp:
+		return isInteger(x.T) &&
+			e.isC99UnevaluatedIntegerConstantOperand(x.L) &&
+			e.isC99UnevaluatedIntegerConstantOperand(x.R)
+	case *UnOp:
+		switch x.Op {
+		case UnPlus, UnMinus, UnBitNot, UnLogNot:
+			return isInteger(x.T) && e.isC99UnevaluatedIntegerConstantOperand(x.X)
+		}
+	case *CondExpr:
+		return isInteger(x.T) &&
+			e.isC99UnevaluatedIntegerConstantOperand(x.Cond) &&
+			e.isC99UnevaluatedIntegerConstantOperand(x.Then) &&
+			e.isC99UnevaluatedIntegerConstantOperand(x.Else)
+	case *ImplicitCast:
+		return isInteger(x.To) && e.isC99UnevaluatedIntegerConstantOperand(x.X)
+	case *ExplicitCast:
+		if !isInteger(x.To) {
+			return false
+		}
+		if _, ok := x.X.(*FloatLit); ok {
+			return true
+		}
+		return e.isC99UnevaluatedIntegerConstantOperand(x.X)
+	case *CommaExpr:
+		// 未求值子表达式里的逗号可以出现；它的操作数仍不能引用运行期值。
+		return isInteger(x.T) &&
+			e.isC99UnevaluatedIntegerConstantOperand(x.L) &&
+			e.isC99UnevaluatedIntegerConstantOperand(x.R)
+	}
+	return false
 }
 
 func (e *Evaluator) EvalC99ArraySizeConstantExpression(expr Expr) (ConstValue, bool) {
