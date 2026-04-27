@@ -366,7 +366,7 @@ func (s *Sema) buildEnum(node *entity.AstNode) Type {
 	case node.ReducedBy(parser.EnumSpecifier, 2), node.ReducedBy(parser.EnumSpecifier, 4):
 		name := node.Children[1].Terminal.Lexeme
 		var et *EnumType
-		if existing := s.scope.LookupTag(name); existing != nil {
+		if existing := s.scope.LookupCurrentTag(name); existing != nil {
 			et, _ = existing.T.(*EnumType)
 		}
 		if et == nil {

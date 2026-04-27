@@ -323,14 +323,14 @@ func equalityPointerCompatible(left, right *PointerType) bool {
 	if isVoidPointer(left) || isVoidPointer(right) {
 		return true
 	}
-	return compatibleType(left.Pointee, right.Pointee)
+	return compatibleTypeIgnoringTopLevelQualifiers(left.Pointee, right.Pointee)
 }
 
 func relationalPointerCompatible(left, right *PointerType) bool {
 	if isFunctionPointer(left) || isFunctionPointer(right) || isVoidPointer(left) || isVoidPointer(right) {
 		return false
 	}
-	return compatibleType(left.Pointee, right.Pointee)
+	return compatibleTypeIgnoringTopLevelQualifiers(left.Pointee, right.Pointee)
 }
 
 func (s *Sema) typePointerArithmetic(op BinaryOp, l, r Expr, srcRange entity.SourceRange) Expr {
@@ -498,15 +498,23 @@ func (s *Sema) balanceConditionalPointer(then, els Expr, pos entity.SourcePos) (
 	ep := unqual(els.GetType()).(*PointerType)
 	switch {
 	case !isFunctionPointer(tp) && !isFunctionPointer(ep) && isVoidPointer(tp):
-		if els.GetType() != then.GetType() {
-			els = s.castVoidPointerConversion(els, then.GetType())
+		common := s.qualifiedVoidPointer(tp.Pointee, ep.Pointee)
+		if then.GetType() != common {
+			then = s.castVoidPointerConversion(then, common)
 		}
-		return then, els, then.GetType()
+		if els.GetType() != common {
+			els = s.castVoidPointerConversion(els, common)
+		}
+		return then, els, common
 	case !isFunctionPointer(tp) && !isFunctionPointer(ep) && isVoidPointer(ep):
-		if then.GetType() != els.GetType() {
-			then = s.castVoidPointerConversion(then, els.GetType())
+		common := s.qualifiedVoidPointer(tp.Pointee, ep.Pointee)
+		if then.GetType() != common {
+			then = s.castVoidPointerConversion(then, common)
 		}
-		return then, els, els.GetType()
+		if els.GetType() != common {
+			els = s.castVoidPointerConversion(els, common)
+		}
+		return then, els, common
 	case pointerAssignmentCompatible(ep, tp):
 		if els.GetType() != then.GetType() {
 			els = s.castPointerConversion(els, then.GetType())
@@ -521,6 +529,32 @@ func (s *Sema) balanceConditionalPointer(then, els Expr, pos entity.SourcePos) (
 		s.report(InvalidTypeSpec(pos, "incompatible pointer types in conditional expression"))
 		return then, els, then.GetType()
 	}
+}
+
+func (s *Sema) qualifiedVoidPointer(a, b Type) Type {
+	c, v, r := qualifierUnion(a, b)
+	var voidT Type = s.Types.Builtin(Void)
+	if c || v || r {
+		voidT = s.Types.Qualified(voidT, c, v, r)
+	}
+	return s.Types.Pointer(voidT)
+}
+
+func qualifierUnion(a, b Type) (bool, bool, bool) {
+	aq, _ := a.(*QualType)
+	bq, _ := b.(*QualType)
+	var c, v, r bool
+	if aq != nil {
+		c = c || aq.Const
+		v = v || aq.Volatile
+		r = r || aq.Restrict
+	}
+	if bq != nil {
+		c = c || bq.Const
+		v = v || bq.Volatile
+		r = r || bq.Restrict
+	}
+	return c, v, r
 }
 
 func (s *Sema) typeComma(node *entity.AstNode, scope *Scope) Expr {

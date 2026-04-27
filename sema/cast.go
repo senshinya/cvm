@@ -148,7 +148,7 @@ func pointerAssignmentCompatible(from, to *PointerType) bool {
 	if isVoidPointer(from) || isVoidPointer(to) {
 		return true
 	}
-	return compatibleType(from.Pointee, to.Pointee)
+	return compatibleTypeIgnoringTopLevelQualifiers(from.Pointee, to.Pointee)
 }
 
 func (s *Sema) arithmeticConversion(e Expr, target Type) Expr {

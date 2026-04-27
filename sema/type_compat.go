@@ -1,6 +1,9 @@
 package sema
 
 func compatibleType(a, b Type) bool {
+	if !sameQualifiers(a, b) {
+		return false
+	}
 	a = unqual(a)
 	b = unqual(b)
 	if a == b {
@@ -32,6 +35,10 @@ func compatibleType(a, b Type) bool {
 	return false
 }
 
+func compatibleTypeIgnoringTopLevelQualifiers(a, b Type) bool {
+	return compatibleType(unqual(a), unqual(b))
+}
+
 func compatibleArraySize(a, b *ArrayType) bool {
 	if a.SizeKind == ArrayUnsized || b.SizeKind == ArrayUnsized {
 		return true
@@ -46,18 +53,57 @@ func compatibleArraySize(a, b *ArrayType) bool {
 }
 
 func compatibleFunctionType(a, b *FunctionType) bool {
-	if !compatibleType(a.Ret, b.Ret) || a.Variadic != b.Variadic || a.HasProto != b.HasProto {
+	if !compatibleTypeIgnoringTopLevelQualifiers(a.Ret, b.Ret) {
 		return false
 	}
-	if len(a.Params) != len(b.Params) {
+	if a.HasProto && b.HasProto {
+		return compatiblePrototypeParams(a, b)
+	}
+	if !a.HasProto && !b.HasProto {
+		return true
+	}
+	if a.HasProto {
+		return compatiblePrototypeWithNoProto(a, b)
+	}
+	return compatiblePrototypeWithNoProto(b, a)
+}
+
+func compatiblePrototypeParams(a, b *FunctionType) bool {
+	if a.Variadic != b.Variadic || len(a.Params) != len(b.Params) {
 		return false
 	}
 	for i := range a.Params {
-		if !compatibleType(a.Params[i], b.Params[i]) {
+		if !compatibleTypeIgnoringTopLevelQualifiers(a.Params[i], b.Params[i]) {
 			return false
 		}
 	}
 	return true
+}
+
+func compatiblePrototypeWithNoProto(proto, noProto *FunctionType) bool {
+	if proto.Variadic || len(noProto.Params) != 0 {
+		return false
+	}
+	for _, param := range proto.Params {
+		if !compatibleTypeIgnoringTopLevelQualifiers(param, defaultPromotedType(param)) {
+			return false
+		}
+	}
+	return true
+}
+
+func defaultPromotedType(t Type) Type {
+	bt, ok := unqualifiedBuiltin(t)
+	if !ok {
+		return t
+	}
+	switch bt.Kind {
+	case Bool, Char, SChar, UChar, Short, UShort:
+		return &BuiltinType{Kind: Int}
+	case Float:
+		return &BuiltinType{Kind: Double}
+	}
+	return t
 }
 
 func losesQualifier(from, to Type) bool {
@@ -102,4 +148,16 @@ func completeIncompleteArrayMismatch(a, b Type) bool {
 		return true
 	}
 	return completeIncompleteArrayMismatch(ax.Elem, bx.Elem)
+}
+
+func sameQualifiers(a, b Type) bool {
+	aq, aok := a.(*QualType)
+	bq, bok := b.(*QualType)
+	if !aok && !bok {
+		return true
+	}
+	if aok != bok {
+		return false
+	}
+	return aq.Const == bq.Const && aq.Volatile == bq.Volatile && aq.Restrict == bq.Restrict
 }

@@ -95,6 +95,26 @@ func TestC99RejectsDiscardedPointerQualifiers(t *testing.T) {
 	`)
 }
 
+func TestC99RejectsNestedPointerQualifierConversion(t *testing.T) {
+	mustReject(t, `
+		void f(void) {
+			int **ppi;
+			const int **ppci = ppi;
+			(void)ppci;
+		}
+	`)
+}
+
+func TestC99RejectsNestedArrayQualifierConversion(t *testing.T) {
+	mustReject(t, `
+		void f(void) {
+			int (*pa)[1];
+			const int (*pca)[1] = pa;
+			(void)pca;
+		}
+	`)
+}
+
 func TestC99FunctionPointerAcceptsVoidPointerNullAssignment(t *testing.T) {
 	mustAnalyze(t, `
 		void (*fp)(void);
@@ -114,12 +134,66 @@ func TestC99RejectsFunctionPointerNonNullVoidPointerAssignment(t *testing.T) {
 	`)
 }
 
+func TestC99RejectsConditionalVoidPointerQualifierLoss(t *testing.T) {
+	mustReject(t, `
+		int cond;
+		const int *p;
+		void *q;
+		void f(void) {
+			int *dst = cond ? (const int *)p : (void *)q;
+			(void)dst;
+		}
+	`)
+}
+
 func TestC99RejectsDifferentStructTagPointerAssignment(t *testing.T) {
 	mustReject(t, `
 		struct a { int x; };
 		struct b { int x; };
 		void f(struct a *x, struct b *y) {
 			x = y;
+		}
+	`)
+}
+
+func TestC99EnumDefinitionCanShadowOuterTag(t *testing.T) {
+	mustAnalyze(t, `
+		enum e { A };
+		void f(void) {
+			enum e { B };
+			enum e x = B;
+			(void)x;
+		}
+	`)
+}
+
+func TestC99RejectsDifferentEnumTagPointerAssignment(t *testing.T) {
+	mustReject(t, `
+		enum e { A };
+		void f(void) {
+			enum e *outerp;
+			enum e { B } inner = B;
+			outerp = &inner;
+		}
+	`)
+}
+
+func TestC99FunctionPointerCompatibleNoPrototypeAssignment(t *testing.T) {
+	mustAnalyze(t, `
+		int f();
+		void g(void) {
+			int (*p)(int);
+			p = f;
+		}
+	`)
+}
+
+func TestC99RejectsIncompatibleNoPrototypeFunctionPointerAssignment(t *testing.T) {
+	mustReject(t, `
+		int f();
+		void g(void) {
+			int (*p)(float);
+			p = f;
 		}
 	`)
 }
