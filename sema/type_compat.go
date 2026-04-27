@@ -61,7 +61,7 @@ func isObjectType(t Type) bool {
 	case *FunctionType:
 		return false
 	case *ArrayType:
-		return x.SizeKind != ArrayUnsized && isObjectType(x.Elem)
+		return x.SizeKind != ArrayUnsized && x.SizeKind != ArrayStarSize && isObjectType(x.Elem)
 	case *StructType:
 		return x.Complete
 	case *UnionType:
@@ -70,6 +70,15 @@ func isObjectType(t Type) bool {
 		return x.Complete
 	default:
 		return true
+	}
+}
+
+func isPrototypeArrayObjectType(t Type) bool {
+	switch x := unqual(t).(type) {
+	case *ArrayType:
+		return x.SizeKind != ArrayUnsized && isPrototypeArrayObjectType(x.Elem)
+	default:
+		return isObjectType(t)
 	}
 }
 

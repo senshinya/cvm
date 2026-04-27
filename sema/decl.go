@@ -119,12 +119,15 @@ func (s *Sema) makeUnsizedArray(elem Type, pos entity.SourcePos) Type {
 }
 
 func (s *Sema) makeStarArray(elem Type, pos entity.SourcePos) Type {
+	if !s.allowArrayStar {
+		s.report(InvalidTypeSpec(pos, "star array size only allowed in function prototype scope"))
+	}
 	s.validateArrayElement(elem, pos)
 	return s.Types.ArrayStar(elem)
 }
 
 func (s *Sema) validateArrayElement(elem Type, pos entity.SourcePos) {
-	if !isObjectType(elem) {
+	if !isObjectType(elem) && !(s.allowArrayStar && isPrototypeArrayObjectType(elem)) {
 		s.report(InvalidTypeSpec(pos, "array element type must be complete object type"))
 		return
 	}
@@ -173,6 +176,9 @@ func (s *Sema) collectParameterList(node *entity.AstNode) []Type {
 
 func (s *Sema) parameterDeclarationType(node *entity.AstNode) Type {
 	spec := s.parseSpec(node.Children[0])
+	prevAllowArrayStar := s.allowArrayStar
+	s.allowArrayStar = true
+	defer func() { s.allowArrayStar = prevAllowArrayStar }()
 	switch {
 	case node.ReducedBy(parser.ParameterDeclaration, 1):
 		return spec.Type

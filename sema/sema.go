@@ -13,7 +13,8 @@ type Sema struct {
 	scope   *Scope
 	errors  []*common.CvmError
 
-	pendingFuncs []*pendingFunc
+	pendingFuncs   []*pendingFunc
+	allowArrayStar bool
 }
 
 type SemaOptions struct {
