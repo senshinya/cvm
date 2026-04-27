@@ -72,3 +72,23 @@ func TestArrayTypeVLANotInterned(t *testing.T) {
 		t.Fatalf("VLA arrays must NOT be interned")
 	}
 }
+
+func TestFunctionTypeInterning(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	doubleT := tt.Builtin(Double)
+	f1 := tt.Function(intT, []Type{intT, doubleT}, false, true)
+	f2 := tt.Function(intT, []Type{intT, doubleT}, false, true)
+	if f1 != f2 {
+		t.Fatalf("identical function types not interned")
+	}
+	f3 := tt.Function(intT, []Type{intT, doubleT}, true, true)
+	if f1 == f3 {
+		t.Fatalf("variadic flag did not differentiate")
+	}
+	f4 := tt.Function(intT, nil, false, false)
+	f5 := tt.Function(intT, nil, false, true)
+	if f4 == f5 {
+		t.Fatalf("HasProto flag did not differentiate")
+	}
+}

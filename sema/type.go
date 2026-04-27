@@ -125,3 +125,33 @@ func itoa(n int64) string {
 	}
 	return string(buf[i:])
 }
+
+type FunctionType struct {
+	Ret      Type
+	Params   []Type
+	Variadic bool
+	HasProto bool
+}
+
+func (*FunctionType) isType() {}
+
+func (f *FunctionType) String() string {
+	s := f.Ret.String() + " ("
+	for i, p := range f.Params {
+		if i > 0 {
+			s += ", "
+		}
+		s += p.String()
+	}
+	if f.Variadic {
+		if len(f.Params) > 0 {
+			s += ", "
+		}
+		s += "..."
+	}
+	if !f.HasProto {
+		s += "<noproto>"
+	}
+	s += ")"
+	return s
+}
