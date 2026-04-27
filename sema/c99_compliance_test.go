@@ -308,6 +308,7 @@ func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {
 			(void)p;
 		}
 	`)
+	mustAnalyze(t, `void f(int n) { static int (*p)[n]; (void)p; }`)
 }
 
 func TestC99AcceptsArithmeticConstantStaticInitializer(t *testing.T) {

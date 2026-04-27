@@ -700,8 +700,8 @@ func typeHasVariableSize(t Type) bool {
 	return false
 }
 
-// 静态/文件作用域声明要拒绝真正依赖运行期长度的数组边界；已有测试里
-// sizeof(未定长类型名) 仍被旧语义当作不可折叠但无运行期依赖的大小处理。
+// 静态/文件作用域声明只拒绝对象自身的数组边界；指向 VM 类型的指针对象大小固定，
+// 不能因为 pointee 变长就当作静态 VLA 数组。
 func typeHasDisallowedStaticArrayBound(t Type) bool {
 	switch x := unqual(t).(type) {
 	case *ArrayType:
@@ -713,7 +713,7 @@ func typeHasDisallowedStaticArrayBound(t Type) bool {
 		}
 		return typeHasDisallowedStaticArrayBound(x.Elem)
 	case *PointerType:
-		return typeHasDisallowedStaticArrayBound(x.Pointee)
+		return false
 	case *FunctionType:
 		if typeHasDisallowedStaticArrayBound(x.Ret) {
 			return true
