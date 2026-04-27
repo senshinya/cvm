@@ -59,3 +59,64 @@ type TagInfo struct {
 	Decl     any
 	Complete bool
 }
+
+type ScopeKind int
+
+const (
+	ScopeFile ScopeKind = iota
+	ScopeBlock
+	ScopeFuncProto
+	ScopeFunc
+)
+
+type Scope struct {
+	Kind     ScopeKind
+	Parent   *Scope
+	Ordinary map[string]*Symbol
+	Tags     map[string]*TagInfo
+}
+
+func NewScope(kind ScopeKind, parent *Scope) *Scope {
+	return &Scope{
+		Kind:     kind,
+		Parent:   parent,
+		Ordinary: map[string]*Symbol{},
+		Tags:     map[string]*TagInfo{},
+	}
+}
+
+func (s *Scope) Lookup(name string, ns SymbolNamespace) *Symbol {
+	if ns != NSOrdinary {
+		return nil
+	}
+	for cur := s; cur != nil; cur = cur.Parent {
+		if sym, ok := cur.Ordinary[name]; ok {
+			return sym
+		}
+	}
+	return nil
+}
+
+func (s *Scope) LookupCurrent(name string, ns SymbolNamespace) *Symbol {
+	if ns != NSOrdinary {
+		return nil
+	}
+	return s.Ordinary[name]
+}
+
+func (s *Scope) LookupTag(name string) *TagInfo {
+	for cur := s; cur != nil; cur = cur.Parent {
+		if t, ok := cur.Tags[name]; ok {
+			return t
+		}
+	}
+	return nil
+}
+
+func (s *Scope) Insert(name string, sym *Symbol) {
+	s.Ordinary[name] = sym
+}
+
+func (s *Scope) InsertTag(name string, info *TagInfo) {
+	s.Tags[name] = info
+}
