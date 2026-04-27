@@ -21,7 +21,7 @@ func analyzeSource(t *testing.T, src string) *SemaResult {
 	if len(survivors) == 0 {
 		t.Fatal("no surviving AST candidate")
 	}
-	return NewSema().Analyze(survivors[0])
+	return NewSema().analyzeOne(survivors[0])
 }
 
 func TestAnalyzeTopLevelDecls(t *testing.T) {

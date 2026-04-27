@@ -60,7 +60,7 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 			}
 			var lastErrs []string
 			for _, cand := range survivors {
-				r := NewSema().Analyze(cand)
+				r := NewSema().analyzeOne(cand)
 				if wantAccept && len(r.Errors) == 0 {
 					return
 				}
