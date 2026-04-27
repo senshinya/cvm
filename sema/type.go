@@ -239,3 +239,17 @@ func (e *EnumType) String() string {
 	}
 	return "enum{...}"
 }
+
+type ErrorType struct{}
+
+func (*ErrorType) isType() {}
+
+func (*ErrorType) String() string {
+	return "<error-type>"
+}
+
+var ErrorTypeSingleton Type = &ErrorType{}
+
+func IsError(t Type) bool {
+	return t == ErrorTypeSingleton
+}

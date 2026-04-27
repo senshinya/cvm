@@ -152,3 +152,13 @@ func TestUnionAndEnum(t *testing.T) {
 		t.Fatalf("CompleteEnum failed: %+v", e)
 	}
 }
+
+func TestErrorTypeSingleton(t *testing.T) {
+	if !IsError(ErrorTypeSingleton) {
+		t.Fatalf("IsError(ErrorTypeSingleton) = false, want true")
+	}
+	tt := NewTypeTable()
+	if IsError(tt.Builtin(Int)) {
+		t.Fatalf("IsError(int) = true, want false")
+	}
+}
