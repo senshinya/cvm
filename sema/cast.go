@@ -85,6 +85,21 @@ func (s *Sema) castVoidPointerConversion(e Expr, target Type) Expr {
 
 func (s *Sema) isNullPointerConstant(e Expr) bool {
 	if isPointer(e.GetType()) {
+		return s.isVoidPointerZero(e)
+	}
+	cv, ok := NewEvaluator(s).EvalIntegerConstant(e)
+	return ok && cv.Int == 0
+}
+
+func (s *Sema) isVoidPointerZero(e Expr) bool {
+	pt, ok := unqual(e.GetType()).(*PointerType)
+	if !ok {
+		return false
+	}
+	if _, qualified := pt.Pointee.(*QualType); qualified {
+		return false
+	}
+	if !isVoidPointer(pt) {
 		return false
 	}
 	cv, ok := NewEvaluator(s).EvalIntegerConstant(e)

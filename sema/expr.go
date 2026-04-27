@@ -493,21 +493,6 @@ func (s *Sema) isConditionalNullPointerConstant(e Expr) bool {
 	return s.isNullPointerConstant(e) || s.isVoidPointerZero(e)
 }
 
-func (s *Sema) isVoidPointerZero(e Expr) bool {
-	pt, ok := unqual(e.GetType()).(*PointerType)
-	if !ok {
-		return false
-	}
-	if _, qualified := pt.Pointee.(*QualType); qualified {
-		return false
-	}
-	if !isVoidPointer(pt) {
-		return false
-	}
-	cv, ok := NewEvaluator(s).EvalIntegerConstant(e)
-	return ok && cv.Int == 0
-}
-
 func (s *Sema) balanceConditionalPointer(then, els Expr, pos entity.SourcePos) (Expr, Expr, Type) {
 	tp := unqual(then.GetType()).(*PointerType)
 	ep := unqual(els.GetType()).(*PointerType)

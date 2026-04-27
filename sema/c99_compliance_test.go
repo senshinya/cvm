@@ -95,12 +95,21 @@ func TestC99RejectsDiscardedPointerQualifiers(t *testing.T) {
 	`)
 }
 
-func TestC99RejectsFunctionPointerVoidPointerAssignment(t *testing.T) {
-	mustReject(t, `
-		void f(void) {}
+func TestC99FunctionPointerAcceptsVoidPointerNullAssignment(t *testing.T) {
+	mustAnalyze(t, `
 		void (*fp)(void);
-		void g(void) {
+		void f(void) {
 			fp = (void *)0;
+		}
+	`)
+}
+
+func TestC99RejectsFunctionPointerNonNullVoidPointerAssignment(t *testing.T) {
+	mustReject(t, `
+		void *p;
+		void (*fp)(void);
+		void f(void) {
+			fp = p;
 		}
 	`)
 }
