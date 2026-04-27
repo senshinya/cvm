@@ -135,3 +135,22 @@ func (s *Scope) InsertChecked(name string, sym *Symbol) error {
 	s.Ordinary[name] = sym
 	return nil
 }
+
+type SymbolTable struct {
+	File *Scope
+}
+
+func NewSymbolTable() *SymbolTable {
+	return &SymbolTable{File: NewScope(ScopeFile, nil)}
+}
+
+func (s *Scope) InsertTagChecked(name string, info *TagInfo, pos entity.SourcePos) error {
+	if existing, ok := s.Tags[name]; ok {
+		if existing.Tag != info.Tag {
+			return RedefinitionSymbol(pos, entity.SourcePos{}, name)
+		}
+		return nil
+	}
+	s.Tags[name] = info
+	return nil
+}
