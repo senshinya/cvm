@@ -156,27 +156,10 @@ parserIter:
 	if len(p.CandidateASTs) == 0 {
 		return nil, p.bestError
 	}
-
-	// eliminate the wrong tree
-	common.DebugPrintf("Chop Start: %d candidates\n", len(p.CandidateASTs))
-	candidates, chopErrs := chopForest(p.CandidateASTs)
-	for _, err := range chopErrs {
-		p.recordError(err)
-	}
-	if len(candidates) == 0 {
-		return nil, p.bestError
-	}
-	for _, tree := range candidates {
+	for _, tree := range p.CandidateASTs {
 		fillAstParent(tree, nil)
 	}
-	common.DebugPrintf("Chop Result: %d candidates\n", len(candidates))
-	for i, candidate := range candidates {
-		common.DebugPrintf("Tree %d\n", i)
-		printAST(candidate, 0)
-		common.DebugPrintln()
-		common.DebugPrintln()
-	}
-	return candidates, nil
+	return p.CandidateASTs, nil
 }
 
 func (p *Parser) addCheckPoint(chooseOp int) {

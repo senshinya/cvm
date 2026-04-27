@@ -7,6 +7,7 @@ import (
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/lexer"
 	"shinya.click/cvm/parser"
+	"shinya.click/cvm/sema"
 	"strings"
 )
 
@@ -27,11 +28,19 @@ func (c *Compiler) RunSource(source string) {
 		c.handleError(err)
 		return
 	}
-	_, err = parser.NewParser(tokens).Parse()
+	candidates, err := parser.NewParser(tokens).Parse()
 	if err != nil {
 		c.handleError(err)
 		return
 	}
+	survivors, prefilterErrs := sema.PreFilter(candidates)
+	if len(survivors) == 0 {
+		if len(prefilterErrs) > 0 {
+			c.handleError(prefilterErrs[0])
+		}
+		return
+	}
+	// Plan B/C 会在这里接入真正的 Sema walker；Plan A 只要求至少保留一个候选。
 }
 
 func (c *Compiler) RunFile(fileName string) {
