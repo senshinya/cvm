@@ -1,0 +1,18 @@
+Program
+  FuncDecl name="add" type=int (int, int) storage=0
+  FuncDef name="main" type=int ()
+    Param name="" type=void
+    Block
+      DeclStmt
+        VarDecl name="sum" type=int storage=1
+          init:
+            CallExpr type=int
+              callee:
+                ImplicitCast kind=2 from=int (int, int) to=int (int, int)*
+                  ImplicitCast kind=0 from=int (int, int) to=int (int, int)
+                    VarRef name="add" type=int (int, int)
+              IntLit value=1 type=int
+              IntLit value=2 type=int
+      ReturnStmt
+        ImplicitCast kind=0 from=int to=int
+          VarRef name="sum" type=int

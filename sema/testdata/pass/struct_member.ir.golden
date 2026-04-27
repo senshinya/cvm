@@ -1,0 +1,3 @@
+Program
+  TagDecl tag= type=struct{...}
+  VarDecl name="p" type=struct{...} storage=0

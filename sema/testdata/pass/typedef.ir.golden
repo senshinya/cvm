@@ -1,0 +1,3 @@
+Program
+  TypedefDecl name="Int32" type=int
+  VarDecl name="x" type=int storage=0
