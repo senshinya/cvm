@@ -758,6 +758,28 @@ func typeHasVariableSize(t Type) bool {
 	return false
 }
 
+func typeHasVariablyModifiedType(t Type) bool {
+	switch x := unqual(t).(type) {
+	case *ArrayType:
+		return x.SizeKind == ArrayVLA || x.SizeKind == ArrayStarSize || typeHasVariablyModifiedType(x.Elem)
+	case *PointerType:
+		// 指向 VLA 的指针自身大小固定，但类型仍是 variably modified type。
+		return typeHasVariablyModifiedType(x.Pointee)
+	case *FunctionType:
+		if typeHasVariablyModifiedType(x.Ret) {
+			return true
+		}
+		for _, p := range x.Params {
+			if typeHasVariablyModifiedType(p) {
+				return true
+			}
+		}
+	case *QualType:
+		return typeHasVariablyModifiedType(x.Base)
+	}
+	return false
+}
+
 // 静态/文件作用域声明只拒绝对象自身的数组边界；指向 VM 类型的指针对象大小固定，
 // 不能因为 pointee 变长就当作静态 VLA 数组。
 func typeHasDisallowedStaticArrayBound(t Type) bool {

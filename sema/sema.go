@@ -338,7 +338,7 @@ func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
 	pf.def.Body = body
 	pf.def.Labels = map[string]*LabeledStmt{}
 	collectLabels(body, pf.def.Labels)
-	resolveGotos(ctx.pendingGotos, pf.def.Labels, s)
+	resolveGotos(ctx.pendingGotos, pf.def.Labels, ctx.vmScopes, s)
 	s.markStaticFunctionUsesInStmt(body)
 	_ = prog
 }

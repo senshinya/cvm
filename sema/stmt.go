@@ -11,6 +11,12 @@ type funcCtx struct {
 	loopDepth    int
 	switchStack  []*SwitchStmt
 	pendingGotos []*GotoStmt
+	vmScopes     []vmScopeBarrier
+}
+
+type vmScopeBarrier struct {
+	decl  entity.SourceRange
+	scope entity.SourceRange
 }
 
 func (s *Sema) typeStmt(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
@@ -60,6 +66,7 @@ func (s *Sema) typeExprStmt(node *entity.AstNode, scope *Scope) Stmt {
 
 func (s *Sema) typeBlock(node *entity.AstNode, parent *Scope, ctx *funcCtx) *Block {
 	scope := NewScope(ScopeBlock, parent)
+	scope.Range = node.SourceRange
 	prev := s.scope
 	s.scope = scope
 	defer func() { s.scope = prev }()
@@ -142,6 +149,7 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 		if err := scope.InsertChecked(name, sym); err != nil {
 			s.report(err.(*common.CvmError))
 		}
+		recordVMScopeBarrier(ctx, scope, srcRange, t)
 		return td
 	}
 	storage := spec.Storage
@@ -163,6 +171,7 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 	if ctx != nil && ctx.def != nil {
 		ctx.def.Locals = append(ctx.def.Locals, vd)
 	}
+	recordVMScopeBarrier(ctx, scope, srcRange, t)
 	return vd
 }
 
@@ -181,6 +190,7 @@ func (s *Sema) typeSelection(node *entity.AstNode, scope *Scope, ctx *funcCtx) S
 		sw.Body = s.typeStmt(node.Children[4], scope, ctx)
 		ctx.switchStack = ctx.switchStack[:len(ctx.switchStack)-1]
 		collectCasesAndDefault(sw.Body, sw, s)
+		validateSwitchVMJumps(sw, ctx.vmScopes, s)
 		return sw
 	}
 	return &EmptyStmt{Range: node.SourceRange}
@@ -247,6 +257,7 @@ func (s *Sema) typeIteration(node *entity.AstNode, scope *Scope, ctx *funcCtx) S
 		return &WhileStmt{Cond: cond, Body: body, DoWhile: true, Range: node.SourceRange}
 	}
 	forScope := NewScope(ScopeBlock, scope)
+	forScope.Range = node.SourceRange
 	prev := s.scope
 	s.scope = forScope
 	defer func() { s.scope = prev }()
@@ -411,14 +422,80 @@ func collectLabels(stmt Stmt, out map[string]*LabeledStmt) {
 	}
 }
 
-func resolveGotos(pending []*GotoStmt, labels map[string]*LabeledStmt, s *Sema) {
+func resolveGotos(pending []*GotoStmt, labels map[string]*LabeledStmt, barriers []vmScopeBarrier, s *Sema) {
 	for _, g := range pending {
 		target := labels[g.Name]
 		if target == nil {
 			s.report(UndeclaredIdentifier(g.Range.SourceStart, g.Name))
 			continue
 		}
+		validateGotoVMJump(g, target, barriers, s)
 		g.Target = target
 		g.Name = ""
 	}
+}
+
+func recordVMScopeBarrier(ctx *funcCtx, scope *Scope, declRange entity.SourceRange, t Type) {
+	if ctx == nil || scope == nil || !typeHasVariablyModifiedType(t) {
+		return
+	}
+	ctx.vmScopes = append(ctx.vmScopes, vmScopeBarrier{
+		decl:  declRange,
+		scope: scope.Range,
+	})
+}
+
+func validateGotoVMJump(g *GotoStmt, target *LabeledStmt, barriers []vmScopeBarrier, s *Sema) {
+	if g == nil || target == nil {
+		return
+	}
+	for _, barrier := range barriers {
+		if jumpEntersVMBarrier(g.Range.SourceStart, target.Range.SourceStart, barrier) {
+			s.report(InvalidTypeSpec(g.Range.SourceStart, "jump into scope of identifier with variably modified type"))
+			return
+		}
+	}
+}
+
+func validateSwitchVMJumps(sw *SwitchStmt, barriers []vmScopeBarrier, s *Sema) {
+	if sw == nil {
+		return
+	}
+	for _, c := range sw.Cases {
+		if switchEntersVMBarrier(sw.Range.SourceStart, c.Range.SourceStart, barriers) {
+			s.report(InvalidTypeSpec(c.Range.SourceStart, "switch jumps into scope of identifier with variably modified type"))
+		}
+	}
+	if sw.Default != nil && switchEntersVMBarrier(sw.Range.SourceStart, sw.Default.Range.SourceStart, barriers) {
+		s.report(InvalidTypeSpec(sw.Default.Range.SourceStart, "switch jumps into scope of identifier with variably modified type"))
+	}
+}
+
+func switchEntersVMBarrier(from, target entity.SourcePos, barriers []vmScopeBarrier) bool {
+	for _, barrier := range barriers {
+		if jumpEntersVMBarrier(from, target, barrier) {
+			return true
+		}
+	}
+	return false
+}
+
+func jumpEntersVMBarrier(from, target entity.SourcePos, barrier vmScopeBarrier) bool {
+	// VM 标识符的作用域从声明之后开始，到声明所在作用域结束；
+	// 跳转源点若还不在这个区间内，落到区间内部就是 C99 禁止的进入。
+	if !posInRange(target, barrier.scope) || compareSourcePos(target, barrier.decl.SourceEnd) <= 0 {
+		return false
+	}
+	return !posInRange(from, barrier.scope) || compareSourcePos(from, barrier.decl.SourceEnd) <= 0
+}
+
+func compareSourcePos(a, b entity.SourcePos) int {
+	if a.Line != b.Line {
+		return a.Line - b.Line
+	}
+	return a.Column - b.Column
+}
+
+func posInRange(pos entity.SourcePos, r entity.SourceRange) bool {
+	return compareSourcePos(pos, r.SourceStart) >= 0 && compareSourcePos(pos, r.SourceEnd) <= 0
 }

@@ -75,6 +75,7 @@ type Scope struct {
 	Parent   *Scope
 	Ordinary map[string]*Symbol
 	Tags     map[string]*TagInfo
+	Range    entity.SourceRange
 }
 
 func NewScope(kind ScopeKind, parent *Scope) *Scope {

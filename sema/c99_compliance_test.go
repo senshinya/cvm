@@ -325,6 +325,60 @@ func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {
 	mustAnalyze(t, `static int sa[100]; int f(int m) { typedef int A[m++]; static A *p = (A *)sa; return m; }`)
 }
 
+func TestC99RejectsGotoIntoVLAScope(t *testing.T) {
+	mustReject(t, `
+		void f(int n) {
+			goto inside;
+			{
+				int a[n];
+			inside:
+				(void)a;
+			}
+		}
+	`)
+}
+
+func TestC99AcceptsGotoOutOfVLAScope(t *testing.T) {
+	mustAnalyze(t, `
+		void f(int n) {
+			{
+				int a[n];
+				(void)a;
+				goto out;
+			}
+		out:
+			;
+		}
+	`)
+}
+
+func TestC99RejectsSwitchJumpIntoVLAScope(t *testing.T) {
+	mustReject(t, `
+		void f(int n, int x) {
+			switch (x) {
+				int a[n];
+			case 1:
+				(void)a;
+			default:
+				;
+			}
+		}
+	`)
+}
+
+func TestC99RejectsGotoIntoTypedefVMScope(t *testing.T) {
+	mustReject(t, `
+		void f(int n) {
+			goto inside;
+			{
+				typedef int (*A)[n];
+			inside:
+				(void)sizeof(A);
+			}
+		}
+	`)
+}
+
 func TestC99AcceptsFileScopeCompoundLiteralAddressInitializer(t *testing.T) {
 	mustAnalyze(t, `static int *p = &(int){1};`)
 }
