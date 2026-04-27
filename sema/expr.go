@@ -732,6 +732,9 @@ func qualifyMemberType(t Type, q *QualType) Type {
 			SizeExpr:      at.SizeExpr,
 			SizeKind:      at.SizeKind,
 			VMFromTypedef: at.VMFromTypedef,
+			ParamConst:    at.ParamConst,
+			ParamVolatile: at.ParamVolatile,
+			ParamRestrict: at.ParamRestrict,
 		}
 	}
 	base := t

@@ -86,6 +86,9 @@ type ArrayType struct {
 	SizeExpr      any
 	SizeKind      ArraySizeKind
 	VMFromTypedef bool
+	ParamConst    bool
+	ParamVolatile bool
+	ParamRestrict bool
 }
 
 func (*ArrayType) isType() {}

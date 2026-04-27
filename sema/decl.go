@@ -65,21 +65,23 @@ func (s *Sema) applyDirectDeclarator(node *entity.AstNode, base Type) (Type, str
 	case node.ReducedBy(parser.DirectDeclarator, 3):
 		return s.applyDirectDeclarator(node.Children[0], s.makeUnsizedArray(base, node.SourceStart))
 	case node.ReducedBy(parser.DirectDeclarator, 4):
-		return s.applyDirectDeclarator(node.Children[0], s.makeUnsizedArray(s.applyQualifierList(node.Children[2], base), node.SourceStart))
+		return s.applyDirectDeclarator(node.Children[0], s.makeUnsizedArrayWithParamQualifiers(base, node.SourceStart, s.arrayParamQualifiers(node.Children[2])))
 	case node.ReducedBy(parser.DirectDeclarator, 5):
 		size := s.evalArraySize(node.Children[2])
 		return s.applyDirectDeclarator(node.Children[0], s.makeArray(base, size, node.Children[2]))
 	case node.ReducedBy(parser.DirectDeclarator, 6):
-		elem := s.applyQualifierList(node.Children[2], base)
 		size := s.evalArraySize(node.Children[3])
-		return s.applyDirectDeclarator(node.Children[0], s.makeArray(elem, size, node.Children[3]))
+		return s.applyDirectDeclarator(node.Children[0], s.makeArrayWithParamQualifiers(base, size, node.Children[3], s.arrayParamQualifiers(node.Children[2])))
 	case node.ReducedBy(parser.DirectDeclarator, 7):
 		return s.applyDirectDeclarator(node.Children[0], s.makeArray(base, s.evalArraySize(node.Children[3]), node.Children[3]))
 	case node.ReducedBy(parser.DirectDeclarator, 8):
-		return s.applyDirectDeclarator(node.Children[0], s.makeArray(base, s.evalArraySize(node.Children[4]), node.Children[4]))
+		return s.applyDirectDeclarator(node.Children[0], s.makeArrayWithParamQualifiers(base, s.evalArraySize(node.Children[4]), node.Children[4], s.arrayParamQualifiers(node.Children[3])))
 	case node.ReducedBy(parser.DirectDeclarator, 9):
-		return s.applyDirectDeclarator(node.Children[0], s.makeArray(base, s.evalArraySize(node.Children[4]), node.Children[4]))
+		return s.applyDirectDeclarator(node.Children[0], s.makeArrayWithParamQualifiers(base, s.evalArraySize(node.Children[4]), node.Children[4], s.arrayParamQualifiers(node.Children[2])))
 	case node.ReducedBy(parser.DirectDeclarator, 10), node.ReducedBy(parser.DirectDeclarator, 11):
+		if node.ReducedBy(parser.DirectDeclarator, 11) {
+			return s.applyDirectDeclarator(node.Children[0], s.makeStarArrayWithParamQualifiers(base, node.SourceStart, s.arrayParamQualifiers(node.Children[2])))
+		}
 		return s.applyDirectDeclarator(node.Children[0], s.makeStarArray(base, node.SourceStart))
 	case node.ReducedBy(parser.DirectDeclarator, 12):
 		return s.applyDirectDeclarator(node.Children[0], s.buildFunctionType(node.Children[2], base))
@@ -91,6 +93,16 @@ func (s *Sema) applyDirectDeclarator(node *entity.AstNode, base Type) (Type, str
 		return s.applyDirectDeclarator(node.Children[0], s.Types.Function(base, nil, false, false))
 	}
 	return base, ""
+}
+
+type typeQualifiers struct {
+	Const, Volatile, Restrict bool
+}
+
+func (s *Sema) arrayParamQualifiers(node *entity.AstNode) typeQualifiers {
+	var q typeQualifiers
+	s.collectTypeQualifierList(node, &q.Const, &q.Volatile, &q.Restrict)
+	return q
 }
 
 func (s *Sema) evalArraySize(node *entity.AstNode) arraySizeInfo {
@@ -132,12 +144,41 @@ func (s *Sema) makeUnsizedArray(elem Type, pos entity.SourcePos) Type {
 	return s.Types.ArrayUnsized(elem)
 }
 
+func (s *Sema) makeUnsizedArrayWithParamQualifiers(elem Type, pos entity.SourcePos, q typeQualifiers) Type {
+	return s.withArrayParamQualifiers(s.makeUnsizedArray(elem, pos), q)
+}
+
 func (s *Sema) makeStarArray(elem Type, pos entity.SourcePos) Type {
 	if !s.allowArrayStar {
 		s.report(InvalidTypeSpec(pos, "star array size only allowed in function prototype scope"))
 	}
 	s.validateArrayElement(elem, pos)
 	return s.Types.ArrayStar(elem)
+}
+
+func (s *Sema) makeStarArrayWithParamQualifiers(elem Type, pos entity.SourcePos, q typeQualifiers) Type {
+	return s.withArrayParamQualifiers(s.makeStarArray(elem, pos), q)
+}
+
+func (s *Sema) makeArrayWithParamQualifiers(elem Type, size arraySizeInfo, sizeNode *entity.AstNode, q typeQualifiers) Type {
+	return s.withArrayParamQualifiers(s.makeArray(elem, size, sizeNode), q)
+}
+
+func (s *Sema) withArrayParamQualifiers(t Type, q typeQualifiers) Type {
+	if !q.Const && !q.Volatile && !q.Restrict {
+		return t
+	}
+	at, ok := t.(*ArrayType)
+	if !ok {
+		return t
+	}
+	// C99 中参数数组 declarator 方括号内的限定符限定调整后的指针，
+	// 不能先落到元素类型上，否则 int a[restrict] 会被误判为 restrict int[]。
+	cp := *at
+	cp.ParamConst = q.Const
+	cp.ParamVolatile = q.Volatile
+	cp.ParamRestrict = q.Restrict
+	return &cp
 }
 
 func (s *Sema) validateArrayElement(elem Type, pos entity.SourcePos) {
@@ -257,7 +298,11 @@ func (s *Sema) parameterDeclarationType(node *entity.AstNode) Type {
 func (s *Sema) adjustParamType(t Type) Type {
 	switch x := unqual(t).(type) {
 	case *ArrayType:
-		return s.Types.Pointer(x.Elem)
+		ptr := Type(s.Types.Pointer(x.Elem))
+		if x.ParamConst || x.ParamVolatile || x.ParamRestrict {
+			ptr = s.Types.Qualified(ptr, x.ParamConst, x.ParamVolatile, x.ParamRestrict)
+		}
+		return ptr
 	case *FunctionType:
 		return s.Types.Pointer(x)
 	}
@@ -331,10 +376,19 @@ func (s *Sema) applyAbstractDeclarator(node *entity.AstNode, base Type) Type {
 func (s *Sema) applyDirectAbstractDeclarator(node *entity.AstNode, base Type) Type {
 	switch {
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 1), node.ReducedBy(parser.DirectAbstractDeclarator, 2):
+		if node.ReducedBy(parser.DirectAbstractDeclarator, 2) {
+			return s.makeUnsizedArrayWithParamQualifiers(base, node.SourceStart, s.arrayParamQualifiers(node.Children[1]))
+		}
 		return s.makeUnsizedArray(base, node.SourceStart)
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 3):
 		return s.makeArray(base, s.evalArraySize(node.Children[1]), node.Children[1])
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 4), node.ReducedBy(parser.DirectAbstractDeclarator, 5), node.ReducedBy(parser.DirectAbstractDeclarator, 6):
+		if node.ReducedBy(parser.DirectAbstractDeclarator, 5) {
+			return s.makeArrayWithParamQualifiers(base, s.evalArraySize(node.Children[len(node.Children)-2]), node.Children[len(node.Children)-2], s.arrayParamQualifiers(node.Children[2]))
+		}
+		if node.ReducedBy(parser.DirectAbstractDeclarator, 6) {
+			return s.makeArrayWithParamQualifiers(base, s.evalArraySize(node.Children[len(node.Children)-2]), node.Children[len(node.Children)-2], s.arrayParamQualifiers(node.Children[1]))
+		}
 		return s.makeArray(base, s.evalArraySize(node.Children[len(node.Children)-2]), node.Children[len(node.Children)-2])
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 7):
 		return s.makeStarArray(base, node.SourceStart)
@@ -346,9 +400,18 @@ func (s *Sema) applyDirectAbstractDeclarator(node *entity.AstNode, base Type) Ty
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 10):
 		return s.applyAbstractDeclarator(node.Children[1], base)
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 11), node.ReducedBy(parser.DirectAbstractDeclarator, 12):
+		if node.ReducedBy(parser.DirectAbstractDeclarator, 12) {
+			return s.applyDirectAbstractDeclarator(node.Children[0], s.makeUnsizedArrayWithParamQualifiers(base, node.SourceStart, s.arrayParamQualifiers(node.Children[2])))
+		}
 		return s.applyDirectAbstractDeclarator(node.Children[0], s.makeUnsizedArray(base, node.SourceStart))
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 13):
 		return s.applyDirectAbstractDeclarator(node.Children[0], s.makeArray(base, s.evalArraySize(node.Children[2]), node.Children[2]))
+	case node.ReducedBy(parser.DirectAbstractDeclarator, 14):
+		return s.applyDirectAbstractDeclarator(node.Children[0], s.makeArrayWithParamQualifiers(base, s.evalArraySize(node.Children[3]), node.Children[3], s.arrayParamQualifiers(node.Children[2])))
+	case node.ReducedBy(parser.DirectAbstractDeclarator, 16):
+		return s.applyDirectAbstractDeclarator(node.Children[0], s.makeArrayWithParamQualifiers(base, s.evalArraySize(node.Children[4]), node.Children[4], s.arrayParamQualifiers(node.Children[3])))
+	case node.ReducedBy(parser.DirectAbstractDeclarator, 17):
+		return s.applyDirectAbstractDeclarator(node.Children[0], s.makeArrayWithParamQualifiers(base, s.evalArraySize(node.Children[4]), node.Children[4], s.arrayParamQualifiers(node.Children[2])))
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 18):
 		return s.applyDirectAbstractDeclarator(node.Children[0], s.makeStarArray(base, node.SourceStart))
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 19):

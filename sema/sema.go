@@ -49,6 +49,7 @@ func (s *Sema) analyzeOne(root *entity.AstNode) *SemaResult {
 		s.walkFunctionBody(pf, prog)
 	}
 	s.foldStaticInitializers(prog)
+	s.markStaticFunctionUsesInGlobals(prog)
 	s.validateStaticFunctionDefinitions(prog)
 	return &SemaResult{Program: prog, Errors: s.errors, Source: root}
 }
@@ -349,7 +350,7 @@ func (s *Sema) validateOldStyleImplicitIntParams(node *entity.AstNode) {
 	}
 	declared := map[string]bool{}
 	if node.ReducedBy(parser.FunctionDefinition, 2) {
-		collectDeclarationListNames(node.Children[2], declared)
+		collectOldStyleParameterDeclNames(node.Children[2], declared)
 	}
 	for _, name := range names {
 		if !declared[name] {
@@ -389,26 +390,70 @@ func collectIdentifierListNames(node *entity.AstNode) []string {
 	return nil
 }
 
-func collectDeclarationListNames(node *entity.AstNode, out map[string]bool) {
+func collectOldStyleParameterDeclNames(node *entity.AstNode, out map[string]bool) {
 	if node == nil {
 		return
 	}
 	if node.ReducedBy(parser.DeclarationList, 1) {
-		collectDeclaratorIDs(node.Children[0], out)
+		collectDeclarationTopLevelDeclarators(node.Children[0], out)
 		return
 	}
 	if node.ReducedBy(parser.DeclarationList, 2) {
-		collectDeclarationListNames(node.Children[0], out)
-		collectDeclaratorIDs(node.Children[1], out)
+		collectOldStyleParameterDeclNames(node.Children[0], out)
+		collectDeclarationTopLevelDeclarators(node.Children[1], out)
 	}
 }
 
-func collectDeclaratorIDs(node *entity.AstNode, out map[string]bool) {
-	for _, tok := range node.DeclaratorID {
-		out[tok.Lexeme] = true
+func collectDeclarationTopLevelDeclarators(node *entity.AstNode, out map[string]bool) {
+	if node == nil || !node.ReducedBy(parser.Declaration, 2) {
+		return
 	}
-	for _, child := range node.Children {
-		collectDeclaratorIDs(child, out)
+	// K&R 参数声明只声明 identifier-list 里的顶层声明符；嵌套函数原型参数名
+	// 不能反过来满足外层旧式参数的声明要求。
+	collectInitDeclaratorListTopLevelNames(node.Children[1], out)
+}
+
+func collectInitDeclaratorListTopLevelNames(node *entity.AstNode, out map[string]bool) {
+	switch {
+	case node.ReducedBy(parser.InitDeclaratorList, 1):
+		if name := topLevelDeclaratorName(node.Children[0].Children[0]); name != "" {
+			out[name] = true
+		}
+	case node.ReducedBy(parser.InitDeclaratorList, 2):
+		collectInitDeclaratorListTopLevelNames(node.Children[0], out)
+		if name := topLevelDeclaratorName(node.Children[2].Children[0]); name != "" {
+			out[name] = true
+		}
+	}
+}
+
+func topLevelDeclaratorName(node *entity.AstNode) string {
+	if node == nil {
+		return ""
+	}
+	switch {
+	case node.ReducedBy(parser.Declarator, 1):
+		return topLevelDirectDeclaratorName(node.Children[0])
+	case node.ReducedBy(parser.Declarator, 2):
+		return topLevelDirectDeclaratorName(node.Children[1])
+	}
+	return ""
+}
+
+func topLevelDirectDeclaratorName(node *entity.AstNode) string {
+	if node == nil {
+		return ""
+	}
+	switch {
+	case node.ReducedBy(parser.DirectDeclarator, 1):
+		return node.Children[0].Terminal.Lexeme
+	case node.ReducedBy(parser.DirectDeclarator, 2):
+		return topLevelDeclaratorName(node.Children[1])
+	default:
+		if len(node.Children) == 0 {
+			return ""
+		}
+		return topLevelDirectDeclaratorName(node.Children[0])
 	}
 }
 
@@ -428,6 +473,12 @@ func (s *Sema) validateStaticFunctionDefinitions(prog *Program) {
 		if !hasDefinition {
 			s.report(InvalidTypeSpec(fd.Range.SourceStart, "static function used but never defined"))
 		}
+	}
+}
+
+func (s *Sema) markStaticFunctionUsesInGlobals(prog *Program) {
+	for _, d := range prog.Globals {
+		s.markStaticFunctionUsesInDecl(d)
 	}
 }
 
@@ -533,6 +584,10 @@ func (s *Sema) markStaticFunctionUsesInExpr(expr Expr) {
 	case *ExplicitCast:
 		s.markStaticFunctionUsesInType(x.To)
 		s.markStaticFunctionUsesInExpr(x.X)
+	case *AddrConst:
+		if x.Sym != nil && x.Sym.Kind == SymFunc {
+			x.Sym.Used = true
+		}
 	}
 }
 

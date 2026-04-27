@@ -384,6 +384,8 @@ func TestC99RejectsInvalidRestrictTargets(t *testing.T) {
 		restrict ipa y;
 		void f(int *restrict a[2], restrict ipa b, int *restrict c[restrict]);
 	`)
+	mustAnalyze(t, `void f(int a[restrict]);`)
+	mustAnalyze(t, `void f(int a[restrict]) { (void)a; }`)
 	mustReject(t, `int restrict x;`)
 	mustReject(t, `typedef void (*fp)(void); fp restrict f;`)
 	mustReject(t, `void f(int restrict a[3]);`)
@@ -424,10 +426,14 @@ func TestC99RejectsInvalidForInitDeclarations(t *testing.T) {
 func TestC99RejectsOldStyleImplicitIntParameter(t *testing.T) {
 	mustAnalyze(t, `void f(int a) { (void)a; }`)
 	mustReject(t, `void f(a) { }`)
+	mustReject(t, `void f(a) int (*p)(int a); { }`)
 }
 
 func TestC99RejectsUsedStaticFunctionWithoutDefinition(t *testing.T) {
 	mustAnalyze(t, `
+		static int f0(void);
+		static int f1(void) { return 1; }
+		int (*p1)(void) = f1;
 		static int f3(void);
 		void g3(void) { sizeof(f3()); }
 		static int f4(void);
@@ -439,6 +445,8 @@ func TestC99RejectsUsedStaticFunctionWithoutDefinition(t *testing.T) {
 	mustReject(t, `static void f1(void); void g1(void) { if (0) { f1(); } }`)
 	mustReject(t, `static int f2(void); void g2(void) { 0 ? f2() : 0; }`)
 	mustReject(t, `static int f5(void); void g5(void) { sizeof(int [0 ? f5() : 1]); }`)
+	mustReject(t, `static int f(void); int (*p)(void) = f;`)
+	mustReject(t, `static int f(void); static int (*p)(void) = f;`)
 }
 
 func TestC99RejectsQualifiedEmptyTagRedeclarations(t *testing.T) {
