@@ -8,6 +8,8 @@ type TypeTable struct {
 	arraysStar     map[Type]*ArrayType
 	functions      map[functionKey]*FunctionType
 	qualified      map[qualKey]*QualType
+	nextTagID      int
+	structs        map[*TagID]*StructType
 }
 
 func NewTypeTable() *TypeTable {
@@ -18,6 +20,7 @@ func NewTypeTable() *TypeTable {
 		arraysStar:     map[Type]*ArrayType{},
 		functions:      map[functionKey]*FunctionType{},
 		qualified:      map[qualKey]*QualType{},
+		structs:        map[*TagID]*StructType{},
 	}
 	for k := Void; int(k) < len(builtinNames); k++ {
 		tt.builtins[k] = &BuiltinType{Kind: k}
@@ -144,4 +147,23 @@ func (tt *TypeTable) Qualified(base Type, isConst, isVolatile, isRestrict bool) 
 	q := &QualType{Base: base, Const: isConst, Volatile: isVolatile, Restrict: isRestrict}
 	tt.qualified[key] = q
 	return q
+}
+
+func (tt *TypeTable) NewTagID() *TagID {
+	tt.nextTagID++
+	return &TagID{id: tt.nextTagID}
+}
+
+func (tt *TypeTable) Struct(tag *TagID) *StructType {
+	if s, ok := tt.structs[tag]; ok {
+		return s
+	}
+	s := &StructType{Tag: tag, Complete: false}
+	tt.structs[tag] = s
+	return s
+}
+
+func (tt *TypeTable) CompleteStruct(s *StructType, fields []*Field) {
+	s.Fields = fields
+	s.Complete = true
 }

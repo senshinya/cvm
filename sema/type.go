@@ -176,3 +176,30 @@ func (q *QualType) String() string {
 	}
 	return s + q.Base.String()
 }
+
+type TagID struct {
+	id int
+}
+
+type Field struct {
+	Name       string
+	T          Type
+	BitWidth   int
+	IsBitField bool
+	Offset     int64
+}
+
+type StructType struct {
+	Tag      *TagID
+	Fields   []*Field
+	Complete bool
+}
+
+func (*StructType) isType() {}
+
+func (s *StructType) String() string {
+	if !s.Complete {
+		return "struct<incomplete>"
+	}
+	return "struct{...}"
+}

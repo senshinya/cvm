@@ -109,3 +109,24 @@ func TestQualTypeInterning(t *testing.T) {
 		t.Fatalf("String() = %q, want %q", got, "const int")
 	}
 }
+
+func TestStructTypeForwardCompletion(t *testing.T) {
+	tt := NewTypeTable()
+	tag := tt.NewTagID()
+	st := tt.Struct(tag)
+	if st.Complete {
+		t.Fatalf("forward struct should be incomplete")
+	}
+	pst := tt.Pointer(st)
+	intT := tt.Builtin(Int)
+	tt.CompleteStruct(st, []*Field{{Name: "x", T: intT}})
+	if !st.Complete {
+		t.Fatalf("struct still incomplete after CompleteStruct")
+	}
+	if pst.Pointee != st {
+		t.Fatalf("pointer's pointee no longer points to completed struct (lost identity)")
+	}
+	if len(st.Fields) != 1 || st.Fields[0].Name != "x" {
+		t.Fatalf("fields not populated: %+v", st.Fields)
+	}
+}
