@@ -340,8 +340,11 @@ func (s *Sema) buildEnum(node *entity.AstNode) Type {
 		if existing := s.scope.LookupTag(name); existing != nil {
 			return existing.T
 		}
-		s.report(UndeclaredIdentifier(node.SourceStart, "enum "+name))
-		return ErrorTypeSingleton
+		// GCC 的 C99 warning-only 用例会接受 enum 前向声明；当前没有 warning 通道，因此按可继续分析处理。
+		tag := s.Types.NewTagID()
+		et := s.Types.Enum(tag)
+		_ = s.scope.InsertTagChecked(name, &TagInfo{Tag: tag, T: et}, node.SourceStart)
+		return et
 	case node.ReducedBy(parser.EnumSpecifier, 1), node.ReducedBy(parser.EnumSpecifier, 3):
 		tag := s.Types.NewTagID()
 		et := s.Types.Enum(tag)

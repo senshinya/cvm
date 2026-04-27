@@ -111,6 +111,9 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 		if vr, ok := x.X.(*VarRef); ok && vr.Sym.Storage != StorageAuto && vr.Sym.Storage != StorageRegister {
 			return ConstValue{Kind: ConstAddress, Addr: ConstValueAddr{Sym: vr.Sym}, T: x.T}, true
 		}
+		if _, ok := x.X.(*CompoundLit); ok {
+			return ConstValue{Kind: ConstAddress, T: x.T}, true
+		}
 	case *BinOp:
 		if x.Op != OpAdd && x.Op != OpSub {
 			return ConstValue{}, false
@@ -132,6 +135,15 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 			return ConstValue{Kind: ConstAddress, Addr: ConstValueAddr{Sym: r.Addr.Sym, Offset: r.Addr.Offset + l.Int*scale}, T: x.T}, true
 		}
 	case *ImplicitCast:
+		if x.Kind == ArrayDecay {
+			inner := x.X
+			if ic, ok := inner.(*ImplicitCast); ok && ic.Kind == LValueToRValue {
+				inner = ic.X
+			}
+			if _, ok := inner.(*CompoundLit); ok {
+				return ConstValue{Kind: ConstAddress, T: x.To}, true
+			}
+		}
 		return e.EvalConstant(x.X)
 	case *ExplicitCast:
 		return e.EvalConstant(x.X)

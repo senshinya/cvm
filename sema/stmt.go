@@ -94,6 +94,10 @@ func (s *Sema) appendBlockItem(node *entity.AstNode, scope *Scope, ctx *funcCtx,
 }
 
 func (s *Sema) walkBlockDecl(node *entity.AstNode, scope *Scope, ctx *funcCtx, out *[]Decl) {
+	if node.ReducedBy(parser.Declaration, 3) {
+		s.typeStaticAssert(node.Children[0])
+		return
+	}
 	spec := s.parseSpec(node.Children[0])
 	if node.ReducedBy(parser.Declaration, 1) {
 		if isTagType(spec.Type) {

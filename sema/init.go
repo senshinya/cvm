@@ -6,6 +6,9 @@ import (
 )
 
 func (s *Sema) typeInitializer(node *entity.AstNode, target Type) Expr {
+	if expr := s.tryStringArrayInitializer(node, target); expr != nil {
+		return expr
+	}
 	switch {
 	case node.ReducedBy(parser.Initializer, 1):
 		expr := s.typeExpr(node.Children[0], s.scope)
@@ -17,8 +20,46 @@ func (s *Sema) typeInitializer(node *entity.AstNode, target Type) Expr {
 	return s.errorExpr(node.SourceRange)
 }
 
+func (s *Sema) tryStringArrayInitializer(node *entity.AstNode, target Type) Expr {
+	at, ok := unqual(target).(*ArrayType)
+	if !ok || !isCharacterType(unqual(at.Elem)) {
+		return nil
+	}
+	if !node.ReducedBy(parser.Initializer, 2) && !node.ReducedBy(parser.Initializer, 3) {
+		return nil
+	}
+	return s.tryStringArrayInitializerList(node.Children[1])
+}
+
+func (s *Sema) tryStringArrayInitializerList(list *entity.AstNode) Expr {
+	if !list.ReducedBy(parser.InitializerList, 1) {
+		return nil
+	}
+	elem := list.Children[0]
+	if !elem.ReducedBy(parser.Initializer, 1) {
+		return nil
+	}
+	expr := s.typeExpr(elem.Children[0], s.scope)
+	if _, ok := expr.(*StringLit); !ok {
+		return nil
+	}
+	return expr
+}
+
+func isCharacterType(t Type) bool {
+	bt, ok := unqual(t).(*BuiltinType)
+	return ok && (bt.Kind == Char || bt.Kind == SChar || bt.Kind == UChar)
+}
+
 func (s *Sema) typeInitListForType(node *entity.AstNode, t Type) *InitList {
 	il := &InitList{T: t, Range: node.SourceRange}
+	at, ok := unqual(t).(*ArrayType)
+	if ok && isCharacterType(unqual(at.Elem)) {
+		if expr := s.tryStringArrayInitializerList(node); expr != nil {
+			il.Elems = append(il.Elems, InitElem{Value: expr})
+			return il
+		}
+	}
 	s.collectInitList(node, t, il)
 	return il
 }

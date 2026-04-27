@@ -99,6 +99,10 @@ func (s *Sema) walkFunctionDefinition(node *entity.AstNode, prog *Program) {
 }
 
 func (s *Sema) walkDeclaration(node *entity.AstNode, prog *Program) {
+	if node.ReducedBy(parser.Declaration, 3) {
+		s.typeStaticAssert(node.Children[0])
+		return
+	}
 	spec := s.parseSpec(node.Children[0])
 	if node.ReducedBy(parser.Declaration, 1) {
 		if isTagType(spec.Type) {
@@ -107,6 +111,18 @@ func (s *Sema) walkDeclaration(node *entity.AstNode, prog *Program) {
 		return
 	}
 	s.walkInitDeclaratorList(node.Children[1], spec, prog, node.SourceRange)
+}
+
+func (s *Sema) typeStaticAssert(node *entity.AstNode) {
+	expr := s.typeExpr(node.Children[2], s.scope)
+	cv, ok := NewEvaluator(s).EvalIntegerConstant(expr)
+	if !ok {
+		s.report(InvalidTypeSpec(node.SourceStart, "static assertion expression is not an integer constant"))
+		return
+	}
+	if cv.Int == 0 {
+		s.report(InvalidTypeSpec(node.SourceStart, "static assertion failed"))
+	}
 }
 
 func isTagType(t Type) bool {
@@ -195,6 +211,17 @@ func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
 			_ = bodyScope.InsertChecked(p.Sym.Name, p.Sym)
 		}
 	}
+	// C99 要求每个函数体内隐式声明 __func__，类型等价于 static const char[N]。
+	funcType := s.Types.ArrayConstant(s.Types.Qualified(s.Types.Builtin(Char), true, false, false), int64(len(pf.def.Sym.Name)+1))
+	funcSym := &Symbol{
+		Name:    "__func__",
+		Kind:    SymVar,
+		T:       funcType,
+		Storage: StorageStatic,
+		Linkage: LinkageNone,
+		Pos:     pf.def.Range.SourceStart,
+	}
+	_ = bodyScope.InsertChecked("__func__", funcSym)
 	prev := s.scope
 	s.scope = bodyScope
 	defer func() { s.scope = prev }()
@@ -238,6 +265,9 @@ func constToExpr(cv ConstValue, s *Sema) Expr {
 	case ConstFloat:
 		return &FloatLit{Value: cv.Float, T: cv.T}
 	case ConstAddress:
+		if cv.Addr.Sym == nil {
+			return nil
+		}
 		return &AddrConst{Sym: cv.Addr.Sym, Offset: cv.Addr.Offset, T: cv.T}
 	}
 	return nil
