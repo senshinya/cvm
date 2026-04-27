@@ -235,6 +235,10 @@ func TestC99RejectsArrayOfNonObjectTypes(t *testing.T) {
 	mustReject(t, `int f(void)[1];`)
 }
 
+func TestC99AcceptsPrototypeStarArrayObjectTypes(t *testing.T) {
+	mustAnalyze(t, `void f(int a[*][*]);`)
+}
+
 func mustAnalyze(t *testing.T, src string) *Program {
 	t.Helper()
 	candidates := parseCandidates(t, src)

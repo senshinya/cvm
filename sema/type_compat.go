@@ -61,7 +61,7 @@ func isObjectType(t Type) bool {
 	case *FunctionType:
 		return false
 	case *ArrayType:
-		return x.SizeKind != ArrayUnsized && x.SizeKind != ArrayStarSize && isObjectType(x.Elem)
+		return x.SizeKind != ArrayUnsized && isObjectType(x.Elem)
 	case *StructType:
 		return x.Complete
 	case *UnionType:
