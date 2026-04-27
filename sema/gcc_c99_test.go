@@ -18,6 +18,29 @@ func TestGCCC99RejectSuite(t *testing.T) {
 	runGCCC99Suite(t, filepath.Join("testdata", "gcc-c99", "reject"), false)
 }
 
+func TestGCCC99FixtureCoverage(t *testing.T) {
+	manifest := filepath.Join("testdata", "gcc-c99", "manifest.tsv")
+	content, err := os.ReadFile(manifest)
+	if err != nil {
+		t.Fatalf("read GCC C99 manifest: %v", err)
+	}
+	if !strings.HasPrefix(string(content), "path\tstatus\texpected\treason") {
+		t.Fatalf("manifest header is missing or malformed: %q", firstLine(string(content)))
+	}
+
+	accept := countCFiles(t, filepath.Join("testdata", "gcc-c99", "accept"))
+	reject := countCFiles(t, filepath.Join("testdata", "gcc-c99", "reject"))
+	importedAccept := countManifestStatus(string(content), "imported-accept")
+	importedReject := countManifestStatus(string(content), "imported-reject")
+	if importedAccept != accept || importedReject != reject {
+		t.Fatalf("manifest import counts do not match directories: manifest accept=%d reject=%d, dirs accept=%d reject=%d", importedAccept, importedReject, accept, reject)
+	}
+	const minImported = 40
+	if accept+reject < minImported {
+		t.Fatalf("GCC C99 suite too small: accept=%d reject=%d total=%d, want >= %d", accept, reject, accept+reject, minImported)
+	}
+}
+
 func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -63,6 +86,39 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 			t.Fatalf("lexer+parser+sema accepted GCC reject case %s", path)
 		})
 	}
+}
+
+func countCFiles(t *testing.T, root string) int {
+	t.Helper()
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".c") {
+			count++
+		}
+	}
+	return count
+}
+
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return s
+}
+
+func countManifestStatus(content, status string) int {
+	count := 0
+	for _, line := range strings.Split(content, "\n") {
+		fields := strings.Split(line, "\t")
+		if len(fields) >= 2 && fields[1] == status {
+			count++
+		}
+	}
+	return count
 }
 
 func stripGCCDirectives(src string) string {
