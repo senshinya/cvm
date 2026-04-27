@@ -366,6 +366,35 @@ func TestC99RejectsSwitchJumpIntoVLAScope(t *testing.T) {
 	`)
 }
 
+func TestC99RejectsSwitchJumpIntoVLAScopeThroughLoopCase(t *testing.T) {
+	mustReject(t, `
+		void f(int n, int x) {
+			switch (x) {
+				while (1) {
+					int a[n];
+				case 1:
+					(void)a;
+				}
+			}
+		}
+	`)
+}
+
+func TestC99AcceptsNestedSwitchCaseAfterOuterVLA(t *testing.T) {
+	mustAnalyze(t, `
+		void f(int n, int x, int y) {
+			switch (x) {
+				int a[n];
+				(void)a;
+				switch (y) {
+				case 1:
+					;
+				}
+			}
+		}
+	`)
+}
+
 func TestC99RejectsGotoIntoTypedefVMScope(t *testing.T) {
 	mustReject(t, `
 		void f(int n) {

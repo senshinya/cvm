@@ -221,6 +221,14 @@ func collectCasesAndDefault(stmt Stmt, sw *SwitchStmt, s *Sema) {
 	case *IfStmt:
 		collectCasesAndDefault(x.Then, sw, s)
 		collectCasesAndDefault(x.Else, sw, s)
+	case *WhileStmt:
+		collectCasesAndDefault(x.Body, sw, s)
+	case *ForStmt:
+		collectCasesAndDefault(x.Body, sw, s)
+	case *SwitchStmt:
+		// 嵌套 switch 的 case/default 归内层 switch 管理；外层只需要看到
+		// 自己语句树里的标签，即使它们藏在循环或 if 里面。
+		return
 	}
 }
 
