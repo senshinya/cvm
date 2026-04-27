@@ -81,10 +81,11 @@ const (
 )
 
 type ArrayType struct {
-	Elem     Type
-	Size     int64
-	SizeExpr any
-	SizeKind ArraySizeKind
+	Elem          Type
+	Size          int64
+	SizeExpr      any
+	SizeKind      ArraySizeKind
+	VMFromTypedef bool
 }
 
 func (*ArrayType) isType() {}

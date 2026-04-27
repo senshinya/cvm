@@ -186,6 +186,7 @@ func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *P
 		if typeHasDisallowedFileScopeVMType(t) {
 			s.report(InvalidTypeSpec(pos, "array size must be integer constant expression"))
 		}
+		markTypedefVMBounds(t)
 		sym := &Symbol{Name: name, Kind: SymTypedef, T: t, Storage: StorageTypedef, Pos: pos}
 		td := &TypedefDecl{Sym: sym, T: t, Range: srcRange}
 		sym.Decl = td

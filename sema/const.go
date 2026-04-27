@@ -281,7 +281,7 @@ func (e *Evaluator) EvalC99ArraySizeConstantExpression(expr Expr) (ConstValue, b
 		return cv, true
 	}
 	if x, ok := expr.(*ExplicitCast); ok && isInteger(x.To) {
-		if cv, ok := e.evalC99CastArithmeticConstant(x.X, true, false); ok {
+		if cv, ok := e.evalC99CastArithmeticConstant(x.X, true, false, false); ok {
 			if cv.Kind == ConstFloat {
 				v := int64(cv.Float)
 				return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, true
@@ -293,7 +293,7 @@ func (e *Evaluator) EvalC99ArraySizeConstantExpression(expr Expr) (ConstValue, b
 }
 
 func (e *Evaluator) EvalC99ArithmeticConstantExpression(expr Expr) (ConstValue, bool) {
-	cv, ok := e.evalC99CastArithmeticConstant(expr, true, true)
+	cv, ok := e.evalC99CastArithmeticConstant(expr, true, true, true)
 	if !ok || !isArithmetic(cv.T) {
 		return ConstValue{}, false
 	}
@@ -302,7 +302,7 @@ func (e *Evaluator) EvalC99ArithmeticConstantExpression(expr Expr) (ConstValue, 
 
 // GCC/C99 把直接的 (int)1.0 当作 ICE；一元 +/- 或 (double) 这类中间算术 cast
 // 只能作为普通算术常量表达式。数组大小正负检查还要避免把浮点二元表达式当作已知值。
-func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, allowFloatBinOp bool) (ConstValue, bool) {
+func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant bool) (ConstValue, bool) {
 	switch x := expr.(type) {
 	case *FloatLit:
 		return ConstValue{Kind: ConstFloat, Float: x.Value, T: x.T}, true
@@ -310,7 +310,7 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, al
 		if !isArithmetic(x.To) {
 			return ConstValue{}, false
 		}
-		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat, allowFloatBinOp)
+		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 		if !ok {
 			return ConstValue{}, false
 		}
@@ -319,13 +319,13 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, al
 		if !isArithmetic(x.To) {
 			return ConstValue{}, false
 		}
-		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat, allowFloatBinOp)
+		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 		if !ok {
 			return ConstValue{}, false
 		}
 		return castC99ArithmeticConstant(cv, x.To)
 	case *UnOp:
-		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat, allowFloatBinOp)
+		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 		if !ok {
 			return ConstValue{}, false
 		}
@@ -352,30 +352,30 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, al
 			return ConstValue{Kind: ConstInt, Int: ^cv.Int, Uint: uint64(^cv.Int), T: x.T}, true
 		}
 	case *BinOp:
-		return e.evalC99ArithmeticBinOp(x, allowUnaryFloat, allowFloatBinOp)
+		return e.evalC99ArithmeticBinOp(x, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 	case *CondExpr:
-		c, ok := e.evalC99CastArithmeticConstant(x.Cond, allowUnaryFloat, allowFloatBinOp)
+		c, ok := e.evalC99CastArithmeticConstant(x.Cond, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 		if !ok {
 			return ConstValue{}, false
 		}
 		if constNonZero(c) {
-			if !e.isC99UnevaluatedArithmeticConstantOperand(x.Else) {
+			if !allowUnevaluatedNonConstant && !e.isC99UnevaluatedArithmeticConstantOperand(x.Else) {
 				return ConstValue{}, false
 			}
-			return e.evalC99CastArithmeticConstant(x.Then, allowUnaryFloat, allowFloatBinOp)
+			return e.evalC99CastArithmeticConstant(x.Then, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 		}
-		if !e.isC99UnevaluatedArithmeticConstantOperand(x.Then) {
+		if !allowUnevaluatedNonConstant && !e.isC99UnevaluatedArithmeticConstantOperand(x.Then) {
 			return ConstValue{}, false
 		}
-		return e.evalC99CastArithmeticConstant(x.Else, allowUnaryFloat, allowFloatBinOp)
+		return e.evalC99CastArithmeticConstant(x.Else, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 	default:
 		return e.evalC99IntegerConstantExpression(expr)
 	}
 	return ConstValue{}, false
 }
 
-func (e *Evaluator) evalC99ArithmeticBinOp(x *BinOp, allowUnaryFloat, allowFloatBinOp bool) (ConstValue, bool) {
-	l, lok := e.evalC99CastArithmeticConstant(x.L, allowUnaryFloat, allowFloatBinOp)
+func (e *Evaluator) evalC99ArithmeticBinOp(x *BinOp, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant bool) (ConstValue, bool) {
+	l, lok := e.evalC99CastArithmeticConstant(x.L, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 	if !lok {
 		return ConstValue{}, false
 	}
@@ -383,12 +383,12 @@ func (e *Evaluator) evalC99ArithmeticBinOp(x *BinOp, allowUnaryFloat, allowFloat
 	switch x.Op {
 	case OpLAnd:
 		if !constNonZero(l) {
-			if !e.isC99UnevaluatedArithmeticConstantOperand(x.R) {
+			if !allowUnevaluatedNonConstant && !e.isC99UnevaluatedArithmeticConstantOperand(x.R) {
 				return ConstValue{}, false
 			}
 			return ConstValue{Kind: ConstInt, Int: 0, Uint: 0, T: x.T}, true
 		}
-		r, ok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp)
+		r, ok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 		if !ok {
 			return ConstValue{}, false
 		}
@@ -396,19 +396,19 @@ func (e *Evaluator) evalC99ArithmeticBinOp(x *BinOp, allowUnaryFloat, allowFloat
 		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
 	case OpLOr:
 		if constNonZero(l) {
-			if !e.isC99UnevaluatedArithmeticConstantOperand(x.R) {
+			if !allowUnevaluatedNonConstant && !e.isC99UnevaluatedArithmeticConstantOperand(x.R) {
 				return ConstValue{}, false
 			}
 			return ConstValue{Kind: ConstInt, Int: 1, Uint: 1, T: x.T}, true
 		}
-		r, ok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp)
+		r, ok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 		if !ok {
 			return ConstValue{}, false
 		}
 		v := boolToInt(constNonZero(r))
 		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
 	}
-	r, rok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp)
+	r, rok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp, allowUnevaluatedNonConstant)
 	if !rok {
 		return ConstValue{}, false
 	}
@@ -567,7 +567,7 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 		if vr, ok := x.X.(*VarRef); ok && vr.Sym.Storage != StorageAuto && vr.Sym.Storage != StorageRegister {
 			return ConstValue{Kind: ConstAddress, Addr: ConstValueAddr{Sym: vr.Sym}, T: x.T}, true
 		}
-		if _, ok := x.X.(*CompoundLit); ok && e.allowCompoundLiteralAddress {
+		if cl, ok := x.X.(*CompoundLit); ok && e.allowCompoundLiteralAddress && e.initListIsStaticConstant(cl.Init) {
 			return ConstValue{Kind: ConstAddress, T: x.T}, true
 		}
 	case *BinOp:
@@ -608,14 +608,12 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 		return e.EvalConstant(x.X)
 	case *ExplicitCast:
 		if isArithmetic(x.To) {
-			if cv, ok := e.evalC99CastArithmeticConstant(x.X, true, true); ok {
+			if cv, ok := e.evalC99CastArithmeticConstant(x.X, true, true, true); ok {
 				return castC99ArithmeticConstant(cv, x.To)
 			}
 		}
 		if isPointer(x.To) {
-			// typedef 的 VM 边界已在 typedef 声明处求值；静态初始化器里的 cast
-			// 只需验证地址本身是不是常量，不能重新诊断 typedef 保存的副作用表达式。
-			if !x.TypeNameTypedef && typeHasForbiddenAddressConstantVMSize(x.To) {
+			if typeHasForbiddenAddressConstantVMSize(x.To) {
 				return ConstValue{}, false
 			}
 			if cv, ok := e.EvalConstant(x.X); ok && cv.Kind == ConstAddress {
@@ -639,7 +637,7 @@ func (e *Evaluator) staticAddressConstant(expr Expr, t Type) (ConstValue, bool) 
 	}
 	switch x := expr.(type) {
 	case *CompoundLit:
-		if e.allowCompoundLiteralAddress {
+		if e.allowCompoundLiteralAddress && e.initListIsStaticConstant(x.Init) {
 			return ConstValue{Kind: ConstAddress, T: t}, true
 		}
 	case *VarRef:
@@ -651,6 +649,26 @@ func (e *Evaluator) staticAddressConstant(expr Expr, t Type) (ConstValue, bool) 
 		}
 	}
 	return ConstValue{}, false
+}
+
+func (e *Evaluator) initListIsStaticConstant(il *InitList) bool {
+	if il == nil {
+		return true
+	}
+	// 文件作用域 compound literal 可提供静态地址，但它自己的初始化器仍需满足
+	// 静态初始化约束；否则 &(int){g} 会绕过叶子表达式检查。
+	for _, elem := range il.Elems {
+		if nested, ok := elem.Value.(*InitList); ok {
+			if !e.initListIsStaticConstant(nested) {
+				return false
+			}
+			continue
+		}
+		if _, ok := e.EvalConstant(elem.Value); !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (e *Evaluator) EvalArithmetic(expr Expr) (ConstValue, bool) {
@@ -798,6 +816,27 @@ func typeHasDisallowedFileScopeVMType(t Type) bool {
 	return false
 }
 
+func markTypedefVMBounds(t Type) {
+	switch x := unqual(t).(type) {
+	case *ArrayType:
+		if x.SizeKind == ArrayVLA {
+			// typedef 声明处已经求值过 VM 边界；后续 cast 使用该类型时不要把
+			// 保存下来的 m++ 等表达式当作初始化器中新出现的副作用。
+			x.VMFromTypedef = true
+		}
+		markTypedefVMBounds(x.Elem)
+	case *PointerType:
+		markTypedefVMBounds(x.Pointee)
+	case *FunctionType:
+		markTypedefVMBounds(x.Ret)
+		for _, p := range x.Params {
+			markTypedefVMBounds(p)
+		}
+	case *QualType:
+		markTypedefVMBounds(x.Base)
+	}
+}
+
 func isNonRuntimeSizeofBound(sizeExpr any) bool {
 	expr, ok := sizeExpr.(Expr)
 	if !ok {
@@ -822,7 +861,7 @@ func isNonRuntimeSizeofBound(sizeExpr any) bool {
 func typeHasForbiddenAddressConstantVMSize(t Type) bool {
 	switch x := unqual(t).(type) {
 	case *ArrayType:
-		if x.SizeKind == ArrayVLA {
+		if x.SizeKind == ArrayVLA && !x.VMFromTypedef {
 			if expr, ok := x.SizeExpr.(Expr); ok && exprHasForbiddenAddressConstantVMSize(expr) {
 				return true
 			}

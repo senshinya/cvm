@@ -129,6 +129,7 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 	t, name := s.applyDeclarator(node.Children[0], spec.Type)
 	pos := node.Children[0].SourceStart
 	if spec.IsTypedef {
+		markTypedefVMBounds(t)
 		sym := &Symbol{Name: name, Kind: SymTypedef, T: t, Storage: StorageTypedef, Pos: pos}
 		td := &TypedefDecl{Sym: sym, T: t, Range: srcRange}
 		sym.Decl = td
