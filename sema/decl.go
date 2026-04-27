@@ -6,9 +6,10 @@ import (
 )
 
 type arraySizeInfo struct {
-	Expr     Expr
-	Value    int64
-	Constant bool
+	Expr       Expr
+	Value      int64
+	Constant   bool
+	KnownValue bool
 }
 
 func (s *Sema) applyDeclarator(node *entity.AstNode, base Type) (Type, string) {
@@ -97,8 +98,12 @@ func (s *Sema) evalArraySize(node *entity.AstNode) arraySizeInfo {
 		return arraySizeInfo{}
 	}
 	expr := s.typeExpr(node, s.scope)
-	if cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr); ok {
-		return arraySizeInfo{Expr: expr, Value: cv.Int, Constant: true}
+	ev := NewEvaluator(s)
+	if cv, ok := ev.EvalC99IntegerConstantExpression(expr); ok {
+		return arraySizeInfo{Expr: expr, Value: cv.Int, Constant: true, KnownValue: true}
+	}
+	if cv, ok := ev.EvalC99ArraySizeConstantExpression(expr); ok {
+		return arraySizeInfo{Expr: expr, Value: cv.Int, KnownValue: true}
 	}
 	return arraySizeInfo{Expr: expr}
 }
@@ -110,6 +115,10 @@ func (s *Sema) makeArray(elem Type, size arraySizeInfo, sizeNode *entity.AstNode
 	}
 	s.validateArrayElement(elem, pos)
 	if !size.Constant {
+		// C99 仍要求非 ICE 的常量数组大小为正，但这类大小不能把数组固定化。
+		if size.KnownValue && size.Value <= 0 {
+			s.report(InvalidTypeSpec(pos, "array size must be positive"))
+		}
 		return s.Types.ArrayVLA(elem, size.Expr)
 	}
 	if size.Value <= 0 {

@@ -291,6 +291,17 @@ func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {
 	`)
 }
 
+func TestC99UnaryFloatCastArrayBoundsRemainVLA(t *testing.T) {
+	mustAnalyze(t, `
+		void f(int m) {
+			int a5[(int)+1.0];
+			int a6[(int)+2.0];
+			void *p = m ? &a5 : &a6;
+			(void)p;
+		}
+	`)
+}
+
 func mustAnalyze(t *testing.T, src string) *Program {
 	t.Helper()
 	candidates := parseCandidates(t, src)

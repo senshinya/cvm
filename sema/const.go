@@ -211,7 +211,7 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		if cv, ok := e.evalC99IntegerConstantExpression(x.X); ok {
 			return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: x.To}, true
 		}
-		if cv, ok := e.evalC99CastArithmeticConstant(x.X); ok {
+		if cv, ok := e.evalC99CastArithmeticConstant(x.X, false); ok {
 			if cv.Kind == ConstFloat {
 				v := int64(cv.Float)
 				return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, true
@@ -222,9 +222,25 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 	return ConstValue{}, false
 }
 
-// 整数 cast 的操作数可以是算术常量表达式，例如 (int)(double)0.0 或
-// (int)-1.0；这里只展开 cast 和一元 +/-，避免把含运行时语义的表达式误判为 ICE。
-func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr) (ConstValue, bool) {
+func (e *Evaluator) EvalC99ArraySizeConstantExpression(expr Expr) (ConstValue, bool) {
+	if cv, ok := e.EvalC99IntegerConstantExpression(expr); ok {
+		return cv, true
+	}
+	if x, ok := expr.(*ExplicitCast); ok && isInteger(x.To) {
+		if cv, ok := e.evalC99CastArithmeticConstant(x.X, true); ok {
+			if cv.Kind == ConstFloat {
+				v := int64(cv.Float)
+				return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, true
+			}
+			return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: x.To}, true
+		}
+	}
+	return ConstValue{}, false
+}
+
+// GCC/C99 把 (int)1.0 当作整数常量表达式，但 (int)+1.0 只用于数组大小正负检查，
+// 不能把数组固定化；allowUnaryFloat 区分这两个约束点。
+func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat bool) (ConstValue, bool) {
 	switch x := expr.(type) {
 	case *FloatLit:
 		return ConstValue{Kind: ConstFloat, Float: x.Value, T: x.T}, true
@@ -232,7 +248,7 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr) (ConstValue, bool) 
 		if !isArithmetic(x.To) {
 			return ConstValue{}, false
 		}
-		cv, ok := e.evalC99CastArithmeticConstant(x.X)
+		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat)
 		if !ok {
 			return ConstValue{}, false
 		}
@@ -241,21 +257,27 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr) (ConstValue, bool) 
 		if !isArithmetic(x.To) {
 			return ConstValue{}, false
 		}
-		cv, ok := e.evalC99CastArithmeticConstant(x.X)
+		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat)
 		if !ok {
 			return ConstValue{}, false
 		}
 		return castC99ArithmeticConstant(cv, x.To)
 	case *UnOp:
-		cv, ok := e.evalC99CastArithmeticConstant(x.X)
+		cv, ok := e.evalC99CastArithmeticConstant(x.X, allowUnaryFloat)
 		if !ok {
 			return ConstValue{}, false
 		}
 		switch x.Op {
 		case UnPlus:
+			if cv.Kind == ConstFloat && !allowUnaryFloat {
+				return ConstValue{}, false
+			}
 			return cv, true
 		case UnMinus:
 			if cv.Kind == ConstFloat {
+				if !allowUnaryFloat {
+					return ConstValue{}, false
+				}
 				return ConstValue{Kind: ConstFloat, Float: -cv.Float, T: x.T}, true
 			}
 			return ConstValue{Kind: ConstInt, Int: -cv.Int, Uint: uint64(-cv.Int), T: x.T}, true
