@@ -141,6 +141,9 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 	if storage == StorageNone {
 		storage = StorageAuto
 	}
+	if storage == StorageStatic && typeHasDisallowedStaticArrayBound(t) {
+		s.report(InvalidTypeSpec(pos, "array size must be integer constant expression"))
+	}
 	sym := &Symbol{Name: name, Kind: SymVar, T: t, Storage: storage, Pos: pos}
 	vd := &VarDecl{Sym: sym, T: t, Storage: storage, Range: srcRange}
 	sym.Decl = vd

@@ -291,6 +291,14 @@ func (e *Evaluator) EvalC99ArraySizeConstantExpression(expr Expr) (ConstValue, b
 	return ConstValue{}, false
 }
 
+func (e *Evaluator) EvalC99ArithmeticConstantExpression(expr Expr) (ConstValue, bool) {
+	cv, ok := e.evalC99CastArithmeticConstant(expr, true, true)
+	if !ok || !isArithmetic(cv.T) {
+		return ConstValue{}, false
+	}
+	return cv, true
+}
+
 // GCC/C99 把直接的 (int)1.0 当作 ICE；一元 +/- 或 (double) 这类中间算术 cast
 // 只能作为普通算术常量表达式。数组大小正负检查还要避免把浮点二元表达式当作已知值。
 func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, allowFloatBinOp bool) (ConstValue, bool) {
@@ -334,9 +342,31 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, al
 				return ConstValue{Kind: ConstFloat, Float: -cv.Float, T: x.T}, true
 			}
 			return ConstValue{Kind: ConstInt, Int: -cv.Int, Uint: uint64(-cv.Int), T: x.T}, true
+		case UnLogNot:
+			return ConstValue{Kind: ConstInt, Int: boolToInt(!constNonZero(cv)), Uint: uint64(boolToInt(!constNonZero(cv))), T: x.T}, true
+		case UnBitNot:
+			if cv.Kind != ConstInt {
+				return ConstValue{}, false
+			}
+			return ConstValue{Kind: ConstInt, Int: ^cv.Int, Uint: uint64(^cv.Int), T: x.T}, true
 		}
 	case *BinOp:
 		return e.evalC99ArithmeticBinOp(x, allowUnaryFloat, allowFloatBinOp)
+	case *CondExpr:
+		c, ok := e.evalC99CastArithmeticConstant(x.Cond, allowUnaryFloat, allowFloatBinOp)
+		if !ok {
+			return ConstValue{}, false
+		}
+		if constNonZero(c) {
+			if !e.isC99UnevaluatedArithmeticConstantOperand(x.Else) {
+				return ConstValue{}, false
+			}
+			return e.evalC99CastArithmeticConstant(x.Then, allowUnaryFloat, allowFloatBinOp)
+		}
+		if !e.isC99UnevaluatedArithmeticConstantOperand(x.Then) {
+			return ConstValue{}, false
+		}
+		return e.evalC99CastArithmeticConstant(x.Else, allowUnaryFloat, allowFloatBinOp)
 	default:
 		return e.evalC99IntegerConstantExpression(expr)
 	}
@@ -352,6 +382,9 @@ func (e *Evaluator) evalC99ArithmeticBinOp(x *BinOp, allowUnaryFloat, allowFloat
 	switch x.Op {
 	case OpLAnd:
 		if !constNonZero(l) {
+			if !e.isC99UnevaluatedArithmeticConstantOperand(x.R) {
+				return ConstValue{}, false
+			}
 			return ConstValue{Kind: ConstInt, Int: 0, Uint: 0, T: x.T}, true
 		}
 		r, ok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp)
@@ -362,6 +395,9 @@ func (e *Evaluator) evalC99ArithmeticBinOp(x *BinOp, allowUnaryFloat, allowFloat
 		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
 	case OpLOr:
 		if constNonZero(l) {
+			if !e.isC99UnevaluatedArithmeticConstantOperand(x.R) {
+				return ConstValue{}, false
+			}
 			return ConstValue{Kind: ConstInt, Int: 1, Uint: 1, T: x.T}, true
 		}
 		r, ok := e.evalC99CastArithmeticConstant(x.R, allowUnaryFloat, allowFloatBinOp)
@@ -389,6 +425,46 @@ func (e *Evaluator) evalC99ArithmeticBinOp(x *BinOp, allowUnaryFloat, allowFloat
 		return ConstValue{}, false
 	}
 	return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
+}
+
+func (e *Evaluator) isC99UnevaluatedArithmeticConstantOperand(expr Expr) bool {
+	switch x := expr.(type) {
+	case *FloatLit:
+		return true
+	case *IntLit, *CharLit, *EnumRef:
+		return true
+	case *SizeofExpr:
+		if x.Operand.Type != nil {
+			return !typeHasVariableSize(x.Operand.Type) && sizeofType(x.Operand.Type) > 0
+		}
+		if x.Operand.Expr != nil {
+			return !typeHasVariableSize(x.Operand.Expr.GetType()) && sizeofType(x.Operand.Expr.GetType()) > 0
+		}
+	case *BinOp:
+		return isArithmetic(x.T) &&
+			e.isC99UnevaluatedArithmeticConstantOperand(x.L) &&
+			e.isC99UnevaluatedArithmeticConstantOperand(x.R)
+	case *UnOp:
+		switch x.Op {
+		case UnPlus, UnMinus, UnBitNot, UnLogNot:
+			return isArithmetic(x.T) && e.isC99UnevaluatedArithmeticConstantOperand(x.X)
+		}
+	case *CondExpr:
+		return isArithmetic(x.T) &&
+			e.isC99UnevaluatedArithmeticConstantOperand(x.Cond) &&
+			e.isC99UnevaluatedArithmeticConstantOperand(x.Then) &&
+			e.isC99UnevaluatedArithmeticConstantOperand(x.Else)
+	case *ImplicitCast:
+		return isArithmetic(x.To) && e.isC99UnevaluatedArithmeticConstantOperand(x.X)
+	case *ExplicitCast:
+		return isArithmetic(x.To) && e.isC99UnevaluatedArithmeticConstantOperand(x.X)
+	case *CommaExpr:
+		// 未求值算术分支同样只做形状检查，避免把逗号里的除零或负移位当作已求值错误。
+		return isArithmetic(x.T) &&
+			e.isC99UnevaluatedArithmeticConstantOperand(x.L) &&
+			e.isC99UnevaluatedArithmeticConstantOperand(x.R)
+	}
+	return false
 }
 
 func castC99ArithmeticConstant(cv ConstValue, to Type) (ConstValue, bool) {
@@ -472,6 +548,11 @@ func isSignedIntegerType(t Type) bool {
 func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 	if cv, ok := e.EvalC99IntegerConstantExpression(expr); ok {
 		return cv, true
+	}
+	if isArithmetic(expr.GetType()) {
+		if cv, ok := e.EvalC99ArithmeticConstantExpression(expr); ok {
+			return cv, true
+		}
 	}
 	switch x := expr.(type) {
 	case *FloatLit:
@@ -615,6 +696,53 @@ func typeHasVariableSize(t Type) bool {
 		return false
 	case *QualType:
 		return typeHasVariableSize(x.Base)
+	}
+	return false
+}
+
+// 静态/文件作用域声明要拒绝真正依赖运行期长度的数组边界；已有测试里
+// sizeof(未定长类型名) 仍被旧语义当作不可折叠但无运行期依赖的大小处理。
+func typeHasDisallowedStaticArrayBound(t Type) bool {
+	switch x := unqual(t).(type) {
+	case *ArrayType:
+		if x.SizeKind == ArrayStarSize {
+			return true
+		}
+		if x.SizeKind == ArrayVLA && !isNonRuntimeSizeofBound(x.SizeExpr) {
+			return true
+		}
+		return typeHasDisallowedStaticArrayBound(x.Elem)
+	case *PointerType:
+		return typeHasDisallowedStaticArrayBound(x.Pointee)
+	case *FunctionType:
+		if typeHasDisallowedStaticArrayBound(x.Ret) {
+			return true
+		}
+		for _, p := range x.Params {
+			if typeHasDisallowedStaticArrayBound(p) {
+				return true
+			}
+		}
+	case *QualType:
+		return typeHasDisallowedStaticArrayBound(x.Base)
+	}
+	return false
+}
+
+func isNonRuntimeSizeofBound(sizeExpr any) bool {
+	expr, ok := sizeExpr.(Expr)
+	if !ok {
+		return false
+	}
+	x, ok := expr.(*SizeofExpr)
+	if !ok {
+		return false
+	}
+	if x.Operand.Type != nil {
+		return !typeHasVariableSize(x.Operand.Type)
+	}
+	if x.Operand.Expr != nil {
+		return !typeHasVariableSize(x.Operand.Expr.GetType())
 	}
 	return false
 }

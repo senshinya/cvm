@@ -253,6 +253,8 @@ func TestC99RejectsInvalidIntegerConstantExpressions(t *testing.T) {
 	mustReject(t, `int n; enum { A = (1 ? 1 : n) };`)
 	mustReject(t, `int n; enum { A = (1 || n) };`)
 	mustReject(t, `int n; enum { A = (0 && n) };`)
+	mustReject(t, `int n; int a[(1 || n)];`)
+	mustReject(t, `int n; void f(void) { static int a[(1 || n)]; }`)
 	mustReject(t, `int i = -1 << 0;`)
 	mustReject(t, `void f(void) { static int i = -1 << 0; }`)
 	mustReject(t, `static int i = { -1 << 0 };`)
@@ -309,6 +311,8 @@ func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {
 }
 
 func TestC99AcceptsArithmeticConstantStaticInitializer(t *testing.T) {
+	mustAnalyze(t, `static double x = 1.0 + 2.0;`)
+	mustAnalyze(t, `static double x = { 1.0 + 2.0 };`)
 	mustAnalyze(t, `static int x = (int)(1.0 + 2.0);`)
 	mustAnalyze(t, `static int x = { (int)(1.0 + 2.0) };`)
 	mustAnalyze(t, `static int y = { (int)+1.0 };`)
