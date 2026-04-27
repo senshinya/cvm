@@ -591,12 +591,13 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 		}
 	case *ImplicitCast:
 		if x.Kind == ArrayDecay {
-			inner := x.X
-			if ic, ok := inner.(*ImplicitCast); ok && ic.Kind == LValueToRValue {
-				inner = ic.X
+			if cv, ok := e.staticAddressConstant(x.X, x.To); ok {
+				return cv, true
 			}
-			if _, ok := inner.(*CompoundLit); ok {
-				return ConstValue{Kind: ConstAddress, T: x.To}, true
+		}
+		if x.Kind == FunctionDecay {
+			if cv, ok := e.staticAddressConstant(x.X, x.To); ok {
+				return cv, true
 			}
 		}
 		return e.EvalConstant(x.X)
@@ -606,9 +607,39 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 				return castC99ArithmeticConstant(cv, x.To)
 			}
 		}
+		if isPointer(x.To) {
+			if typeHasForbiddenAddressConstantVMSize(x.To) {
+				return ConstValue{}, false
+			}
+			if cv, ok := e.EvalConstant(x.X); ok && cv.Kind == ConstAddress {
+				cv.T = x.To
+				return cv, true
+			}
+			if cv, ok := e.staticAddressConstant(x.X, x.To); ok {
+				return cv, true
+			}
+		}
 		return e.EvalConstant(x.X)
 	case *AddrConst:
 		return ConstValue{Kind: ConstAddress, Addr: ConstValueAddr{Sym: x.Sym, Offset: x.Offset}, T: x.T}, true
+	}
+	return ConstValue{}, false
+}
+
+func (e *Evaluator) staticAddressConstant(expr Expr, t Type) (ConstValue, bool) {
+	if ic, ok := expr.(*ImplicitCast); ok && ic.Kind == LValueToRValue {
+		expr = ic.X
+	}
+	switch x := expr.(type) {
+	case *CompoundLit:
+		return ConstValue{Kind: ConstAddress, T: t}, true
+	case *VarRef:
+		if x.Sym.Kind == SymFunc || (x.Sym.Storage != StorageAuto && x.Sym.Storage != StorageRegister) {
+			switch unqual(x.GetType()).(type) {
+			case *ArrayType, *FunctionType:
+				return ConstValue{Kind: ConstAddress, Addr: ConstValueAddr{Sym: x.Sym}, T: t}, true
+			}
+		}
 	}
 	return ConstValue{}, false
 }
@@ -743,6 +774,70 @@ func isNonRuntimeSizeofBound(sizeExpr any) bool {
 	}
 	if x.Operand.Expr != nil {
 		return !typeHasVariableSize(x.Operand.Expr.GetType())
+	}
+	return false
+}
+
+// VM 指针 cast 可作为地址常量，但其中会被求值的 VLA 长度不能含有赋值、调用、
+// 逗号或自增自减这类 C99 常量表达式禁止求值的操作。
+func typeHasForbiddenAddressConstantVMSize(t Type) bool {
+	switch x := unqual(t).(type) {
+	case *ArrayType:
+		if x.SizeKind == ArrayVLA {
+			if expr, ok := x.SizeExpr.(Expr); ok && exprHasForbiddenAddressConstantVMSize(expr) {
+				return true
+			}
+		}
+		return typeHasForbiddenAddressConstantVMSize(x.Elem)
+	case *PointerType:
+		return typeHasForbiddenAddressConstantVMSize(x.Pointee)
+	case *FunctionType:
+		if typeHasForbiddenAddressConstantVMSize(x.Ret) {
+			return true
+		}
+		for _, p := range x.Params {
+			if typeHasForbiddenAddressConstantVMSize(p) {
+				return true
+			}
+		}
+	case *QualType:
+		return typeHasForbiddenAddressConstantVMSize(x.Base)
+	}
+	return false
+}
+
+func exprHasForbiddenAddressConstantVMSize(expr Expr) bool {
+	switch x := expr.(type) {
+	case *AssignExpr, *CompoundAssign, *CallExpr, *CommaExpr, *CompoundLit:
+		return true
+	case *UnOp:
+		switch x.Op {
+		case UnIncPre, UnIncPost, UnDecPre, UnDecPost:
+			return true
+		}
+		return exprHasForbiddenAddressConstantVMSize(x.X)
+	case *BinOp:
+		return exprHasForbiddenAddressConstantVMSize(x.L) || exprHasForbiddenAddressConstantVMSize(x.R)
+	case *CondExpr:
+		return exprHasForbiddenAddressConstantVMSize(x.Cond) ||
+			exprHasForbiddenAddressConstantVMSize(x.Then) ||
+			exprHasForbiddenAddressConstantVMSize(x.Else)
+	case *ImplicitCast:
+		return exprHasForbiddenAddressConstantVMSize(x.X) || typeHasForbiddenAddressConstantVMSize(x.To)
+	case *ExplicitCast:
+		return exprHasForbiddenAddressConstantVMSize(x.X) || typeHasForbiddenAddressConstantVMSize(x.To)
+	case *SizeofExpr:
+		if x.Operand.Type != nil && typeHasVariableSize(x.Operand.Type) {
+			return typeHasForbiddenAddressConstantVMSize(x.Operand.Type)
+		}
+		if x.Operand.Expr != nil && typeHasVariableSize(x.Operand.Expr.GetType()) {
+			return typeHasForbiddenAddressConstantVMSize(x.Operand.Expr.GetType())
+		}
+		return false
+	case *MemberExpr:
+		return exprHasForbiddenAddressConstantVMSize(x.Base)
+	case *IndexExpr:
+		return exprHasForbiddenAddressConstantVMSize(x.Base) || exprHasForbiddenAddressConstantVMSize(x.Index)
 	}
 	return false
 }

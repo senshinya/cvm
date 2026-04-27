@@ -261,6 +261,7 @@ func TestC99RejectsInvalidIntegerConstantExpressions(t *testing.T) {
 	mustReject(t, `static int a[1] = { -1 << 0 };`)
 	mustReject(t, `void f(void) { static int i = { -1 << 0 }; }`)
 	mustReject(t, `void f(void) { static int b[1] = { -1 << 0 }; }`)
+	mustReject(t, `void f(void) { int a[1]; static int (*p)[1] = (int (*)[1])a; }`)
 	mustReject(t, `int f(int n) { switch (n) { case n: return 1; } return 0; }`)
 }
 
@@ -309,6 +310,7 @@ func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {
 		}
 	`)
 	mustAnalyze(t, `void f(int n) { static int (*p)[n]; (void)p; }`)
+	mustAnalyze(t, `static int sa[100]; int f(int n) { static int (*a2)[n] = (int (*)[n])sa; return n; }`)
 }
 
 func TestC99AcceptsArithmeticConstantStaticInitializer(t *testing.T) {
