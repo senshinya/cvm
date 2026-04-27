@@ -292,17 +292,36 @@ func (s *Sema) foldStaticVarInitializer(ev *Evaluator, vd *VarDecl) {
 	if vd.Init == nil {
 		return
 	}
-	if _, ok := vd.Init.(*InitList); ok {
+	folded, ok := s.foldStaticInitializerExpr(ev, vd.Init)
+	if !ok {
 		return
 	}
-	cv, ok := ev.EvalConstant(vd.Init)
+	vd.Init = folded
+}
+
+func (s *Sema) foldStaticInitializerExpr(ev *Evaluator, expr Expr) (Expr, bool) {
+	if il, ok := expr.(*InitList); ok {
+		ok := true
+		// braced initializer 只是语法分组；静态存储期的每个叶子表达式仍须满足常量表达式约束。
+		for i := range il.Elems {
+			folded, elemOK := s.foldStaticInitializerExpr(ev, il.Elems[i].Value)
+			if !elemOK {
+				ok = false
+				continue
+			}
+			il.Elems[i].Value = folded
+		}
+		return il, ok
+	}
+	cv, ok := ev.EvalConstant(expr)
 	if !ok {
-		s.report(InvalidTypeSpec(vd.Range.SourceStart, "static initializer must be constant"))
-		return
+		s.report(InvalidTypeSpec(expr.Pos().SourceStart, "static initializer must be constant"))
+		return expr, false
 	}
 	if folded := constToExpr(cv, s); folded != nil {
-		vd.Init = folded
+		return folded, true
 	}
+	return expr, true
 }
 
 func constToExpr(cv ConstValue, s *Sema) Expr {
