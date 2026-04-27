@@ -273,20 +273,35 @@ func (s *Sema) foldStaticInitializers(prog *Program) {
 	ev := NewEvaluator(s)
 	for _, d := range prog.Globals {
 		vd, ok := d.(*VarDecl)
-		if !ok || vd.Init == nil {
-			continue
-		}
-		if _, ok := vd.Init.(*InitList); ok {
-			continue
-		}
-		cv, ok := ev.EvalConstant(vd.Init)
 		if !ok {
-			s.report(InvalidTypeSpec(vd.Range.SourceStart, "static initializer must be constant"))
 			continue
 		}
-		if folded := constToExpr(cv, s); folded != nil {
-			vd.Init = folded
+		s.foldStaticVarInitializer(ev, vd)
+	}
+	// 块作用域 static 也具有静态存储期，初始化式必须走同一套常量表达式约束。
+	for _, fn := range prog.Funcs {
+		for _, vd := range fn.Locals {
+			if vd.Storage == StorageStatic {
+				s.foldStaticVarInitializer(ev, vd)
+			}
 		}
+	}
+}
+
+func (s *Sema) foldStaticVarInitializer(ev *Evaluator, vd *VarDecl) {
+	if vd.Init == nil {
+		return
+	}
+	if _, ok := vd.Init.(*InitList); ok {
+		return
+	}
+	cv, ok := ev.EvalConstant(vd.Init)
+	if !ok {
+		s.report(InvalidTypeSpec(vd.Range.SourceStart, "static initializer must be constant"))
+		return
+	}
+	if folded := constToExpr(cv, s); folded != nil {
+		vd.Init = folded
 	}
 }
 

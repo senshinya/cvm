@@ -249,11 +249,22 @@ func TestC99RejectsInvalidIntegerConstantExpressions(t *testing.T) {
 	mustReject(t, `void f(void) { int a[(int)-1.0]; }`)
 	mustReject(t, `void f(void) { int a[(int)(double)0.0]; }`)
 	mustReject(t, `enum E { A = -1 << 0 };`)
+	mustReject(t, `int i = -1 << 0;`)
+	mustReject(t, `void f(void) { static int i = -1 << 0; }`)
 	mustReject(t, `int f(int n) { switch (n) { case n: return 1; } return 0; }`)
+}
+
+func TestC99AcceptsShortCircuitIntegerConstantExpressions(t *testing.T) {
+	mustAnalyze(t, `enum { A = 1 || (1/0) };`)
+	mustAnalyze(t, `int f(int n) { switch (n) { case 1 || (1/0): return 1; } return 0; }`)
 }
 
 func TestC99RejectsNonIntegerArrayDesignator(t *testing.T) {
 	mustReject(t, `int a[] = { [(void *)0] = 1 };`)
+}
+
+func TestC99RejectsNegativeArrayDesignator(t *testing.T) {
+	mustReject(t, `int a[] = { [-1] = 1 };`)
 }
 
 func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {

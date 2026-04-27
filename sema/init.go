@@ -148,6 +148,10 @@ func (s *Sema) parseDesignator(node *entity.AstNode) Designator {
 			s.report(InvalidTypeSpec(node.SourceStart, "array designator expression must be integer constant expression"))
 			return Designator{Kind: DesigArrayIndex}
 		}
+		if cv.Int < 0 {
+			s.report(InvalidTypeSpec(node.SourceStart, "array designator index must be nonnegative"))
+			return Designator{Kind: DesigArrayIndex}
+		}
 		return Designator{Kind: DesigArrayIndex, Index: cv.Int}
 	case node.ReducedBy(parser.Designator, 2):
 		return Designator{Kind: DesigFieldName, Field: &Field{Name: node.Children[1].Terminal.Lexeme}}

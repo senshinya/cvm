@@ -136,8 +136,34 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		}
 	case *BinOp:
 		l, lok := e.evalC99IntegerConstantExpression(x.L)
+		if !lok {
+			return ConstValue{}, false
+		}
+		// C99 常量表达式按实际求值路径检查，&& 和 || 的右侧在短路时不能被递归诊断。
+		switch x.Op {
+		case OpLAnd:
+			if l.Int == 0 {
+				return ConstValue{Kind: ConstInt, Int: 0, Uint: 0, T: x.T}, true
+			}
+			r, ok := e.evalC99IntegerConstantExpression(x.R)
+			if !ok {
+				return ConstValue{}, false
+			}
+			v := boolToInt(r.Int != 0)
+			return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
+		case OpLOr:
+			if l.Int != 0 {
+				return ConstValue{Kind: ConstInt, Int: 1, Uint: 1, T: x.T}, true
+			}
+			r, ok := e.evalC99IntegerConstantExpression(x.R)
+			if !ok {
+				return ConstValue{}, false
+			}
+			v := boolToInt(r.Int != 0)
+			return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
+		}
 		r, rok := e.evalC99IntegerConstantExpression(x.R)
-		if !lok || !rok {
+		if !rok {
 			return ConstValue{}, false
 		}
 		if x.Op == OpShl && l.Int < 0 {
@@ -258,7 +284,7 @@ func castC99ArithmeticConstant(cv ConstValue, to Type) (ConstValue, bool) {
 }
 
 func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
-	if cv, ok := e.EvalIntegerConstant(expr); ok {
+	if cv, ok := e.EvalC99IntegerConstantExpression(expr); ok {
 		return cv, true
 	}
 	switch x := expr.(type) {
