@@ -176,6 +176,51 @@ func (s *Sema) validateFunctionReturn(ret Type, pos entity.SourcePos) {
 	}
 }
 
+func (s *Sema) validateRestrictType(t Type, pos entity.SourcePos) {
+	s.validateRestrictTypeSeen(t, pos, map[Type]bool{})
+}
+
+func (s *Sema) validateRestrictTypeSeen(t Type, pos entity.SourcePos, seen map[Type]bool) {
+	if t == nil || seen[t] {
+		return
+	}
+	seen[t] = true
+	switch x := t.(type) {
+	case *QualType:
+		if x.Restrict && !restrictQualifierTargetOK(x.Base) {
+			s.report(InvalidTypeSpec(pos, "restrict qualifier requires pointer to object type"))
+		}
+		s.validateRestrictTypeSeen(x.Base, pos, seen)
+	case *PointerType:
+		s.validateRestrictTypeSeen(x.Pointee, pos, seen)
+	case *ArrayType:
+		s.validateRestrictTypeSeen(x.Elem, pos, seen)
+	case *FunctionType:
+		s.validateRestrictTypeSeen(x.Ret, pos, seen)
+		for _, p := range x.Params {
+			s.validateRestrictTypeSeen(p, pos, seen)
+		}
+	case *StructType:
+		for _, f := range x.Fields {
+			s.validateRestrictTypeSeen(f.T, pos, seen)
+		}
+	case *UnionType:
+		for _, f := range x.Fields {
+			s.validateRestrictTypeSeen(f.T, pos, seen)
+		}
+	}
+}
+
+func restrictQualifierTargetOK(t Type) bool {
+	switch x := unqual(t).(type) {
+	case *PointerType:
+		return isRestrictPointerTarget(x.Pointee)
+	case *ArrayType:
+		return restrictQualifierTargetOK(x.Elem)
+	}
+	return false
+}
+
 func (s *Sema) collectParameterList(node *entity.AstNode) []Type {
 	var out []Type
 	switch {
@@ -195,12 +240,16 @@ func (s *Sema) parameterDeclarationType(node *entity.AstNode) Type {
 	defer func() { s.allowArrayStar = prevAllowArrayStar }()
 	switch {
 	case node.ReducedBy(parser.ParameterDeclaration, 1):
+		s.validateRestrictType(spec.Type, node.SourceStart)
 		return spec.Type
 	case node.ReducedBy(parser.ParameterDeclaration, 2):
 		t, _ := s.applyDeclarator(node.Children[1], spec.Type)
+		s.validateRestrictType(t, node.SourceStart)
 		return s.adjustParamType(t)
 	case node.ReducedBy(parser.ParameterDeclaration, 3):
-		return s.adjustParamType(s.applyAbstractDeclarator(node.Children[1], spec.Type))
+		t := s.applyAbstractDeclarator(node.Children[1], spec.Type)
+		s.validateRestrictType(t, node.SourceStart)
+		return s.adjustParamType(t)
 	}
 	return ErrorTypeSingleton
 }
@@ -261,6 +310,7 @@ func (s *Sema) paramDecl(node *entity.AstNode) *VarDecl {
 	} else if node.ReducedBy(parser.ParameterDeclaration, 3) {
 		t = s.applyAbstractDeclarator(node.Children[1], spec.Type)
 	}
+	s.validateRestrictType(t, node.SourceStart)
 	t = s.adjustParamType(t)
 	sym := &Symbol{Name: name, Kind: SymParam, T: t, Storage: StorageAuto, Pos: node.SourceStart}
 	return &VarDecl{Sym: sym, T: t, Storage: StorageAuto, IsParam: true, Range: node.SourceRange}
@@ -313,7 +363,10 @@ func (s *Sema) applyDirectAbstractDeclarator(node *entity.AstNode, base Type) Ty
 func (s *Sema) parseTypeName(node *entity.AstNode) Type {
 	spec := s.parseSpec(node.Children[0])
 	if node.ReducedBy(parser.TypeName, 2) {
-		return s.applyAbstractDeclarator(node.Children[1], spec.Type)
+		t := s.applyAbstractDeclarator(node.Children[1], spec.Type)
+		s.validateRestrictType(t, node.SourceStart)
+		return t
 	}
+	s.validateRestrictType(spec.Type, node.SourceStart)
 	return spec.Type
 }

@@ -98,11 +98,16 @@ func (s *Sema) walkBlockDecl(node *entity.AstNode, scope *Scope, ctx *funcCtx, o
 		s.typeStaticAssert(node.Children[0])
 		return
 	}
+	invalidEmptyTagRedecl := s.qualifiedEmptyTagRedeclaration(node.Children[0])
 	spec := s.parseSpec(node.Children[0])
 	if s.Options.PedanticErrors && hasEnumReferenceSpecifier(node.Children[0]) {
 		s.report(InvalidTypeSpec(node.SourceStart, "ISO C forbids forward references to enum types"))
 	}
 	if node.ReducedBy(parser.Declaration, 1) {
+		s.validateRestrictType(spec.Type, node.SourceStart)
+		if invalidEmptyTagRedecl {
+			s.report(InvalidTypeSpec(node.SourceStart, "empty declaration with type qualifier or storage class does not redeclare tag"))
+		}
 		if isTagType(spec.Type) {
 			*out = append(*out, &TagDecl{T: spec.Type, Range: node.SourceRange})
 		}
@@ -128,6 +133,7 @@ func (s *Sema) walkBlockInitDeclList(node *entity.AstNode, spec SpecResult, scop
 func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *Scope, ctx *funcCtx, srcRange entity.SourceRange) Decl {
 	t, name := s.applyDeclarator(node.Children[0], spec.Type)
 	pos := node.Children[0].SourceStart
+	s.validateRestrictType(t, pos)
 	if spec.IsTypedef {
 		markTypedefVMBounds(t)
 		sym := &Symbol{Name: name, Kind: SymTypedef, T: t, Storage: StorageTypedef, Pos: pos}
@@ -264,7 +270,9 @@ func (s *Sema) collectForParts(node *entity.AstNode, scope *Scope, ctx *funcCtx)
 	if node.ReducedBy(parser.IterationStatement, 11) || node.ReducedBy(parser.IterationStatement, 12) ||
 		node.ReducedBy(parser.IterationStatement, 13) || node.ReducedBy(parser.IterationStatement, 14) {
 		var decls []Decl
-		s.walkBlockDecl(node.Children[2], scope, ctx, &decls)
+		declNode := node.Children[2]
+		s.walkBlockDecl(declNode, scope, ctx, &decls)
+		s.validateForInitDeclaration(declNode, decls)
 		fp.init = &DeclStmt{Decls: decls, Range: node.Children[2].SourceRange}
 		slot := 0
 		for i := 3; i < len(node.Children)-1; i++ {
@@ -304,6 +312,50 @@ func (s *Sema) collectForParts(node *entity.AstNode, scope *Scope, ctx *funcCtx)
 		}
 	}
 	return fp
+}
+
+func (s *Sema) validateForInitDeclaration(node *entity.AstNode, decls []Decl) {
+	if forDeclarationDefinesTagOrEnum(node) {
+		s.report(InvalidTypeSpec(node.SourceStart, "tag or enumerator declaration is not allowed in for init declaration"))
+	}
+	for _, d := range decls {
+		switch x := d.(type) {
+		case *FuncDecl:
+			s.report(InvalidTypeSpec(x.Range.SourceStart, "function declaration is not allowed in for init declaration"))
+		case *VarDecl:
+			if _, ok := unqual(x.T).(*FunctionType); ok {
+				s.report(InvalidTypeSpec(x.Range.SourceStart, "function declaration is not allowed in for init declaration"))
+			}
+			if x.Storage == StorageStatic || x.Storage == StorageExtern {
+				s.report(InvalidTypeSpec(x.Range.SourceStart, "static or extern declaration is not allowed in for init declaration"))
+			}
+		case *TypedefDecl:
+			s.report(InvalidTypeSpec(x.Range.SourceStart, "non-variable declaration is not allowed in for init declaration"))
+		case *TagDecl:
+			s.report(InvalidTypeSpec(x.Range.SourceStart, "tag declaration is not allowed in for init declaration"))
+		}
+	}
+}
+
+func forDeclarationDefinesTagOrEnum(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	switch {
+	case node.ReducedBy(parser.StructOrUnionSpecifier, 1),
+		node.ReducedBy(parser.StructOrUnionSpecifier, 2),
+		node.ReducedBy(parser.EnumSpecifier, 1),
+		node.ReducedBy(parser.EnumSpecifier, 2),
+		node.ReducedBy(parser.EnumSpecifier, 3),
+		node.ReducedBy(parser.EnumSpecifier, 4):
+		return true
+	}
+	for _, child := range node.Children {
+		if forDeclarationDefinesTagOrEnum(child) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Sema) typeJump(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {

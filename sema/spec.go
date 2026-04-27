@@ -245,6 +245,10 @@ func (s *Sema) newAnonStructUnion(isUnion bool) Type {
 
 func (s *Sema) lookupOrCreateTag(name string, isUnion bool, pos entity.SourcePos) Type {
 	if existing := s.scope.LookupTag(name); existing != nil {
+		if !tagInfoMatchesStructUnion(existing.T, isUnion) {
+			s.report(InvalidTypeSpec(pos, "tag defined as wrong kind"))
+			return ErrorTypeSingleton
+		}
 		return existing.T
 	}
 	return s.createTag(name, isUnion, pos)
@@ -252,9 +256,24 @@ func (s *Sema) lookupOrCreateTag(name string, isUnion bool, pos entity.SourcePos
 
 func (s *Sema) lookupOrCreateCurrentTag(name string, isUnion bool, pos entity.SourcePos) Type {
 	if existing := s.scope.LookupCurrentTag(name); existing != nil {
+		if !tagInfoMatchesStructUnion(existing.T, isUnion) {
+			s.report(InvalidTypeSpec(pos, "tag defined as wrong kind"))
+			return ErrorTypeSingleton
+		}
 		return existing.T
 	}
 	return s.createTag(name, isUnion, pos)
+}
+
+func tagInfoMatchesStructUnion(t Type, isUnion bool) bool {
+	switch t.(type) {
+	case *StructType:
+		return !isUnion
+	case *UnionType:
+		return isUnion
+	default:
+		return false
+	}
 }
 
 func (s *Sema) createTag(name string, isUnion bool, pos entity.SourcePos) Type {
@@ -336,6 +355,7 @@ func (s *Sema) parseStructDeclList(node *entity.AstNode) []*Field {
 
 func (s *Sema) parseStructDeclaration(node *entity.AstNode) []*Field {
 	spec := s.parseSpec(node.Children[0])
+	s.validateRestrictType(spec.Type, node.SourceStart)
 	return s.parseStructDeclaratorList(node.Children[1], spec.Type)
 }
 
@@ -355,14 +375,27 @@ func (s *Sema) parseStructDeclarator(node *entity.AstNode, base Type) *Field {
 	switch {
 	case node.ReducedBy(parser.StructDeclarator, 1):
 		t, name := s.applyDeclarator(node.Children[0], base)
+		s.validateRestrictType(t, node.SourceStart)
 		return &Field{Name: name, T: t}
 	case node.ReducedBy(parser.StructDeclarator, 2):
-		return &Field{T: base, BitWidth: s.evalBitWidth(node.Children[1]), IsBitField: true}
+		width := s.evalBitWidth(node.Children[1])
+		s.validateBitFieldWidth(base, width, node.SourceStart)
+		return &Field{T: base, BitWidth: width, IsBitField: true}
 	case node.ReducedBy(parser.StructDeclarator, 3):
 		t, name := s.applyDeclarator(node.Children[0], base)
-		return &Field{Name: name, T: t, BitWidth: s.evalBitWidth(node.Children[2]), IsBitField: true}
+		s.validateRestrictType(t, node.SourceStart)
+		width := s.evalBitWidth(node.Children[2])
+		s.validateBitFieldWidth(t, width, node.SourceStart)
+		return &Field{Name: name, T: t, BitWidth: width, IsBitField: true}
 	}
 	return &Field{T: ErrorTypeSingleton}
+}
+
+func (s *Sema) validateBitFieldWidth(t Type, width int, pos entity.SourcePos) {
+	// GCC/C99 中 _Bool 只有 0 和 1 两个值，位域宽度不能超过一个值位。
+	if bt, ok := unqual(t).(*BuiltinType); ok && bt.Kind == Bool && width > 1 {
+		s.report(InvalidTypeSpec(pos, "_Bool bit-field width must not exceed 1"))
+	}
 }
 
 func (s *Sema) evalBitWidth(node *entity.AstNode) int {
@@ -381,6 +414,10 @@ func (s *Sema) buildEnum(node *entity.AstNode) Type {
 	case node.ReducedBy(parser.EnumSpecifier, 5):
 		name := node.Children[1].Terminal.Lexeme
 		if existing := s.scope.LookupTag(name); existing != nil {
+			if _, ok := existing.T.(*EnumType); !ok {
+				s.report(InvalidTypeSpec(node.SourceStart, "tag defined as wrong kind"))
+				return ErrorTypeSingleton
+			}
 			return existing.T
 		}
 		// GCC 的 C99 warning-only 用例会接受 enum 前向声明；当前没有 warning 通道，因此按可继续分析处理。

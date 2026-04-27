@@ -73,6 +73,17 @@ func isObjectType(t Type) bool {
 	}
 }
 
+func isRestrictPointerTarget(t Type) bool {
+	switch unqual(t).(type) {
+	case *ErrorType:
+		return true
+	case *FunctionType:
+		return false
+	default:
+		return true
+	}
+}
+
 func isPrototypeArrayObjectType(t Type) bool {
 	switch x := unqual(t).(type) {
 	case *ArrayType:
@@ -224,4 +235,16 @@ func sameQualifiers(a, b Type) bool {
 		return false
 	}
 	return aq.Const == bq.Const && aq.Volatile == bq.Volatile && aq.Restrict == bq.Restrict
+}
+
+func isComplexType(t Type) bool {
+	bt, ok := unqualifiedBuiltin(t)
+	if !ok {
+		return false
+	}
+	switch bt.Kind {
+	case FloatComplex, DoubleComplex, LongDoubleComplex:
+		return true
+	}
+	return false
 }

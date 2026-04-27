@@ -371,8 +371,16 @@ func (s *Sema) typeUnary(node *entity.AstNode, scope *Scope) Expr {
 
 func (s *Sema) typeIncDec(node *entity.AstNode, scope *Scope, op UnaryOp) Expr {
 	x := s.typeExpr(node.Children[1], scope)
+	return s.buildIncDec(node, x, op)
+}
+
+func (s *Sema) buildIncDec(node *entity.AstNode, x Expr, op UnaryOp) Expr {
 	if x.GetCategory() != LValue {
 		s.report(InvalidTypeSpec(node.SourceStart, "operand of ++/-- must be lvalue"))
+		return &UnOp{Op: op, X: x, T: ErrorTypeSingleton, Range: node.SourceRange}
+	}
+	if isComplexType(x.GetType()) {
+		s.report(InvalidTypeSpec(node.SourceStart, "operand of ++/-- cannot have complex type"))
 		return &UnOp{Op: op, X: x, T: ErrorTypeSingleton, Range: node.SourceRange}
 	}
 	return &UnOp{Op: op, X: x, T: x.GetType(), Category: RValue, Range: node.SourceRange}
@@ -607,10 +615,10 @@ func (s *Sema) typePostfix(node *entity.AstNode, scope *Scope) Expr {
 		return s.typeMember(node, scope, true)
 	case node.ReducedBy(parser.PostfixExpression, 7):
 		x := s.typeExpr(node.Children[0], scope)
-		return &UnOp{Op: UnIncPost, X: x, T: x.GetType(), Category: RValue, Range: node.SourceRange}
+		return s.buildIncDec(node, x, UnIncPost)
 	case node.ReducedBy(parser.PostfixExpression, 8):
 		x := s.typeExpr(node.Children[0], scope)
-		return &UnOp{Op: UnDecPost, X: x, T: x.GetType(), Category: RValue, Range: node.SourceRange}
+		return s.buildIncDec(node, x, UnDecPost)
 	case node.ReducedBy(parser.PostfixExpression, 9), node.ReducedBy(parser.PostfixExpression, 10):
 		t := s.parseTypeName(node.Children[1])
 		return &CompoundLit{T: t, Init: s.typeInitListForType(node.Children[4], t), Range: node.SourceRange}

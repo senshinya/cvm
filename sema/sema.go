@@ -49,6 +49,7 @@ func (s *Sema) analyzeOne(root *entity.AstNode) *SemaResult {
 		s.walkFunctionBody(pf, prog)
 	}
 	s.foldStaticInitializers(prog)
+	s.validateStaticFunctionDefinitions(prog)
 	return &SemaResult{Program: prog, Errors: s.errors, Source: root}
 }
 
@@ -87,6 +88,8 @@ func (s *Sema) walkExternalDeclaration(node *entity.AstNode, prog *Program) {
 func (s *Sema) walkFunctionDefinition(node *entity.AstNode, prog *Program) {
 	spec := s.parseSpec(node.Children[0])
 	t, name := s.applyDeclarator(node.Children[1], spec.Type)
+	s.validateRestrictType(t, node.Children[1].SourceStart)
+	s.validateOldStyleImplicitIntParams(node)
 	ft, ok := t.(*FunctionType)
 	if !ok {
 		s.report(InvalidTypeSpec(node.SourceStart, "function definition declarator did not yield a function type"))
@@ -113,11 +116,16 @@ func (s *Sema) walkDeclaration(node *entity.AstNode, prog *Program) {
 		s.typeStaticAssert(node.Children[0])
 		return
 	}
+	invalidEmptyTagRedecl := s.qualifiedEmptyTagRedeclaration(node.Children[0])
 	spec := s.parseSpec(node.Children[0])
 	if s.Options.PedanticErrors && hasEnumReferenceSpecifier(node.Children[0]) {
 		s.report(InvalidTypeSpec(node.SourceStart, "ISO C forbids forward references to enum types"))
 	}
 	if node.ReducedBy(parser.Declaration, 1) {
+		s.validateRestrictType(spec.Type, node.SourceStart)
+		if invalidEmptyTagRedecl {
+			s.report(InvalidTypeSpec(node.SourceStart, "empty declaration with type qualifier or storage class does not redeclare tag"))
+		}
 		if isTagType(spec.Type) {
 			prog.Globals = append(prog.Globals, &TagDecl{T: spec.Type, Range: node.SourceRange})
 		}
@@ -165,6 +173,62 @@ func hasEnumReferenceSpecifier(node *entity.AstNode) bool {
 	return false
 }
 
+func (s *Sema) qualifiedEmptyTagRedeclaration(specs *entity.AstNode) bool {
+	if !declarationSpecHasQualifierOrStorage(specs) {
+		return false
+	}
+	name, ok := tagReferenceWithoutDefinition(specs)
+	if !ok {
+		return false
+	}
+	return s.scope.LookupTag(name) != nil
+}
+
+func declarationSpecHasQualifierOrStorage(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	switch node.Typ {
+	case parser.TypeQualifier, parser.StorageClassSpecifier:
+		return true
+	}
+	for _, child := range node.Children {
+		if declarationSpecHasQualifierOrStorage(child) {
+			return true
+		}
+	}
+	return false
+}
+
+func tagReferenceWithoutDefinition(node *entity.AstNode) (string, bool) {
+	if node == nil {
+		return "", false
+	}
+	if node.ReducedBy(parser.TypeSpecifier, 12) {
+		return structUnionReferenceWithoutDefinition(node.Children[0])
+	}
+	if node.ReducedBy(parser.TypeSpecifier, 13) {
+		enum := node.Children[0]
+		if enum.ReducedBy(parser.EnumSpecifier, 5) {
+			return enum.Children[1].Terminal.Lexeme, true
+		}
+		return "", false
+	}
+	for _, child := range node.Children {
+		if name, ok := tagReferenceWithoutDefinition(child); ok {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+func structUnionReferenceWithoutDefinition(node *entity.AstNode) (string, bool) {
+	if node.ReducedBy(parser.StructOrUnionSpecifier, 3) {
+		return node.Children[1].Terminal.Lexeme, true
+	}
+	return "", false
+}
+
 func (s *Sema) walkInitDeclaratorList(node *entity.AstNode, spec SpecResult, prog *Program, srcRange entity.SourceRange) {
 	switch {
 	case node.ReducedBy(parser.InitDeclaratorList, 1):
@@ -182,6 +246,7 @@ func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *P
 		s.report(InvalidTypeSpec(pos, "missing declarator name"))
 		return
 	}
+	s.validateRestrictType(t, pos)
 	if spec.IsTypedef {
 		if typeHasDisallowedFileScopeVMType(t) {
 			s.report(InvalidTypeSpec(pos, "array size must be integer constant expression"))
@@ -273,7 +338,256 @@ func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
 	pf.def.Labels = map[string]*LabeledStmt{}
 	collectLabels(body, pf.def.Labels)
 	resolveGotos(ctx.pendingGotos, pf.def.Labels, s)
+	s.markStaticFunctionUsesInStmt(body)
 	_ = prog
+}
+
+func (s *Sema) validateOldStyleImplicitIntParams(node *entity.AstNode) {
+	names := functionDeclaratorIdentifierList(node.Children[1])
+	if len(names) == 0 {
+		return
+	}
+	declared := map[string]bool{}
+	if node.ReducedBy(parser.FunctionDefinition, 2) {
+		collectDeclarationListNames(node.Children[2], declared)
+	}
+	for _, name := range names {
+		if !declared[name] {
+			s.report(InvalidTypeSpec(node.SourceStart, "old-style function parameter defaults to int"))
+		}
+	}
+}
+
+func functionDeclaratorIdentifierList(declarator *entity.AstNode) []string {
+	direct := declarator.Children[0]
+	if declarator.ReducedBy(parser.Declarator, 2) {
+		direct = declarator.Children[1]
+	}
+	for {
+		switch {
+		case direct.ReducedBy(parser.DirectDeclarator, 14):
+			return collectIdentifierListNames(direct.Children[2])
+		case direct.ReducedBy(parser.DirectDeclarator, 1), direct.ReducedBy(parser.DirectDeclarator, 12), direct.ReducedBy(parser.DirectDeclarator, 13):
+			return nil
+		default:
+			if len(direct.Children) == 0 {
+				return nil
+			}
+			direct = direct.Children[0]
+		}
+	}
+}
+
+func collectIdentifierListNames(node *entity.AstNode) []string {
+	switch {
+	case node.ReducedBy(parser.IdentifierList, 1):
+		return []string{node.Children[0].Terminal.Lexeme}
+	case node.ReducedBy(parser.IdentifierList, 2):
+		out := collectIdentifierListNames(node.Children[0])
+		return append(out, node.Children[2].Terminal.Lexeme)
+	}
+	return nil
+}
+
+func collectDeclarationListNames(node *entity.AstNode, out map[string]bool) {
+	if node == nil {
+		return
+	}
+	if node.ReducedBy(parser.DeclarationList, 1) {
+		collectDeclaratorIDs(node.Children[0], out)
+		return
+	}
+	if node.ReducedBy(parser.DeclarationList, 2) {
+		collectDeclarationListNames(node.Children[0], out)
+		collectDeclaratorIDs(node.Children[1], out)
+	}
+}
+
+func collectDeclaratorIDs(node *entity.AstNode, out map[string]bool) {
+	for _, tok := range node.DeclaratorID {
+		out[tok.Lexeme] = true
+	}
+	for _, child := range node.Children {
+		collectDeclaratorIDs(child, out)
+	}
+}
+
+func (s *Sema) validateStaticFunctionDefinitions(prog *Program) {
+	for _, d := range prog.Globals {
+		fd, ok := d.(*FuncDecl)
+		if !ok || fd.Storage != StorageStatic || fd.Sym == nil || !fd.Sym.Used {
+			continue
+		}
+		hasDefinition := false
+		for _, def := range fd.Sym.Defs {
+			if _, ok := def.(*FuncDef); ok {
+				hasDefinition = true
+				break
+			}
+		}
+		if !hasDefinition {
+			s.report(InvalidTypeSpec(fd.Range.SourceStart, "static function used but never defined"))
+		}
+	}
+}
+
+func (s *Sema) markStaticFunctionUsesInStmt(stmt Stmt) {
+	switch x := stmt.(type) {
+	case *Block:
+		for _, it := range x.Items {
+			s.markStaticFunctionUsesInStmt(it)
+		}
+	case *IfStmt:
+		s.markStaticFunctionUsesInExpr(x.Cond)
+		s.markStaticFunctionUsesInStmt(x.Then)
+		s.markStaticFunctionUsesInStmt(x.Else)
+	case *WhileStmt:
+		s.markStaticFunctionUsesInExpr(x.Cond)
+		s.markStaticFunctionUsesInStmt(x.Body)
+	case *ForStmt:
+		s.markStaticFunctionUsesInStmt(x.Init)
+		s.markStaticFunctionUsesInExpr(x.Cond)
+		s.markStaticFunctionUsesInExpr(x.Post)
+		s.markStaticFunctionUsesInStmt(x.Body)
+	case *SwitchStmt:
+		s.markStaticFunctionUsesInExpr(x.Cond)
+		s.markStaticFunctionUsesInStmt(x.Body)
+	case *CaseStmt:
+		s.markStaticFunctionUsesInStmt(x.Body)
+	case *DefaultStmt:
+		s.markStaticFunctionUsesInStmt(x.Body)
+	case *LabeledStmt:
+		s.markStaticFunctionUsesInStmt(x.Body)
+	case *ExprStmt:
+		s.markStaticFunctionUsesInExpr(x.Expr)
+	case *ReturnStmt:
+		s.markStaticFunctionUsesInExpr(x.Value)
+	case *DeclStmt:
+		for _, d := range x.Decls {
+			s.markStaticFunctionUsesInDecl(d)
+		}
+	}
+}
+
+func (s *Sema) markStaticFunctionUsesInDecl(decl Decl) {
+	switch x := decl.(type) {
+	case *VarDecl:
+		s.markStaticFunctionUsesInType(x.T)
+		s.markStaticFunctionUsesInExpr(x.Init)
+	case *TypedefDecl:
+		s.markStaticFunctionUsesInType(x.T)
+	}
+}
+
+func (s *Sema) markStaticFunctionUsesInExpr(expr Expr) {
+	switch x := expr.(type) {
+	case nil:
+		return
+	case *VarRef:
+		if x.Sym != nil && x.Sym.Kind == SymFunc {
+			x.Sym.Used = true
+		}
+	case *BinOp:
+		s.markStaticFunctionUsesInExpr(x.L)
+		s.markStaticFunctionUsesInExpr(x.R)
+	case *UnOp:
+		s.markStaticFunctionUsesInExpr(x.X)
+	case *AssignExpr:
+		s.markStaticFunctionUsesInExpr(x.L)
+		s.markStaticFunctionUsesInExpr(x.R)
+	case *CompoundAssign:
+		s.markStaticFunctionUsesInExpr(x.L)
+		s.markStaticFunctionUsesInExpr(x.R)
+	case *CallExpr:
+		s.markStaticFunctionUsesInExpr(x.Callee)
+		for _, arg := range x.Args {
+			s.markStaticFunctionUsesInExpr(arg)
+		}
+	case *MemberExpr:
+		s.markStaticFunctionUsesInExpr(x.Base)
+	case *IndexExpr:
+		s.markStaticFunctionUsesInExpr(x.Base)
+		s.markStaticFunctionUsesInExpr(x.Index)
+	case *CondExpr:
+		s.markStaticFunctionUsesInExpr(x.Cond)
+		s.markStaticFunctionUsesInExpr(x.Then)
+		s.markStaticFunctionUsesInExpr(x.Else)
+	case *SizeofExpr:
+		// sizeof 只有在操作数是实际求值的 VLA 时才算使用其中的静态函数。
+		if x.Operand.Type != nil {
+			s.markStaticFunctionUsesInVariablySizedType(x.Operand.Type)
+		}
+		if x.Operand.Expr != nil && typeHasVariableSize(x.Operand.Expr.GetType()) {
+			s.markStaticFunctionUsesInExpr(x.Operand.Expr)
+		}
+	case *CommaExpr:
+		s.markStaticFunctionUsesInExpr(x.L)
+		s.markStaticFunctionUsesInExpr(x.R)
+	case *CompoundLit:
+		s.markStaticFunctionUsesInType(x.T)
+		s.markStaticFunctionUsesInInitList(x.Init)
+	case *InitList:
+		s.markStaticFunctionUsesInInitList(x)
+	case *ImplicitCast:
+		s.markStaticFunctionUsesInExpr(x.X)
+	case *ExplicitCast:
+		s.markStaticFunctionUsesInType(x.To)
+		s.markStaticFunctionUsesInExpr(x.X)
+	}
+}
+
+func (s *Sema) markStaticFunctionUsesInInitList(il *InitList) {
+	if il == nil {
+		return
+	}
+	for _, elem := range il.Elems {
+		s.markStaticFunctionUsesInExpr(elem.Value)
+	}
+}
+
+func (s *Sema) markStaticFunctionUsesInType(t Type) {
+	s.markStaticFunctionUsesInTypeSeen(t, map[Type]bool{}, true)
+}
+
+func (s *Sema) markStaticFunctionUsesInVariablySizedType(t Type) {
+	if !typeHasVariableSize(t) {
+		return
+	}
+	s.markStaticFunctionUsesInTypeSeen(t, map[Type]bool{}, false)
+}
+
+func (s *Sema) markStaticFunctionUsesInTypeSeen(t Type, seen map[Type]bool, throughPointer bool) {
+	t = unqual(t)
+	if t == nil || seen[t] {
+		return
+	}
+	seen[t] = true
+	switch x := t.(type) {
+	case *ArrayType:
+		if x.SizeKind == ArrayVLA || x.SizeKind == ArrayStarSize {
+			if expr, ok := x.SizeExpr.(Expr); ok {
+				s.markStaticFunctionUsesInExpr(expr)
+			}
+		}
+		s.markStaticFunctionUsesInTypeSeen(x.Elem, seen, throughPointer)
+	case *PointerType:
+		if throughPointer {
+			s.markStaticFunctionUsesInTypeSeen(x.Pointee, seen, throughPointer)
+		}
+	case *FunctionType:
+		s.markStaticFunctionUsesInTypeSeen(x.Ret, seen, throughPointer)
+		for _, p := range x.Params {
+			s.markStaticFunctionUsesInTypeSeen(p, seen, throughPointer)
+		}
+	case *StructType:
+		for _, f := range x.Fields {
+			s.markStaticFunctionUsesInTypeSeen(f.T, seen, throughPointer)
+		}
+	case *UnionType:
+		for _, f := range x.Fields {
+			s.markStaticFunctionUsesInTypeSeen(f.T, seen, throughPointer)
+		}
+	}
 }
 
 func (s *Sema) foldStaticInitializers(prog *Program) {

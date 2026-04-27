@@ -377,6 +377,94 @@ func TestC99DirectFloatCastArrayBoundsAreFixed(t *testing.T) {
 	`)
 }
 
+func TestC99RejectsInvalidRestrictTargets(t *testing.T) {
+	mustAnalyze(t, `
+		typedef int *ipa[2];
+		int *restrict x[2];
+		restrict ipa y;
+		void f(int *restrict a[2], restrict ipa b, int *restrict c[restrict]);
+	`)
+	mustReject(t, `int restrict x;`)
+	mustReject(t, `typedef void (*fp)(void); fp restrict f;`)
+	mustReject(t, `void f(int restrict a[3]);`)
+	mustReject(t, `restrict struct s;`)
+}
+
+func TestC99RejectsBoolBitFieldTooWide(t *testing.T) {
+	mustAnalyze(t, `struct s { _Bool : 0; _Bool b : 1; int i : 3; };`)
+	mustReject(t, `struct s { _Bool b : 2; };`)
+}
+
+func TestC99RejectsComplexIncrementAndDecrement(t *testing.T) {
+	mustAnalyze(t, `_Complex double f(_Complex double z) { return z + 1.0; }`)
+	mustReject(t, `_Complex double f(_Complex double z) { z++; return z; }`)
+	mustReject(t, `_Complex double f(_Complex double z) { ++z; return z; }`)
+	mustReject(t, `_Complex double f(_Complex double z) { z--; return z; }`)
+	mustReject(t, `_Complex double f(_Complex double z) { --z; return z; }`)
+}
+
+func TestC99RejectsInvalidForInitDeclarations(t *testing.T) {
+	mustAnalyze(t, `
+		void f(void) {
+			for (int i = 0; i < 1; i++) {}
+			for (auto int j = 0; j < 1; j++) {}
+			for (register int k = 0; k < 1; k++) {}
+		}
+	`)
+	mustReject(t, `void f(void) { for (int i = 0, bar(void); ; ) {} }`)
+	mustReject(t, `void f(void) { for (static int i = 0; ; ) {} }`)
+	mustReject(t, `void f(void) { for (extern int i; ; ) {} }`)
+	mustReject(t, `void f(void) { for (enum { FOO } i = FOO; ; ) {} }`)
+	mustReject(t, `void f(void) { for (enum BAR { FOO } i = FOO; ; ) {} }`)
+	mustReject(t, `void f(void) { for (typedef int T; ; ) {} }`)
+	mustReject(t, `void f(void) { for (struct s { int x; } *p = 0; ; ) {} }`)
+	mustReject(t, `void f(void) { for (union u { int x; } *p = 0; ; ) {} }`)
+}
+
+func TestC99RejectsOldStyleImplicitIntParameter(t *testing.T) {
+	mustAnalyze(t, `void f(int a) { (void)a; }`)
+	mustReject(t, `void f(a) { }`)
+}
+
+func TestC99RejectsUsedStaticFunctionWithoutDefinition(t *testing.T) {
+	mustAnalyze(t, `
+		static int f3(void);
+		void g3(void) { sizeof(f3()); }
+		static int f4(void);
+		void g4(void) { sizeof(int (*)[f4()]); }
+		static int f6(void);
+		void g6(void) { sizeof(sizeof(int [f6()])); }
+	`)
+	mustReject(t, `static void f0(void); void g0(void) { f0(); }`)
+	mustReject(t, `static void f1(void); void g1(void) { if (0) { f1(); } }`)
+	mustReject(t, `static int f2(void); void g2(void) { 0 ? f2() : 0; }`)
+	mustReject(t, `static int f5(void); void g5(void) { sizeof(int [0 ? f5() : 1]); }`)
+}
+
+func TestC99RejectsQualifiedEmptyTagRedeclarations(t *testing.T) {
+	mustAnalyze(t, `
+		struct s0;
+		struct s0 { int a; };
+		struct s0;
+		void f(void) { struct s0; }
+		const union u0;
+		union u0 { long b; };
+		extern struct s1;
+		struct s3;
+		const struct s3 { int a; };
+		union u4;
+		extern union u4 { int z; };
+		enum e0 { E0 };
+		void i(void) { const enum e0 { E1 }; }
+		union u5 { int p; };
+		void j(void) { extern struct u5 { int q; }; }
+	`)
+	mustReject(t, `struct s2 { char x; }; const struct s2;`)
+	mustReject(t, `union u1; extern union u1;`)
+	mustReject(t, `union u2 { long b; }; void g(void) { const union u2; }`)
+	mustReject(t, `union u3 { float v; }; void h(void) { const struct u3; }`)
+}
+
 func mustAnalyze(t *testing.T, src string) *Program {
 	t.Helper()
 	candidates := parseCandidates(t, src)

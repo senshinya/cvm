@@ -46,6 +46,7 @@ type Symbol struct {
 	T        Type
 	Storage  StorageClass
 	Linkage  Linkage
+	Used     bool
 	Decl     Decl
 	Defs     []Decl
 	Pos      entity.SourcePos
