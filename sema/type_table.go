@@ -10,6 +10,8 @@ type TypeTable struct {
 	qualified      map[qualKey]*QualType
 	nextTagID      int
 	structs        map[*TagID]*StructType
+	unions         map[*TagID]*UnionType
+	enums          map[*TagID]*EnumType
 }
 
 func NewTypeTable() *TypeTable {
@@ -21,6 +23,8 @@ func NewTypeTable() *TypeTable {
 		functions:      map[functionKey]*FunctionType{},
 		qualified:      map[qualKey]*QualType{},
 		structs:        map[*TagID]*StructType{},
+		unions:         map[*TagID]*UnionType{},
+		enums:          map[*TagID]*EnumType{},
 	}
 	for k := Void; int(k) < len(builtinNames); k++ {
 		tt.builtins[k] = &BuiltinType{Kind: k}
@@ -166,4 +170,33 @@ func (tt *TypeTable) Struct(tag *TagID) *StructType {
 func (tt *TypeTable) CompleteStruct(s *StructType, fields []*Field) {
 	s.Fields = fields
 	s.Complete = true
+}
+
+func (tt *TypeTable) Union(tag *TagID) *UnionType {
+	if u, ok := tt.unions[tag]; ok {
+		return u
+	}
+	u := &UnionType{Tag: tag}
+	tt.unions[tag] = u
+	return u
+}
+
+func (tt *TypeTable) CompleteUnion(u *UnionType, fields []*Field) {
+	u.Fields = fields
+	u.Complete = true
+}
+
+func (tt *TypeTable) Enum(tag *TagID) *EnumType {
+	if e, ok := tt.enums[tag]; ok {
+		return e
+	}
+	e := &EnumType{Tag: tag}
+	tt.enums[tag] = e
+	return e
+}
+
+func (tt *TypeTable) CompleteEnum(e *EnumType, underlying Type, enumerators []*Enumerator) {
+	e.Underlying = underlying
+	e.Enumerators = enumerators
+	e.Complete = true
 }

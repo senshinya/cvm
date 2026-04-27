@@ -203,3 +203,39 @@ func (s *StructType) String() string {
 	}
 	return "struct{...}"
 }
+
+type UnionType struct {
+	Tag      *TagID
+	Fields   []*Field
+	Complete bool
+}
+
+func (*UnionType) isType() {}
+
+func (u *UnionType) String() string {
+	if !u.Complete {
+		return "union<incomplete>"
+	}
+	return "union{...}"
+}
+
+type Enumerator struct {
+	Name  string
+	Value int64
+}
+
+type EnumType struct {
+	Tag         *TagID
+	Underlying  Type
+	Enumerators []*Enumerator
+	Complete    bool
+}
+
+func (*EnumType) isType() {}
+
+func (e *EnumType) String() string {
+	if !e.Complete {
+		return "enum<incomplete>"
+	}
+	return "enum{...}"
+}

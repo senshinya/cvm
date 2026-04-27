@@ -130,3 +130,25 @@ func TestStructTypeForwardCompletion(t *testing.T) {
 		t.Fatalf("fields not populated: %+v", st.Fields)
 	}
 }
+
+func TestUnionAndEnum(t *testing.T) {
+	tt := NewTypeTable()
+
+	uTag := tt.NewTagID()
+	u := tt.Union(uTag)
+	if u.Complete {
+		t.Fatalf("forward union should be incomplete")
+	}
+	intT := tt.Builtin(Int)
+	tt.CompleteUnion(u, []*Field{{Name: "i", T: intT}})
+	if !u.Complete || len(u.Fields) != 1 {
+		t.Fatalf("CompleteUnion failed: %+v", u)
+	}
+
+	eTag := tt.NewTagID()
+	e := tt.Enum(eTag)
+	tt.CompleteEnum(e, intT, []*Enumerator{{Name: "RED", Value: 0}})
+	if !e.Complete || e.Underlying != intT || len(e.Enumerators) != 1 {
+		t.Fatalf("CompleteEnum failed: %+v", e)
+	}
+}
