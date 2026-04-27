@@ -9,6 +9,36 @@ func TestBuiltinTypeKindString(t *testing.T) {
 	}
 }
 
+func TestBuiltinTypeAllC99Names(t *testing.T) {
+	tests := map[BuiltinKind]string{
+		Void:              "void",
+		Bool:              "_Bool",
+		Char:              "char",
+		SChar:             "signed char",
+		UChar:             "unsigned char",
+		Short:             "short",
+		UShort:            "unsigned short",
+		Int:               "int",
+		UInt:              "unsigned int",
+		Long:              "long",
+		ULong:             "unsigned long",
+		LongLong:          "long long",
+		ULongLong:         "unsigned long long",
+		Float:             "float",
+		Double:            "double",
+		LongDouble:        "long double",
+		FloatComplex:      "float _Complex",
+		DoubleComplex:     "double _Complex",
+		LongDoubleComplex: "long double _Complex",
+	}
+	tt := NewTypeTable()
+	for kind, want := range tests {
+		if got := tt.Builtin(kind).String(); got != want {
+			t.Fatalf("Builtin(%v).String() = %q, want %q", kind, got, want)
+		}
+	}
+}
+
 func TestTypeTableBuiltinSingleton(t *testing.T) {
 	tt := NewTypeTable()
 	a := tt.Builtin(Int)
@@ -19,6 +49,17 @@ func TestTypeTableBuiltinSingleton(t *testing.T) {
 	c := tt.Builtin(UInt)
 	if a == c {
 		t.Fatalf("Int and UInt returned same pointer")
+	}
+}
+
+func TestTypeTableInstancesDoNotShareInternedTypes(t *testing.T) {
+	tt1 := NewTypeTable()
+	tt2 := NewTypeTable()
+	if tt1.Builtin(Int) == tt2.Builtin(Int) {
+		t.Fatalf("distinct TypeTable instances shared builtin singleton")
+	}
+	if tt1.Pointer(tt1.Builtin(Int)) == tt2.Pointer(tt2.Builtin(Int)) {
+		t.Fatalf("distinct TypeTable instances shared pointer singleton")
 	}
 }
 
@@ -39,6 +80,15 @@ func TestPointerTypeInterning(t *testing.T) {
 	}
 }
 
+func TestPointerTypeUsesQualifiedIdentity(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	constInt := tt.Qualified(intT, true, false, false)
+	if tt.Pointer(intT) == tt.Pointer(constInt) {
+		t.Fatalf("pointer to int collided with pointer to const int")
+	}
+}
+
 func TestArrayTypeConstantInterning(t *testing.T) {
 	tt := NewTypeTable()
 	intT := tt.Builtin(Int)
@@ -50,6 +100,22 @@ func TestArrayTypeConstantInterning(t *testing.T) {
 	a3 := tt.ArrayConstant(intT, 6)
 	if a1 == a3 {
 		t.Fatalf("Different sizes collided")
+	}
+}
+
+func TestArrayTypeStarInterningAndDistinctness(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	star1 := tt.ArrayStar(intT)
+	star2 := tt.ArrayStar(intT)
+	if star1 != star2 {
+		t.Fatalf("ArrayStar(int) interning failed")
+	}
+	if star1 == tt.ArrayUnsized(intT) {
+		t.Fatalf("ArrayStar(int) collided with ArrayUnsized(int)")
+	}
+	if got := star1.String(); got != "int[*]" {
+		t.Fatalf("ArrayStar(int).String() = %q, want %q", got, "int[*]")
 	}
 }
 
@@ -93,6 +159,30 @@ func TestFunctionTypeInterning(t *testing.T) {
 	}
 }
 
+func TestFunctionTypeInterningDifferentiatesRetAndParamOrder(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	doubleT := tt.Builtin(Double)
+	if tt.Function(intT, []Type{intT, doubleT}, false, true) == tt.Function(doubleT, []Type{intT, doubleT}, false, true) {
+		t.Fatalf("return type did not differentiate function type")
+	}
+	if tt.Function(intT, []Type{intT, doubleT}, false, true) == tt.Function(intT, []Type{doubleT, intT}, false, true) {
+		t.Fatalf("parameter order did not differentiate function type")
+	}
+}
+
+func TestFunctionTypeCopiesParamSlice(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	doubleT := tt.Builtin(Double)
+	params := []Type{intT}
+	fn := tt.Function(intT, params, false, true)
+	params[0] = doubleT
+	if fn.Params[0] != intT {
+		t.Fatalf("Function stored caller-owned params slice")
+	}
+}
+
 func TestQualTypeInterning(t *testing.T) {
 	tt := NewTypeTable()
 	intT := tt.Builtin(Int)
@@ -107,6 +197,34 @@ func TestQualTypeInterning(t *testing.T) {
 	}
 	if got := c1.String(); got != "const int" {
 		t.Fatalf("String() = %q, want %q", got, "const int")
+	}
+}
+
+func TestQualTypeAllC99QualifierCombinations(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	tests := []struct {
+		name                        string
+		isConst, isVolatile, isRest bool
+		want                        string
+	}{
+		{name: "const", isConst: true, want: "const int"},
+		{name: "volatile", isVolatile: true, want: "volatile int"},
+		{name: "restrict", isRest: true, want: "restrict int"},
+		{name: "all", isConst: true, isVolatile: true, isRest: true, want: "const volatile restrict int"},
+	}
+	seen := map[*QualType]string{}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			q := tt.Qualified(intT, tc.isConst, tc.isVolatile, tc.isRest)
+			if prev, ok := seen[q]; ok {
+				t.Fatalf("%s collided with %s", tc.name, prev)
+			}
+			seen[q] = tc.name
+			if got := q.String(); got != tc.want {
+				t.Fatalf("String() = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 
@@ -128,6 +246,27 @@ func TestStructTypeForwardCompletion(t *testing.T) {
 	}
 	if len(st.Fields) != 1 || st.Fields[0].Name != "x" {
 		t.Fatalf("fields not populated: %+v", st.Fields)
+	}
+}
+
+func TestStructUnionEnumTagIdentityIsNominal(t *testing.T) {
+	tt := NewTypeTable()
+	tag1 := tt.NewTagID()
+	tag2 := tt.NewTagID()
+	if tag1 == tag2 {
+		t.Fatalf("NewTagID returned identical pointers")
+	}
+	if tt.Struct(tag1) != tt.Struct(tag1) {
+		t.Fatalf("Struct did not reuse the same TagID")
+	}
+	if tt.Struct(tag1) == tt.Struct(tag2) {
+		t.Fatalf("different struct tags produced same type")
+	}
+	if tt.Union(tag1) != tt.Union(tag1) {
+		t.Fatalf("Union did not reuse the same TagID")
+	}
+	if tt.Enum(tag1) != tt.Enum(tag1) {
+		t.Fatalf("Enum did not reuse the same TagID")
 	}
 }
 

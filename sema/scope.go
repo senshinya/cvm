@@ -146,11 +146,27 @@ func NewSymbolTable() *SymbolTable {
 
 func (s *Scope) InsertTagChecked(name string, info *TagInfo, pos entity.SourcePos) error {
 	if existing, ok := s.Tags[name]; ok {
-		if existing.Tag != info.Tag {
+		if existing.Tag != info.Tag || !sameTagTypeKind(existing.T, info.T) {
 			return RedefinitionSymbol(pos, entity.SourcePos{}, name)
 		}
 		return nil
 	}
 	s.Tags[name] = info
 	return nil
+}
+
+func sameTagTypeKind(a, b Type) bool {
+	switch a.(type) {
+	case *StructType:
+		_, ok := b.(*StructType)
+		return ok
+	case *UnionType:
+		_, ok := b.(*UnionType)
+		return ok
+	case *EnumType:
+		_, ok := b.(*EnumType)
+		return ok
+	default:
+		return a == nil || b == nil || a == b
+	}
 }
