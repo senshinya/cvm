@@ -206,6 +206,18 @@ func TestC99StringLiteralDoesNotInitializeUnsizedArrayMember(t *testing.T) {
 	`)
 }
 
+func TestC99FlexibleArrayAllowsPreviousNamedBitField(t *testing.T) {
+	mustAnalyze(t, `struct s { int a:1; int x[]; };`)
+}
+
+func TestC99FlexibleArrayAllowsStandaloneUnionContainingFAMAggregate(t *testing.T) {
+	mustAnalyze(t, `
+		struct flex { int a; int b[]; };
+		union rf1 { struct flex a; int b; };
+		union rf2 { int a; union rf1 b; };
+	`)
+}
+
 func TestC99RejectsInvalidFlexibleArrayPlacement(t *testing.T) {
 	mustReject(t, `struct s1 { int x[]; };`)
 	mustReject(t, `struct s2 { int x[]; int y; };`)

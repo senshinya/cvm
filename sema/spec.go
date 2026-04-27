@@ -296,7 +296,7 @@ func (s *Sema) completeStructUnion(t Type, fields []*Field) {
 
 // C99 flexible array member 只能出现在结构体最后，并且前面必须有其他具名成员。
 func (s *Sema) validateFlexibleArrayMembers(fields []*Field, isUnion bool, pos entity.SourcePos) {
-	hasNamedNonBitField := false
+	hasNamedField := false
 	for i, f := range fields {
 		if f == nil {
 			continue
@@ -308,16 +308,16 @@ func (s *Sema) validateFlexibleArrayMembers(fields []*Field, isUnion bool, pos e
 			if i != len(fields)-1 {
 				s.report(InvalidTypeSpec(pos, "flexible array member must be last"))
 			}
-			if !hasNamedNonBitField {
+			if !hasNamedField {
 				s.report(InvalidTypeSpec(pos, "flexible array member requires a previous named member"))
 			}
-		} else if typeContainsFlexibleArrayMember(f.T) {
+		} else if !isUnion && typeContainsFlexibleArrayMember(f.T) {
 			s.report(InvalidTypeSpec(pos, "invalid use of structure containing flexible array member"))
 		} else if !isObjectType(f.T) {
 			s.report(InvalidTypeSpec(pos, "field type must be complete object type"))
 		}
-		if f.Name != "" && !f.IsBitField {
-			hasNamedNonBitField = true
+		if f.Name != "" {
+			hasNamedField = true
 		}
 	}
 }
