@@ -148,7 +148,23 @@ func pointerAssignmentCompatible(from, to *PointerType) bool {
 	if isVoidPointer(from) || isVoidPointer(to) {
 		return true
 	}
+	if compatibleVMPointerPointee(from.Pointee, to.Pointee) {
+		return true
+	}
 	return compatibleTypeIgnoringTopLevelQualifiers(from.Pointee, to.Pointee)
+}
+
+func compatibleVMPointerPointee(from, to Type) bool {
+	fa, fok := unqual(from).(*ArrayType)
+	ta, tok := unqual(to).(*ArrayType)
+	if !fok || !tok {
+		return false
+	}
+	// 指向 VLA 的指针赋值按运行期边界兼容处理；元素类型仍必须兼容。
+	if fa.SizeKind != ArrayVLA && ta.SizeKind != ArrayVLA {
+		return false
+	}
+	return compatibleTypeIgnoringTopLevelQualifiers(fa.Elem, ta.Elem)
 }
 
 func (s *Sema) arithmeticConversion(e Expr, target Type) Expr {

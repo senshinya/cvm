@@ -582,6 +582,10 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 		if !ok {
 			return ConstValue{}, false
 		}
+		// VLA 步长依赖运行期 sizeof，不能把 VM 指针算术折成静态地址偏移。
+		if typeHasVariableSize(ptr.Pointee) {
+			return ConstValue{}, false
+		}
 		scale := sizeofType(ptr.Pointee)
 		switch {
 		case l.Kind == ConstAddress && r.Kind == ConstInt:
@@ -760,6 +764,35 @@ func typeHasDisallowedStaticArrayBound(t Type) bool {
 	return false
 }
 
+// 文件作用域不能声明 variably modified type；这里要穿过指针，
+// 与块作用域 static 指针对象的固定大小规则区分开。
+func typeHasDisallowedFileScopeVMType(t Type) bool {
+	switch x := unqual(t).(type) {
+	case *ArrayType:
+		if x.SizeKind == ArrayStarSize {
+			return true
+		}
+		if x.SizeKind == ArrayVLA && !isNonRuntimeSizeofBound(x.SizeExpr) {
+			return true
+		}
+		return typeHasDisallowedFileScopeVMType(x.Elem)
+	case *PointerType:
+		return typeHasDisallowedFileScopeVMType(x.Pointee)
+	case *FunctionType:
+		if typeHasDisallowedFileScopeVMType(x.Ret) {
+			return true
+		}
+		for _, p := range x.Params {
+			if typeHasDisallowedFileScopeVMType(p) {
+				return true
+			}
+		}
+	case *QualType:
+		return typeHasDisallowedFileScopeVMType(x.Base)
+	}
+	return false
+}
+
 func isNonRuntimeSizeofBound(sizeExpr any) bool {
 	expr, ok := sizeExpr.(Expr)
 	if !ok {
@@ -779,7 +812,8 @@ func isNonRuntimeSizeofBound(sizeExpr any) bool {
 }
 
 // VM 指针 cast 可作为地址常量，但其中会被求值的 VLA 长度不能含有赋值、调用、
-// 逗号或自增自减这类 C99 常量表达式禁止求值的操作。
+// 逗号或自增自减这类 C99 常量表达式禁止求值的操作；普通标识符和 compound literal
+// 只表示运行期边界，不会破坏地址常量本身。
 func typeHasForbiddenAddressConstantVMSize(t Type) bool {
 	switch x := unqual(t).(type) {
 	case *ArrayType:
@@ -808,8 +842,10 @@ func typeHasForbiddenAddressConstantVMSize(t Type) bool {
 
 func exprHasForbiddenAddressConstantVMSize(expr Expr) bool {
 	switch x := expr.(type) {
-	case *AssignExpr, *CompoundAssign, *CallExpr, *CommaExpr, *CompoundLit:
+	case *AssignExpr, *CompoundAssign, *CallExpr, *CommaExpr:
 		return true
+	case *CompoundLit:
+		return initListHasForbiddenAddressConstantVMSize(x.Init)
 	case *UnOp:
 		switch x.Op {
 		case UnIncPre, UnIncPost, UnDecPre, UnDecPost:
@@ -838,6 +874,18 @@ func exprHasForbiddenAddressConstantVMSize(expr Expr) bool {
 		return exprHasForbiddenAddressConstantVMSize(x.Base)
 	case *IndexExpr:
 		return exprHasForbiddenAddressConstantVMSize(x.Base) || exprHasForbiddenAddressConstantVMSize(x.Index)
+	}
+	return false
+}
+
+func initListHasForbiddenAddressConstantVMSize(il *InitList) bool {
+	if il == nil {
+		return false
+	}
+	for _, elem := range il.Elems {
+		if exprHasForbiddenAddressConstantVMSize(elem.Value) {
+			return true
+		}
 	}
 	return false
 }

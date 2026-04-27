@@ -202,7 +202,7 @@ func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *P
 		return
 	}
 	storage := spec.Storage
-	if typeHasDisallowedStaticArrayBound(t) {
+	if typeHasDisallowedFileScopeVMType(t) {
 		s.report(InvalidTypeSpec(pos, "array size must be integer constant expression"))
 	}
 	sym := &Symbol{Name: name, Kind: SymVar, T: t, Storage: storage, Pos: pos}
