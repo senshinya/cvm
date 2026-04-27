@@ -259,6 +259,15 @@ func TestC99AcceptsShortCircuitIntegerConstantExpressions(t *testing.T) {
 	mustAnalyze(t, `int f(int n) { switch (n) { case 1 || (1/0): return 1; } return 0; }`)
 }
 
+func TestC99SizeofPointerToVLAIsIntegerConstantExpression(t *testing.T) {
+	mustAnalyze(t, `void f(int n) { enum { A = sizeof(int (*)[n]) }; }`)
+}
+
+func TestC99RejectsSizeofVLAAsIntegerConstantExpression(t *testing.T) {
+	mustReject(t, `void f(int n) { enum { A = sizeof(int[n]) }; }`)
+	mustReject(t, `void f(int n) { enum { A = sizeof(*(int (*)[n])0) }; }`)
+}
+
 func TestC99RejectsNonIntegerArrayDesignator(t *testing.T) {
 	mustReject(t, `int a[] = { [(void *)0] = 1 };`)
 }

@@ -420,7 +420,8 @@ func typeHasVariableSize(t Type) bool {
 	case *ArrayType:
 		return x.SizeKind == ArrayVLA || x.SizeKind == ArrayStarSize || typeHasVariableSize(x.Elem)
 	case *PointerType:
-		return typeHasVariableSize(x.Pointee)
+		// 指向变长类型的指针本身仍是固定大小；sizeof(int (*)[n]) 不会求值 n。
+		return false
 	case *QualType:
 		return typeHasVariableSize(x.Base)
 	}
