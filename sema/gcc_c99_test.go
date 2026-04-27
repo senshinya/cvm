@@ -41,6 +41,30 @@ func TestGCCC99FixtureCoverage(t *testing.T) {
 	}
 }
 
+func TestGCCC99OnlyPreprocessorSkipsRemain(t *testing.T) {
+	manifest := filepath.Join("testdata", "gcc-c99", "manifest.tsv")
+	content, err := os.ReadFile(manifest)
+	if err != nil {
+		t.Fatalf("read GCC C99 manifest: %v", err)
+	}
+	for lineNo, line := range strings.Split(string(content), "\n") {
+		if strings.TrimSpace(line) == "" || lineNo == 0 {
+			continue
+		}
+		fields := strings.Split(line, "\t")
+		if len(fields) != 4 {
+			t.Fatalf("manifest line %d malformed: %q", lineNo+1, line)
+		}
+		status, reason := fields[1], fields[3]
+		if status != "skipped" {
+			continue
+		}
+		if reason != "requires preprocessor or system macro handling" {
+			t.Fatalf("non-preprocessor GCC C99 skip remains at line %d: %s: %s", lineNo+1, fields[0], reason)
+		}
+	}
+}
+
 func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
