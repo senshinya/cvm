@@ -26,6 +26,9 @@ func (s *Sema) tryStringArrayInitializer(node *entity.AstNode, target Type) Expr
 		return nil
 	}
 	if node.ReducedBy(parser.Initializer, 1) {
+		if !hasStringLiteralToken(node.Children[0]) {
+			return nil
+		}
 		expr := s.typeExpr(node.Children[0], s.scope)
 		if _, ok := expr.(*StringLit); ok {
 			return expr
@@ -46,11 +49,29 @@ func (s *Sema) tryStringArrayInitializerList(list *entity.AstNode) Expr {
 	if !elem.ReducedBy(parser.Initializer, 1) {
 		return nil
 	}
+	if !hasStringLiteralToken(elem.Children[0]) {
+		return nil
+	}
 	expr := s.typeExpr(elem.Children[0], s.scope)
 	if _, ok := expr.(*StringLit); !ok {
 		return nil
 	}
 	return expr
+}
+
+func hasStringLiteralToken(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	if node.Typ == entity.STRING {
+		return true
+	}
+	for _, child := range node.Children {
+		if hasStringLiteralToken(child) {
+			return true
+		}
+	}
+	return false
 }
 
 func isCharacterType(t Type) bool {

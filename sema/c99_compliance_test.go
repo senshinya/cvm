@@ -47,6 +47,15 @@ func TestC99ForwardEnumPedanticErrorsRejects(t *testing.T) {
 	mustRejectWithOptions(t, `enum e1;`, SemaOptions{PedanticErrors: true})
 }
 
+func TestC99ForwardEnumDeclaratorPedanticErrorsRejects(t *testing.T) {
+	mustRejectWithOptions(t, `
+		void f(void) {
+			enum e1 *x;
+			(void)x;
+		}
+	`, SemaOptions{PedanticErrors: true})
+}
+
 func TestC99StaticAssertWarningOnlySyntaxIsAccepted(t *testing.T) {
 	mustAnalyze(t, `_Static_assert(1);`)
 }
@@ -63,6 +72,15 @@ func TestC99FuncIdentifierPreservesConstForPointerAssignment(t *testing.T) {
 	mustReject(t, `
 		void foo(void) {
 			char *p = __func__;
+		}
+	`)
+}
+
+func TestC99FuncIdentifierPreservesConstForVoidPointerAssignment(t *testing.T) {
+	mustReject(t, `
+		void foo(void) {
+			void *p = __func__;
+			(void)p;
 		}
 	`)
 }

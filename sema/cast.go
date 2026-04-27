@@ -121,7 +121,14 @@ func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) E
 func discardsConstQualifier(from, target Type) bool {
 	fq, fromConst := from.(*QualType)
 	tq, targetConst := target.(*QualType)
-	return unqual(from) == unqual(target) && fromConst && fq.Const && (!targetConst || !tq.Const)
+	if !fromConst || !fq.Const || (targetConst && tq.Const) {
+		return false
+	}
+	if unqual(from) == unqual(target) {
+		return true
+	}
+	bt, ok := unqual(target).(*BuiltinType)
+	return ok && bt.Kind == Void
 }
 
 func (s *Sema) arithmeticConversion(e Expr, target Type) Expr {

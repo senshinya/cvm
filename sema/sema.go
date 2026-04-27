@@ -113,10 +113,10 @@ func (s *Sema) walkDeclaration(node *entity.AstNode, prog *Program) {
 		return
 	}
 	spec := s.parseSpec(node.Children[0])
+	if s.Options.PedanticErrors && hasEnumReferenceSpecifier(node.Children[0]) {
+		s.report(InvalidTypeSpec(node.SourceStart, "ISO C forbids forward references to enum types"))
+	}
 	if node.ReducedBy(parser.Declaration, 1) {
-		if s.Options.PedanticErrors && hasEnumReferenceSpecifier(node.Children[0]) {
-			s.report(InvalidTypeSpec(node.SourceStart, "ISO C forbids forward references to enum types"))
-		}
 		if isTagType(spec.Type) {
 			prog.Globals = append(prog.Globals, &TagDecl{T: spec.Type, Range: node.SourceRange})
 		}

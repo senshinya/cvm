@@ -115,7 +115,12 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 }
 
 func gccPedanticErrors(src string) bool {
-	return strings.Contains(src, "-pedantic-errors")
+	for _, line := range strings.Split(src, "\n") {
+		if strings.Contains(line, "dg-options") && strings.Contains(line, "-pedantic-errors") {
+			return true
+		}
+	}
+	return false
 }
 
 func countCFiles(t *testing.T, root string) int {
