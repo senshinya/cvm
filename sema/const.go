@@ -103,6 +103,8 @@ func (e *Evaluator) EvalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 	return cv, true
 }
 
+// C99 的 ICE 允许不求值分支里的副作用表达式，但实际选中的分支和固定数组大小
+// 必须能折成整数；这里故意独立于更宽松的 EvalIntegerConstant。
 func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, bool) {
 	switch x := expr.(type) {
 	case *IntLit:
@@ -183,12 +185,76 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		if cv, ok := e.evalC99IntegerConstantExpression(x.X); ok {
 			return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: x.To}, true
 		}
-		if f, ok := x.X.(*FloatLit); ok {
-			v := int64(f.Value)
-			return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, true
+		if cv, ok := e.evalC99CastArithmeticConstant(x.X); ok {
+			if cv.Kind == ConstFloat {
+				v := int64(cv.Float)
+				return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, true
+			}
+			return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: x.To}, true
 		}
 	}
 	return ConstValue{}, false
+}
+
+// 整数 cast 的操作数可以是算术常量表达式，例如 (int)(double)0.0 或
+// (int)-1.0；这里只展开 cast 和一元 +/-，避免把含运行时语义的表达式误判为 ICE。
+func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr) (ConstValue, bool) {
+	switch x := expr.(type) {
+	case *FloatLit:
+		return ConstValue{Kind: ConstFloat, Float: x.Value, T: x.T}, true
+	case *ExplicitCast:
+		if !isArithmetic(x.To) {
+			return ConstValue{}, false
+		}
+		cv, ok := e.evalC99CastArithmeticConstant(x.X)
+		if !ok {
+			return ConstValue{}, false
+		}
+		return castC99ArithmeticConstant(cv, x.To)
+	case *ImplicitCast:
+		if !isArithmetic(x.To) {
+			return ConstValue{}, false
+		}
+		cv, ok := e.evalC99CastArithmeticConstant(x.X)
+		if !ok {
+			return ConstValue{}, false
+		}
+		return castC99ArithmeticConstant(cv, x.To)
+	case *UnOp:
+		cv, ok := e.evalC99CastArithmeticConstant(x.X)
+		if !ok {
+			return ConstValue{}, false
+		}
+		switch x.Op {
+		case UnPlus:
+			return cv, true
+		case UnMinus:
+			if cv.Kind == ConstFloat {
+				return ConstValue{Kind: ConstFloat, Float: -cv.Float, T: x.T}, true
+			}
+			return ConstValue{Kind: ConstInt, Int: -cv.Int, Uint: uint64(-cv.Int), T: x.T}, true
+		}
+	default:
+		return e.evalC99IntegerConstantExpression(expr)
+	}
+	return ConstValue{}, false
+}
+
+func castC99ArithmeticConstant(cv ConstValue, to Type) (ConstValue, bool) {
+	if !isArithmetic(to) {
+		return ConstValue{}, false
+	}
+	if isInteger(to) {
+		if cv.Kind == ConstFloat {
+			v := int64(cv.Float)
+			return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: to}, true
+		}
+		return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: to}, true
+	}
+	if cv.Kind == ConstFloat {
+		return ConstValue{Kind: ConstFloat, Float: cv.Float, T: to}, true
+	}
+	return ConstValue{Kind: ConstFloat, Float: float64(cv.Int), T: to}, true
 }
 
 func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
@@ -321,6 +387,8 @@ func signedOp(op BinaryOp) int64 {
 	return 1
 }
 
+// sizeof(VLA) 会求值长度表达式，不能把这种结果当作 C99 ICE；固定大小数组
+// 仍然通过 sizeofType 折叠。
 func typeHasVariableSize(t Type) bool {
 	switch x := unqual(t).(type) {
 	case *ArrayType:

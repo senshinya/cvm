@@ -246,6 +246,8 @@ func TestC99RejectsNonPrototypeStarArrayDeclarations(t *testing.T) {
 
 func TestC99RejectsInvalidIntegerConstantExpressions(t *testing.T) {
 	mustReject(t, `int f(int n) { int a[-1]; return 0; }`)
+	mustReject(t, `void f(void) { int a[(int)-1.0]; }`)
+	mustReject(t, `void f(void) { int a[(int)(double)0.0]; }`)
 	mustReject(t, `enum E { A = -1 << 0 };`)
 	mustReject(t, `int f(int n) { switch (n) { case n: return 1; } return 0; }`)
 }
