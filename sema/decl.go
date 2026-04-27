@@ -56,9 +56,9 @@ func (s *Sema) applyDirectDeclarator(node *entity.AstNode, base Type) (Type, str
 	case node.ReducedBy(parser.DirectDeclarator, 2):
 		return s.applyDeclarator(node.Children[1], base)
 	case node.ReducedBy(parser.DirectDeclarator, 3):
-		return s.applyDirectDeclarator(node.Children[0], s.Types.ArrayUnsized(base))
+		return s.applyDirectDeclarator(node.Children[0], s.makeUnsizedArray(base, node.SourceStart))
 	case node.ReducedBy(parser.DirectDeclarator, 4):
-		return s.applyDirectDeclarator(node.Children[0], s.Types.ArrayUnsized(s.applyQualifierList(node.Children[2], base)))
+		return s.applyDirectDeclarator(node.Children[0], s.makeUnsizedArray(s.applyQualifierList(node.Children[2], base), node.SourceStart))
 	case node.ReducedBy(parser.DirectDeclarator, 5):
 		size := s.evalArraySize(node.Children[2])
 		return s.applyDirectDeclarator(node.Children[0], s.makeArray(base, size, node.Children[2]))
@@ -73,12 +73,14 @@ func (s *Sema) applyDirectDeclarator(node *entity.AstNode, base Type) (Type, str
 	case node.ReducedBy(parser.DirectDeclarator, 9):
 		return s.applyDirectDeclarator(node.Children[0], s.makeArray(base, s.evalArraySize(node.Children[4]), node.Children[4]))
 	case node.ReducedBy(parser.DirectDeclarator, 10), node.ReducedBy(parser.DirectDeclarator, 11):
-		return s.applyDirectDeclarator(node.Children[0], s.Types.ArrayStar(base))
+		return s.applyDirectDeclarator(node.Children[0], s.makeStarArray(base, node.SourceStart))
 	case node.ReducedBy(parser.DirectDeclarator, 12):
 		return s.applyDirectDeclarator(node.Children[0], s.buildFunctionType(node.Children[2], base))
 	case node.ReducedBy(parser.DirectDeclarator, 13):
+		s.validateFunctionReturn(base, node.SourceStart)
 		return s.applyDirectDeclarator(node.Children[0], s.Types.Function(base, nil, false, false))
 	case node.ReducedBy(parser.DirectDeclarator, 14):
+		s.validateFunctionReturn(base, node.SourceStart)
 		return s.applyDirectDeclarator(node.Children[0], s.Types.Function(base, nil, false, false))
 	}
 	return base, ""
@@ -96,13 +98,43 @@ func (s *Sema) evalArraySize(node *entity.AstNode) int64 {
 }
 
 func (s *Sema) makeArray(elem Type, size int64, sizeNode *entity.AstNode) Type {
+	pos := entity.SourcePos{}
+	if sizeNode != nil {
+		pos = sizeNode.SourceStart
+	}
+	s.validateArrayElement(elem, pos)
 	if size < 0 {
-		return s.Types.ArrayVLA(elem, s.typeExpr(sizeNode, s.scope))
+		var sizeExpr any
+		if sizeNode != nil {
+			sizeExpr = s.typeExpr(sizeNode, s.scope)
+		}
+		return s.Types.ArrayVLA(elem, sizeExpr)
 	}
 	return s.Types.ArrayConstant(elem, size)
 }
 
+func (s *Sema) makeUnsizedArray(elem Type, pos entity.SourcePos) Type {
+	s.validateArrayElement(elem, pos)
+	return s.Types.ArrayUnsized(elem)
+}
+
+func (s *Sema) makeStarArray(elem Type, pos entity.SourcePos) Type {
+	s.validateArrayElement(elem, pos)
+	return s.Types.ArrayStar(elem)
+}
+
+func (s *Sema) validateArrayElement(elem Type, pos entity.SourcePos) {
+	if !isObjectType(elem) {
+		s.report(InvalidTypeSpec(pos, "array element type must be complete object type"))
+		return
+	}
+	if typeContainsFlexibleArrayMember(elem) {
+		s.report(InvalidTypeSpec(pos, "array element type contains flexible array member"))
+	}
+}
+
 func (s *Sema) buildFunctionType(paramList *entity.AstNode, ret Type) *FunctionType {
+	s.validateFunctionReturn(ret, paramList.SourceStart)
 	var params []Type
 	var variadic bool
 	switch {
@@ -118,6 +150,13 @@ func (s *Sema) buildFunctionType(paramList *entity.AstNode, ret Type) *FunctionT
 		}
 	}
 	return s.Types.Function(ret, params, variadic, true)
+}
+
+func (s *Sema) validateFunctionReturn(ret Type, pos entity.SourcePos) {
+	switch unqual(ret).(type) {
+	case *ArrayType, *FunctionType:
+		s.report(InvalidTypeSpec(pos, "function cannot return array or function type"))
+	}
 }
 
 func (s *Sema) collectParameterList(node *entity.AstNode) []Type {
@@ -222,26 +261,28 @@ func (s *Sema) applyAbstractDeclarator(node *entity.AstNode, base Type) Type {
 func (s *Sema) applyDirectAbstractDeclarator(node *entity.AstNode, base Type) Type {
 	switch {
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 1), node.ReducedBy(parser.DirectAbstractDeclarator, 2):
-		return s.Types.ArrayUnsized(base)
+		return s.makeUnsizedArray(base, node.SourceStart)
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 3):
 		return s.makeArray(base, s.evalArraySize(node.Children[1]), node.Children[1])
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 4), node.ReducedBy(parser.DirectAbstractDeclarator, 5), node.ReducedBy(parser.DirectAbstractDeclarator, 6):
 		return s.makeArray(base, s.evalArraySize(node.Children[len(node.Children)-2]), node.Children[len(node.Children)-2])
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 7):
-		return s.Types.ArrayStar(base)
+		return s.makeStarArray(base, node.SourceStart)
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 8):
+		s.validateFunctionReturn(base, node.SourceStart)
 		return s.Types.Function(base, nil, false, false)
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 9):
 		return s.buildFunctionType(node.Children[1], base)
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 10):
 		return s.applyAbstractDeclarator(node.Children[1], base)
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 11), node.ReducedBy(parser.DirectAbstractDeclarator, 12):
-		return s.applyDirectAbstractDeclarator(node.Children[0], s.Types.ArrayUnsized(base))
+		return s.applyDirectAbstractDeclarator(node.Children[0], s.makeUnsizedArray(base, node.SourceStart))
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 13):
 		return s.applyDirectAbstractDeclarator(node.Children[0], s.makeArray(base, s.evalArraySize(node.Children[2]), node.Children[2]))
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 18):
-		return s.applyDirectAbstractDeclarator(node.Children[0], s.Types.ArrayStar(base))
+		return s.applyDirectAbstractDeclarator(node.Children[0], s.makeStarArray(base, node.SourceStart))
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 19):
+		s.validateFunctionReturn(base, node.SourceStart)
 		return s.applyDirectAbstractDeclarator(node.Children[0], s.Types.Function(base, nil, false, false))
 	case node.ReducedBy(parser.DirectAbstractDeclarator, 20):
 		return s.applyDirectAbstractDeclarator(node.Children[0], s.buildFunctionType(node.Children[2], base))

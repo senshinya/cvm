@@ -206,6 +206,23 @@ func TestC99StringLiteralDoesNotInitializeUnsizedArrayMember(t *testing.T) {
 	`)
 }
 
+func TestC99RejectsInvalidFlexibleArrayPlacement(t *testing.T) {
+	mustReject(t, `struct s1 { int x[]; };`)
+	mustReject(t, `struct s2 { int x[]; int y; };`)
+	mustReject(t, `union u { int a; char b[]; };`)
+}
+
+func TestC99RejectsInvalidFlexibleArrayTypedefPlacement(t *testing.T) {
+	mustReject(t, `typedef int A[]; struct s1 { A x; };`)
+	mustReject(t, `typedef int A[]; struct s2 { A x; int y; };`)
+	mustReject(t, `typedef char T[]; union u { int a; T b; };`)
+}
+
+func TestC99RejectsArrayOfNonObjectTypes(t *testing.T) {
+	mustReject(t, `struct incomplete a[1];`)
+	mustReject(t, `int f(void)[1];`)
+}
+
 func mustAnalyze(t *testing.T, src string) *Program {
 	t.Helper()
 	candidates := parseCandidates(t, src)

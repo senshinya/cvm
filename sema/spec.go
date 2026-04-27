@@ -218,12 +218,16 @@ func (s *Sema) buildStructUnion(node *entity.AstNode) Type {
 	switch {
 	case node.ReducedBy(parser.StructOrUnionSpecifier, 1):
 		t := s.newAnonStructUnion(isUnion)
-		s.completeStructUnion(t, s.parseStructDeclList(node.Children[2]))
+		fields := s.parseStructDeclList(node.Children[2])
+		s.validateFlexibleArrayMembers(fields, isUnion, node.SourceStart)
+		s.completeStructUnion(t, fields)
 		return t
 	case node.ReducedBy(parser.StructOrUnionSpecifier, 2):
 		name := node.Children[1].Terminal.Lexeme
 		t := s.lookupOrCreateCurrentTag(name, isUnion, node.SourceStart)
-		s.completeStructUnion(t, s.parseStructDeclList(node.Children[3]))
+		fields := s.parseStructDeclList(node.Children[3])
+		s.validateFlexibleArrayMembers(fields, isUnion, node.SourceStart)
+		s.completeStructUnion(t, fields)
 		return t
 	case node.ReducedBy(parser.StructOrUnionSpecifier, 3):
 		return s.lookupOrCreateTag(node.Children[1].Terminal.Lexeme, isUnion, node.SourceStart)
@@ -286,6 +290,34 @@ func (s *Sema) completeStructUnion(t Type, fields []*Field) {
 			if info.T == t {
 				info.Complete = true
 			}
+		}
+	}
+}
+
+// C99 flexible array member 只能出现在结构体最后，并且前面必须有其他具名成员。
+func (s *Sema) validateFlexibleArrayMembers(fields []*Field, isUnion bool, pos entity.SourcePos) {
+	hasNamedNonBitField := false
+	for i, f := range fields {
+		if f == nil {
+			continue
+		}
+		if isFlexibleArrayMember(f.T) {
+			if isUnion {
+				s.report(InvalidTypeSpec(pos, "flexible array member cannot appear in union"))
+			}
+			if i != len(fields)-1 {
+				s.report(InvalidTypeSpec(pos, "flexible array member must be last"))
+			}
+			if !hasNamedNonBitField {
+				s.report(InvalidTypeSpec(pos, "flexible array member requires a previous named member"))
+			}
+		} else if typeContainsFlexibleArrayMember(f.T) {
+			s.report(InvalidTypeSpec(pos, "invalid use of structure containing flexible array member"))
+		} else if !isObjectType(f.T) {
+			s.report(InvalidTypeSpec(pos, "field type must be complete object type"))
+		}
+		if f.Name != "" && !f.IsBitField {
+			hasNamedNonBitField = true
 		}
 	}
 }

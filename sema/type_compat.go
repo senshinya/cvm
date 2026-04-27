@@ -52,6 +52,61 @@ func compatibleArraySize(a, b *ArrayType) bool {
 	return true
 }
 
+func isObjectType(t Type) bool {
+	switch x := unqual(t).(type) {
+	case *ErrorType:
+		return true
+	case *BuiltinType:
+		return x.Kind != Void
+	case *FunctionType:
+		return false
+	case *ArrayType:
+		return x.SizeKind != ArrayUnsized && x.SizeKind != ArrayStarSize && isObjectType(x.Elem)
+	case *StructType:
+		return x.Complete
+	case *UnionType:
+		return x.Complete
+	case *EnumType:
+		return x.Complete
+	default:
+		return true
+	}
+}
+
+func isFlexibleArrayMember(t Type) bool {
+	at, ok := unqual(t).(*ArrayType)
+	return ok && at.SizeKind == ArrayUnsized
+}
+
+func typeContainsFlexibleArrayMember(t Type) bool {
+	return typeContainsFlexibleArrayMemberSeen(t, map[Type]bool{})
+}
+
+func typeContainsFlexibleArrayMemberSeen(t Type, seen map[Type]bool) bool {
+	t = unqual(t)
+	if seen[t] {
+		return false
+	}
+	seen[t] = true
+	switch x := t.(type) {
+	case *ArrayType:
+		return x.SizeKind == ArrayUnsized || typeContainsFlexibleArrayMemberSeen(x.Elem, seen)
+	case *StructType:
+		for _, f := range x.Fields {
+			if isFlexibleArrayMember(f.T) || typeContainsFlexibleArrayMemberSeen(f.T, seen) {
+				return true
+			}
+		}
+	case *UnionType:
+		for _, f := range x.Fields {
+			if isFlexibleArrayMember(f.T) || typeContainsFlexibleArrayMemberSeen(f.T, seen) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func compatibleFunctionType(a, b *FunctionType) bool {
 	if !compatibleTypeIgnoringTopLevelQualifiers(a.Ret, b.Ret) {
 		return false

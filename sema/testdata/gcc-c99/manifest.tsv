@@ -9,7 +9,7 @@ gcc/testsuite/gcc.dg/c99-array-lval-5.c	imported-reject	reject	current lexer+par
 gcc/testsuite/gcc.dg/c99-array-lval-6.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-array-lval-7.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-array-lval-8.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-array-nonobj-1.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-array-nonobj-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-arraydecl-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-arraydecl-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-arraydecl-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
@@ -45,16 +45,16 @@ gcc/testsuite/gcc.dg/c99-const-expr-9.c	skipped	reject	requires preprocessor or 
 gcc/testsuite/gcc.dg/c99-digraph-1.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-dupqual-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-enum-comma-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-flex-array-1.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-flex-array-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-flex-array-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-flex-array-3.c	skipped	reject	current semantic layer accepts this GCC reject case
-gcc/testsuite/gcc.dg/c99-flex-array-5.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-flex-array-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
+gcc/testsuite/gcc.dg/c99-flex-array-5.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-flex-array-6.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-flex-array-7.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
-gcc/testsuite/gcc.dg/c99-flex-array-typedef-1.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-flex-array-typedef-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-flex-array-typedef-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-flex-array-typedef-3.c	skipped	reject	current semantic layer accepts this GCC reject case
-gcc/testsuite/gcc.dg/c99-flex-array-typedef-5.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-flex-array-typedef-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
+gcc/testsuite/gcc.dg/c99-flex-array-typedef-5.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-flex-array-typedef-7.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-flex-array-typedef-8.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-float-1.c	skipped	accept	requires preprocessor or system macro handling
