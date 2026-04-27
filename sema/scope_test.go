@@ -90,8 +90,10 @@ func TestScopeInsertRedeclarationError(t *testing.T) {
 func TestScopeInsertSameKindMergesDefs(t *testing.T) {
 	s := NewScope(ScopeFile, nil)
 	intT := NewTypeTable().Builtin(Int)
-	first := &Symbol{Name: "f", Kind: SymFunc, T: intT, Decl: "first"}
-	second := &Symbol{Name: "f", Kind: SymFunc, T: intT, Decl: "second"}
+	firstDecl := &FuncDecl{}
+	secondDecl := &FuncDecl{}
+	first := &Symbol{Name: "f", Kind: SymFunc, T: intT, Decl: firstDecl}
+	second := &Symbol{Name: "f", Kind: SymFunc, T: intT, Decl: secondDecl}
 	if err := s.InsertChecked("f", first); err != nil {
 		t.Fatalf("first insert errored: %v", err)
 	}
@@ -101,7 +103,7 @@ func TestScopeInsertSameKindMergesDefs(t *testing.T) {
 	if got := s.LookupCurrent("f", NSOrdinary); got != first {
 		t.Fatalf("same-kind merge replaced original symbol")
 	}
-	if len(first.Defs) != 1 || first.Defs[0] != "second" {
+	if len(first.Defs) != 1 || first.Defs[0] != secondDecl {
 		t.Fatalf("same-kind merge did not append second declaration: %+v", first.Defs)
 	}
 }

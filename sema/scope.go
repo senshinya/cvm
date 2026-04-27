@@ -46,8 +46,8 @@ type Symbol struct {
 	T        Type
 	Storage  StorageClass
 	Linkage  Linkage
-	Decl     any
-	Defs     []any
+	Decl     Decl
+	Defs     []Decl
 	Pos      entity.SourcePos
 	SlotID   int
 	GlobalID int
@@ -56,7 +56,7 @@ type Symbol struct {
 type TagInfo struct {
 	Tag      *TagID
 	T        Type
-	Decl     any
+	Decl     Decl
 	Complete bool
 }
 
