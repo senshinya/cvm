@@ -249,6 +249,7 @@ func TestC99RejectsInvalidIntegerConstantExpressions(t *testing.T) {
 	mustReject(t, `void f(void) { int a[(int)-1.0]; }`)
 	mustReject(t, `void f(void) { int a[(int)(double)0.0]; }`)
 	mustReject(t, `enum E { A = -1 << 0 };`)
+	mustReject(t, `enum { A = (int)(double)1.0 };`)
 	mustReject(t, `int i = -1 << 0;`)
 	mustReject(t, `void f(void) { static int i = -1 << 0; }`)
 	mustReject(t, `static int i = { -1 << 0 };`)
@@ -291,11 +292,37 @@ func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {
 	`)
 }
 
+func TestC99AcceptsArithmeticConstantStaticInitializer(t *testing.T) {
+	mustAnalyze(t, `static int y = { (int)+1.0 };`)
+}
+
 func TestC99UnaryFloatCastArrayBoundsRemainVLA(t *testing.T) {
 	mustAnalyze(t, `
 		void f(int m) {
 			int a5[(int)+1.0];
 			int a6[(int)+2.0];
+			void *p = m ? &a5 : &a6;
+			(void)p;
+		}
+	`)
+}
+
+func TestC99NestedFloatCastArrayBoundsRemainVLA(t *testing.T) {
+	mustAnalyze(t, `
+		void f(int m) {
+			int a5[(int)(double)1.0];
+			int a6[(int)(double)2.0];
+			void *p = m ? &a5 : &a6;
+			(void)p;
+		}
+	`)
+}
+
+func TestC99DirectFloatCastArrayBoundsAreFixed(t *testing.T) {
+	mustReject(t, `
+		void f(int m) {
+			int a5[(int)1.0];
+			int a6[(int)2.0];
 			void *p = m ? &a5 : &a6;
 			(void)p;
 		}

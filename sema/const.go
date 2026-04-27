@@ -211,12 +211,9 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		if cv, ok := e.evalC99IntegerConstantExpression(x.X); ok {
 			return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: x.To}, true
 		}
-		if cv, ok := e.evalC99CastArithmeticConstant(x.X, false); ok {
-			if cv.Kind == ConstFloat {
-				v := int64(cv.Float)
-				return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, true
-			}
-			return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: x.To}, true
+		if f, ok := x.X.(*FloatLit); ok {
+			v := int64(f.Value)
+			return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, true
 		}
 	}
 	return ConstValue{}, false
@@ -238,8 +235,8 @@ func (e *Evaluator) EvalC99ArraySizeConstantExpression(expr Expr) (ConstValue, b
 	return ConstValue{}, false
 }
 
-// GCC/C99 把 (int)1.0 当作整数常量表达式，但 (int)+1.0 只用于数组大小正负检查，
-// 不能把数组固定化；allowUnaryFloat 区分这两个约束点。
+// GCC/C99 把直接的 (int)1.0 当作 ICE；一元 +/- 或 (double) 这类中间算术 cast
+// 只能作为普通算术常量表达式，用于初始化或数组大小正负检查，不能把数组固定化。
 func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat bool) (ConstValue, bool) {
 	switch x := expr.(type) {
 	case *FloatLit:
@@ -356,6 +353,11 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 		}
 		return e.EvalConstant(x.X)
 	case *ExplicitCast:
+		if isArithmetic(x.To) {
+			if cv, ok := e.evalC99CastArithmeticConstant(x.X, true); ok {
+				return castC99ArithmeticConstant(cv, x.To)
+			}
+		}
 		return e.EvalConstant(x.X)
 	case *AddrConst:
 		return ConstValue{Kind: ConstAddress, Addr: ConstValueAddr{Sym: x.Sym, Offset: x.Offset}, T: x.T}, true
