@@ -222,7 +222,7 @@ func (s *Sema) buildStructUnion(node *entity.AstNode) Type {
 		return t
 	case node.ReducedBy(parser.StructOrUnionSpecifier, 2):
 		name := node.Children[1].Terminal.Lexeme
-		t := s.lookupOrCreateTag(name, isUnion, node.SourceStart)
+		t := s.lookupOrCreateCurrentTag(name, isUnion, node.SourceStart)
 		s.completeStructUnion(t, s.parseStructDeclList(node.Children[3]))
 		return t
 	case node.ReducedBy(parser.StructOrUnionSpecifier, 3):
@@ -243,6 +243,17 @@ func (s *Sema) lookupOrCreateTag(name string, isUnion bool, pos entity.SourcePos
 	if existing := s.scope.LookupTag(name); existing != nil {
 		return existing.T
 	}
+	return s.createTag(name, isUnion, pos)
+}
+
+func (s *Sema) lookupOrCreateCurrentTag(name string, isUnion bool, pos entity.SourcePos) Type {
+	if existing := s.scope.LookupCurrentTag(name); existing != nil {
+		return existing.T
+	}
+	return s.createTag(name, isUnion, pos)
+}
+
+func (s *Sema) createTag(name string, isUnion bool, pos entity.SourcePos) Type {
 	tag := s.Types.NewTagID()
 	var t Type
 	if isUnion {

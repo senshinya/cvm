@@ -84,6 +84,9 @@ func (s *Sema) castVoidPointerConversion(e Expr, target Type) Expr {
 }
 
 func (s *Sema) isNullPointerConstant(e Expr) bool {
+	if isPointer(e.GetType()) {
+		return false
+	}
 	cv, ok := NewEvaluator(s).EvalIntegerConstant(e)
 	return ok && cv.Int == 0
 }
@@ -101,14 +104,14 @@ func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) E
 	}
 	if pf, ok := unqual(from).(*PointerType); ok {
 		if pt, ok := unqual(target).(*PointerType); ok {
-			if discardsConstQualifier(pf.Pointee, pt.Pointee) {
-				s.report(IncompatibleAssignment(pos, from.String(), target.String()))
-				return e
+			if pointerAssignmentCompatible(pf, pt) {
+				if isVoidPointer(pf) || isVoidPointer(pt) {
+					return s.castVoidPointerConversion(e, target)
+				}
+				return s.castPointerConversion(e, target)
 			}
-			if isVoidPointer(pf) || isVoidPointer(pt) {
-				return s.castVoidPointerConversion(e, target)
-			}
-			return s.castPointerConversion(e, target)
+			s.report(IncompatibleAssignment(pos, from.String(), target.String()))
+			return e
 		}
 	}
 	if bt, ok := unqual(target).(*BuiltinType); ok && bt.Kind == Bool {
@@ -118,17 +121,19 @@ func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) E
 	return e
 }
 
-func discardsConstQualifier(from, target Type) bool {
-	fq, fromConst := from.(*QualType)
-	tq, targetConst := target.(*QualType)
-	if !fromConst || !fq.Const || (targetConst && tq.Const) {
+func pointerAssignmentCompatible(from, to *PointerType) bool {
+	if losesQualifier(from.Pointee, to.Pointee) {
 		return false
 	}
-	if unqual(from) == unqual(target) {
+	fromFunc := isFunctionPointer(from)
+	toFunc := isFunctionPointer(to)
+	if fromFunc || toFunc {
+		return fromFunc && toFunc && compatibleType(from.Pointee, to.Pointee)
+	}
+	if isVoidPointer(from) || isVoidPointer(to) {
 		return true
 	}
-	bt, ok := unqual(target).(*BuiltinType)
-	return ok && bt.Kind == Void
+	return compatibleType(from.Pointee, to.Pointee)
 }
 
 func (s *Sema) arithmeticConversion(e Expr, target Type) Expr {
@@ -233,6 +238,11 @@ func isPointer(t Type) bool {
 func isVoidPointer(p *PointerType) bool {
 	bt, ok := unqual(p.Pointee).(*BuiltinType)
 	return ok && bt.Kind == Void
+}
+
+func isFunctionPointer(p *PointerType) bool {
+	_, ok := unqual(p.Pointee).(*FunctionType)
+	return ok
 }
 
 func castAllowed(from, to Type) bool {

@@ -8,7 +8,7 @@ gcc/testsuite/gcc.dg/c99-array-lval-4.c	skipped	accept	requires preprocessor or 
 gcc/testsuite/gcc.dg/c99-array-lval-5.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-array-lval-6.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-array-lval-7.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-array-lval-8.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-array-lval-8.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-array-nonobj-1.c	skipped	reject	current semantic layer accepts this GCC reject case
 gcc/testsuite/gcc.dg/c99-arraydecl-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-arraydecl-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
@@ -20,7 +20,7 @@ gcc/testsuite/gcc.dg/c99-bool-2.c	skipped	reject	current semantic layer accepts 
 gcc/testsuite/gcc.dg/c99-bool-3.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-bool-4.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-compare-incomplete-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-compare-incomplete-2.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-compare-incomplete-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-complex-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-complex-2.c	skipped	reject	current semantic layer accepts this GCC reject case
 gcc/testsuite/gcc.dg/c99-complex-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
@@ -37,7 +37,7 @@ gcc/testsuite/gcc.dg/c99-const-expr-15.c	skipped	accept	requires preprocessor or
 gcc/testsuite/gcc.dg/c99-const-expr-2.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-const-expr-3.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-const-expr-4.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-const-expr-5.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-const-expr-5.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-const-expr-6.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-const-expr-7.c	skipped	reject	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-const-expr-8.c	skipped	reject	requires preprocessor or system macro handling
@@ -114,7 +114,7 @@ gcc/testsuite/gcc.dg/c99-stdint-6.c	skipped	accept	requires preprocessor or syst
 gcc/testsuite/gcc.dg/c99-stdint-7.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-stdint-8.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-tag-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-tag-2.c	skipped	reject	current semantic layer accepts this GCC reject case
+gcc/testsuite/gcc.dg/c99-tag-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-tag-3.c	skipped	reject	current semantic layer accepts this GCC reject case
 gcc/testsuite/gcc.dg/c99-tag-4.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-tag-5.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case

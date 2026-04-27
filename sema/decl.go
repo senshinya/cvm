@@ -21,11 +21,11 @@ func (s *Sema) applyPointer(node *entity.AstNode, base Type) Type {
 	case node.ReducedBy(parser.Pointer, 1):
 		return s.Types.Pointer(base)
 	case node.ReducedBy(parser.Pointer, 2):
-		return s.Types.Pointer(s.applyQualifierList(node.Children[1], base))
+		return s.applyQualifierList(node.Children[1], s.Types.Pointer(base))
 	case node.ReducedBy(parser.Pointer, 3):
 		return s.applyPointer(node.Children[1], s.Types.Pointer(base))
 	case node.ReducedBy(parser.Pointer, 4):
-		return s.applyPointer(node.Children[2], s.Types.Pointer(s.applyQualifierList(node.Children[1], base)))
+		return s.applyPointer(node.Children[2], s.applyQualifierList(node.Children[1], s.Types.Pointer(base)))
 	}
 	return base
 }

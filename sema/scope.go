@@ -113,6 +113,10 @@ func (s *Scope) LookupTag(name string) *TagInfo {
 	return nil
 }
 
+func (s *Scope) LookupCurrentTag(name string) *TagInfo {
+	return s.Tags[name]
+}
+
 func (s *Scope) Insert(name string, sym *Symbol) {
 	s.Ordinary[name] = sym
 }

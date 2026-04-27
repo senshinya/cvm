@@ -85,6 +85,36 @@ func TestC99FuncIdentifierPreservesConstForVoidPointerAssignment(t *testing.T) {
 	`)
 }
 
+func TestC99RejectsDiscardedPointerQualifiers(t *testing.T) {
+	mustReject(t, `
+		struct s { const int a[1]; };
+		void f(struct s s) {
+			int *p = s.a;
+			(void)p;
+		}
+	`)
+}
+
+func TestC99RejectsFunctionPointerVoidPointerAssignment(t *testing.T) {
+	mustReject(t, `
+		void f(void) {}
+		void (*fp)(void);
+		void g(void) {
+			fp = (void *)0;
+		}
+	`)
+}
+
+func TestC99RejectsDifferentStructTagPointerAssignment(t *testing.T) {
+	mustReject(t, `
+		struct a { int x; };
+		struct b { int x; };
+		void f(struct a *x, struct b *y) {
+			x = y;
+		}
+	`)
+}
+
 func TestC99StringLiteralDoesNotInitializeUnsizedArrayMember(t *testing.T) {
 	mustReject(t, `
 		typedef char T[];
