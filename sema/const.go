@@ -612,7 +612,9 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 			}
 		}
 		if isPointer(x.To) {
-			if typeHasForbiddenAddressConstantVMSize(x.To) {
+			// typedef 的 VM 边界已在 typedef 声明处求值；静态初始化器里的 cast
+			// 只需验证地址本身是不是常量，不能重新诊断 typedef 保存的副作用表达式。
+			if !x.TypeNameTypedef && typeHasForbiddenAddressConstantVMSize(x.To) {
 				return ConstValue{}, false
 			}
 			if cv, ok := e.EvalConstant(x.X); ok && cv.Kind == ConstAddress {

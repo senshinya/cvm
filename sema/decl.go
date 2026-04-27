@@ -317,3 +317,18 @@ func (s *Sema) parseTypeName(node *entity.AstNode) Type {
 	}
 	return spec.Type
 }
+
+func typeNameUsesTypedef(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	if node.ReducedBy(parser.TypeSpecifier, 14) {
+		return true
+	}
+	for _, child := range node.Children {
+		if typeNameUsesTypedef(child) {
+			return true
+		}
+	}
+	return false
+}

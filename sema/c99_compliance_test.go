@@ -316,6 +316,7 @@ func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {
 	mustAnalyze(t, `static int sa[100]; int f(int n) { static int (*a2)[n] = (int (*)[n])sa; return n; }`)
 	mustAnalyze(t, `static int sa[100]; int f(int n) { static int (*a3)[n] = (int (*)[(int){n}])sa; return n; }`)
 	mustAnalyze(t, `static int sa[100]; int f(int n) { typedef int (*vmt)[n]; static vmt a = (vmt)sa; return n; }`)
+	mustAnalyze(t, `static int sa[100]; int f(int n, int m) { typedef int (*vmt)[m++]; static int (*a18)[n] = (vmt)sa; return n + m; }`)
 }
 
 func TestC99AcceptsArithmeticConstantStaticInitializer(t *testing.T) {

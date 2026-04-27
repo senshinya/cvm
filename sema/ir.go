@@ -400,9 +400,10 @@ func (e *ImplicitCast) GetType() Type            { return e.To }
 func (*ImplicitCast) GetCategory() ValueCategory { return RValue }
 
 type ExplicitCast struct {
-	To    Type
-	X     Expr
-	Range entity.SourceRange
+	To              Type
+	X               Expr
+	TypeNameTypedef bool
+	Range           entity.SourceRange
 }
 
 func (e *ExplicitCast) Pos() entity.SourceRange  { return e.Range }
