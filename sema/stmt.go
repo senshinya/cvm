@@ -138,6 +138,7 @@ func (s *Sema) walkBlockInitDeclList(node *entity.AstNode, spec SpecResult, scop
 }
 
 func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *Scope, ctx *funcCtx, srcRange entity.SourceRange) Decl {
+	s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 	t, name := s.applyDeclarator(node.Children[0], spec.Type)
 	pos := node.Children[0].SourceStart
 	s.validateRestrictType(t, pos)

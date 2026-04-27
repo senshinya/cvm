@@ -88,6 +88,7 @@ func (s *Sema) walkExternalDeclaration(node *entity.AstNode, prog *Program) {
 
 func (s *Sema) walkFunctionDefinition(node *entity.AstNode, prog *Program) {
 	spec := s.parseSpec(node.Children[0])
+	s.validateDeclaratorArrayQualifiers(node.Children[1], false)
 	t, name := s.applyDeclarator(node.Children[1], spec.Type)
 	s.validateRestrictType(t, node.Children[1].SourceStart)
 	s.validateOldStyleImplicitIntParams(node)
@@ -241,6 +242,7 @@ func (s *Sema) walkInitDeclaratorList(node *entity.AstNode, spec SpecResult, pro
 }
 
 func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *Program, srcRange entity.SourceRange) {
+	s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 	t, name := s.applyDeclarator(node.Children[0], spec.Type)
 	pos := node.Children[0].SourceStart
 	if name == "" {

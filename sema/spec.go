@@ -374,6 +374,7 @@ func (s *Sema) parseStructDeclaratorList(node *entity.AstNode, base Type) []*Fie
 func (s *Sema) parseStructDeclarator(node *entity.AstNode, base Type) *Field {
 	switch {
 	case node.ReducedBy(parser.StructDeclarator, 1):
+		s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 		t, name := s.applyDeclarator(node.Children[0], base)
 		s.validateRestrictType(t, node.SourceStart)
 		return &Field{Name: name, T: t}
@@ -382,6 +383,7 @@ func (s *Sema) parseStructDeclarator(node *entity.AstNode, base Type) *Field {
 		s.validateBitFieldWidth(base, width, node.SourceStart)
 		return &Field{T: base, BitWidth: width, IsBitField: true}
 	case node.ReducedBy(parser.StructDeclarator, 3):
+		s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 		t, name := s.applyDeclarator(node.Children[0], base)
 		s.validateRestrictType(t, node.SourceStart)
 		width := s.evalBitWidth(node.Children[2])

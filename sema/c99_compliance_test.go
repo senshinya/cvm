@@ -475,6 +475,19 @@ func TestC99RejectsInvalidRestrictTargets(t *testing.T) {
 	mustReject(t, `restrict struct s;`)
 }
 
+func TestC99RejectsInvalidArrayParameterQualifiers(t *testing.T) {
+	mustReject(t, `int x[const 2];`)
+	mustReject(t, `int y[static 2];`)
+	mustReject(t, `void h(int a[2][static 3]);`)
+	mustReject(t, `void h(int (*p)[const 2]);`)
+}
+
+func TestC99AcceptsOutermostArrayParameterQualifiers(t *testing.T) {
+	mustAnalyze(t, `void f(int a[const static 2]);`)
+	mustAnalyze(t, `void f(int a[static 2][3]);`)
+	mustAnalyze(t, `void f(int [const static 2]);`)
+}
+
 func TestC99RejectsBoolBitFieldTooWide(t *testing.T) {
 	mustAnalyze(t, `struct s { _Bool : 0; _Bool b : 1; int i : 3; };`)
 	mustReject(t, `struct s { _Bool b : 2; };`)

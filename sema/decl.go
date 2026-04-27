@@ -95,6 +95,110 @@ func (s *Sema) applyDirectDeclarator(node *entity.AstNode, base Type) (Type, str
 	return base, ""
 }
 
+type arrayDeclaratorSyntax struct {
+	Pos       entity.SourcePos
+	Decorated bool
+	Blocked   bool
+}
+
+func (s *Sema) validateDeclaratorArrayQualifiers(node *entity.AstNode, parameter bool) {
+	s.validateArrayDeclaratorSyntax(declaratorArraySyntax(node), parameter)
+}
+
+func (s *Sema) validateAbstractDeclaratorArrayQualifiers(node *entity.AstNode, parameter bool) {
+	s.validateArrayDeclaratorSyntax(abstractDeclaratorArraySyntax(node), parameter)
+}
+
+func (s *Sema) validateArrayDeclaratorSyntax(arrays []arrayDeclaratorSyntax, parameter bool) {
+	for i, arr := range arrays {
+		if !arr.Decorated {
+			continue
+		}
+		switch {
+		case !parameter:
+			s.report(InvalidTypeSpec(arr.Pos, "array static or type qualifiers only allowed in function parameter"))
+		case i != 0 || arr.Blocked:
+			// C99 只允许参数声明最外层数组派生携带 static 或限定符；
+			// 指向数组的指针、以及多维数组的内层派生都不能使用这些标记。
+			s.report(InvalidTypeSpec(arr.Pos, "array static or type qualifiers only allowed in outermost parameter array"))
+		}
+	}
+}
+
+func declaratorArraySyntax(node *entity.AstNode) []arrayDeclaratorSyntax {
+	if node == nil {
+		return nil
+	}
+	switch {
+	case node.ReducedBy(parser.Declarator, 1):
+		return directDeclaratorArraySyntax(node.Children[0])
+	case node.ReducedBy(parser.Declarator, 2):
+		return directDeclaratorArraySyntax(node.Children[1])
+	}
+	return nil
+}
+
+func directDeclaratorArraySyntax(node *entity.AstNode) []arrayDeclaratorSyntax {
+	if node == nil {
+		return nil
+	}
+	switch {
+	case node.ReducedBy(parser.DirectDeclarator, 2):
+		return declaratorArraySyntax(node.Children[1])
+	case node.ReducedBy(parser.DirectDeclarator, 3), node.ReducedBy(parser.DirectDeclarator, 4),
+		node.ReducedBy(parser.DirectDeclarator, 5), node.ReducedBy(parser.DirectDeclarator, 6),
+		node.ReducedBy(parser.DirectDeclarator, 7), node.ReducedBy(parser.DirectDeclarator, 8),
+		node.ReducedBy(parser.DirectDeclarator, 9), node.ReducedBy(parser.DirectDeclarator, 10),
+		node.ReducedBy(parser.DirectDeclarator, 11):
+		out := directDeclaratorArraySyntax(node.Children[0])
+		out = append(out, arrayDeclaratorSyntax{
+			Pos:       node.SourceStart,
+			Decorated: directDeclaratorHasArrayQualifierOrStatic(node),
+			Blocked:   directDeclaratorHasParenthesizedPointerBase(node.Children[0]),
+		})
+		return out
+	case node.ReducedBy(parser.DirectDeclarator, 12), node.ReducedBy(parser.DirectDeclarator, 13),
+		node.ReducedBy(parser.DirectDeclarator, 14):
+		return directDeclaratorArraySyntax(node.Children[0])
+	}
+	return nil
+}
+
+func directDeclaratorHasArrayQualifierOrStatic(node *entity.AstNode) bool {
+	return node.ReducedBy(parser.DirectDeclarator, 4) ||
+		node.ReducedBy(parser.DirectDeclarator, 6) ||
+		node.ReducedBy(parser.DirectDeclarator, 7) ||
+		node.ReducedBy(parser.DirectDeclarator, 8) ||
+		node.ReducedBy(parser.DirectDeclarator, 9) ||
+		node.ReducedBy(parser.DirectDeclarator, 11)
+}
+
+func directDeclaratorHasParenthesizedPointerBase(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	if node.ReducedBy(parser.DirectDeclarator, 2) {
+		return declaratorHasPointer(node.Children[1])
+	}
+	if len(node.Children) > 0 {
+		return directDeclaratorHasParenthesizedPointerBase(node.Children[0])
+	}
+	return false
+}
+
+func declaratorHasPointer(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	switch {
+	case node.ReducedBy(parser.Declarator, 2):
+		return true
+	case node.ReducedBy(parser.Declarator, 1):
+		return directDeclaratorHasParenthesizedPointerBase(node.Children[0])
+	}
+	return false
+}
+
 type typeQualifiers struct {
 	Const, Volatile, Restrict bool
 }
@@ -284,10 +388,12 @@ func (s *Sema) parameterDeclarationType(node *entity.AstNode) Type {
 		s.validateRestrictType(spec.Type, node.SourceStart)
 		return spec.Type
 	case node.ReducedBy(parser.ParameterDeclaration, 2):
+		s.validateDeclaratorArrayQualifiers(node.Children[1], true)
 		t, _ := s.applyDeclarator(node.Children[1], spec.Type)
 		s.validateRestrictType(t, node.SourceStart)
 		return s.adjustParamType(t)
 	case node.ReducedBy(parser.ParameterDeclaration, 3):
+		s.validateAbstractDeclaratorArrayQualifiers(node.Children[1], true)
 		t := s.applyAbstractDeclarator(node.Children[1], spec.Type)
 		s.validateRestrictType(t, node.SourceStart)
 		return s.adjustParamType(t)
@@ -351,8 +457,10 @@ func (s *Sema) paramDecl(node *entity.AstNode) *VarDecl {
 	t := spec.Type
 	name := ""
 	if node.ReducedBy(parser.ParameterDeclaration, 2) {
+		s.validateDeclaratorArrayQualifiers(node.Children[1], true)
 		t, name = s.applyDeclarator(node.Children[1], spec.Type)
 	} else if node.ReducedBy(parser.ParameterDeclaration, 3) {
+		s.validateAbstractDeclaratorArrayQualifiers(node.Children[1], true)
 		t = s.applyAbstractDeclarator(node.Children[1], spec.Type)
 	}
 	s.validateRestrictType(t, node.SourceStart)
@@ -423,9 +531,93 @@ func (s *Sema) applyDirectAbstractDeclarator(node *entity.AstNode, base Type) Ty
 	return base
 }
 
+func abstractDeclaratorArraySyntax(node *entity.AstNode) []arrayDeclaratorSyntax {
+	if node == nil {
+		return nil
+	}
+	switch {
+	case node.ReducedBy(parser.AbstractDeclarator, 2):
+		return directAbstractDeclaratorArraySyntax(node.Children[0])
+	case node.ReducedBy(parser.AbstractDeclarator, 3):
+		return directAbstractDeclaratorArraySyntax(node.Children[1])
+	}
+	return nil
+}
+
+func directAbstractDeclaratorArraySyntax(node *entity.AstNode) []arrayDeclaratorSyntax {
+	if node == nil {
+		return nil
+	}
+	switch {
+	case node.ReducedBy(parser.DirectAbstractDeclarator, 1), node.ReducedBy(parser.DirectAbstractDeclarator, 2),
+		node.ReducedBy(parser.DirectAbstractDeclarator, 3), node.ReducedBy(parser.DirectAbstractDeclarator, 4),
+		node.ReducedBy(parser.DirectAbstractDeclarator, 5), node.ReducedBy(parser.DirectAbstractDeclarator, 6),
+		node.ReducedBy(parser.DirectAbstractDeclarator, 7):
+		return []arrayDeclaratorSyntax{{
+			Pos:       node.SourceStart,
+			Decorated: directAbstractDeclaratorHasArrayQualifierOrStatic(node),
+		}}
+	case node.ReducedBy(parser.DirectAbstractDeclarator, 10):
+		return abstractDeclaratorArraySyntax(node.Children[1])
+	case node.ReducedBy(parser.DirectAbstractDeclarator, 11), node.ReducedBy(parser.DirectAbstractDeclarator, 12),
+		node.ReducedBy(parser.DirectAbstractDeclarator, 13), node.ReducedBy(parser.DirectAbstractDeclarator, 14),
+		node.ReducedBy(parser.DirectAbstractDeclarator, 15), node.ReducedBy(parser.DirectAbstractDeclarator, 16),
+		node.ReducedBy(parser.DirectAbstractDeclarator, 17), node.ReducedBy(parser.DirectAbstractDeclarator, 18):
+		out := directAbstractDeclaratorArraySyntax(node.Children[0])
+		out = append(out, arrayDeclaratorSyntax{
+			Pos:       node.SourceStart,
+			Decorated: directAbstractDeclaratorHasArrayQualifierOrStatic(node),
+			Blocked:   directAbstractDeclaratorHasParenthesizedPointerBase(node.Children[0]),
+		})
+		return out
+	case node.ReducedBy(parser.DirectAbstractDeclarator, 19), node.ReducedBy(parser.DirectAbstractDeclarator, 20):
+		return directAbstractDeclaratorArraySyntax(node.Children[0])
+	}
+	return nil
+}
+
+func directAbstractDeclaratorHasArrayQualifierOrStatic(node *entity.AstNode) bool {
+	return node.ReducedBy(parser.DirectAbstractDeclarator, 2) ||
+		node.ReducedBy(parser.DirectAbstractDeclarator, 4) ||
+		node.ReducedBy(parser.DirectAbstractDeclarator, 5) ||
+		node.ReducedBy(parser.DirectAbstractDeclarator, 6) ||
+		node.ReducedBy(parser.DirectAbstractDeclarator, 12) ||
+		node.ReducedBy(parser.DirectAbstractDeclarator, 14) ||
+		node.ReducedBy(parser.DirectAbstractDeclarator, 15) ||
+		node.ReducedBy(parser.DirectAbstractDeclarator, 16) ||
+		node.ReducedBy(parser.DirectAbstractDeclarator, 17)
+}
+
+func directAbstractDeclaratorHasParenthesizedPointerBase(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	if node.ReducedBy(parser.DirectAbstractDeclarator, 10) {
+		return abstractDeclaratorHasPointer(node.Children[1])
+	}
+	if len(node.Children) > 0 {
+		return directAbstractDeclaratorHasParenthesizedPointerBase(node.Children[0])
+	}
+	return false
+}
+
+func abstractDeclaratorHasPointer(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	switch {
+	case node.ReducedBy(parser.AbstractDeclarator, 1), node.ReducedBy(parser.AbstractDeclarator, 3):
+		return true
+	case node.ReducedBy(parser.AbstractDeclarator, 2):
+		return directAbstractDeclaratorHasParenthesizedPointerBase(node.Children[0])
+	}
+	return false
+}
+
 func (s *Sema) parseTypeName(node *entity.AstNode) Type {
 	spec := s.parseSpec(node.Children[0])
 	if node.ReducedBy(parser.TypeName, 2) {
+		s.validateAbstractDeclaratorArrayQualifiers(node.Children[1], false)
 		t := s.applyAbstractDeclarator(node.Children[1], spec.Type)
 		s.validateRestrictType(t, node.SourceStart)
 		return t
