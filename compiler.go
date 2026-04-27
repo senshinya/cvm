@@ -33,14 +33,13 @@ func (c *Compiler) RunSource(source string) {
 		c.handleError(err)
 		return
 	}
-	survivors, prefilterErrs := sema.PreFilter(candidates)
-	if len(survivors) == 0 {
-		if len(prefilterErrs) > 0 {
-			c.handleError(prefilterErrs[0])
-		}
+	prog, err := sema.Analyze(candidates)
+	if err != nil {
+		c.handleError(err)
 		return
 	}
-	// Plan B/C 会在这里接入真正的 Sema walker；Plan A 只要求至少保留一个候选。
+	_ = prog
+	// 代码生成会在后续计划中接入。
 }
 
 func (c *Compiler) RunFile(fileName string) {
