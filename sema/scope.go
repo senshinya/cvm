@@ -129,6 +129,9 @@ func (s *Scope) InsertChecked(name string, sym *Symbol) error {
 		if existing.Kind != sym.Kind {
 			return RedefinitionSymbol(sym.Pos, existing.Pos, name)
 		}
+		if existing.Kind == SymTypedef {
+			return RedefinitionSymbol(sym.Pos, existing.Pos, name)
+		}
 		existing.Defs = append(existing.Defs, sym.Decl)
 		return nil
 	}
