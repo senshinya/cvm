@@ -332,3 +332,12 @@ func typeNameUsesTypedef(node *entity.AstNode) bool {
 	}
 	return false
 }
+
+func typeNameIsBareTypedef(node *entity.AstNode) bool {
+	if node == nil || !node.ReducedBy(parser.TypeName, 1) {
+		return false
+	}
+	// 只有整个 type-name 来自 typedef 时，VM 边界才已在 typedef 声明处求值；
+	// 若 abstract declarator 又写了 [m++]，那是当前 cast 新引入的边界。
+	return typeNameUsesTypedef(node.Children[0])
+}

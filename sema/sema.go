@@ -183,6 +183,9 @@ func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *P
 		return
 	}
 	if spec.IsTypedef {
+		if typeHasDisallowedFileScopeVMType(t) {
+			s.report(InvalidTypeSpec(pos, "array size must be integer constant expression"))
+		}
 		sym := &Symbol{Name: name, Kind: SymTypedef, T: t, Storage: StorageTypedef, Pos: pos}
 		td := &TypedefDecl{Sym: sym, T: t, Range: srcRange}
 		sym.Decl = td
@@ -279,12 +282,14 @@ func (s *Sema) foldStaticInitializers(prog *Program) {
 		if !ok {
 			continue
 		}
+		ev.allowCompoundLiteralAddress = true
 		s.foldStaticVarInitializer(ev, vd)
 	}
 	// 块作用域 static 也具有静态存储期，初始化式必须走同一套常量表达式约束。
 	for _, fn := range prog.Funcs {
 		for _, vd := range fn.Locals {
 			if vd.Storage == StorageStatic {
+				ev.allowCompoundLiteralAddress = false
 				s.foldStaticVarInitializer(ev, vd)
 			}
 		}

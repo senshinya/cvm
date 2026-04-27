@@ -256,6 +256,8 @@ func TestC99RejectsInvalidIntegerConstantExpressions(t *testing.T) {
 	mustReject(t, `int n; int a[(1 || n)];`)
 	mustReject(t, `int n; void f(void) { static int a[(1 || n)]; }`)
 	mustReject(t, `int n; static int (*p)[n];`)
+	mustReject(t, `int n; typedef int (*P)[n];`)
+	mustReject(t, `int n; typedef int A[n];`)
 	mustReject(t, `int i = -1 << 0;`)
 	mustReject(t, `void f(void) { static int i = -1 << 0; }`)
 	mustReject(t, `static int i = { -1 << 0 };`)
@@ -264,6 +266,8 @@ func TestC99RejectsInvalidIntegerConstantExpressions(t *testing.T) {
 	mustReject(t, `void f(void) { static int b[1] = { -1 << 0 }; }`)
 	mustReject(t, `void f(void) { int a[1]; static int (*p)[1] = (int (*)[1])a; }`)
 	mustReject(t, `static int sa[100]; int f(int n) { static int (*a)[n] = (int (*)[n])sa + 1; return n; }`)
+	mustReject(t, `static int sa[100]; int f(int n, int m) { typedef int T; static int (*p)[n] = (T (*)[m++])sa; return n + m; }`)
+	mustReject(t, `void f(void) { static int *p = &(int){1}; }`)
 	mustReject(t, `int f(int n) { switch (n) { case n: return 1; } return 0; }`)
 }
 
@@ -317,6 +321,10 @@ func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {
 	mustAnalyze(t, `static int sa[100]; int f(int n) { static int (*a3)[n] = (int (*)[(int){n}])sa; return n; }`)
 	mustAnalyze(t, `static int sa[100]; int f(int n) { typedef int (*vmt)[n]; static vmt a = (vmt)sa; return n; }`)
 	mustAnalyze(t, `static int sa[100]; int f(int n, int m) { typedef int (*vmt)[m++]; static int (*a18)[n] = (vmt)sa; return n + m; }`)
+}
+
+func TestC99AcceptsFileScopeCompoundLiteralAddressInitializer(t *testing.T) {
+	mustAnalyze(t, `static int *p = &(int){1};`)
 }
 
 func TestC99AcceptsArithmeticConstantStaticInitializer(t *testing.T) {

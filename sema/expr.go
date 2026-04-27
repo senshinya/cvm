@@ -579,7 +579,7 @@ func (s *Sema) typeCast(node *entity.AstNode, scope *Scope) Expr {
 		if !castAllowed(x.GetType(), t) {
 			s.report(InvalidTypeSpec(node.SourceStart, "invalid explicit cast"))
 		}
-		return &ExplicitCast{To: t, X: x, TypeNameTypedef: typeNameUsesTypedef(node.Children[1]), Range: node.SourceRange}
+		return &ExplicitCast{To: t, X: x, TypeNameTypedef: typeNameIsBareTypedef(node.Children[1]), Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
 }

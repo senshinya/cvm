@@ -25,7 +25,8 @@ type ConstValue struct {
 }
 
 type Evaluator struct {
-	sema *Sema
+	sema                        *Sema
+	allowCompoundLiteralAddress bool
 }
 
 func NewEvaluator(s *Sema) *Evaluator {
@@ -566,7 +567,7 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 		if vr, ok := x.X.(*VarRef); ok && vr.Sym.Storage != StorageAuto && vr.Sym.Storage != StorageRegister {
 			return ConstValue{Kind: ConstAddress, Addr: ConstValueAddr{Sym: vr.Sym}, T: x.T}, true
 		}
-		if _, ok := x.X.(*CompoundLit); ok {
+		if _, ok := x.X.(*CompoundLit); ok && e.allowCompoundLiteralAddress {
 			return ConstValue{Kind: ConstAddress, T: x.T}, true
 		}
 	case *BinOp:
@@ -638,7 +639,9 @@ func (e *Evaluator) staticAddressConstant(expr Expr, t Type) (ConstValue, bool) 
 	}
 	switch x := expr.(type) {
 	case *CompoundLit:
-		return ConstValue{Kind: ConstAddress, T: t}, true
+		if e.allowCompoundLiteralAddress {
+			return ConstValue{Kind: ConstAddress, T: t}, true
+		}
 	case *VarRef:
 		if x.Sym.Kind == SymFunc || (x.Sym.Storage != StorageAuto && x.Sym.Storage != StorageRegister) {
 			switch unqual(x.GetType()).(type) {
