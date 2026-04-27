@@ -210,9 +210,9 @@ func (s *Sema) typeLabeled(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stm
 		return &LabeledStmt{Name: node.Children[0].Terminal.Lexeme, Body: s.typeStmt(node.Children[2], scope, ctx), Range: node.SourceRange}
 	case node.ReducedBy(parser.LabeledStatement, 2):
 		expr := s.typeExpr(node.Children[1], scope)
-		cv, ok := NewEvaluator(s).EvalIntegerConstant(expr)
+		cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr)
 		if !ok {
-			s.report(InvalidTypeSpec(node.SourceStart, "case value must be integer constant"))
+			s.report(InvalidTypeSpec(node.SourceStart, "case value must be integer constant expression"))
 		}
 		return &CaseStmt{Value: cv.Int, Body: s.typeStmt(node.Children[3], scope, ctx), Range: node.SourceRange}
 	case node.ReducedBy(parser.LabeledStatement, 3):

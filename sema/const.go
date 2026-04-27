@@ -95,6 +95,102 @@ func (e *Evaluator) EvalIntegerConstant(expr Expr) (ConstValue, bool) {
 	return ConstValue{}, false
 }
 
+func (e *Evaluator) EvalC99IntegerConstantExpression(expr Expr) (ConstValue, bool) {
+	cv, ok := e.evalC99IntegerConstantExpression(expr)
+	if !ok || !isInteger(cv.T) {
+		return ConstValue{}, false
+	}
+	return cv, true
+}
+
+func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, bool) {
+	switch x := expr.(type) {
+	case *IntLit:
+		return ConstValue{Kind: ConstInt, Int: x.Value, Uint: uint64(x.Value), T: x.T}, true
+	case *CharLit:
+		return ConstValue{Kind: ConstInt, Int: int64(x.Value), Uint: uint64(x.Value), T: x.T}, true
+	case *EnumRef:
+		return ConstValue{Kind: ConstInt, Int: x.Enumerator.Value, Uint: uint64(x.Enumerator.Value), T: x.T}, true
+	case *SizeofExpr:
+		if x.Operand.Type != nil {
+			if typeHasVariableSize(x.Operand.Type) {
+				return ConstValue{}, false
+			}
+			size := sizeofType(x.Operand.Type)
+			if size <= 0 {
+				return ConstValue{}, false
+			}
+			return ConstValue{Kind: ConstInt, Int: size, Uint: uint64(size), T: x.T}, true
+		}
+		if x.Operand.Expr != nil {
+			if typeHasVariableSize(x.Operand.Expr.GetType()) {
+				return ConstValue{}, false
+			}
+			size := sizeofType(x.Operand.Expr.GetType())
+			if size <= 0 {
+				return ConstValue{}, false
+			}
+			return ConstValue{Kind: ConstInt, Int: size, Uint: uint64(size), T: x.T}, true
+		}
+	case *BinOp:
+		l, lok := e.evalC99IntegerConstantExpression(x.L)
+		r, rok := e.evalC99IntegerConstantExpression(x.R)
+		if !lok || !rok {
+			return ConstValue{}, false
+		}
+		if x.Op == OpShl && l.Int < 0 {
+			return ConstValue{}, false
+		}
+		v, ok := evalBinOpInt(x.Op, l.Int, r.Int)
+		if !ok {
+			return ConstValue{}, false
+		}
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
+	case *UnOp:
+		v, ok := e.evalC99IntegerConstantExpression(x.X)
+		if !ok {
+			return ConstValue{}, false
+		}
+		switch x.Op {
+		case UnPlus:
+			return ConstValue{Kind: ConstInt, Int: v.Int, Uint: uint64(v.Int), T: x.T}, true
+		case UnMinus:
+			return ConstValue{Kind: ConstInt, Int: -v.Int, Uint: uint64(-v.Int), T: x.T}, true
+		case UnBitNot:
+			return ConstValue{Kind: ConstInt, Int: ^v.Int, Uint: uint64(^v.Int), T: x.T}, true
+		case UnLogNot:
+			return ConstValue{Kind: ConstInt, Int: boolToInt(v.Int == 0), Uint: uint64(boolToInt(v.Int == 0)), T: x.T}, true
+		}
+	case *CondExpr:
+		c, ok := e.evalC99IntegerConstantExpression(x.Cond)
+		if !ok {
+			return ConstValue{}, false
+		}
+		if c.Int != 0 {
+			return e.evalC99IntegerConstantExpression(x.Then)
+		}
+		return e.evalC99IntegerConstantExpression(x.Else)
+	case *ImplicitCast:
+		cv, ok := e.evalC99IntegerConstantExpression(x.X)
+		if !ok || !isInteger(x.To) {
+			return ConstValue{}, false
+		}
+		return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: x.To}, true
+	case *ExplicitCast:
+		if !isInteger(x.To) {
+			return ConstValue{}, false
+		}
+		if cv, ok := e.evalC99IntegerConstantExpression(x.X); ok {
+			return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: x.To}, true
+		}
+		if f, ok := x.X.(*FloatLit); ok {
+			v := int64(f.Value)
+			return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, true
+		}
+	}
+	return ConstValue{}, false
+}
+
 func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 	if cv, ok := e.EvalIntegerConstant(expr); ok {
 		return cv, true
@@ -223,6 +319,18 @@ func signedOp(op BinaryOp) int64 {
 		return -1
 	}
 	return 1
+}
+
+func typeHasVariableSize(t Type) bool {
+	switch x := unqual(t).(type) {
+	case *ArrayType:
+		return x.SizeKind == ArrayVLA || x.SizeKind == ArrayStarSize || typeHasVariableSize(x.Elem)
+	case *PointerType:
+		return typeHasVariableSize(x.Pointee)
+	case *QualType:
+		return typeHasVariableSize(x.Base)
+	}
+	return false
 }
 
 // sizeofType 使用 cvm 当前 64 位目标模型。这里保持简单布局，后续后端布局阶段可以替换为

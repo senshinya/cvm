@@ -244,6 +244,27 @@ func TestC99RejectsNonPrototypeStarArrayDeclarations(t *testing.T) {
 	mustReject(t, `struct s { int x[*][*]; };`)
 }
 
+func TestC99RejectsInvalidIntegerConstantExpressions(t *testing.T) {
+	mustReject(t, `int f(int n) { int a[-1]; return 0; }`)
+	mustReject(t, `enum E { A = -1 << 0 };`)
+	mustReject(t, `int f(int n) { switch (n) { case n: return 1; } return 0; }`)
+}
+
+func TestC99RejectsNonIntegerArrayDesignator(t *testing.T) {
+	mustReject(t, `int a[] = { [(void *)0] = 1 };`)
+}
+
+func TestC99AcceptsVLASizeAndNullPointerInitializers(t *testing.T) {
+	mustAnalyze(t, `
+		void f(int n) {
+			int a[n];
+			int *p = (void *)0;
+			(void)a;
+			(void)p;
+		}
+	`)
+}
+
 func mustAnalyze(t *testing.T, src string) *Program {
 	t.Helper()
 	candidates := parseCandidates(t, src)

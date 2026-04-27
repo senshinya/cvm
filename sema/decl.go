@@ -5,6 +5,12 @@ import (
 	"shinya.click/cvm/parser"
 )
 
+type arraySizeInfo struct {
+	Expr     Expr
+	Value    int64
+	Constant bool
+}
+
 func (s *Sema) applyDeclarator(node *entity.AstNode, base Type) (Type, string) {
 	switch {
 	case node.ReducedBy(parser.Declarator, 1):
@@ -86,31 +92,30 @@ func (s *Sema) applyDirectDeclarator(node *entity.AstNode, base Type) (Type, str
 	return base, ""
 }
 
-func (s *Sema) evalArraySize(node *entity.AstNode) int64 {
+func (s *Sema) evalArraySize(node *entity.AstNode) arraySizeInfo {
 	if node == nil {
-		return -1
+		return arraySizeInfo{}
 	}
 	expr := s.typeExpr(node, s.scope)
-	if cv, ok := NewEvaluator(s).EvalIntegerConstant(expr); ok {
-		return cv.Int
+	if cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr); ok {
+		return arraySizeInfo{Expr: expr, Value: cv.Int, Constant: true}
 	}
-	return -1
+	return arraySizeInfo{Expr: expr}
 }
 
-func (s *Sema) makeArray(elem Type, size int64, sizeNode *entity.AstNode) Type {
+func (s *Sema) makeArray(elem Type, size arraySizeInfo, sizeNode *entity.AstNode) Type {
 	pos := entity.SourcePos{}
 	if sizeNode != nil {
 		pos = sizeNode.SourceStart
 	}
 	s.validateArrayElement(elem, pos)
-	if size < 0 {
-		var sizeExpr any
-		if sizeNode != nil {
-			sizeExpr = s.typeExpr(sizeNode, s.scope)
-		}
-		return s.Types.ArrayVLA(elem, sizeExpr)
+	if !size.Constant {
+		return s.Types.ArrayVLA(elem, size.Expr)
 	}
-	return s.Types.ArrayConstant(elem, size)
+	if size.Value <= 0 {
+		s.report(InvalidTypeSpec(pos, "array size must be positive"))
+	}
+	return s.Types.ArrayConstant(elem, size.Value)
 }
 
 func (s *Sema) makeUnsizedArray(elem Type, pos entity.SourcePos) Type {

@@ -139,7 +139,15 @@ func (s *Sema) parseDesignator(node *entity.AstNode) Designator {
 	switch {
 	case node.ReducedBy(parser.Designator, 1):
 		expr := s.typeExpr(node.Children[1], s.scope)
-		cv, _ := NewEvaluator(s).EvalIntegerConstant(expr)
+		if !isInteger(expr.GetType()) {
+			s.report(InvalidTypeSpec(node.SourceStart, "array designator expression must have integer type"))
+			return Designator{Kind: DesigArrayIndex}
+		}
+		cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr)
+		if !ok {
+			s.report(InvalidTypeSpec(node.SourceStart, "array designator expression must be integer constant expression"))
+			return Designator{Kind: DesigArrayIndex}
+		}
 		return Designator{Kind: DesigArrayIndex, Index: cv.Int}
 	case node.ReducedBy(parser.Designator, 2):
 		return Designator{Kind: DesigFieldName, Field: &Field{Name: node.Children[1].Terminal.Lexeme}}

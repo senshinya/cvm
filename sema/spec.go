@@ -367,9 +367,9 @@ func (s *Sema) parseStructDeclarator(node *entity.AstNode, base Type) *Field {
 
 func (s *Sema) evalBitWidth(node *entity.AstNode) int {
 	expr := s.typeExpr(node, s.scope)
-	cv, ok := NewEvaluator(s).EvalIntegerConstant(expr)
+	cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr)
 	if !ok {
-		s.report(InvalidTypeSpec(node.SourceStart, "bit-field width must be integer constant"))
+		s.report(InvalidTypeSpec(node.SourceStart, "bit-field width must be integer constant expression"))
 		return 0
 	}
 	return int(cv.Int)
@@ -435,10 +435,10 @@ func (s *Sema) parseEnumerator(node *entity.AstNode, defaultVal int64, base Type
 	val := defaultVal
 	if node.ReducedBy(parser.Enumerator, 2) {
 		expr := s.typeExpr(node.Children[2], s.scope)
-		if cv, ok := NewEvaluator(s).EvalIntegerConstant(expr); ok {
+		if cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr); ok {
 			val = cv.Int
 		} else {
-			s.report(InvalidTypeSpec(node.SourceStart, "enum value must be integer constant"))
+			s.report(InvalidTypeSpec(node.SourceStart, "enum value must be integer constant expression"))
 		}
 	}
 	return &Enumerator{Name: name, Value: val}
