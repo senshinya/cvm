@@ -38,3 +38,37 @@ func TestPointerTypeInterning(t *testing.T) {
 		t.Fatalf("Pointer(int*).String() = %q, want %q", got, "int**")
 	}
 }
+
+func TestArrayTypeConstantInterning(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	a1 := tt.ArrayConstant(intT, 5)
+	a2 := tt.ArrayConstant(intT, 5)
+	if a1 != a2 {
+		t.Fatalf("ArrayConstant(int, 5) interning failed")
+	}
+	a3 := tt.ArrayConstant(intT, 6)
+	if a1 == a3 {
+		t.Fatalf("Different sizes collided")
+	}
+}
+
+func TestArrayTypeUnsizedInterning(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	a1 := tt.ArrayUnsized(intT)
+	a2 := tt.ArrayUnsized(intT)
+	if a1 != a2 {
+		t.Fatalf("ArrayUnsized(int) interning failed")
+	}
+}
+
+func TestArrayTypeVLANotInterned(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	a1 := tt.ArrayVLA(intT, nil)
+	a2 := tt.ArrayVLA(intT, nil)
+	if a1 == a2 {
+		t.Fatalf("VLA arrays must NOT be interned")
+	}
+}

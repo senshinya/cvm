@@ -70,3 +70,58 @@ func (*PointerType) isType() {}
 func (p *PointerType) String() string {
 	return p.Pointee.String() + "*"
 }
+
+type ArraySizeKind int
+
+const (
+	ArrayUnsized ArraySizeKind = iota
+	ArrayConstantSize
+	ArrayVLA
+	ArrayStarSize
+)
+
+type ArrayType struct {
+	Elem     Type
+	Size     int64
+	SizeExpr any
+	SizeKind ArraySizeKind
+}
+
+func (*ArrayType) isType() {}
+
+func (a *ArrayType) String() string {
+	switch a.SizeKind {
+	case ArrayConstantSize:
+		return a.Elem.String() + "[" + itoa(a.Size) + "]"
+	case ArrayUnsized:
+		return a.Elem.String() + "[]"
+	case ArrayVLA:
+		return a.Elem.String() + "[<vla>]"
+	case ArrayStarSize:
+		return a.Elem.String() + "[*]"
+	}
+	return a.Elem.String() + "[?]"
+}
+
+func itoa(n int64) string {
+	// 这里只需要一个很小的整数转字符串工具，避免为了单点用途引入额外 import。
+	if n == 0 {
+		return "0"
+	}
+	neg := n < 0
+	if neg {
+		n = -n
+	}
+	var buf [20]byte
+	i := len(buf)
+	for n > 0 {
+		i--
+		buf[i] = byte('0' + n%10)
+		n /= 10
+	}
+	if neg {
+		i--
+		buf[i] = '-'
+	}
+	return string(buf[i:])
+}
