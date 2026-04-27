@@ -8,3 +8,16 @@ func TestBuiltinTypeKindString(t *testing.T) {
 		t.Fatalf("BuiltinType{Int}.String() = %q, want %q", got, "int")
 	}
 }
+
+func TestTypeTableBuiltinSingleton(t *testing.T) {
+	tt := NewTypeTable()
+	a := tt.Builtin(Int)
+	b := tt.Builtin(Int)
+	if a != b {
+		t.Fatalf("Builtin(Int) returned distinct pointers; expected interning")
+	}
+	c := tt.Builtin(UInt)
+	if a == c {
+		t.Fatalf("Int and UInt returned same pointer")
+	}
+}
