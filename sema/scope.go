@@ -46,8 +46,8 @@ type Symbol struct {
 	T        Type
 	Storage  StorageClass
 	Linkage  Linkage
-	Decl     any
-	Defs     []any
+	Decl     Decl
+	Defs     []Decl
 	Pos      entity.SourcePos
 	SlotID   int
 	GlobalID int
@@ -56,7 +56,7 @@ type Symbol struct {
 type TagInfo struct {
 	Tag      *TagID
 	T        Type
-	Decl     any
+	Decl     Decl
 	Complete bool
 }
 
@@ -127,6 +127,9 @@ func (s *Scope) InsertTag(name string, info *TagInfo) {
 func (s *Scope) InsertChecked(name string, sym *Symbol) error {
 	if existing, ok := s.Ordinary[name]; ok {
 		if existing.Kind != sym.Kind {
+			return RedefinitionSymbol(sym.Pos, existing.Pos, name)
+		}
+		if existing.Kind == SymTypedef {
 			return RedefinitionSymbol(sym.Pos, existing.Pos, name)
 		}
 		existing.Defs = append(existing.Defs, sym.Decl)

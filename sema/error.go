@@ -26,3 +26,15 @@ func InvalidSymbolKind(pos, previous entity.SourcePos, name string) *common.CvmE
 		common.NewNoteMessage(previous, "symbol definition is here"),
 	)
 }
+
+func InvalidTypeSpec(pos entity.SourcePos, msg string) *common.CvmError {
+	return common.NewCvmError(
+		common.NewErrorMessage(pos, "invalid type specifier: "+msg),
+	)
+}
+
+func IncompatibleAssignment(pos entity.SourcePos, from, to string) *common.CvmError {
+	return common.NewCvmError(
+		common.NewErrorMessage(pos, fmt.Sprintf("incompatible types: cannot assign '%s' to '%s'", from, to)),
+	)
+}
