@@ -21,3 +21,20 @@ func TestTypeTableBuiltinSingleton(t *testing.T) {
 		t.Fatalf("Int and UInt returned same pointer")
 	}
 }
+
+func TestPointerTypeInterning(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	p1 := tt.Pointer(intT)
+	p2 := tt.Pointer(intT)
+	if p1 != p2 {
+		t.Fatalf("Pointer(int) interning failed: %p vs %p", p1, p2)
+	}
+	pp := tt.Pointer(p1)
+	if pp == p1 {
+		t.Fatalf("Pointer(int*) collided with Pointer(int)")
+	}
+	if got := pp.String(); got != "int**" {
+		t.Fatalf("Pointer(int*).String() = %q, want %q", got, "int**")
+	}
+}

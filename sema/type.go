@@ -60,3 +60,13 @@ func (*BuiltinType) isType() {}
 func (b *BuiltinType) String() string {
 	return builtinNames[b.Kind]
 }
+
+type PointerType struct {
+	Pointee Type
+}
+
+func (*PointerType) isType() {}
+
+func (p *PointerType) String() string {
+	return p.Pointee.String() + "*"
+}
