@@ -92,3 +92,20 @@ func TestFunctionTypeInterning(t *testing.T) {
 		t.Fatalf("HasProto flag did not differentiate")
 	}
 }
+
+func TestQualTypeInterning(t *testing.T) {
+	tt := NewTypeTable()
+	intT := tt.Builtin(Int)
+	c1 := tt.Qualified(intT, true, false, false)
+	c2 := tt.Qualified(intT, true, false, false)
+	if c1 != c2 {
+		t.Fatalf("const int interning failed")
+	}
+	cv := tt.Qualified(intT, true, true, false)
+	if c1 == cv {
+		t.Fatalf("different qualifier sets collided")
+	}
+	if got := c1.String(); got != "const int" {
+		t.Fatalf("String() = %q, want %q", got, "const int")
+	}
+}

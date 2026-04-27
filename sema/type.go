@@ -155,3 +155,24 @@ func (f *FunctionType) String() string {
 	s += ")"
 	return s
 }
+
+type QualType struct {
+	Base                      Type
+	Const, Volatile, Restrict bool
+}
+
+func (*QualType) isType() {}
+
+func (q *QualType) String() string {
+	s := ""
+	if q.Const {
+		s += "const "
+	}
+	if q.Volatile {
+		s += "volatile "
+	}
+	if q.Restrict {
+		s += "restrict "
+	}
+	return s + q.Base.String()
+}

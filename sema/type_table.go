@@ -7,6 +7,7 @@ type TypeTable struct {
 	arraysUnsized  map[Type]*ArrayType
 	arraysStar     map[Type]*ArrayType
 	functions      map[functionKey]*FunctionType
+	qualified      map[qualKey]*QualType
 }
 
 func NewTypeTable() *TypeTable {
@@ -16,6 +17,7 @@ func NewTypeTable() *TypeTable {
 		arraysUnsized:  map[Type]*ArrayType{},
 		arraysStar:     map[Type]*ArrayType{},
 		functions:      map[functionKey]*FunctionType{},
+		qualified:      map[qualKey]*QualType{},
 	}
 	for k := Void; int(k) < len(builtinNames); k++ {
 		tt.builtins[k] = &BuiltinType{Kind: k}
@@ -117,4 +119,29 @@ func paramsKey(params []Type) string {
 		b = append(b, '|')
 	}
 	return string(b)
+}
+
+type qualKey struct {
+	base Type
+	bits uint8
+}
+
+func (tt *TypeTable) Qualified(base Type, isConst, isVolatile, isRestrict bool) *QualType {
+	var bits uint8
+	if isConst {
+		bits |= 1
+	}
+	if isVolatile {
+		bits |= 2
+	}
+	if isRestrict {
+		bits |= 4
+	}
+	key := qualKey{base, bits}
+	if q, ok := tt.qualified[key]; ok {
+		return q
+	}
+	q := &QualType{Base: base, Const: isConst, Volatile: isVolatile, Restrict: isRestrict}
+	tt.qualified[key] = q
+	return q
 }
