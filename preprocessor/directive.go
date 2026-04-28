@@ -219,12 +219,60 @@ func (pp *preprocessor) handleDefine(tokens []PPToken) error {
 		return ppError(tokens[0].Location, "macro name must be an identifier")
 	}
 	name := tokens[0].Lexeme
-	replacement := dropNewlines(tokens[1:])
-	if len(replacement) == 0 {
-		replacement = nil
+	if len(tokens) >= 2 && tokens[1].Kind == PPPunctuator && tokens[1].Lexeme == "(" && !tokens[1].LeadingSpace {
+		params, variadic, end, err := parseMacroParams(tokens)
+		if err != nil {
+			return err
+		}
+		replacement := dropNewlines(tokens[end+1:])
+		return pp.macros.Define(&Macro{
+			Name:        name,
+			Kind:        MacroFunction,
+			Params:      params,
+			Variadic:    variadic,
+			Replacement: replacement,
+			Definition:  tokens[0].Location,
+		})
 	}
-	pp.macros.DefineObject(name, replacement)
-	return nil
+	replacement := dropNewlines(tokens[1:])
+	return pp.macros.Define(&Macro{Name: name, Kind: MacroObject, Replacement: replacement, Definition: tokens[0].Location})
+}
+
+func parseMacroParams(tokens []PPToken) ([]string, bool, int, error) {
+	var params []string
+	variadic := false
+	i := 2
+	if i < len(tokens) && tokens[i].Kind == PPPunctuator && tokens[i].Lexeme == ")" {
+		return params, false, i, nil
+	}
+	for i < len(tokens) {
+		tok := tokens[i]
+		switch {
+		case tok.Kind == PPIdentifier:
+			params = append(params, tok.Lexeme)
+			i++
+		case tok.Kind == PPPunctuator && tok.Lexeme == "...":
+			params = append(params, "__VA_ARGS__")
+			variadic = true
+			i++
+		default:
+			return nil, false, i, ppError(tok.Location, "invalid macro parameter list")
+		}
+		if i >= len(tokens) {
+			return nil, false, i, ppError(tok.Location, "unterminated macro parameter list")
+		}
+		if tokens[i].Kind == PPPunctuator && tokens[i].Lexeme == ")" {
+			return params, variadic, i, nil
+		}
+		if tokens[i].Kind != PPPunctuator || tokens[i].Lexeme != "," {
+			return nil, false, i, ppError(tokens[i].Location, "expected comma in macro parameter list")
+		}
+		i++
+		if variadic {
+			return nil, false, i, ppError(tokens[i-1].Location, "variadic parameter must be last")
+		}
+	}
+	return nil, false, len(tokens), ppError(tokens[len(tokens)-1].Location, "unterminated macro parameter list")
 }
 
 func (pp *preprocessor) handleLine(tokens []PPToken, line []PPToken) error {

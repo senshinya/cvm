@@ -1,6 +1,7 @@
 package preprocessor
 
 import (
+	"slices"
 	"strings"
 
 	"shinya.click/cvm/entity"
@@ -66,4 +67,27 @@ func (m *MacroTable) Undef(name string) {
 func (m *MacroTable) Lookup(name string) (*Macro, bool) {
 	got, ok := m.entries[name]
 	return got, ok
+}
+
+func (m *MacroTable) Define(macro *Macro) error {
+	if old, ok := m.entries[macro.Name]; ok && !sameMacro(old, macro) {
+		return ppError(macro.Definition, "conflicting macro redefinition for %s", macro.Name)
+	}
+	m.entries[macro.Name] = macro
+	return nil
+}
+
+func sameMacro(a, b *Macro) bool {
+	if a.Kind != b.Kind || a.Name != b.Name || a.Variadic != b.Variadic || !slices.Equal(a.Params, b.Params) {
+		return false
+	}
+	if len(a.Replacement) != len(b.Replacement) {
+		return false
+	}
+	for i := range a.Replacement {
+		if a.Replacement[i].Kind != b.Replacement[i].Kind || a.Replacement[i].Lexeme != b.Replacement[i].Lexeme {
+			return false
+		}
+	}
+	return true
 }

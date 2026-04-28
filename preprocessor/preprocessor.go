@@ -25,7 +25,11 @@ func PreprocessSource(name, source string, opts Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	tokens, err := convertToParserTokens(processed, sm)
+	expanded, err := pp.expand(processed)
+	if err != nil {
+		return nil, err
+	}
+	tokens, err := convertToParserTokens(expanded, sm)
 	if err != nil {
 		return nil, err
 	}
