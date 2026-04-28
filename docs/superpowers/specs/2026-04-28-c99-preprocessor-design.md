@@ -64,7 +64,11 @@ The initial public API should be small:
 ```go
 type Options struct {
 	IncludePaths []string
+	Defines      []string
+	Undefines    []string
 	Std          Standard
+	Target       TargetInfo
+	FileSystem   FileSystem
 }
 
 type Result struct {
@@ -79,6 +83,28 @@ func PreprocessSource(name, source string, opts Options) (*Result, error)
 `Compiler` stores the returned `SourceManager` and passes `Result.Tokens` to the
 parser. Tests that need direct token output can use `PreprocessSource`.
 
+`FileSystem` is an interface so tests can provide virtual headers without
+touching the host filesystem. `TargetInfo` owns target-dependent predefined
+macros and header shim values. The default target should match the current test
+environment's C99 LP64 assumptions unless a fixture explicitly chooses another
+model.
+
+Internally, the preprocessor should not build the whole expanded file by string
+rewriting. It should be organized around token sources:
+
+```text
+Preprocessor.Lex()
+  -> current TokenSource
+  -> FileTokenSource or MacroTokenSource
+  -> push include or macro contexts as needed
+  -> pop context on EOF/end-of-expansion
+```
+
+The public API can still return a complete token slice for the existing parser,
+but expansion itself should use a context stack like GCC cpplib and Clang's file
+lexer / token lexer model. This makes include EOF handling, function-like macro
+lookahead, nested macro expansion, and recursive suppression explicit.
+
 ## Components
 
 ### `preprocessor.Scanner`
@@ -87,18 +113,25 @@ Scans preprocessing tokens from source files.
 
 Responsibilities:
 
+- Apply trigraph replacement when the selected standard requires it.
 - Apply line splicing for backslash-newline before token recognition.
 - Replace comments with whitespace while preserving line structure.
 - Recognize preprocessing identifiers, pp-numbers, string literals, character
   literals, punctuators, header-name tokens in include directives, and newline
   boundaries.
 - Preserve original source ranges for each preprocessing token.
+- Preserve token flags needed by the expander:
+  - `StartOfLine`
+  - `LeadingSpace`
+  - `DisableExpand`
+  - `NeedsCleaning`
 - Report lexical preprocessing errors, such as unterminated comments or
   literals.
 
 The scanner should keep comments and line splicing in this layer, not in parser
 tests or fixture stripping, because C99 translation phases make them
-preprocessing behavior.
+preprocessing behavior. `LeadingSpace` and `NeedsCleaning` are especially
+important for stringification, diagnostics, and escaped-newline/trigraph cleanup.
 
 ### `preprocessor.DirectiveParser`
 
@@ -124,6 +157,11 @@ implementation-defined no-ops in a later plan. `#pragma` is not semantically
 implemented in the first pass; tests that require target pragma behavior remain
 outside this scope.
 
+`_Pragma` is not a directive line, but it is C99 preprocessing syntax in the
+ordinary token stream. The expander must recognize it after macro expansion; the
+first implementation may lower it to the same no-op/diagnostic path as
+unsupported pragmas.
+
 ### `preprocessor.MacroTable`
 
 Stores macro definitions.
@@ -138,6 +176,7 @@ Supported macro forms:
   - `__STDC_VERSION__`
   - `__FILE__`
   - `__LINE__`
+  - target-defined type and limit macros required by standard header shims
 
 `__DATE__` and `__TIME__` may be added later if tests require them. To keep test
 output deterministic, they should not be introduced casually.
@@ -163,6 +202,20 @@ explicitly require retokenization after token pasting. Retokenization should run
 through the preprocessing-token scanner for the pasted spelling and then convert
 the result to a parser token.
 
+Recursive expansion suppression must follow the standard GCC/Clang-style
+context model:
+
+- A macro is disabled while its replacement list is being scanned.
+- Function-like macro arguments are prescanned before substitution unless they
+  are used by `#` or `##`.
+- A token that is encountered while its macro is disabled is marked
+  `DisableExpand` and must not expand later after the macro is re-enabled.
+- Expansion contexts are pushed and popped explicitly so nested replacement
+  lists do not leak disabled-macro state.
+
+This "blue paint" behavior is required for conforming self-referential and
+mutually recursive macro cases.
+
 ### `preprocessor.IncludeResolver`
 
 Resolves include directives without reading real system headers by default.
@@ -172,6 +225,8 @@ Resolution rules:
 - `"file.h"` searches relative to the including file first, then configured
   include paths.
 - `<header.h>` searches the built-in C99 header shim table first.
+- `#include MACRO_NAME` expands the directive operand before resolving the
+  resulting header name.
 - Real system include directories are not searched in the first implementation.
 - Include recursion has a hard depth limit and a clear diagnostic.
 
@@ -196,6 +251,25 @@ especially for `math.h` and `tgmath.h`. Shims should define the smallest useful
 set of macros and typedef-friendly text needed by cvm's frontend. They should
 not try to mirror platform libc headers.
 
+### `preprocessor.TargetInfo`
+
+Describes the target data model used by predefined macros and standard header
+shims.
+
+The first implementation can provide one default target, but the values must be
+centralized instead of scattered across headers:
+
+- Integer type widths and signedness.
+- `char` signedness.
+- `size_t`, `ptrdiff_t`, `wchar_t`, and related underlying type spellings.
+- Limit macros used by `stdint.h`, `limits.h`, and `float.h`.
+- `__STDC_HOSTED__` and other standard predefined macro values if needed by
+  tests.
+
+This mirrors the role GCC and Clang give to target information: headers and
+predefined macros should describe the chosen target, not the host platform by
+accident.
+
 ### `preprocessor.SourceManager`
 
 Owns source identity and diagnostic provenance.
@@ -215,28 +289,30 @@ diagnostics should ask `SourceManager` for display information.
 ## Source Location Model
 
 `entity.SourcePos` currently stores only line and column. The preprocessor needs
-file identity and expansion provenance. The implementation should extend the
-model in this direction:
+file identity and expansion provenance. The implementation should move toward a
+compact source-location handle:
 
 ```go
 type SourcePos struct {
-	FileID      int
-	Line        int
-	Column      int
-	ExpansionID int
+	LocationID int
+	Line       int
+	Column     int
 }
 ```
 
-`FileID == 0` remains usable for legacy tests that create tokens without a
-source manager. `ExpansionID == 0` means the token is not the result of macro
-expansion.
+`LocationID` is the authoritative location when a source manager is present.
+`LocationID == 0` keeps `Line` and `Column` usable for legacy tests and parser
+fixtures that create tokens without a source manager. New preprocessor-produced
+tokens should use `LocationID`; line and column should be computed from the
+source manager's line tables instead of duplicated into every token.
 
 `SourceManager` owns the tables behind those IDs:
 
-- Physical file ID.
-- Physical line and column.
-- Optional macro expansion ID or expansion stack reference.
-- Optional spelling location and expansion location distinction.
+- Physical file ID and byte offset.
+- Presumed file/line from `#line`.
+- Spelling location.
+- Expansion location.
+- Expansion stack entries for macro argument and replacement tokens.
 
 Diagnostic policy:
 
@@ -245,6 +321,8 @@ Diagnostic policy:
   for the macro definition or argument source when useful.
 - Include-file errors display the included file location and can add a note for
   the include directive.
+- `#line` affects presumed diagnostic file/line without mutating the physical
+  file table.
 
 The first implementation does not need byte-perfect GCC/Clang diagnostic text,
 but it must avoid losing the original file and line after preprocessing.
@@ -288,6 +366,8 @@ directives, but their ordinary tokens are not macro-expanded or emitted.
 - Expand macros first, except for `defined`.
 - Replace remaining identifiers with `0`.
 - Evaluate integer constants and operators used by preprocessing expressions.
+- Use the preprocessing integer type model (`intmax_t`/`uintmax_t`-style
+  evaluation) rather than sema's ordinary expression typing.
 - Reject unsupported or malformed expressions with a preprocessing diagnostic.
 
 ## Standard Header Shim Policy
@@ -312,7 +392,7 @@ typedef __SIZE_TYPE__ size_t;
 
 If a shim requires frontend support for compiler predefined type macros such as
 `__WCHAR_TYPE__`, that support should be modeled explicitly as predefined
-macros.
+macros supplied by `TargetInfo`.
 
 The shim layer should be test-driven against actual skipped cases. It should not
 grow into a fake libc.
@@ -334,6 +414,7 @@ Expected error categories:
 - Include recursion depth exceeded.
 - `#error`.
 - Malformed `#if` expression.
+- Unsupported `_Pragma` content when not accepted as a no-op.
 
 Parser and sema errors continue to use `common.CvmError`; `Compiler.handleError`
 is responsible for rendering those positions through the source manager when
@@ -346,19 +427,24 @@ available.
 Create focused `preprocessor` tests for:
 
 - Comment replacement and line splicing.
+- Trigraph handling when enabled by the selected standard.
 - Object-like macros.
 - Function-like macros.
 - Recursive macro suppression.
+- Disabled-token "blue paint" behavior.
 - Argument prescan behavior.
 - Stringification.
 - Token pasting.
+- Token flags such as `StartOfLine`, `LeadingSpace`, and `NeedsCleaning`.
 - Variadic macros and `__VA_ARGS__`.
 - `defined` and `#if` expressions.
 - `#ifdef`, `#ifndef`, `#elif`, `#else`, `#endif`.
 - Local quoted include.
+- Macro-expanded include operands.
 - Built-in standard header include.
 - `#line`.
 - `#error`.
+- `_Pragma`.
 - `__FILE__` and `__LINE__`.
 - Source mapping for direct tokens, included tokens, and macro-expanded tokens.
 
@@ -379,6 +465,7 @@ Representative cases:
 - Function-like macro producing an expression.
 - Include of a local header that defines a typedef or macro.
 - Include of `<stdbool.h>`, `<stdint.h>`, and `<stddef.h>` shims.
+- Include through a macro-expanded header name.
 - Conditional compilation that selects only the valid C branch.
 
 ### GCC C99 Gate
@@ -409,7 +496,10 @@ case is deliberately deferred with a more exact note in the implementation plan.
 - Standard header shims are minimal, documented, and covered by integration
   tests.
 - Source diagnostics preserve original file/line/column for ordinary files,
-  includes, and macro expansions.
+  includes, macro expansions, and `#line` presumed locations.
+- Macro expansion uses explicit context-stack semantics and passes tests for
+  recursive suppression and disabled-token behavior.
+- Header shim values come from `TargetInfo`, not ad hoc host assumptions.
 
 ## Implementation Notes
 
