@@ -43,6 +43,24 @@ char *f = FIRST("x", 1, 2);
 	}
 }
 
+func TestEmptyVariadicMacroElidesComma(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#define WRAP(fmt, ...) sink(fmt, __VA_ARGS__)
+WRAP("x");
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	for i := 0; i+1 < len(res.Tokens); i++ {
+		if res.Tokens[i].Typ == entity.COMMA && res.Tokens[i+1].Typ == entity.RIGHT_PARENTHESES {
+			t.Fatalf("empty __VA_ARGS__ left a trailing comma: %#v", res.Tokens)
+		}
+	}
+	if hasIdentifier(res.Tokens, "__VA_ARGS__") {
+		t.Fatalf("__VA_ARGS__ was not substituted: %#v", res.Tokens)
+	}
+}
+
 func hasString(tokens []entity.Token, lexeme string) bool {
 	for _, tok := range tokens {
 		if tok.Typ == entity.STRING && tok.Lexeme == lexeme {

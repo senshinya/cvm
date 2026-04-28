@@ -43,6 +43,12 @@ func (pp *preprocessor) expand(tokens []PPToken) ([]PPToken, error) {
 			}
 			continue
 		}
+		if tok.Kind == PPIdentifier && (tok.Lexeme == "__asm__" || tok.Lexeme == "__asm") {
+			if err := p.discardAsmLabel(); err != nil {
+				return nil, err
+			}
+			continue
+		}
 		out = append(out, tok)
 	}
 	return out, nil
@@ -76,7 +82,7 @@ func (p *Preprocessor) discardAttribute() error {
 		if tok.Kind == PPEOF {
 			return ppError(open.Location, "unterminated attribute")
 		}
-		if tok.Kind == PPIdentifier && (tok.Lexeme == "alias" || tok.Lexeme == "transparent_union") && unsupported == nil {
+		if tok.Kind == PPIdentifier && (tok.Lexeme == "alias" || tok.Lexeme == "mode" || tok.Lexeme == "__mode__") && unsupported == nil {
 			unsupported = &tok
 		}
 		if tok.Kind != PPPunctuator {
@@ -91,6 +97,37 @@ func (p *Preprocessor) discardAttribute() error {
 	}
 	if unsupported != nil {
 		return ppError(unsupported.Location, "unsupported GNU attribute %q", unsupported.Lexeme)
+	}
+	return nil
+}
+
+func (p *Preprocessor) discardAsmLabel() error {
+	open, err := p.readRaw()
+	if err != nil {
+		return err
+	}
+	if open.Kind != PPPunctuator || open.Lexeme != "(" {
+		p.unreadToken(open)
+		return nil
+	}
+	depth := 1
+	for depth > 0 {
+		tok, err := p.readRaw()
+		if err != nil {
+			return err
+		}
+		if tok.Kind == PPEOF {
+			return ppError(open.Location, "unterminated asm label")
+		}
+		if tok.Kind != PPPunctuator {
+			continue
+		}
+		switch tok.Lexeme {
+		case "(":
+			depth++
+		case ")":
+			depth--
+		}
 	}
 	return nil
 }
@@ -197,6 +234,9 @@ func (pp *preprocessor) buildMacroArgs(m *Macro, tokens []PPToken) ([]macroArg, 
 		if len(raw) < fixed {
 			return nil, ppError(m.Definition, "too few arguments for macro %s", m.Name)
 		}
+		if len(raw) == fixed {
+			raw = append(raw, nil)
+		}
 		if len(raw) > len(m.Params) {
 			var va []PPToken
 			for i := fixed; i < len(raw); i++ {
@@ -297,7 +337,11 @@ func (pp *preprocessor) substitute(m *Macro, args []macroArg, use entity.SourceP
 			i++
 			continue
 		}
-		out = append(out, pp.substitutionFor(tok, args, paramIndex, rawParam, use)...)
+		replacement := pp.substitutionFor(tok, args, paramIndex, rawParam, use)
+		if m.Variadic && tok.Kind == PPIdentifier && tok.Lexeme == "__VA_ARGS__" && len(replacement) == 0 && len(out) > 0 && out[len(out)-1].Kind == PPPunctuator && out[len(out)-1].Lexeme == "," {
+			out = out[:len(out)-1]
+		}
+		out = append(out, replacement...)
 	}
 	return out, nil
 }

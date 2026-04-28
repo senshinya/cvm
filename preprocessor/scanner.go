@@ -80,9 +80,6 @@ func scanFile(sm *SourceManager, fileID int, source string, opts Options) ([]PPT
 				continue
 			}
 		}
-		if ch.b == '\\' && i+1 < len(cleaned) && (cleaned[i+1].b == 'u' || cleaned[i+1].b == 'U') {
-			return nil, ppError(sm.Location(fileID, ch.offset), "unsupported universal-character-name")
-		}
 		switch {
 		case ch.b == 'L' && i+1 < len(cleaned) && (cleaned[i+1].b == '"' || cleaned[i+1].b == '\''):
 			kind := PPString
@@ -112,18 +109,35 @@ func scanFile(sm *SourceManager, fileID int, source string, opts Options) ([]PPT
 				return nil, ppError(sm.Location(fileID, ch.offset), "unterminated literal")
 			}
 			tokens = append(tokens, makePPToken(kind, cleaned[start:i], sm, fileID, startOfLine, leadingSpace, needsClean))
-		case isIdentStart(ch.b):
+		case isIdentStart(ch.b) || isUCNStart(cleaned, i):
 			start := i
 			needsClean := pendingClean
-			for i < len(cleaned) && isIdentContinue(cleaned[i].b) {
-				needsClean = needsClean || cleaned[i].needsCleaning
+			for i < len(cleaned) {
+				if isIdentContinue(cleaned[i].b) {
+					needsClean = needsClean || cleaned[i].needsCleaning
+					i++
+					continue
+				}
+				if n, ok := ucnLength(cleaned, i); ok {
+					for j := 0; j < n; j++ {
+						needsClean = needsClean || cleaned[i+j].needsCleaning
+					}
+					i += n
+					continue
+				}
+				if cleaned[i].b == '\\' && i+1 < len(cleaned) && (cleaned[i+1].b == 'u' || cleaned[i+1].b == 'U') {
+					return nil, ppError(sm.Location(fileID, cleaned[i].offset), "malformed universal-character-name")
+				}
+				break
+			}
+			if i == start {
 				i++
 			}
 			tokens = append(tokens, makePPToken(PPIdentifier, cleaned[start:i], sm, fileID, startOfLine, leadingSpace, needsClean))
 		case isDigit(ch.b) || (ch.b == '.' && i+1 < len(cleaned) && isDigit(cleaned[i+1].b)):
 			start := i
 			needsClean := pendingClean
-			for i < len(cleaned) && isPPNumberByte(cleaned[i].b) {
+			for i < len(cleaned) && isPPNumberContinue(cleaned, start, i) {
 				needsClean = needsClean || cleaned[i].needsCleaning
 				i++
 			}
@@ -257,7 +271,7 @@ func translateTrigraph(a, b, c byte) (byte, bool) {
 }
 
 func isIdentStart(b byte) bool {
-	return b == '_' || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
+	return b == '_' || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b >= 0x80
 }
 
 func isIdentContinue(b byte) bool {
@@ -268,6 +282,47 @@ func isDigit(b byte) bool {
 	return b >= '0' && b <= '9'
 }
 
-func isPPNumberByte(b byte) bool {
-	return isIdentContinue(b) || b == '.' || b == '+' || b == '-'
+func isUCNStart(cleaned []scanByte, i int) bool {
+	_, ok := ucnLength(cleaned, i)
+	return ok
+}
+
+func ucnLength(cleaned []scanByte, i int) (int, bool) {
+	if i+1 >= len(cleaned) || cleaned[i].b != '\\' {
+		return 0, false
+	}
+	var digits int
+	switch cleaned[i+1].b {
+	case 'u':
+		digits = 4
+	case 'U':
+		digits = 8
+	default:
+		return 0, false
+	}
+	if i+2+digits > len(cleaned) {
+		return 0, false
+	}
+	for j := 0; j < digits; j++ {
+		if !isHexDigit(cleaned[i+2+j].b) {
+			return 0, false
+		}
+	}
+	return 2 + digits, true
+}
+
+func isHexDigit(b byte) bool {
+	return isDigit(b) || (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F')
+}
+
+func isPPNumberContinue(cleaned []scanByte, start, i int) bool {
+	b := cleaned[i].b
+	if isIdentContinue(b) || b == '.' {
+		return true
+	}
+	if (b == '+' || b == '-') && i > start {
+		prev := cleaned[i-1].b
+		return prev == 'e' || prev == 'E' || prev == 'p' || prev == 'P'
+	}
+	return false
 }

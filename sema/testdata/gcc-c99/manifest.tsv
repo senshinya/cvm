@@ -89,9 +89,9 @@ gcc/testsuite/gcc.dg/c99-left-shift-3.c	imported-reject	reject	preprocessed by c
 gcc/testsuite/gcc.dg/c99-longlong-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-longlong-2.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-main-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-math-double-1.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-math-float-1.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-math-long-double-1.c	skipped	accept	requires real system header
+gcc/testsuite/gcc.dg/c99-math-double-1.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-math-float-1.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-math-long-double-1.c	imported-accept	accept	hosted C99 header model
 gcc/testsuite/gcc.dg/c99-mixdecl-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-noreturn-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-predef-1.c	imported-accept	accept	hosted C99 builtin header model
@@ -105,24 +105,24 @@ gcc/testsuite/gcc.dg/c99-scope-2.c	imported-accept	accept	current lexer+parser+s
 gcc/testsuite/gcc.dg/c99-static-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-static-assert-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-static-assert-2.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-stdint-1.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-stdint-2.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-stdint-3.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-stdint-4.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-stdint-5.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-stdint-6.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-stdint-7.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-stdint-8.c	skipped	accept	requires real system header
+gcc/testsuite/gcc.dg/c99-stdint-1.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-stdint-2.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-stdint-3.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-stdint-4.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-stdint-5.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-stdint-6.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-stdint-7.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-stdint-8.c	imported-accept	accept	hosted C99 header model
 gcc/testsuite/gcc.dg/c99-tag-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-tag-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-tag-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-tag-4.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-tag-5.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-tag-6.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-tgmath-1.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-tgmath-2.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-tgmath-3.c	skipped	accept	requires real system header
-gcc/testsuite/gcc.dg/c99-tgmath-4.c	skipped	accept	requires real system header
+gcc/testsuite/gcc.dg/c99-tgmath-1.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-tgmath-2.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-tgmath-3.c	imported-accept	accept	hosted C99 header model
+gcc/testsuite/gcc.dg/c99-tgmath-4.c	imported-accept	accept	hosted C99 header model
 gcc/testsuite/gcc.dg/c99-thread-local-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-typedef-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-typespec-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error

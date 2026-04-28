@@ -83,6 +83,8 @@ var keywords = map[string]entity.TokenType{
 	"while":          entity.WHILE,
 	"_Bool":          entity.BOOL,
 	"_Complex":       entity.COMPLEX,
+	"__complex__":    entity.COMPLEX,
+	"__complex":      entity.COMPLEX,
 	"_Imaginary":     entity.IMAGINARY,
 	"_Static_assert": entity.STATIC_ASSERT,
 }

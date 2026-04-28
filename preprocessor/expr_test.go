@@ -37,3 +37,21 @@ func TestIfExpressionUnsignedBoundary(t *testing.T) {
 		t.Fatalf("unsigned boundary expression evaluated false, want true")
 	}
 }
+
+func TestIfExpressionExpandsNestedObjectMacros(t *testing.T) {
+	pp := newPreprocessor("main.c", "", Options{})
+	pp.macros.DefineObject("A", []PPToken{{Kind: PPIdentifier, Lexeme: "B"}})
+	pp.macros.DefineObject("B", []PPToken{{Kind: PPIdentifier, Lexeme: "C"}})
+	pp.macros.DefineObject("C", []PPToken{{Kind: PPNumber, Lexeme: "7"}})
+	got, err := pp.evalIfExpression([]PPToken{
+		{Kind: PPIdentifier, Lexeme: "A"},
+		{Kind: PPPunctuator, Lexeme: "=="},
+		{Kind: PPNumber, Lexeme: "7"},
+	})
+	if err != nil {
+		t.Fatalf("evalIfExpression failed: %v", err)
+	}
+	if got == 0 {
+		t.Fatalf("nested object-like macro expression evaluated false, want true")
+	}
+}

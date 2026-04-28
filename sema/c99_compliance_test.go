@@ -24,6 +24,15 @@ func TestC99StringLiteralInitializesCharacterArray(t *testing.T) {
 	`)
 }
 
+func TestC99IntegerPromotionSignExtendsNarrowSignedConstants(t *testing.T) {
+	mustAnalyze(t, `
+		void f(void) {
+			int a[(signed char)-1 < 0 ? 1 : -1];
+			int b[(short)-1 < 0 ? 1 : -1];
+		}
+	`)
+}
+
 func TestC99UnbracedStringLiteralInitializesCharacterArrays(t *testing.T) {
 	mustAnalyze(t, `
 		char a[] = "foo";

@@ -77,13 +77,13 @@ func (s *Sema) makeIntLit(node *entity.AstNode) Expr {
 }
 
 func (s *Sema) makeFloatLit(node *entity.AstNode) Expr {
-	if invalidFloatSuffix(node.Terminal.Lexeme) {
+	if invalidFloatSuffix(node.Terminal.Lexeme, s.Options.PedanticErrors) {
 		s.report(InvalidTypeSpec(node.SourceStart, "invalid floating constant suffix"))
 	}
 	return &FloatLit{Value: parseFloatLiteral(node.Terminal.Lexeme), T: s.Types.Builtin(Double), Range: node.SourceRange}
 }
 
-func invalidFloatSuffix(lexeme string) bool {
+func invalidFloatSuffix(lexeme string, pedanticErrors bool) bool {
 	i := len(lexeme)
 	for i > 0 {
 		c := lexeme[i-1]
@@ -93,8 +93,20 @@ func invalidFloatSuffix(lexeme string) bool {
 		}
 		break
 	}
-	suffix := lexeme[i:]
-	return strings.Trim(suffix, "fFlL") != ""
+	suffix := strings.ToLower(lexeme[i:])
+	if suffix == "" || suffix == "f" || suffix == "l" {
+		return false
+	}
+	if pedanticErrors && strings.ContainsAny(suffix, "dij") {
+		return true
+	}
+	if suffix == "d" || suffix == "i" || suffix == "j" {
+		return false
+	}
+	if len(suffix) == 2 && strings.ContainsAny(suffix, "fld") && (strings.Contains(suffix, "i") || strings.Contains(suffix, "j")) {
+		return false
+	}
+	return true
 }
 
 func (s *Sema) makeCharLit(node *entity.AstNode) Expr {
@@ -208,7 +220,7 @@ func integerLiteralIsDecimal(body string) bool {
 }
 
 func parseFloatLiteral(lexeme string) float64 {
-	s := strings.TrimRight(lexeme, "fFlL")
+	s := strings.TrimRight(lexeme, "fFlLdDiIjJ")
 	v, _ := strconv.ParseFloat(s, 64)
 	return v
 }

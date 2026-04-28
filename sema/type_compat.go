@@ -43,6 +43,9 @@ func compatibleArraySize(a, b *ArrayType) bool {
 	if a.SizeKind == ArrayUnsized || b.SizeKind == ArrayUnsized {
 		return true
 	}
+	if a.SizeKind == ArrayVLA || b.SizeKind == ArrayVLA {
+		return true
+	}
 	if a.SizeKind != b.SizeKind {
 		return false
 	}

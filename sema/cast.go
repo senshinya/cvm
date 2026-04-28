@@ -248,7 +248,19 @@ func pointerAssignmentCompatible(from, to *PointerType) bool {
 	if compatibleVMPointerPointee(from.Pointee, to.Pointee) {
 		return true
 	}
+	if correspondingSignedIntegerTypes(from.Pointee, to.Pointee) {
+		return true
+	}
 	return compatibleTypeIgnoringTopLevelQualifiers(from.Pointee, to.Pointee)
+}
+
+func correspondingSignedIntegerTypes(a, b Type) bool {
+	ak, aok := unqualifiedBuiltin(a)
+	bk, bok := unqualifiedBuiltin(b)
+	if !aok || !bok || integerValueBits(ak.Kind) == 0 || integerValueBits(bk.Kind) == 0 {
+		return false
+	}
+	return integerValueBits(ak.Kind) == integerValueBits(bk.Kind) && isSignedIntegerKind(ak.Kind) != isSignedIntegerKind(bk.Kind)
 }
 
 func compatibleVMPointerPointee(from, to Type) bool {

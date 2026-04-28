@@ -13,12 +13,17 @@ const unsignedIfSentinel int64 = math.MinInt64
 // confirm GCC cases do not require unsigned wraparound yet or add uintmax_t
 // evaluation before importing UINT64_MAX/SIZE_MAX #if cases.
 func (pp *preprocessor) evalIfExpression(tokens []PPToken) (int64, error) {
-	expanded := pp.expandIfTokens(dropNewlines(tokens))
+	prepared := pp.replaceDefinedOperators(dropNewlines(tokens))
+	expanded, err := pp.expand(prepared)
+	if err != nil {
+		return 0, err
+	}
+	expanded = zeroRemainingIdentifiers(expanded)
 	parser := ifExprParser{tokens: expanded}
 	return parser.parseOr()
 }
 
-func (pp *preprocessor) expandIfTokens(tokens []PPToken) []PPToken {
+func (pp *preprocessor) replaceDefinedOperators(tokens []PPToken) []PPToken {
 	var out []PPToken
 	for i := 0; i < len(tokens); i++ {
 		tok := tokens[i]
@@ -39,17 +44,18 @@ func (pp *preprocessor) expandIfTokens(tokens []PPToken) []PPToken {
 				continue
 			}
 		}
-		if tok.Kind == PPIdentifier {
-			if macro, ok := pp.macros.Lookup(tok.Lexeme); ok && macro.Kind == MacroObject {
-				out = append(out, macro.Replacement...)
-				continue
-			}
-			out = append(out, PPToken{Kind: PPNumber, Lexeme: "0", Location: tok.Location})
-			continue
-		}
 		out = append(out, tok)
 	}
 	return out
+}
+
+func zeroRemainingIdentifiers(tokens []PPToken) []PPToken {
+	for i, tok := range tokens {
+		if tok.Kind == PPIdentifier {
+			tokens[i] = PPToken{Kind: PPNumber, Lexeme: "0", Location: tok.Location}
+		}
+	}
+	return tokens
 }
 
 func boolNumber(ok bool, loc PPToken) PPToken {

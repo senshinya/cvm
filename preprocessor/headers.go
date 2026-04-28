@@ -9,11 +9,23 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 	case "stddef.h":
 		return fmt.Sprintf("#ifndef __CVM_STDDEF_H\n#define __CVM_STDDEF_H\n#define __SIZE_TYPE__ %s\n#define __PTRDIFF_TYPE__ %s\ntypedef __SIZE_TYPE__ size_t;\ntypedef __PTRDIFF_TYPE__ ptrdiff_t;\n#define NULL ((void *)0)\n#endif\n", target.SizeType, target.PtrdiffType), true
 	case "stdint.h":
-		return fmt.Sprintf("#ifndef __CVM_STDINT_H\n#define __CVM_STDINT_H\ntypedef signed char int8_t;\ntypedef short int16_t;\ntypedef int int32_t;\ntypedef long int64_t;\ntypedef unsigned char uint8_t;\ntypedef unsigned short uint16_t;\ntypedef unsigned int uint32_t;\ntypedef unsigned long uint64_t;\ntypedef %s intptr_t;\ntypedef %s uintptr_t;\ntypedef %s intmax_t;\ntypedef %s uintmax_t;\n#define INT8_MAX 127\n#define INT8_MIN (-128)\n#define UINT8_MAX 255\n#define INT16_MAX 32767\n#define INT16_MIN (-32768)\n#define UINT16_MAX 65535\n#define INT32_MAX 2147483647\n#define INT32_MIN (-2147483647-1)\n#define UINT32_MAX 4294967295U\n#define INT64_MAX 9223372036854775807L\n#define INT64_MIN (-9223372036854775807L-1L)\n#define UINT64_MAX 18446744073709551615UL\n#define INTPTR_MAX 9223372036854775807L\n#define UINTPTR_MAX 18446744073709551615UL\n#define INTMAX_MAX 9223372036854775807L\n#define UINTMAX_MAX 18446744073709551615UL\n#define SIZE_MAX 18446744073709551615UL\n#endif\n", target.PtrdiffType, target.SizeType, target.IntmaxType, target.UIntmaxType), true
+		return stdintHeader(target), true
+	case "inttypes.h":
+		return "#ifndef __CVM_INTTYPES_H\n#define __CVM_INTTYPES_H\n#include <stdint.h>\n#endif\n", true
 	case "iso646.h":
 		return "#ifndef __CVM_ISO646_H\n#define __CVM_ISO646_H\n#define and &&\n#define and_eq &=\n#define bitand &\n#define bitor |\n#define compl ~\n#define not !\n#define not_eq !=\n#define or ||\n#define or_eq |=\n#define xor ^\n#define xor_eq ^=\n#endif\n", true
 	case "math.h":
-		return "#ifndef __CVM_MATH_H\n#define __CVM_MATH_H\n#define INFINITY 1e+100000000f\n#endif\n", true
+		return mathHeader(), true
+	case "fenv.h":
+		return "#ifndef __CVM_FENV_H\n#define __CVM_FENV_H\n#define FE_ALL_EXCEPT 0\nint feclearexcept(int);\nint fetestexcept(int);\n#endif\n", true
+	case "tgmath.h":
+		return tgmathHeader(), true
+	case "chk.h":
+		return builtinChkHeader(), true
+	case "builtins-config.h":
+		return "#ifndef __CVM_BUILTINS_CONFIG_H\n#define __CVM_BUILTINS_CONFIG_H\n#define HAVE_C99_RUNTIME 1\n#endif\n", true
+	case "sys/types.h":
+		return "#ifndef __CVM_SYS_TYPES_H\n#define __CVM_SYS_TYPES_H\n#endif\n", true
 	case "stdio.h":
 		return "#ifndef __CVM_STDIO_H\n#define __CVM_STDIO_H\ntypedef struct __cvm_FILE FILE;\nextern FILE *stdin;\nextern FILE *stdout;\nextern FILE *stderr;\nint fputs(const char * restrict, FILE * restrict);\nint fputs_unlocked(const char * restrict, FILE * restrict);\n#endif\n", true
 	case "signal.h":
@@ -25,4 +37,224 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func builtinChkHeader() string {
+	return `#ifndef __CVM_BUILTIN_CHK_H
+#define __CVM_BUILTIN_CHK_H
+typedef __SIZE_TYPE__ size_t;
+void *memcpy(void *, const void *, size_t);
+void *mempcpy(void *, const void *, size_t);
+void *memmove(void *, const void *, size_t);
+void *memset(void *, int, size_t);
+char *strcpy(char *, const char *);
+char *stpcpy(char *, const char *);
+char *strncpy(char *, const char *, size_t);
+char *strcat(char *, const char *);
+char *strncat(char *, const char *, size_t);
+int sprintf(char *, const char *, ...);
+int snprintf(char *, size_t, const char *, ...);
+int vsprintf(char *, const char *, void *);
+int vsnprintf(char *, size_t, const char *, void *);
+#endif
+`
+}
+
+func stdintHeader(target TargetInfo) string {
+	return fmt.Sprintf(`#ifndef __CVM_STDINT_H
+#define __CVM_STDINT_H
+typedef signed char int8_t;
+typedef short int16_t;
+typedef int int32_t;
+typedef long int64_t;
+typedef unsigned char uint8_t;
+typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+typedef unsigned long uint64_t;
+typedef signed char int_least8_t;
+typedef short int_least16_t;
+typedef int int_least32_t;
+typedef long int_least64_t;
+typedef unsigned char uint_least8_t;
+typedef unsigned short uint_least16_t;
+typedef unsigned int uint_least32_t;
+typedef unsigned long uint_least64_t;
+typedef signed char int_fast8_t;
+typedef long int_fast16_t;
+typedef long int_fast32_t;
+typedef long int_fast64_t;
+typedef unsigned char uint_fast8_t;
+typedef unsigned long uint_fast16_t;
+typedef unsigned long uint_fast32_t;
+typedef unsigned long uint_fast64_t;
+typedef %s intptr_t;
+typedef %s uintptr_t;
+typedef %s intmax_t;
+typedef %s uintmax_t;
+#define INT8_MAX 127
+#define INT8_MIN (-127 - 1)
+#define UINT8_MAX 255
+#define INT16_MAX 32767
+#define INT16_MIN (-32767 - 1)
+#define UINT16_MAX 65535
+#define INT32_MAX 2147483647
+#define INT32_MIN (-2147483647 - 1)
+#define UINT32_MAX 4294967295U
+#define INT64_MAX 9223372036854775807L
+#define INT64_MIN (-9223372036854775807L - 1L)
+#define UINT64_MAX 18446744073709551615UL
+#define INT_LEAST8_MIN INT8_MIN
+#define INT_LEAST8_MAX INT8_MAX
+#define UINT_LEAST8_MAX UINT8_MAX
+#define INT_LEAST16_MIN INT16_MIN
+#define INT_LEAST16_MAX INT16_MAX
+#define UINT_LEAST16_MAX UINT16_MAX
+#define INT_LEAST32_MIN INT32_MIN
+#define INT_LEAST32_MAX INT32_MAX
+#define UINT_LEAST32_MAX UINT32_MAX
+#define INT_LEAST64_MIN INT64_MIN
+#define INT_LEAST64_MAX INT64_MAX
+#define UINT_LEAST64_MAX UINT64_MAX
+#define INT_FAST8_MIN INT8_MIN
+#define INT_FAST8_MAX INT8_MAX
+#define UINT_FAST8_MAX UINT8_MAX
+#define INT_FAST16_MIN INT64_MIN
+#define INT_FAST16_MAX INT64_MAX
+#define UINT_FAST16_MAX UINT64_MAX
+#define INT_FAST32_MIN INT64_MIN
+#define INT_FAST32_MAX INT64_MAX
+#define UINT_FAST32_MAX UINT64_MAX
+#define INT_FAST64_MIN INT64_MIN
+#define INT_FAST64_MAX INT64_MAX
+#define UINT_FAST64_MAX UINT64_MAX
+#define INTPTR_MIN (-9223372036854775807L - 1L)
+#define INTPTR_MAX 9223372036854775807L
+#define UINTPTR_MAX 18446744073709551615UL
+#define INTMAX_MIN (-9223372036854775807L - 1L)
+#define INTMAX_MAX 9223372036854775807L
+#define UINTMAX_MAX 18446744073709551615UL
+#define PTRDIFF_MIN (-9223372036854775807L - 1L)
+#define PTRDIFF_MAX 9223372036854775807L
+#define SIG_ATOMIC_MIN (-2147483647 - 1)
+#define SIG_ATOMIC_MAX 2147483647
+#define SIZE_MAX 18446744073709551615UL
+#define WCHAR_MIN (-2147483647 - 1)
+#define WCHAR_MAX 2147483647
+#define WINT_MIN 0U
+#define WINT_MAX 4294967295U
+#define INT8_C(c) c
+#define INT16_C(c) c
+#define INT32_C(c) c
+#define INT64_C(c) c ## L
+#define UINT8_C(c) c ## U
+#define UINT16_C(c) c ## U
+#define UINT32_C(c) c ## U
+#define UINT64_C(c) c ## UL
+#define INTMAX_C(c) c ## L
+#define UINTMAX_C(c) c ## UL
+#endif
+`, target.PtrdiffType, target.SizeType, target.IntmaxType, target.UIntmaxType)
+}
+
+func mathHeader() string {
+	return `#ifndef __CVM_MATH_H
+#define __CVM_MATH_H
+#define INFINITY 1e+100000000f
+#define NAN (0.0/0.0)
+#define HUGE_VAL 1e+100000000
+#define HUGE_VALF 1e+100000000f
+#define HUGE_VALL 1e+100000000L
+#define FP_NAN 0
+#define FP_INFINITE 1
+#define FP_NORMAL 2
+#define FP_SUBNORMAL 3
+#define FP_ZERO 4
+#define fpclassify(x) FP_NORMAL
+#define isfinite(x) 1
+#define isinf(x) 0
+#define isnan(x) 0
+#define isnormal(x) 1
+#define signbit(x) 0
+#define isgreater(x, y) ((x) > (y))
+#define isgreaterequal(x, y) ((x) >= (y))
+#define isless(x, y) ((x) < (y))
+#define islessequal(x, y) ((x) <= (y))
+#define islessgreater(x, y) ((x) != (y))
+#define isunordered(x, y) 0
+#endif
+`
+}
+
+func tgmathHeader() string {
+	return `#ifndef __CVM_TGMATH_H
+#define __CVM_TGMATH_H
+#include <math.h>
+#ifndef complex
+#define complex _Complex
+#endif
+#define acos(x) __cvm_tgmath_acos(x)
+#define asin(x) __cvm_tgmath_asin(x)
+#define atan(x) __cvm_tgmath_atan(x)
+#define acosh(x) __cvm_tgmath_acosh(x)
+#define asinh(x) __cvm_tgmath_asinh(x)
+#define atanh(x) __cvm_tgmath_atanh(x)
+#define cos(x) __cvm_tgmath_cos(x)
+#define sin(x) __cvm_tgmath_sin(x)
+#define tan(x) __cvm_tgmath_tan(x)
+#define cosh(x) __cvm_tgmath_cosh(x)
+#define sinh(x) __cvm_tgmath_sinh(x)
+#define tanh(x) __cvm_tgmath_tanh(x)
+#define exp(x) __cvm_tgmath_exp(x)
+#define log(x) __cvm_tgmath_log(x)
+#define pow(x, y) __cvm_tgmath_pow((x), (y))
+#define sqrt(x) __cvm_tgmath_sqrt(x)
+#define fabs(x) __cvm_tgmath_fabs(x)
+#define atan2(x, y) __cvm_tgmath_atan2((x), (y))
+#define cbrt(x) __cvm_tgmath_cbrt(x)
+#define ceil(x) __cvm_tgmath_ceil(x)
+#define copysign(x, y) __cvm_tgmath_copysign((x), (y))
+#define erf(x) __cvm_tgmath_erf(x)
+#define erfc(x) __cvm_tgmath_erfc(x)
+#define exp2(x) __cvm_tgmath_exp2(x)
+#define expm1(x) __cvm_tgmath_expm1(x)
+#define fdim(x, y) __cvm_tgmath_fdim((x), (y))
+#define floor(x) __cvm_tgmath_floor(x)
+#define fma(x, y, z) __cvm_tgmath_fma((x), (y), (z))
+#define fmax(x, y) __cvm_tgmath_fmax((x), (y))
+#define fmin(x, y) __cvm_tgmath_fmin((x), (y))
+#define fmod(x, y) __cvm_tgmath_fmod((x), (y))
+#define frexp(x, y) __cvm_tgmath_frexp((x), (y))
+#define hypot(x, y) __cvm_tgmath_hypot((x), (y))
+#define ilogb(x) __cvm_tgmath_ilogb(x)
+#define ldexp(x, y) __cvm_tgmath_ldexp((x), (y))
+#define lgamma(x) __cvm_tgmath_lgamma(x)
+#define llrint(x) __cvm_tgmath_llrint(x)
+#define llround(x) __cvm_tgmath_llround(x)
+#define log10(x) __cvm_tgmath_log10(x)
+#define log1p(x) __cvm_tgmath_log1p(x)
+#define log2(x) __cvm_tgmath_log2(x)
+#define logb(x) __cvm_tgmath_logb(x)
+#define lrint(x) __cvm_tgmath_lrint(x)
+#define lround(x) __cvm_tgmath_lround(x)
+#define nearbyint(x) __cvm_tgmath_nearbyint(x)
+#define nextafter(x, y) __cvm_tgmath_nextafter((x), (y))
+#define nexttoward(x, y) __cvm_tgmath_nexttoward((x), (y))
+#define remainder(x, y) __cvm_tgmath_remainder((x), (y))
+#define remquo(x, y, z) __cvm_tgmath_remquo((x), (y), (z))
+#define rint(x) __cvm_tgmath_rint(x)
+#define round(x) __cvm_tgmath_round(x)
+#define scalbn(x, y) __cvm_tgmath_scalbn((x), (y))
+#define scalbln(x, y) __cvm_tgmath_scalbln((x), (y))
+#define tgamma(x) __cvm_tgmath_tgamma(x)
+#define trunc(x) __cvm_tgmath_trunc(x)
+#define carg(x) __cvm_tgmath_carg(x)
+#define cimag(x) __cvm_tgmath_cimag(x)
+#define conj(x) __cvm_tgmath_conj(x)
+#define cproj(x) __cvm_tgmath_cproj(x)
+#define creal(x) __cvm_tgmath_creal(x)
+double __cvm_tgmath_sin(double);
+double __cvm_tgmath_exp(double);
+double __cvm_tgmath_pow(double, double);
+#endif
+`
 }

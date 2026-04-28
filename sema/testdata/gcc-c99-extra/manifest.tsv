@@ -36,8 +36,8 @@ gcc/testsuite/gcc.dg/Wunused-var-4.c	skipped	accept	requires GCC warning/diagnos
 gcc/testsuite/gcc.dg/Wvla-2.c	skipped	accept	requires GCC warning/diagnostic behavior
 gcc/testsuite/gcc.dg/Wvla-4.c	skipped	accept	requires GCC warning/diagnostic behavior
 gcc/testsuite/gcc.dg/anon-struct-5.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/array-const-1.c	skipped	accept	requires GNU C extension support
-gcc/testsuite/gcc.dg/array-const-2.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/array-const-1.c	imported-accept	accept	GNU frontend extension supported by cvm
+gcc/testsuite/gcc.dg/array-const-2.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/array-const-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/asm-hard-reg-2.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/asm-hard-reg-error-3.c	skipped	reject	requires GCC target/runtime test harness
@@ -53,20 +53,20 @@ gcc/testsuite/gcc.dg/binary-constants-1.c	imported-accept	accept	GNU frontend ex
 gcc/testsuite/gcc.dg/binary-constants-2.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/binary-constants-3.c	skipped	reject	requires GCC warning/diagnostic behavior
 gcc/testsuite/gcc.dg/binary-constants-4.c	skipped	reject	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/builtin-stringop-chk-1.c	skipped	accept	requires GCC builtin support
-gcc/testsuite/gcc.dg/builtin-strncat-chk-1.c	skipped	accept	requires GCC builtin support
+gcc/testsuite/gcc.dg/builtin-stringop-chk-1.c	imported-accept	accept	GCC builtin frontend model
+gcc/testsuite/gcc.dg/builtin-strncat-chk-1.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/builtins-57.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/builtins-58.c	skipped	accept	requires GCC builtin support
-gcc/testsuite/gcc.dg/builtins-nonnull.c	skipped	accept	requires GCC builtin support
+gcc/testsuite/gcc.dg/builtins-58.c	imported-accept	accept	GCC builtin frontend model
+gcc/testsuite/gcc.dg/builtins-nonnull.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/call-diag-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/cast-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/cast-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/cast-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/cast-4.c	imported-accept	accept	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/complex-4.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/complex-4.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/complex-5.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/compound-literal-cast-lvalue-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/const-elim-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/const-elim-1.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/darwin-sections.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/di-longlong64-sync-1.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/di-sync-multithread.c	skipped	accept	requires GCC target/runtime test harness
@@ -80,8 +80,8 @@ gcc/testsuite/gcc.dg/float-range-3.c	imported-accept	accept	explicit C99/GNU99 f
 gcc/testsuite/gcc.dg/float-range-4.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/float-range-5.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/fltconst-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/fltconst-2.c	skipped	accept	requires GNU C extension support
-gcc/testsuite/gcc.dg/fltconst-double-pedantic-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/fltconst-2.c	imported-accept	accept	GNU frontend extension supported by cvm
+gcc/testsuite/gcc.dg/fltconst-double-pedantic-1.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/fltconst-double-pedantic-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/gnu-cond-expr-1.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/gnu-cond-expr-2.c	imported-accept	accept	GNU frontend extension supported by cvm
@@ -162,15 +162,15 @@ gcc/testsuite/gcc.dg/overflow-warn-4.c	imported-reject	reject	explicit C99/GNU99
 gcc/testsuite/gcc.dg/overflow-warn-6.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/overflow-warn-9.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pedwarn-init.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/pr102897.c	skipped	accept	requires GCC builtin support
+gcc/testsuite/gcc.dg/pr102897.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/pr104198.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr104380.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr106465.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr109450-1.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr109450-2.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/pr111914.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/pr111914.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/pr112359.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/pr113013.c	skipped	accept	requires GCC builtin support
+gcc/testsuite/gcc.dg/pr113013.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/pr11459-1.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr117391.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr15698-1.c	imported-accept	accept	explicit C99/GNU99 frontend case
@@ -184,9 +184,9 @@ gcc/testsuite/gcc.dg/pr15698-8.c	imported-reject	reject	explicit C99/GNU99 front
 gcc/testsuite/gcc.dg/pr15749-1.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr18241-1.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr18241-2.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/pr18502-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/pr18502-1.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/pr19967.c	imported-accept	accept	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/pr19984.c	skipped	accept	requires GCC builtin support
+gcc/testsuite/gcc.dg/pr19984.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/pr22356-1.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr25801.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr26865.c	skipped	accept	requires GCC warning/diagnostic behavior
@@ -212,11 +212,11 @@ gcc/testsuite/gcc.dg/pr54363.c	skipped	accept	requires GCC warning/diagnostic be
 gcc/testsuite/gcc.dg/pr56078.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr57773.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr59011.c	skipped	accept	requires GNU C extension support
-gcc/testsuite/gcc.dg/pr59351.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/pr59351.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/pr60784.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr61096-1.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/pr67465.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/pr68134.c	skipped	accept	requires GCC builtin support
+gcc/testsuite/gcc.dg/pr68134.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/pr69650.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr70418.c	skipped	accept	requires GNU C extension support
 gcc/testsuite/gcc.dg/pr71969-1.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
@@ -261,8 +261,8 @@ gcc/testsuite/gcc.dg/typename-vla-6.c	skipped	accept	requires GCC target/runtime
 gcc/testsuite/gcc.dg/typespec-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/ucnid-1-utf8.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/ucnid-1.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/ucnid-10-utf8.c	skipped	accept	requires Unicode/UCN lexer support
-gcc/testsuite/gcc.dg/ucnid-10.c	skipped	accept	requires Unicode/UCN lexer support
+gcc/testsuite/gcc.dg/ucnid-10-utf8.c	imported-accept	accept	Unicode and UCN lexer support
+gcc/testsuite/gcc.dg/ucnid-10.c	imported-accept	accept	Unicode and UCN lexer support
 gcc/testsuite/gcc.dg/ucnid-11-utf8.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/ucnid-11.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/ucnid-12-utf8.c	skipped	accept	requires GCC target/runtime test harness
@@ -272,7 +272,7 @@ gcc/testsuite/gcc.dg/ucnid-13.c	imported-reject	reject	explicit C99/GNU99 fronte
 gcc/testsuite/gcc.dg/ucnid-14-utf8.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/ucnid-14.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/ucnid-15-utf8.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/ucnid-16-utf8.c	skipped	accept	requires Unicode/UCN lexer support
+gcc/testsuite/gcc.dg/ucnid-16-utf8.c	imported-accept	accept	Unicode and UCN lexer support
 gcc/testsuite/gcc.dg/ucnid-2-utf8.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/ucnid-2.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/ucnid-3-utf8.c	skipped	accept	requires GCC target/runtime test harness
@@ -308,7 +308,7 @@ gcc/testsuite/gcc.dg/utf32-3.c	skipped	accept	requires GCC target/runtime test h
 gcc/testsuite/gcc.dg/utf32-4.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/utf8-1.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/utf8-2.c	skipped	reject	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/visibility-8.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/visibility-8.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/vla-11.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/vla-12.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/vla-13.c	skipped	accept	requires GCC target/runtime test harness
@@ -325,7 +325,7 @@ gcc/testsuite/gcc.dg/vla-25.c	imported-reject	reject	explicit C99/GNU99 frontend
 gcc/testsuite/gcc.dg/vla-26.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/vla-3.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/vla-4.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/vla-5.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/vla-5.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/vla-6.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/vla-7.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/vla-8.c	imported-reject	reject	explicit C99/GNU99 frontend case

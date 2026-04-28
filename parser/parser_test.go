@@ -58,9 +58,6 @@ func TestNoSpuriousFork(t *testing.T) {
 }
 
 func TestCandidateCountBoundedOnShadow(t *testing.T) {
-	// Outer typedef shadowed by inner variable. The parser cannot resolve this
-	// without proper scoping, so it must keep both branches alive — but that
-	// should not blow up to many candidates.
 	src := `typedef int a;
 int main() {
 	int a;
@@ -80,6 +77,27 @@ int main() {
 	}
 	if len(candidates) > 4 {
 		t.Fatalf("len(candidates) = %d, want <= 4 — fork pruning should keep this bounded", len(candidates))
+	}
+}
+
+func TestTypedefCastForksArePruned(t *testing.T) {
+	src := `typedef int T;
+void f(void) {
+	int a[(T)-1 < 0 ? 1 : -1];
+	int b[(T)-2 < 0 ? 1 : -1];
+	int c[(T)-3 < 0 ? 1 : -1];
+	int d[(T)-4 < 0 ? 1 : -1];
+}`
+	tokens, err := lexer.NewLexer(src).ScanTokens()
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := NewParser(tokens)
+	if _, err := p.Parse(); err != nil {
+		t.Fatal(err)
+	}
+	if p.ForkCount != 0 {
+		t.Fatalf("ForkCount = %d, want 0 — typedef casts should not keep expression branches without ordinary shadowing", p.ForkCount)
 	}
 }
 

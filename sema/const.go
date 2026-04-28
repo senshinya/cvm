@@ -1,5 +1,7 @@
 package sema
 
+import "math"
+
 type ConstKind int
 
 const (
@@ -710,8 +712,34 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 			}
 		}
 		return e.EvalConstant(x.X)
+	case *CallExpr:
+		if cv, ok := e.evalBuiltinConstantCall(x); ok {
+			return cv, true
+		}
 	case *AddrConst:
 		return ConstValue{Kind: ConstAddress, Addr: ConstValueAddr{Sym: x.Sym, Offset: x.Offset}, T: x.T}, true
+	}
+	return ConstValue{}, false
+}
+
+func (e *Evaluator) evalBuiltinConstantCall(call *CallExpr) (ConstValue, bool) {
+	callee := call.Callee
+	for {
+		ic, ok := callee.(*ImplicitCast)
+		if !ok || (ic.Kind != FunctionDecay && ic.Kind != LValueToRValue) {
+			break
+		}
+		callee = ic.X
+	}
+	ref, ok := callee.(*VarRef)
+	if !ok || ref.Sym == nil {
+		return ConstValue{}, false
+	}
+	switch ref.Sym.Name {
+	case "__builtin_nan", "nan":
+		return ConstValue{Kind: ConstFloat, Float: math.NaN(), T: call.T}, true
+	case "__builtin_huge_val", "__builtin_huge_valf", "__builtin_huge_vall":
+		return ConstValue{Kind: ConstFloat, Float: math.Inf(1), T: call.T}, true
 	}
 	return ConstValue{}, false
 }
@@ -896,6 +924,9 @@ func isRelationalConstOp(op BinaryOp) bool {
 
 func castConstInteger(cv ConstValue, to Type) ConstValue {
 	u := cv.Uint
+	if isSignedIntegerType(cv.T) {
+		u = uint64(cv.Int)
+	}
 	if bits := integerValueBitsOfType(to); bits > 0 && bits < 64 {
 		u &= (uint64(1) << uint(bits)) - 1
 	}

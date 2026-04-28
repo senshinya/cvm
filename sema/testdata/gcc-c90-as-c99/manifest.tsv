@@ -20,14 +20,14 @@ gcc/testsuite/gcc.dg/Wvla-3.c	imported-accept	accept	explicit C89/C90 case recla
 gcc/testsuite/gcc.dg/Wvla-5.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
 gcc/testsuite/gcc.dg/Wvla-6.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
 gcc/testsuite/gcc.dg/Wvla-7.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
-gcc/testsuite/gcc.dg/anon-struct-1.c	skipped	reject	requires GNU C extension support
+gcc/testsuite/gcc.dg/anon-struct-1.c	imported-reject	reject	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/atomic-pr51256.c	skipped	reject	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/bf-ms-attrib.c	skipped	reject	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/builtin-complex-err-2.c	skipped	accept	requires GCC builtin support
+gcc/testsuite/gcc.dg/builtin-complex-err-2.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/builtins-12.c	imported-accept	accept	GCC builtin frontend signature model
 gcc/testsuite/gcc.dg/builtins-13.c	skipped	reject	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/builtins-16.c	skipped	accept	requires GCC builtin support
-gcc/testsuite/gcc.dg/builtins-35.c	skipped	reject	requires GCC builtin namespace diagnostics
+gcc/testsuite/gcc.dg/builtins-16.c	imported-accept	accept	GCC builtin frontend model
+gcc/testsuite/gcc.dg/builtins-35.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/c90-align-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
 gcc/testsuite/gcc.dg/c90-anon-struct-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
 gcc/testsuite/gcc.dg/c90-array-lval-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
@@ -48,10 +48,10 @@ gcc/testsuite/gcc.dg/c90-const-expr-1.c	imported-accept	accept	explicit C89/C90 
 gcc/testsuite/gcc.dg/c90-const-expr-10.c	imported-reject	reject	explicit C89/C90 case reclassified under C99 after preprocessing
 gcc/testsuite/gcc.dg/c90-const-expr-11.c	imported-accept	accept	explicit C89/C90 case reclassified under C99 after preprocessing
 gcc/testsuite/gcc.dg/c90-const-expr-2.c	imported-reject	reject	explicit C89/C90 case reclassified under C99 after preprocessing
-gcc/testsuite/gcc.dg/c90-const-expr-3.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/c90-const-expr-3.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/c90-const-expr-4.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
 gcc/testsuite/gcc.dg/c90-const-expr-5.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
-gcc/testsuite/gcc.dg/c90-const-expr-6.c	skipped	reject	requires GNU C extension support
+gcc/testsuite/gcc.dg/c90-const-expr-6.c	imported-reject	reject	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/c90-const-expr-7.c	imported-reject	reject	explicit C89/C90 case reclassified under C99 after preprocessing
 gcc/testsuite/gcc.dg/c90-const-expr-8.c	imported-reject	reject	explicit C89/C90 case reclassified under C99 after preprocessing
 gcc/testsuite/gcc.dg/c90-const-expr-9.c	imported-reject	reject	explicit C89/C90 case reclassified under C99 after preprocessing
@@ -74,7 +74,7 @@ gcc/testsuite/gcc.dg/c90-impl-int-1.c	imported-reject	reject	explicit C89/C90 ca
 gcc/testsuite/gcc.dg/c90-impl-int-2.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
 gcc/testsuite/gcc.dg/c90-init-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
 gcc/testsuite/gcc.dg/c90-intconst-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99 after preprocessing
-gcc/testsuite/gcc.dg/c90-intprom-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/c90-intprom-1.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/c90-left-shift-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
 gcc/testsuite/gcc.dg/c90-left-shift-2.c	imported-reject	reject	explicit C89/C90 case reclassified under C99 after preprocessing
 gcc/testsuite/gcc.dg/c90-left-shift-3.c	imported-reject	reject	explicit C89/C90 case reclassified under C99 after preprocessing

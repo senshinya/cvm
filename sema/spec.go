@@ -414,7 +414,11 @@ func (s *Sema) parseStructDeclaration(node *entity.AstNode) []*Field {
 		}
 		return fields
 	}
-	return s.parseStructDeclaratorList(node.Children[1], spec.Type)
+	prevAllowArrayStar := s.allowArrayStar
+	s.allowArrayStar = false
+	fields := s.parseStructDeclaratorList(node.Children[1], spec.Type)
+	s.allowArrayStar = prevAllowArrayStar
+	return fields
 }
 
 func anonymousAggregateFields(t Type) []*Field {

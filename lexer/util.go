@@ -7,7 +7,7 @@ import (
 )
 
 func IsLetter_(b byte) bool {
-	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_'
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_' || b >= 0x80
 }
 
 func IsDigit(b byte) bool {

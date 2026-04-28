@@ -36,6 +36,14 @@ func (r IncludeResolver) resolveQuoted(currentFile, name string) (string, string
 			return path, string(content), nil
 		}
 	}
+	if content, ok := builtinHeader(name, r.opts.Target); ok {
+		return "<" + name + ">", content, nil
+	}
+	if base := filepath.Base(name); base != name {
+		if content, ok := builtinHeader(base, r.opts.Target); ok {
+			return "<" + base + ">", content, nil
+		}
+	}
 	return "", "", ppError(entity.SourcePos{}, "include file not found: %s", name)
 }
 

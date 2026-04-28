@@ -14,6 +14,7 @@ type Parser struct {
 	StateStack      *common.Stack[int]
 	SymbolStack     *common.Stack[*entity.AstNode]
 	TypeDefSymbols  [][]string
+	OrdinarySymbols [][]string
 	CheckPointStack *common.Stack[*CheckPoint]
 	CandidateASTs   []*entity.AstNode
 	bestError       error
@@ -22,11 +23,12 @@ type Parser struct {
 }
 
 type CheckPoint struct {
-	ChooseIndex        int
-	TokenIndex         int
-	StateStackSnap     []int
-	SymbolStackSnap    []*entity.AstNode
-	TypeDefSymbolsSnap [][]string
+	ChooseIndex         int
+	TokenIndex          int
+	StateStackSnap      []int
+	SymbolStackSnap     []*entity.AstNode
+	TypeDefSymbolsSnap  [][]string
+	OrdinarySymbolsSnap [][]string
 }
 
 func NewParser(tokens []entity.Token) *Parser {
@@ -39,6 +41,7 @@ func (p *Parser) Parse() ([]*entity.AstNode, error) {
 	p.StateStack.Push(0) // init state is always 0
 	p.SymbolStack = common.NewStack[*entity.AstNode]()
 	p.TypeDefSymbols = [][]string{{}}
+	p.OrdinarySymbols = [][]string{{}}
 
 	p.CheckPointStack = common.NewStack[*CheckPoint]()
 	p.bestError = nil
@@ -166,11 +169,12 @@ func (p *Parser) addCheckPoint(chooseOp int) {
 	stateAll := p.StateStack.DumpAll()
 	symAll := p.SymbolStack.DumpAll()
 	cp := CheckPoint{
-		TokenIndex:         p.TokenIndex,
-		ChooseIndex:        chooseOp,
-		StateStackSnap:     slices.Clone(stateAll),
-		SymbolStackSnap:    slices.Clone(symAll),
-		TypeDefSymbolsSnap: cloneTypeDefSymbols(p.TypeDefSymbols),
+		TokenIndex:          p.TokenIndex,
+		ChooseIndex:         chooseOp,
+		StateStackSnap:      slices.Clone(stateAll),
+		SymbolStackSnap:     slices.Clone(symAll),
+		TypeDefSymbolsSnap:  cloneTypeDefSymbols(p.TypeDefSymbols),
+		OrdinarySymbolsSnap: cloneTypeDefSymbols(p.OrdinarySymbols),
 	}
 	p.CheckPointStack.Push(&cp)
 	p.ForkCount++
@@ -193,6 +197,7 @@ func (p *Parser) restore() int {
 	p.StateStack = common.NewStackWithElements[int](checkPoint.StateStackSnap)
 	p.SymbolStack = common.NewStackWithElements[*entity.AstNode](checkPoint.SymbolStackSnap)
 	p.TypeDefSymbols = checkPoint.TypeDefSymbolsSnap
+	p.OrdinarySymbols = checkPoint.OrdinarySymbolsSnap
 
 	return checkPoint.ChooseIndex + 1
 }
@@ -258,12 +263,15 @@ func (p *Parser) operatePostProcess(node *entity.AstNode) error {
 			node.TypeDef = true
 		}
 	case Declaration, FunctionDefinition:
-		// add typedef name to the typedef stack
+		names := gslice.Map(node.DeclaratorID, func(token *entity.Token) string {
+			return token.Lexeme
+		})
 		if node.TypeDef {
 			p.TypeDefSymbols[len(p.TypeDefSymbols)-1] = append(p.TypeDefSymbols[len(p.TypeDefSymbols)-1],
-				gslice.Map(node.DeclaratorID, func(token *entity.Token) string {
-					return token.Lexeme
-				})...)
+				names...)
+		} else {
+			p.OrdinarySymbols[len(p.OrdinarySymbols)-1] = append(p.OrdinarySymbols[len(p.OrdinarySymbols)-1],
+				names...)
 		}
 		// when Declaration specifier contains typedef name, it should be the only type specifier
 		if err := checkDeclarationSpecifiers(node.Children[0]); err != nil {
@@ -274,16 +282,16 @@ func (p *Parser) operatePostProcess(node *entity.AstNode) error {
 		node.DeclaratorID = nil
 	case entity.LEFT_BRACES:
 		p.TypeDefSymbols = append(p.TypeDefSymbols, []string{})
+		p.OrdinarySymbols = append(p.OrdinarySymbols, []string{})
 	case entity.RIGHT_BRACES:
 		p.TypeDefSymbols = p.TypeDefSymbols[:len(p.TypeDefSymbols)-1]
+		p.OrdinarySymbols = p.OrdinarySymbols[:len(p.OrdinarySymbols)-1]
 	case TypedefName:
 		// typedef_name := IDENTIFIER
 		// check if the typedef name is in the typedef stack
 		id := node.Children[0].Terminal.Lexeme
-		for _, symbols := range p.TypeDefSymbols {
-			if slices.Contains(symbols, id) {
-				return nil
-			}
+		if p.isTypedefName(id) {
+			return nil
 		}
 		return UndeclaredIdentifier(node.SourceStart, id)
 	}
@@ -345,14 +353,13 @@ func comparePos(a, b entity.SourcePos) int {
 // -> IDENTIFIER] on lookahead LEFT_PARENTHESES. The IDENTIFIER is already on
 // the symbol stack.
 //
-// Pruning is asymmetric on purpose. TypeDefSymbols only ever appends typedef
-// declarations and never tracks variable declarations that shadow them, so:
-//   - Identifier NOT in stack -> definitely not a typedef -> drop typedef branch.
-//   - Identifier IN stack -> might be a typedef OR a shadowed name -> keep both
-//     branches but reorder so the typedef branch runs first.
-//
-// The shadowing case must remain forkable for the future semantic layer to pick
-// the right tree.
+// Pruning is asymmetric on purpose:
+//   - Identifier NOT visible as a typedef -> drop typedef branch.
+//   - Identifier visible as a typedef and not shadowed by an ordinary identifier
+//     -> prefer the typedef branch for expression/cast conflicts.
+//   - A declaration may introduce a new ordinary identifier that shadows an
+//     outer typedef, so SHIFT-vs-REDUCE declaration conflicts still keep both
+//     branches when the lookahead is currently a typedef name.
 func (p *Parser) pruneTypedefFork(token entity.Token, ops []DFAOperator) []DFAOperator {
 	if len(ops) != 2 {
 		return ops
@@ -376,7 +383,7 @@ func (p *Parser) pruneTypedefFork(token entity.Token, ops []DFAOperator) []DFAOp
 			return ops
 		}
 		if p.isTypedefName(top.Terminal.Lexeme) {
-			return []DFAOperator{ops[typedefIdx], ops[otherIdx]}
+			return []DFAOperator{ops[typedefIdx]}
 		}
 		return []DFAOperator{ops[otherIdx]}
 	}
@@ -404,8 +411,11 @@ func (p *Parser) pruneTypedefFork(token entity.Token, ops []DFAOperator) []DFAOp
 }
 
 func (p *Parser) isTypedefName(name string) bool {
-	for _, symbols := range p.TypeDefSymbols {
-		if slices.Contains(symbols, name) {
+	for i := len(p.TypeDefSymbols) - 1; i >= 0; i-- {
+		if i < len(p.OrdinarySymbols) && slices.Contains(p.OrdinarySymbols[i], name) {
+			return false
+		}
+		if slices.Contains(p.TypeDefSymbols[i], name) {
 			return true
 		}
 	}

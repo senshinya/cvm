@@ -314,12 +314,12 @@ func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *P
 	}
 	vd := &VarDecl{Sym: sym, T: t, Storage: storage, Range: srcRange}
 	sym.Decl = vd
-	if node.ReducedBy(parser.InitDeclarator, 2) {
-		vd.Init = s.typeInitializer(node.Children[2], t)
-	}
 	if err := s.scope.InsertChecked(name, sym); err != nil {
 		s.report(err.(*common.CvmError))
 		return
+	}
+	if node.ReducedBy(parser.InitDeclarator, 2) {
+		vd.Init = s.typeInitializer(node.Children[2], t)
 	}
 	prog.Globals = append(prog.Globals, vd)
 }

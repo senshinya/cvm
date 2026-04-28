@@ -192,6 +192,8 @@ func (pp *preprocessor) handleDirective(line []PPToken) error {
 		if pp.isActive() {
 			return pp.handleLine(body[1:], line)
 		}
+	case "pragma":
+		return nil
 	case "error":
 		if pp.isActive() {
 			return ppError(name.Location, "#error %s", joinLexemes(body[1:]))

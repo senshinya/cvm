@@ -164,6 +164,9 @@ func gccGNUExtensions(src string) bool {
 			return true
 		}
 	}
+	if strings.Contains(src, "empty initializer braces") && strings.Contains(src, "dg-warning") {
+		return true
+	}
 	return false
 }
 
@@ -202,6 +205,7 @@ func countManifestStatus(content, status string) int {
 
 func stripGCCDirectives(src string) string {
 	var b strings.Builder
+	inBlockComment := false
 	for _, line := range strings.SplitAfter(src, "\n") {
 		body := strings.TrimSuffix(line, "\n")
 		newline := ""
@@ -209,12 +213,34 @@ func stripGCCDirectives(src string) string {
 			newline = "\n"
 		}
 		if isDejaGNULine(body) {
+			if inBlockComment && strings.Contains(body, "*/") {
+				b.WriteString("*/")
+			}
 			b.WriteString(newline)
+			inBlockComment = updateBlockCommentState(body, inBlockComment)
 			continue
 		}
 		b.WriteString(line)
+		inBlockComment = updateBlockCommentState(body, inBlockComment)
 	}
 	return b.String()
+}
+
+func updateBlockCommentState(line string, inBlock bool) bool {
+	for i := 0; i < len(line); i++ {
+		if inBlock {
+			if i+1 < len(line) && line[i] == '*' && line[i+1] == '/' {
+				inBlock = false
+				i++
+			}
+			continue
+		}
+		if i+1 < len(line) && line[i] == '/' && line[i+1] == '*' {
+			inBlock = true
+			i++
+		}
+	}
+	return inBlock
 }
 
 func isDejaGNULine(line string) bool {

@@ -179,7 +179,11 @@ func (s *Sema) parseDesignator(node *entity.AstNode) Designator {
 			s.report(InvalidTypeSpec(node.SourceStart, "array designator expression must have integer type"))
 			return Designator{Kind: DesigArrayIndex}
 		}
-		cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr)
+		ev := NewEvaluator(s)
+		cv, ok := ev.EvalC99IntegerConstantExpression(expr)
+		if !ok && s.Options.GNUExtensions {
+			cv, ok = ev.evalC99CastArithmeticConstant(expr, true, true, true)
+		}
 		if !ok {
 			s.report(InvalidTypeSpec(node.SourceStart, "array designator expression must be integer constant expression"))
 			return Designator{Kind: DesigArrayIndex}
