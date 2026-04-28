@@ -230,7 +230,7 @@ func (s *Sema) typeSelection(node *entity.AstNode, scope *Scope, ctx *funcCtx) S
 		return &IfStmt{Cond: cond, Then: s.typeStmt(node.Children[4], scope, ctx), Else: s.typeStmt(node.Children[6], scope, ctx), Range: node.SourceRange}
 	case node.ReducedBy(parser.SelectionStatement, 3):
 		cond := s.castIntegerPromotion(s.castLValueToRValue(s.typeExpr(node.Children[2], scope)))
-		sw := &SwitchStmt{Cond: cond, Range: node.SourceRange}
+		sw := &SwitchStmt{Cond: cond, Order: ctx.nextOrder(), Range: node.SourceRange}
 		ctx.switchStack = append(ctx.switchStack, sw)
 		sw.Body = s.typeStmt(node.Children[4], scope, ctx)
 		ctx.switchStack = ctx.switchStack[:len(ctx.switchStack)-1]
@@ -288,9 +288,9 @@ func (s *Sema) typeLabeled(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stm
 		if !ok {
 			s.report(InvalidTypeSpec(node.SourceStart, "case value must be integer constant expression"))
 		}
-		return &CaseStmt{Value: cv.Int, Body: s.typeStmt(node.Children[3], scope, ctx), Range: node.SourceRange}
+		return &CaseStmt{Value: cv.Int, Body: s.typeStmt(node.Children[3], scope, ctx), Order: ctx.nextOrder(), Range: node.SourceRange}
 	case node.ReducedBy(parser.LabeledStatement, 3):
-		return &DefaultStmt{Body: s.typeStmt(node.Children[2], scope, ctx), Range: node.SourceRange}
+		return &DefaultStmt{Body: s.typeStmt(node.Children[2], scope, ctx), Order: ctx.nextOrder(), Range: node.SourceRange}
 	}
 	return &EmptyStmt{Range: node.SourceRange}
 }
@@ -518,17 +518,20 @@ func validateSwitchVMJumps(sw *SwitchStmt, barriers []vmScopeBarrier, s *Sema) {
 		return
 	}
 	for _, c := range sw.Cases {
-		if switchEntersVMBarrier(sw.Range.SourceStart, c.Range.SourceStart, barriers) {
+		if switchEntersVMBarrier(sw.Range.SourceStart, c.Range.SourceStart, sw.Order, c.Order, barriers) {
 			s.report(InvalidTypeSpec(c.Range.SourceStart, "switch jumps into scope of identifier with variably modified type"))
 		}
 	}
-	if sw.Default != nil && switchEntersVMBarrier(sw.Range.SourceStart, sw.Default.Range.SourceStart, barriers) {
+	if sw.Default != nil && switchEntersVMBarrier(sw.Range.SourceStart, sw.Default.Range.SourceStart, sw.Order, sw.Default.Order, barriers) {
 		s.report(InvalidTypeSpec(sw.Default.Range.SourceStart, "switch jumps into scope of identifier with variably modified type"))
 	}
 }
 
-func switchEntersVMBarrier(from, target entity.SourcePos, barriers []vmScopeBarrier) bool {
+func switchEntersVMBarrier(from, target entity.SourcePos, fromOrder, targetOrder int, barriers []vmScopeBarrier) bool {
 	for _, barrier := range barriers {
+		if orderJumpsIntoVMBarrier(fromOrder, targetOrder, barrier.declOrder) {
+			return true
+		}
 		if jumpEntersVMBarrier(from, target, barrier) {
 			return true
 		}

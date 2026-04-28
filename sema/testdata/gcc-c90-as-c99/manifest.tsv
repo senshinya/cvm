@@ -24,7 +24,7 @@ gcc/testsuite/gcc.dg/anon-struct-1.c	skipped	reject	requires GNU C extension sup
 gcc/testsuite/gcc.dg/atomic-pr51256.c	skipped	reject	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/bf-ms-attrib.c	skipped	reject	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/builtin-complex-err-2.c	skipped	accept	requires GCC builtin support
-gcc/testsuite/gcc.dg/builtins-12.c	skipped	accept	requires GCC builtin support
+gcc/testsuite/gcc.dg/builtins-12.c	imported-accept	accept	GCC builtin frontend signature model
 gcc/testsuite/gcc.dg/builtins-13.c	skipped	reject	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/builtins-16.c	skipped	accept	requires GCC builtin support
 gcc/testsuite/gcc.dg/builtins-35.c	skipped	reject	requires GCC builtin namespace diagnostics

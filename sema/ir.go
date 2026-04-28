@@ -46,6 +46,17 @@ type Block struct {
 func (b *Block) Pos() entity.SourceRange { return b.Range }
 func (*Block) isStmt()                   {}
 
+type StmtExpr struct {
+	Block *Block
+	T     Type
+	Range entity.SourceRange
+}
+
+func (e *StmtExpr) Pos() entity.SourceRange  { return e.Range }
+func (*StmtExpr) isExpr()                    {}
+func (e *StmtExpr) GetType() Type            { return e.T }
+func (*StmtExpr) GetCategory() ValueCategory { return RValue }
+
 type IfStmt struct {
 	Cond  Expr
 	Then  Stmt
@@ -83,6 +94,7 @@ type SwitchStmt struct {
 	Body    Stmt
 	Cases   []*CaseStmt
 	Default *DefaultStmt
+	Order   int
 	Range   entity.SourceRange
 }
 
@@ -92,6 +104,7 @@ func (*SwitchStmt) isStmt()                   {}
 type CaseStmt struct {
 	Value int64
 	Body  Stmt
+	Order int
 	Range entity.SourceRange
 }
 
@@ -100,6 +113,7 @@ func (*CaseStmt) isStmt()                   {}
 
 type DefaultStmt struct {
 	Body  Stmt
+	Order int
 	Range entity.SourceRange
 }
 
@@ -308,13 +322,19 @@ func (e *MemberExpr) GetCategory() ValueCategory { return e.Category }
 type IndexExpr struct {
 	Base, Index Expr
 	T           Type
+	Category    ValueCategory
 	Range       entity.SourceRange
 }
 
-func (e *IndexExpr) Pos() entity.SourceRange  { return e.Range }
-func (*IndexExpr) isExpr()                    {}
-func (e *IndexExpr) GetType() Type            { return e.T }
-func (*IndexExpr) GetCategory() ValueCategory { return LValue }
+func (e *IndexExpr) Pos() entity.SourceRange { return e.Range }
+func (*IndexExpr) isExpr()                   {}
+func (e *IndexExpr) GetType() Type           { return e.T }
+func (e *IndexExpr) GetCategory() ValueCategory {
+	if e.Category != 0 {
+		return e.Category
+	}
+	return LValue
+}
 
 type CondExpr struct {
 	Cond, Then, Else Expr

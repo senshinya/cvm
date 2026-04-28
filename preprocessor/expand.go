@@ -34,9 +34,65 @@ func (pp *preprocessor) expand(tokens []PPToken) ([]PPToken, error) {
 				continue
 			}
 		}
+		if tok.Kind == PPIdentifier && tok.Lexeme == "__extension__" {
+			continue
+		}
+		if tok.Kind == PPIdentifier && tok.Lexeme == "__attribute__" {
+			if err := p.discardAttribute(); err != nil {
+				return nil, err
+			}
+			continue
+		}
 		out = append(out, tok)
 	}
 	return out, nil
+}
+
+func (p *Preprocessor) discardAttribute() error {
+	open, err := p.readRaw()
+	if err != nil {
+		return err
+	}
+	if open.Kind != PPPunctuator || open.Lexeme != "(" {
+		p.unreadToken(open)
+		return nil
+	}
+	second, err := p.readRaw()
+	if err != nil {
+		return err
+	}
+	if second.Kind != PPPunctuator || second.Lexeme != "(" {
+		p.unreadToken(second)
+		p.unreadToken(open)
+		return nil
+	}
+	depth := 2
+	var unsupported *PPToken
+	for depth > 0 {
+		tok, err := p.readRaw()
+		if err != nil {
+			return err
+		}
+		if tok.Kind == PPEOF {
+			return ppError(open.Location, "unterminated attribute")
+		}
+		if tok.Kind == PPIdentifier && (tok.Lexeme == "alias" || tok.Lexeme == "transparent_union") && unsupported == nil {
+			unsupported = &tok
+		}
+		if tok.Kind != PPPunctuator {
+			continue
+		}
+		switch tok.Lexeme {
+		case "(":
+			depth++
+		case ")":
+			depth--
+		}
+	}
+	if unsupported != nil {
+		return ppError(unsupported.Location, "unsupported GNU attribute %q", unsupported.Lexeme)
+	}
+	return nil
 }
 
 func (p *Preprocessor) expandIdentifier(tok PPToken) (PPToken, bool, error) {

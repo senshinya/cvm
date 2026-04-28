@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const unsignedIfSentinel int64 = math.MinInt64
+
 // C99 preprocessing expressions are specified in intmax_t/uintmax_t terms.
 // This first evaluator uses int64 for the initial C99 gate; Task 8 must either
 // confirm GCC cases do not require unsigned wraparound yet or add uintmax_t
@@ -157,13 +159,13 @@ func (p *ifExprParser) parseEquality() (int64, error) {
 			if err != nil {
 				return 0, err
 			}
-			left = truth(left == right)
+			left = truth(compareIfValues(left, right) == 0)
 		case p.match("!="):
 			right, err := p.parseRel()
 			if err != nil {
 				return 0, err
 			}
-			left = truth(left != right)
+			left = truth(compareIfValues(left, right) != 0)
 		default:
 			return left, nil
 		}
@@ -182,25 +184,25 @@ func (p *ifExprParser) parseRel() (int64, error) {
 			if err != nil {
 				return 0, err
 			}
-			left = truth(left < right)
+			left = truth(compareIfValues(left, right) < 0)
 		case p.match("<="):
 			right, err := p.parseShift()
 			if err != nil {
 				return 0, err
 			}
-			left = truth(left <= right)
+			left = truth(compareIfValues(left, right) <= 0)
 		case p.match(">"):
 			right, err := p.parseShift()
 			if err != nil {
 				return 0, err
 			}
-			left = truth(left > right)
+			left = truth(compareIfValues(left, right) > 0)
 		case p.match(">="):
 			right, err := p.parseShift()
 			if err != nil {
 				return 0, err
 			}
-			left = truth(left >= right)
+			left = truth(compareIfValues(left, right) >= 0)
 		default:
 			return left, nil
 		}
@@ -348,9 +350,28 @@ func parseIfNumber(s string) (int64, error) {
 		return 0, err
 	}
 	if u > math.MaxInt64 {
-		return math.MaxInt64, nil
+		return unsignedIfSentinel, nil
 	}
 	return int64(u), nil
+}
+
+func compareIfValues(left, right int64) int {
+	leftHuge := left == unsignedIfSentinel
+	rightHuge := right == unsignedIfSentinel
+	switch {
+	case leftHuge && rightHuge:
+		return 0
+	case leftHuge:
+		return 1
+	case rightHuge:
+		return -1
+	case left < right:
+		return -1
+	case left > right:
+		return 1
+	default:
+		return 0
+	}
 }
 
 func truth(ok bool) int64 {

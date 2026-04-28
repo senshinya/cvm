@@ -140,6 +140,18 @@ func (s *Sema) buildBaseType(specs []*entity.AstNode, pos entity.SourcePos) Type
 				return ErrorTypeSingleton
 			}
 			return s.lookupTypedef(sp.Children[0])
+		case sp.ReducedBy(parser.TypeSpecifier, 15):
+			if len(specs) != 1 {
+				s.report(InvalidTypeSpec(pos, "typeof cannot combine with other specifiers"))
+				return ErrorTypeSingleton
+			}
+			return s.typeExpr(sp.Children[2], s.scope).GetType()
+		case sp.ReducedBy(parser.TypeSpecifier, 16):
+			if len(specs) != 1 {
+				s.report(InvalidTypeSpec(pos, "typeof cannot combine with other specifiers"))
+				return ErrorTypeSingleton
+			}
+			return s.parseTypeName(sp.Children[2])
 		}
 	}
 	return s.combineArithmetic(specs, pos)

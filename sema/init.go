@@ -13,16 +13,28 @@ func (s *Sema) typeInitializer(node *entity.AstNode, target Type) Expr {
 	case node.ReducedBy(parser.Initializer, 1):
 		expr := s.typeExpr(node.Children[0], s.scope)
 		expr = s.castFunctionDecay(s.castArrayDecay(s.castLValueToRValue(expr)))
+		if sub := firstScalarInitializerType(target); sub != nil {
+			target = sub
+		}
 		return s.assignmentConversion(expr, target, node.SourceStart)
 	case node.ReducedBy(parser.Initializer, 2), node.ReducedBy(parser.Initializer, 3):
 		return s.typeInitListForType(node.Children[1], target)
+	case node.ReducedBy(parser.Initializer, 4):
+		s.reportEmptyInitializerExtension(node.SourceStart)
+		return &InitList{T: target, Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
 }
 
+func (s *Sema) reportEmptyInitializerExtension(pos entity.SourcePos) {
+	if !s.Options.GNUExtensions || s.Options.PedanticErrors {
+		s.report(InvalidTypeSpec(pos, "empty initializer braces require GNU C mode"))
+	}
+}
+
 func (s *Sema) tryStringArrayInitializer(node *entity.AstNode, target Type) Expr {
 	at, ok := unqual(target).(*ArrayType)
-	if !ok || !isCharacterType(unqual(at.Elem)) {
+	if !ok || !isStringInitializableArrayElem(unqual(at.Elem)) {
 		return nil
 	}
 	if node.ReducedBy(parser.Initializer, 1) {
@@ -79,10 +91,34 @@ func isCharacterType(t Type) bool {
 	return ok && (bt.Kind == Char || bt.Kind == SChar || bt.Kind == UChar)
 }
 
+func isStringInitializableArrayElem(t Type) bool {
+	bt, ok := unqual(t).(*BuiltinType)
+	return ok && (bt.Kind == Char || bt.Kind == SChar || bt.Kind == UChar || bt.Kind == Int)
+}
+
+func firstScalarInitializerType(t Type) Type {
+	switch x := unqual(t).(type) {
+	case *StructType:
+		if len(x.Fields) == 0 {
+			return nil
+		}
+		return firstScalarInitializerType(x.Fields[0].T)
+	case *UnionType:
+		if len(x.Fields) == 0 {
+			return nil
+		}
+		return firstScalarInitializerType(x.Fields[0].T)
+	case *ArrayType:
+		return firstScalarInitializerType(x.Elem)
+	default:
+		return t
+	}
+}
+
 func (s *Sema) typeInitListForType(node *entity.AstNode, t Type) *InitList {
 	il := &InitList{T: t, Range: node.SourceRange}
 	at, ok := unqual(t).(*ArrayType)
-	if ok && isCharacterType(unqual(at.Elem)) {
+	if ok && isStringInitializableArrayElem(unqual(at.Elem)) {
 		if expr := s.tryStringArrayInitializerList(node); expr != nil {
 			il.Elems = append(il.Elems, InitElem{Value: expr})
 			return il

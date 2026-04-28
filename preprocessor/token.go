@@ -1,6 +1,8 @@
 package preprocessor
 
 import (
+	"strings"
+
 	"shinya.click/cvm/entity"
 	"shinya.click/cvm/lexer"
 )
@@ -79,14 +81,18 @@ func convertOneToken(tok PPToken) (entity.Token, error) {
 		}
 		return entity.Token{}, ppError(tok.Location, "unknown punctuator %q", tok.Lexeme)
 	case PPNumber, PPString, PPCharacter:
-		scanned, err := lexer.NewLexer(tok.Lexeme).ScanTokens()
+		lexeme := tok.Lexeme
+		if (tok.Kind == PPString || tok.Kind == PPCharacter) && strings.HasPrefix(lexeme, "L") {
+			lexeme = strings.TrimPrefix(lexeme, "L")
+		}
+		scanned, err := lexer.NewLexer(lexeme).ScanTokens()
 		if err != nil {
 			return entity.Token{}, err
 		}
 		if len(scanned) == 0 {
 			return entity.Token{}, ppError(tok.Location, "empty token conversion")
 		}
-		return entity.Token{Typ: scanned[0].Typ, Lexeme: tok.Lexeme, Literal: scanned[0].Literal}, nil
+		return entity.Token{Typ: scanned[0].Typ, Lexeme: lexeme, Literal: scanned[0].Literal}, nil
 	case PPHeaderName:
 		return entity.Token{}, ppError(tok.Location, "unexpected header name %q", tok.Lexeme)
 	default:
@@ -124,10 +130,15 @@ var keywordTokens = map[string]entity.TokenType{
 	"struct":         entity.STRUCT,
 	"switch":         entity.SWITCH,
 	"typedef":        entity.TYPEDEF,
+	"__typeof":       entity.TYPEOF,
+	"__typeof__":     entity.TYPEOF,
+	"typeof":         entity.TYPEOF,
 	"union":          entity.UNION,
 	"unsigned":       entity.UNSIGNED,
 	"void":           entity.VOID,
 	"volatile":       entity.VOLATILE,
+	"__volatile":     entity.VOLATILE,
+	"__volatile__":   entity.VOLATILE,
 	"while":          entity.WHILE,
 	"_Bool":          entity.BOOL,
 	"_Complex":       entity.COMPLEX,

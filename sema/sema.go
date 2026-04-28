@@ -19,6 +19,7 @@ type Sema struct {
 
 type SemaOptions struct {
 	PedanticErrors bool
+	GNUExtensions  bool
 }
 
 type pendingFunc struct {
@@ -292,7 +293,7 @@ func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *P
 		prog.Globals = append(prog.Globals, td)
 		return
 	}
-	if ft, ok := t.(*FunctionType); ok {
+	if ft, ok := unqual(t).(*FunctionType); ok {
 		if node.ReducedBy(parser.InitDeclarator, 2) {
 			s.report(InvalidTypeSpec(pos, "function declarator cannot have initializer"))
 			return

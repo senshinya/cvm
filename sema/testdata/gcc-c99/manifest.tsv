@@ -2,9 +2,9 @@ path	status	expected	reason
 gcc/testsuite/gcc.dg/c99-align-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-anon-struct-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-array-lval-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-array-lval-2.c	skipped	accept	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-array-lval-2.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-array-lval-3.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-array-lval-4.c	skipped	accept	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-array-lval-4.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-array-lval-5.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-array-lval-6.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-array-lval-7.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
@@ -15,7 +15,7 @@ gcc/testsuite/gcc.dg/c99-arraydecl-2.c	imported-reject	reject	current lexer+pars
 gcc/testsuite/gcc.dg/c99-arraydecl-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-arraydecl-4.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-atomic-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
-gcc/testsuite/gcc.dg/c99-bool-1.c	skipped	accept	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-bool-1.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-bool-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-bool-3.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-bool-4.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
@@ -26,16 +26,16 @@ gcc/testsuite/gcc.dg/c99-complex-2.c	imported-reject	reject	current lexer+parser
 gcc/testsuite/gcc.dg/c99-complex-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-complit-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-complit-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-condexpr-1.c	skipped	accept	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-condexpr-1.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-const-expr-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-const-expr-10.c	skipped	reject	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-const-expr-10.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-const-expr-11.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-const-expr-12.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-const-expr-13.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-const-expr-14.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-const-expr-15.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
-gcc/testsuite/gcc.dg/c99-const-expr-2.c	skipped	accept	requires frontend semantic follow-up after preprocessing
-gcc/testsuite/gcc.dg/c99-const-expr-3.c	skipped	accept	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-const-expr-2.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
+gcc/testsuite/gcc.dg/c99-const-expr-3.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-const-expr-4.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-const-expr-5.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-const-expr-6.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
@@ -57,7 +57,7 @@ gcc/testsuite/gcc.dg/c99-flex-array-typedef-3.c	imported-reject	reject	current l
 gcc/testsuite/gcc.dg/c99-flex-array-typedef-5.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-flex-array-typedef-7.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-flex-array-typedef-8.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-float-1.c	skipped	accept	requires real system header
+gcc/testsuite/gcc.dg/c99-float-1.c	imported-accept	accept	hosted C99 builtin header model
 gcc/testsuite/gcc.dg/c99-fordecl-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-fordecl-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-fordecl-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
@@ -74,15 +74,15 @@ gcc/testsuite/gcc.dg/c99-idem-qual-3.c	imported-accept	accept	current lexer+pars
 gcc/testsuite/gcc.dg/c99-impl-decl-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-impl-int-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-impl-int-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-init-1.c	skipped	accept	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-init-1.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-init-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-init-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-init-4.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-init-5.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-init-6.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
-gcc/testsuite/gcc.dg/c99-intconst-1.c	skipped	accept	requires frontend semantic follow-up after preprocessing
-gcc/testsuite/gcc.dg/c99-intconst-2.c	skipped	reject	requires frontend semantic follow-up after preprocessing
-gcc/testsuite/gcc.dg/c99-intprom-1.c	skipped	accept	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-intconst-1.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
+gcc/testsuite/gcc.dg/c99-intconst-2.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
+gcc/testsuite/gcc.dg/c99-intprom-1.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-left-shift-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-left-shift-2.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-left-shift-3.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
@@ -94,7 +94,7 @@ gcc/testsuite/gcc.dg/c99-math-float-1.c	skipped	accept	requires real system head
 gcc/testsuite/gcc.dg/c99-math-long-double-1.c	skipped	accept	requires real system header
 gcc/testsuite/gcc.dg/c99-mixdecl-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-noreturn-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
-gcc/testsuite/gcc.dg/c99-predef-1.c	skipped	accept	requires real system header
+gcc/testsuite/gcc.dg/c99-predef-1.c	imported-accept	accept	hosted C99 builtin header model
 gcc/testsuite/gcc.dg/c99-restrict-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-restrict-2.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-restrict-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
@@ -128,9 +128,9 @@ gcc/testsuite/gcc.dg/c99-typedef-1.c	imported-reject	reject	current lexer+parser
 gcc/testsuite/gcc.dg/c99-typespec-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-version-1.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-vla-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-vla-2.c	skipped	accept	requires frontend semantic follow-up after preprocessing
-gcc/testsuite/gcc.dg/c99-vla-jump-1.c	skipped	reject	requires frontend semantic follow-up after preprocessing
-gcc/testsuite/gcc.dg/c99-vla-jump-2.c	skipped	reject	requires frontend semantic follow-up after preprocessing
-gcc/testsuite/gcc.dg/c99-vla-jump-3.c	skipped	reject	requires frontend semantic follow-up after preprocessing
-gcc/testsuite/gcc.dg/c99-vla-jump-4.c	skipped	reject	requires frontend semantic follow-up after preprocessing
-gcc/testsuite/gcc.dg/c99-vla-jump-5.c	skipped	reject	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-vla-2.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
+gcc/testsuite/gcc.dg/c99-vla-jump-1.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
+gcc/testsuite/gcc.dg/c99-vla-jump-2.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
+gcc/testsuite/gcc.dg/c99-vla-jump-3.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
+gcc/testsuite/gcc.dg/c99-vla-jump-4.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
+gcc/testsuite/gcc.dg/c99-vla-jump-5.c	imported-reject	reject	preprocessed by cvm C99 preprocessor

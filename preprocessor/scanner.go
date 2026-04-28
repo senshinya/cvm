@@ -84,6 +84,34 @@ func scanFile(sm *SourceManager, fileID int, source string, opts Options) ([]PPT
 			return nil, ppError(sm.Location(fileID, ch.offset), "unsupported universal-character-name")
 		}
 		switch {
+		case ch.b == 'L' && i+1 < len(cleaned) && (cleaned[i+1].b == '"' || cleaned[i+1].b == '\''):
+			kind := PPString
+			if cleaned[i+1].b == '\'' {
+				kind = PPCharacter
+			}
+			start := i
+			quote := cleaned[i+1].b
+			needsClean := pendingClean || ch.needsCleaning || cleaned[i+1].needsCleaning
+			i += 2
+			for i < len(cleaned) {
+				needsClean = needsClean || cleaned[i].needsCleaning
+				if cleaned[i].b == '\\' {
+					i += 2
+					continue
+				}
+				if cleaned[i].b == quote {
+					i++
+					break
+				}
+				if cleaned[i].b == '\n' {
+					return nil, ppError(sm.Location(fileID, ch.offset), "unterminated literal")
+				}
+				i++
+			}
+			if i > len(cleaned) || cleaned[i-1].b != quote {
+				return nil, ppError(sm.Location(fileID, ch.offset), "unterminated literal")
+			}
+			tokens = append(tokens, makePPToken(kind, cleaned[start:i], sm, fileID, startOfLine, leadingSpace, needsClean))
 		case isIdentStart(ch.b):
 			start := i
 			needsClean := pendingClean
