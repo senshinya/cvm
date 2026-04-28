@@ -1,0 +1,334 @@
+path	status	expected	reason
+gcc/testsuite/gcc.dg/20011015-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/20011021-1.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/20031222-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/20050922-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/20050922-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/20090922-1.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/Wc90-c99-compat-2.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Wc90-c99-compat-9.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/Wc99-c11-compat-2.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wc99-c11-compat-4.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wc99-c11-compat-7.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/Wconversion-complex-c99.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/Wconversion-complex-gnu.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/Wconversion-integer-no-sign.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Wconversion-integer.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Wconversion-real-integer.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/Wdeclaration-after-statement-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/Wdeclaration-after-statement-3.c	skipped	reject	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wdesignated-init.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Wimplicit-function-declaration-c99-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/Wimplicit-function-declaration-c99-pedantic.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/Wimplicit-function-declaration-c99.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wjump-misses-init-2.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99-asm.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99-ext.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99-no.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Wparentheses-10.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/Wparentheses-3.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/Wsign-conversion.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Wstrict-aliasing-bogus-vla-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Wtraditional-conversion-2.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/Wunsuffixed-float-constants-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Wunused-var-4.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wvla-2.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wvla-4.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/anon-struct-5.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/array-const-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/array-const-2.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/array-const-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/asm-hard-reg-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/asm-hard-reg-error-3.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/asm-qual-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/asm-qual-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/asm-qual-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/assign-warn-3.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/attr-alias-5.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/attr-ms_struct-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/attr-ms_struct-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/attr-ms_struct-packed1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/binary-constants-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/binary-constants-2.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/binary-constants-3.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/binary-constants-4.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/builtin-stringop-chk-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/builtin-strncat-chk-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/builtins-57.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/builtins-58.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/builtins-nonnull.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/call-diag-2.c	skipped	reject	requires C99 incomplete return type diagnostics
+gcc/testsuite/gcc.dg/cast-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/cast-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/cast-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/cast-4.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/complex-4.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/complex-5.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/compound-literal-cast-lvalue-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/const-elim-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/darwin-sections.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/di-longlong64-sync-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/di-sync-multithread.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/div-compare-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/dll-10.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/dll-12.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/dll-7.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/fixuns-trunc-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/flex-array-counted-by-9.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/float-range-3.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/float-range-4.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/float-range-5.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/fltconst-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/fltconst-2.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/fltconst-double-pedantic-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/fltconst-double-pedantic-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/gnu-cond-expr-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/gnu-cond-expr-2.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/gnu-cond-expr-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/gnu99-const-expr-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/gnu99-const-expr-2.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/gnu99-const-expr-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/gnu99-const-expr-4.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/gnu99-if-decls-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/gnu99-if-decls-2.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/gnu99-init-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/gnu99-init-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/gnu99-named-loops-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/gnu99-named-loops-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/gnu99-named-loops-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/gnu99-named-loops-4.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/gnu99-static-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/hex-round-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/hex-round-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/imag-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/init-bad-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/init-bad-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/init-bad-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/init-bad-7.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/init-desig-obs-2.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/init-desig-obs-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/init-empty-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/init-empty-2.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/init-empty-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/init-string-1.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/init-string-2.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/inline-10.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-11.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-12.c	skipped	reject	requires C99 inline definition diagnostics
+gcc/testsuite/gcc.dg/inline-13.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-14.c	skipped	reject	requires C99 inline definition diagnostics
+gcc/testsuite/gcc.dg/inline-15.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-16.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/inline-17.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/inline-18.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/inline-20.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/inline-25.c	skipped	reject	requires C99 inline definition diagnostics
+gcc/testsuite/gcc.dg/inline-26.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-29.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/inline-30.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/inline-31.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-32.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/inline-32a.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-34.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-35.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-7.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-8.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/inline-9.c	skipped	reject	requires C99 inline definition diagnostics
+gcc/testsuite/gcc.dg/lvalue-7.c	skipped	reject	requires C99 void lvalue/address diagnostics
+gcc/testsuite/gcc.dg/missing-field-init-1.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/missing-field-init-2.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/multiple-overflow-warn-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/multiple-overflow-warn-2.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/nested-calls-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/nested-vla-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/nested-vla-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/nested-vla-3.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/no-asm-3.c	skipped	reject	requires GNU C extension support
+gcc/testsuite/gcc.dg/no-asm-4.c	skipped	reject	requires GNU C extension support
+gcc/testsuite/gcc.dg/nodfp-1.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/nofixed-point-1.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/nofixed-point-2.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/noreturn-5.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/octal-constants-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/octal-constants-2.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/octal-constants-3.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/octal-constants-4.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/overflow-2.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/overflow-warn-1.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/overflow-warn-2.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/overflow-warn-3.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/overflow-warn-4.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/overflow-warn-6.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/overflow-warn-9.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pedwarn-init.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr102897.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr104198.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr104380.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr106465.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr109450-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr109450-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr111914.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr112359.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr113013.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr11459-1.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr117391.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr15698-1.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr15698-2.c	skipped	reject	requires C99 function prototype compatibility diagnostics
+gcc/testsuite/gcc.dg/pr15698-3.c	skipped	reject	requires C99 function prototype compatibility diagnostics
+gcc/testsuite/gcc.dg/pr15698-4.c	skipped	reject	requires C99 function prototype compatibility diagnostics
+gcc/testsuite/gcc.dg/pr15698-5.c	skipped	reject	requires C99 function prototype compatibility diagnostics
+gcc/testsuite/gcc.dg/pr15698-6.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr15698-7.c	skipped	reject	requires C99 function prototype compatibility diagnostics
+gcc/testsuite/gcc.dg/pr15698-8.c	skipped	reject	requires C99 function prototype compatibility diagnostics
+gcc/testsuite/gcc.dg/pr15749-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr18241-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr18241-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr18502-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/pr19967.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr19984.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr22356-1.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr25801.c	skipped	reject	requires C99 incomplete-type pointer arithmetic diagnostics
+gcc/testsuite/gcc.dg/pr26865.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/pr27639.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr30360.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr30457.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr33666.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr35334.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr35440.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr35742.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr35746.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr36997.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr37303.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr38934.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr51034.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr51821.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr52132.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr52592.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr53196-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr53196-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr54121.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr54363.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/pr56078.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr57773.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr59011.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/pr59351.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/pr60784.c	skipped	accept	requires C99 nested initializer/designator coverage
+gcc/testsuite/gcc.dg/pr61096-1.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr67465.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr68134.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr69650.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/pr70418.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/pr71969-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr71969-2.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr71969-3.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr79223-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr79223-2.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr83852.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr83962.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr8715.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr88701.c	skipped	accept	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/pr91734.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pragma-align-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pragma-pack-3.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/qual-return-1.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/qual-return-2.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/qual-return-3.c	skipped	reject	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/qual-return-4.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/qual-return-7.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/signbit-sa.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/simd-6.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/smod-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/spellcheck-fields-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/spellcheck-inttypes.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/spellcheck-stdbool.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/spellcheck-stdint.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/stmt-expr-1.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/stmt-expr-2.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/stmt-expr-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/stmt-expr-4.c	skipped	accept	requires GNU C extension support
+gcc/testsuite/gcc.dg/struct-parse-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/system-binary-constants-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/system-octal-constants-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/transparent-union-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/transparent-union-1a.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/transparent-union-2.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/typename-vla-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/typename-vla-3.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/typename-vla-4.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/typename-vla-5.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/typename-vla-6.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/typespec-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/ucnid-1-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-10-utf8.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/ucnid-10.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/ucnid-11-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-11.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-12-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-12.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-13-utf8.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/ucnid-13.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/ucnid-14-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-14.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-15-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-16-utf8.c	skipped	accept	requires Unicode/UCN lexer support
+gcc/testsuite/gcc.dg/ucnid-2-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-3-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-3.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-4-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-4.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-5-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-5.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-6-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-6.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-7-utf8.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/ucnid-7.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/ucnid-8-utf8.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/ucnid-8.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/ucnid-9-utf8.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/ucnid-9.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/union-cast-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/union-duplicate-field.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/utf-array-short-wchar.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf-array.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf-badconcat.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/utf-badconcat2.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/utf-cvt.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf-inc-init.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf-type.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf16-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf16-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf16-3.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf16-4.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/utf32-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf32-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf32-3.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf32-4.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/utf8-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf8-2.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/visibility-8.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/vla-11.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/vla-12.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/vla-13.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/vla-14.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/vla-15.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/vla-16.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/vla-18.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/vla-19.c	skipped	reject	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/vla-2.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/vla-20.c	skipped	reject	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/vla-21.c	imported-accept	accept	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/vla-24.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/vla-25.c	skipped	reject	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/vla-26.c	skipped	accept	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/vla-3.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/vla-4.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/vla-5.c	skipped	accept	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/vla-6.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/vla-7.c	skipped	accept	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/vla-8.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/vla-9.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/vla-tert-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/wtr-int-type-1.c	skipped	accept	requires GCC warning/diagnostic behavior
