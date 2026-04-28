@@ -21,7 +21,7 @@ var numberLiteralStateTable = stateTable{
 	"K": []Edge{{"digit", "L"}},
 	"L": []Edge{{"digit", "L"}, {"F/L/f/l", "M"}},
 	"M": []Edge{},
-	"N": []Edge{{"oct_digit", "O"}, {"nooct_digit", "P"}, {".", "I"}, {"E/e", "J"}, {"X/x", "Q"}},
+	"N": []Edge{{"oct_digit", "O"}, {"nooct_digit", "P"}, {".", "I"}, {"E/e", "J"}, {"X/x", "Q"}, {"B/b", "Y"}},
 	"O": []Edge{{"oct_digit", "O"}, {"L/l", "F"}, {"U/u", "C"}, {".", "I"}, {"nooct_digit", "P"}, {"E/e", "J"}},
 	"P": []Edge{{"digit", "P"}, {".", "I"}, {"E/e", "J"}},
 	"Q": []Edge{{"hex_digit", "R"}, {".", "X"}},
@@ -32,6 +32,8 @@ var numberLiteralStateTable = stateTable{
 	"V": []Edge{{"digit", "V"}, {"F/L/f/l", "M"}},
 	"W": []Edge{{"digit", "I"}},
 	"X": []Edge{{"hex_digit", "S"}},
+	"Y": []Edge{{"bin_digit", "Z"}},
+	"Z": []Edge{{"bin_digit", "Z"}, {"L/l", "F"}, {"U/u", "C"}},
 }
 
 var numberLiteralConditionTable = conditionTable{
@@ -55,13 +57,15 @@ var numberLiteralConditionTable = conditionTable{
 		return IsDigit(b) && !IsOctDigit(b)
 	},
 	"X/x":       func(b byte) bool { return b == 'X' || b == 'x' },
+	"B/b":       func(b byte) bool { return b == 'B' || b == 'b' },
 	"P/p":       func(b byte) bool { return b == 'P' || b == 'p' },
 	"hex_digit": IsHexDigit,
+	"bin_digit": func(b byte) bool { return b == '0' || b == '1' },
 }
 
 var integerEndStates = map[state]struct{}{
 	"B": {}, "C": {}, "D": {}, "E": {}, "F": {}, "G": {}, "H": {},
-	"N": {}, "O": {}, "R": {},
+	"N": {}, "O": {}, "R": {}, "Z": {},
 }
 
 var floatEndStates = map[state]struct{}{
@@ -99,6 +103,9 @@ func constructIntegerToken(rawStr string, l, sc, ec int) (entity.Token, error) {
 		err error
 	)
 	switch {
+	case strings.HasPrefix(s, "0b") || strings.HasPrefix(s, "0B"):
+		s = s[2:]
+		raw, err = strconv.ParseUint(s, 2, 64)
 	case strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X"):
 		// hex
 		s = s[2:]
@@ -152,7 +159,7 @@ func constructFloatToken(rawStr string, l, sc, ec int) (entity.Token, error) {
 }
 
 var numberLiteralEndStates = []state{
-	"B", "C", "D", "E", "F", "G", "H", "I", "L", "M", "N", "O", "R", "V",
+	"B", "C", "D", "E", "F", "G", "H", "I", "L", "M", "N", "O", "R", "V", "Z",
 }
 
 var numberLiteralScanner *Scanner

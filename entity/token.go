@@ -42,6 +42,7 @@ const (
 	STRUCT        TokenType = "STRUCT"
 	SWITCH        TokenType = "SWITCH"
 	TYPEDEF       TokenType = "TYPEDEF"
+	TYPEOF        TokenType = "TYPEOF"
 	UNION         TokenType = "UNION"
 	UNSIGNED      TokenType = "UNSIGNED"
 	VOID          TokenType = "VOID"
@@ -145,6 +146,7 @@ var terminals = map[string]struct{}{
 	"STRUCT":            {},
 	"SWITCH":            {},
 	"TYPEDEF":           {},
+	"TYPEOF":            {},
 	"UNION":             {},
 	"UNSIGNED":          {},
 	"VOID":              {},

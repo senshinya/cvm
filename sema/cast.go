@@ -47,17 +47,54 @@ func (s *Sema) castIntegerPromotion(e Expr) Expr {
 func (s *Sema) castUsualArithmetic(l, r Expr) (Expr, Expr, Type) {
 	l = s.castIntegerPromotion(l)
 	r = s.castIntegerPromotion(r)
-	lr := arithmeticRank(l.GetType())
-	rr := arithmeticRank(r.GetType())
-	if lr == rr {
+	common := usualArithmeticType(s, l.GetType(), r.GetType())
+	if common == nil || l.GetType() == common && r.GetType() == common {
 		return l, r, l.GetType()
 	}
-	if lr > rr {
-		r = &ImplicitCast{From: r.GetType(), To: l.GetType(), X: r, Kind: UsualArithmetic, Range: r.Pos()}
-		return l, r, l.GetType()
+	if l.GetType() != common {
+		l = &ImplicitCast{From: l.GetType(), To: common, X: l, Kind: UsualArithmetic, Range: l.Pos()}
 	}
-	l = &ImplicitCast{From: l.GetType(), To: r.GetType(), X: l, Kind: UsualArithmetic, Range: l.Pos()}
-	return l, r, r.GetType()
+	if r.GetType() != common {
+		r = &ImplicitCast{From: r.GetType(), To: common, X: r, Kind: UsualArithmetic, Range: r.Pos()}
+	}
+	return l, r, common
+}
+
+func usualArithmeticType(s *Sema, a, b Type) Type {
+	ab, aok := unqualifiedBuiltin(a)
+	bb, bok := unqualifiedBuiltin(b)
+	if !aok || !bok {
+		return a
+	}
+	for _, k := range []BuiltinKind{LongDoubleComplex, DoubleComplex, FloatComplex, LongDouble, Double, Float} {
+		if ab.Kind == k || bb.Kind == k {
+			return s.Types.Builtin(k)
+		}
+	}
+	if ab.Kind == bb.Kind {
+		return s.Types.Builtin(ab.Kind)
+	}
+	as, bs := isSignedIntegerKind(ab.Kind), isSignedIntegerKind(bb.Kind)
+	ar, br := arithmeticRankBuiltin(ab), arithmeticRankBuiltin(bb)
+	if as == bs {
+		if ar >= br {
+			return s.Types.Builtin(ab.Kind)
+		}
+		return s.Types.Builtin(bb.Kind)
+	}
+	signed, unsigned := ab.Kind, bb.Kind
+	signedRank, unsignedRank := ar, br
+	if !as {
+		signed, unsigned = bb.Kind, ab.Kind
+		signedRank, unsignedRank = br, ar
+	}
+	if unsignedRank >= signedRank {
+		return s.Types.Builtin(unsigned)
+	}
+	if signedCanRepresentUnsigned(signed, unsigned) {
+		return s.Types.Builtin(signed)
+	}
+	return s.Types.Builtin(unsignedVersion(signed))
 }
 
 func (s *Sema) castBoolConversion(e Expr) Expr {
@@ -84,10 +121,13 @@ func (s *Sema) castVoidPointerConversion(e Expr, target Type) Expr {
 }
 
 func (s *Sema) isNullPointerConstant(e Expr) bool {
-	if isPointer(e.GetType()) {
-		return s.isVoidPointerZero(e)
+	if pt, ok := unqual(e.GetType()).(*PointerType); ok {
+		if isVoidPointer(pt) {
+			return s.isVoidPointerZero(e)
+		}
+		return false
 	}
-	cv, ok := NewEvaluator(s).EvalIntegerConstant(e)
+	cv, ok := s.evalNullPointerIntegerZero(e)
 	return ok && cv.Int == 0
 }
 
@@ -102,8 +142,65 @@ func (s *Sema) isVoidPointerZero(e Expr) bool {
 	if !isVoidPointer(pt) {
 		return false
 	}
-	cv, ok := NewEvaluator(s).EvalIntegerConstant(e)
+	cast, ok := e.(*ExplicitCast)
+	if !ok {
+		if implicit, implicitOK := e.(*ImplicitCast); implicitOK {
+			cast, ok = implicit.X.(*ExplicitCast)
+		}
+	}
+	if !ok {
+		return false
+	}
+	if exprContainsFloatLiteral(cast.X) {
+		return false
+	}
+	cv, ok := s.evalNullPointerIntegerZero(cast.X)
 	return ok && cv.Int == 0
+}
+
+func (s *Sema) evalNullPointerIntegerZero(e Expr) (ConstValue, bool) {
+	switch x := e.(type) {
+	case *ExplicitCast:
+		if !isInteger(x.To) {
+			return ConstValue{}, false
+		}
+		if f, ok := x.X.(*FloatLit); ok {
+			return ConstValue{Kind: ConstInt, Int: int64(f.Value), T: x.To}, true
+		}
+		cv, ok := s.evalNullPointerIntegerZero(x.X)
+		if !ok {
+			return ConstValue{}, false
+		}
+		return ConstValue{Kind: ConstInt, Int: cv.Int, T: x.To}, true
+	case *ImplicitCast:
+		if !isInteger(x.To) {
+			return ConstValue{}, false
+		}
+		return s.evalNullPointerIntegerZero(x.X)
+	case *FloatLit:
+		return ConstValue{}, false
+	}
+	return NewEvaluator(s).EvalC99IntegerConstantExpression(e)
+}
+
+func exprContainsFloatLiteral(e Expr) bool {
+	switch x := e.(type) {
+	case *FloatLit:
+		return true
+	case *ExplicitCast:
+		return exprContainsFloatLiteral(x.X)
+	case *ImplicitCast:
+		return exprContainsFloatLiteral(x.X)
+	case *UnOp:
+		return exprContainsFloatLiteral(x.X)
+	case *BinOp:
+		return exprContainsFloatLiteral(x.L) || exprContainsFloatLiteral(x.R)
+	case *CondExpr:
+		return exprContainsFloatLiteral(x.Cond) || exprContainsFloatLiteral(x.Then) || exprContainsFloatLiteral(x.Else)
+	case *CommaExpr:
+		return exprContainsFloatLiteral(x.L) || exprContainsFloatLiteral(x.R)
+	}
+	return false
 }
 
 func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) Expr {
@@ -216,6 +313,10 @@ func arithmeticRank(t Type) int {
 	if !ok {
 		return -1
 	}
+	return arithmeticRankBuiltin(bt)
+}
+
+func arithmeticRankBuiltin(bt *BuiltinType) int {
 	switch bt.Kind {
 	case LongDouble, LongDoubleComplex:
 		return 100
@@ -241,6 +342,50 @@ func arithmeticRank(t Type) int {
 		return 30
 	}
 	return -1
+}
+
+func isSignedIntegerKind(k BuiltinKind) bool {
+	switch k {
+	case Bool, Char, SChar, Short, Int, Long, LongLong:
+		return true
+	}
+	return false
+}
+
+func unsignedVersion(k BuiltinKind) BuiltinKind {
+	switch k {
+	case Char, SChar, UChar:
+		return UChar
+	case Short, UShort:
+		return UShort
+	case Int, UInt:
+		return UInt
+	case Long, ULong:
+		return ULong
+	case LongLong, ULongLong:
+		return ULongLong
+	}
+	return k
+}
+
+func signedCanRepresentUnsigned(signed, unsigned BuiltinKind) bool {
+	return integerValueBits(signed) > integerValueBits(unsigned)
+}
+
+func integerValueBits(k BuiltinKind) int {
+	switch k {
+	case Bool:
+		return 1
+	case Char, SChar, UChar:
+		return 8
+	case Short, UShort:
+		return 16
+	case Int, UInt:
+		return 32
+	case Long, ULong, LongLong, ULongLong:
+		return 64
+	}
+	return 0
 }
 
 func isFloating(k BuiltinKind) bool {
@@ -276,7 +421,7 @@ func isFunctionPointer(p *PointerType) bool {
 	return ok
 }
 
-func castAllowed(from, to Type) bool {
+func (s *Sema) castAllowed(from, to Type) bool {
 	if isArithmetic(from) && isArithmetic(to) {
 		return true
 	}
@@ -289,6 +434,22 @@ func castAllowed(from, to Type) bool {
 	if isInteger(from) && isPointer(to) {
 		return true
 	}
+	if s.Options.GNUExtensions && unionCastAllowed(from, to) {
+		return true
+	}
 	bt, ok := unqual(to).(*BuiltinType)
 	return ok && bt.Kind == Void
+}
+
+func unionCastAllowed(from, to Type) bool {
+	u, ok := unqual(to).(*UnionType)
+	if !ok || !u.Complete {
+		return false
+	}
+	for _, field := range u.Fields {
+		if compatibleTypeIgnoringTopLevelQualifiers(from, field.T) {
+			return true
+		}
+	}
+	return false
 }

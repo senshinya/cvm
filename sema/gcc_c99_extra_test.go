@@ -45,13 +45,12 @@ func TestGCCC99ExtraOnlyKnownSkipsRemain(t *testing.T) {
 		t.Fatalf("read GCC C99 extra manifest: %v", err)
 	}
 	allowed := map[string]bool{
-		"requires GNU C extension support":                         true,
-		"requires GCC target/runtime test harness":                 true,
-		"requires GCC warning/diagnostic behavior":                 true,
-		"requires GCC builtin support":                             true,
-		"requires GCC inline dialect/codegen behavior":             true,
-		"requires Unicode/UCN lexer support":                       true,
-		"requires frontend semantic follow-up after preprocessing": true,
+		"requires GNU C extension support":             true,
+		"requires GCC target/runtime test harness":     true,
+		"requires GCC warning/diagnostic behavior":     true,
+		"requires GCC builtin support":                 true,
+		"requires GCC inline dialect/codegen behavior": true,
+		"requires Unicode/UCN lexer support":           true,
 	}
 	for lineNo, line := range strings.Split(string(content), "\n") {
 		if strings.TrimSpace(line) == "" || lineNo == 0 {

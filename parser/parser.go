@@ -168,12 +168,20 @@ func (p *Parser) addCheckPoint(chooseOp int) {
 	cp := CheckPoint{
 		TokenIndex:         p.TokenIndex,
 		ChooseIndex:        chooseOp,
-		StateStackSnap:     common.DeepCopy(stateAll),
-		SymbolStackSnap:    common.DeepCopy(symAll),
-		TypeDefSymbolsSnap: common.DeepCopy(p.TypeDefSymbols),
+		StateStackSnap:     slices.Clone(stateAll),
+		SymbolStackSnap:    slices.Clone(symAll),
+		TypeDefSymbolsSnap: cloneTypeDefSymbols(p.TypeDefSymbols),
 	}
 	p.CheckPointStack.Push(&cp)
 	p.ForkCount++
+}
+
+func cloneTypeDefSymbols(symbols [][]string) [][]string {
+	cloned := make([][]string, len(symbols))
+	for i := range symbols {
+		cloned[i] = slices.Clone(symbols[i])
+	}
+	return cloned
 }
 
 func (p *Parser) restore() int {

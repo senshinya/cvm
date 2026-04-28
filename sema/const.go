@@ -54,11 +54,11 @@ func (e *Evaluator) EvalIntegerConstant(expr Expr) (ConstValue, bool) {
 		if !lok || !rok {
 			return ConstValue{}, false
 		}
-		v, ok := evalC99BinOpInt(x.Op, l.Int, r.Int, x.T)
+		cv, ok := evalC99BinOpConst(x.Op, l, r, x.L.GetType(), x.T)
 		if !ok {
 			return ConstValue{}, false
 		}
-		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
+		return cv, true
 	case *UnOp:
 		v, ok := e.EvalIntegerConstant(x.X)
 		if !ok {
@@ -87,13 +87,17 @@ func (e *Evaluator) EvalIntegerConstant(expr Expr) (ConstValue, bool) {
 		}
 		return e.EvalIntegerConstant(x.Else)
 	case *ImplicitCast:
-		return e.EvalIntegerConstant(x.X)
+		cv, ok := e.EvalIntegerConstant(x.X)
+		if !ok || !isInteger(x.To) {
+			return ConstValue{}, false
+		}
+		return castConstInteger(cv, x.To), true
 	case *ExplicitCast:
 		if v, ok := e.EvalIntegerConstant(x.X); ok {
-			return ConstValue{Kind: ConstInt, Int: v.Int, Uint: uint64(v.Int), T: x.To}, true
+			return castConstInteger(v, x.To), true
 		}
 		if f, ok := e.EvalArithmetic(x.X); ok && f.Kind == ConstFloat {
-			return ConstValue{Kind: ConstInt, Int: int64(f.Float), Uint: uint64(int64(f.Float)), T: x.To}, true
+			return castConstInteger(ConstValue{Kind: ConstInt, Int: int64(f.Float), Uint: uint64(int64(f.Float)), T: x.To}, x.To), true
 		}
 	}
 	return ConstValue{}, false
@@ -179,11 +183,11 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		if x.Op == OpShl && !validC99LeftShift(x.L.GetType(), l.Int, r.Int) {
 			return ConstValue{}, false
 		}
-		v, ok := evalC99BinOpInt(x.Op, l.Int, r.Int, x.T)
+		cv, ok := evalC99BinOpConst(x.Op, l, r, x.L.GetType(), x.T)
 		if !ok {
 			return ConstValue{}, false
 		}
-		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.T}, true
+		return cv, true
 	case *UnOp:
 		v, ok := e.evalC99IntegerConstantExpression(x.X)
 		if !ok {
@@ -222,17 +226,17 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		if !ok || !isInteger(x.To) {
 			return ConstValue{}, false
 		}
-		return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: x.To}, true
+		return castConstInteger(cv, x.To), true
 	case *ExplicitCast:
 		if !isInteger(x.To) {
 			return ConstValue{}, false
 		}
 		if cv, ok := e.evalC99IntegerConstantExpression(x.X); ok {
-			return ConstValue{Kind: ConstInt, Int: cv.Int, Uint: uint64(cv.Int), T: x.To}, true
+			return castConstInteger(cv, x.To), true
 		}
 		if f, ok := x.X.(*FloatLit); ok {
 			v := int64(f.Value)
-			return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, true
+			return castConstInteger(ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: x.To}, x.To), true
 		}
 	}
 	return ConstValue{}, false
@@ -808,6 +812,124 @@ func evalBinOpInt(op BinaryOp, l, r int64) (int64, bool) {
 		return boolToInt(l != 0 || r != 0), true
 	}
 	return 0, false
+}
+
+func evalC99BinOpConst(op BinaryOp, l, r ConstValue, operandType, resultType Type) (ConstValue, bool) {
+	if isUnsignedIntegerType(operandType) {
+		v, ok := evalBinOpUint(op, l.Uint, r.Uint)
+		if !ok {
+			return ConstValue{}, false
+		}
+		if isRelationalConstOp(op) || op == OpLAnd || op == OpLOr {
+			return ConstValue{Kind: ConstInt, Int: int64(v), Uint: v, T: resultType}, true
+		}
+		return castConstInteger(ConstValue{Kind: ConstInt, Int: int64(v), Uint: v, T: resultType}, resultType), true
+	}
+	v, ok := evalC99BinOpInt(op, l.Int, r.Int, resultType)
+	if !ok {
+		return ConstValue{}, false
+	}
+	return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: resultType}, true
+}
+
+func evalBinOpUint(op BinaryOp, l, r uint64) (uint64, bool) {
+	switch op {
+	case OpAdd:
+		return l + r, true
+	case OpSub:
+		return l - r, true
+	case OpMul:
+		return l * r, true
+	case OpDiv:
+		if r == 0 {
+			return 0, false
+		}
+		return l / r, true
+	case OpMod:
+		if r == 0 {
+			return 0, false
+		}
+		return l % r, true
+	case OpAnd:
+		return l & r, true
+	case OpOr:
+		return l | r, true
+	case OpXor:
+		return l ^ r, true
+	case OpShl:
+		if r >= 64 {
+			return 0, false
+		}
+		return l << uint(r), true
+	case OpShr:
+		if r >= 64 {
+			return 0, false
+		}
+		return l >> uint(r), true
+	case OpEq:
+		return uint64(boolToInt(l == r)), true
+	case OpNe:
+		return uint64(boolToInt(l != r)), true
+	case OpLt:
+		return uint64(boolToInt(l < r)), true
+	case OpLe:
+		return uint64(boolToInt(l <= r)), true
+	case OpGt:
+		return uint64(boolToInt(l > r)), true
+	case OpGe:
+		return uint64(boolToInt(l >= r)), true
+	case OpLAnd:
+		return uint64(boolToInt(l != 0 && r != 0)), true
+	case OpLOr:
+		return uint64(boolToInt(l != 0 || r != 0)), true
+	}
+	return 0, false
+}
+
+func isRelationalConstOp(op BinaryOp) bool {
+	switch op {
+	case OpEq, OpNe, OpLt, OpLe, OpGt, OpGe:
+		return true
+	}
+	return false
+}
+
+func castConstInteger(cv ConstValue, to Type) ConstValue {
+	u := cv.Uint
+	if bits := integerValueBitsOfType(to); bits > 0 && bits < 64 {
+		u &= (uint64(1) << uint(bits)) - 1
+	}
+	if isSignedIntegerType(to) {
+		bits := integerValueBitsOfType(to)
+		if bits > 0 && bits < 64 {
+			sign := uint64(1) << uint(bits-1)
+			if u&sign != 0 {
+				return ConstValue{Kind: ConstInt, Int: int64(u | ^((uint64(1) << uint(bits)) - 1)), Uint: u, T: to}
+			}
+		}
+		return ConstValue{Kind: ConstInt, Int: int64(u), Uint: u, T: to}
+	}
+	return ConstValue{Kind: ConstInt, Int: int64(u), Uint: u, T: to}
+}
+
+func isUnsignedIntegerType(t Type) bool {
+	bt, ok := unqualifiedBuiltin(t)
+	if !ok {
+		return false
+	}
+	switch bt.Kind {
+	case Bool, UChar, UShort, UInt, ULong, ULongLong:
+		return true
+	}
+	return false
+}
+
+func integerValueBitsOfType(t Type) int {
+	bt, ok := unqualifiedBuiltin(t)
+	if !ok {
+		return 0
+	}
+	return integerValueBits(bt.Kind)
 }
 
 func boolToInt(b bool) int64 {

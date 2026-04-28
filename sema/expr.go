@@ -69,7 +69,11 @@ func (s *Sema) errorExpr(r entity.SourceRange) Expr {
 }
 
 func (s *Sema) makeIntLit(node *entity.AstNode) Expr {
-	return &IntLit{Value: parseIntLiteral(node.Terminal.Lexeme), T: s.Types.Builtin(Int), Range: node.SourceRange}
+	lexeme := node.Terminal.Lexeme
+	if s.Options.PedanticErrors && signedIntegerLiteralOverflow(lexeme) {
+		s.report(InvalidTypeSpec(node.SourceStart, "integer constant is too large for signed type"))
+	}
+	return &IntLit{Value: parseIntLiteral(lexeme), T: integerLiteralType(s, lexeme), Range: node.SourceRange}
 }
 
 func (s *Sema) makeFloatLit(node *entity.AstNode) Expr {
@@ -103,17 +107,104 @@ func (s *Sema) makeStringLit(node *entity.AstNode) Expr {
 }
 
 func parseIntLiteral(lexeme string) int64 {
-	end := len(lexeme)
-	for end > 0 {
-		c := lexeme[end-1]
+	body := integerLiteralBody(lexeme)
+	v, _ := strconv.ParseUint(body, 0, 64)
+	return int64(v)
+}
+
+func integerLiteralType(s *Sema, lexeme string) Type {
+	suffix := integerSuffix(lexeme)
+	body := integerLiteralBody(lexeme)
+	value, err := strconv.ParseUint(body, 0, 64)
+	if err != nil {
+		return s.Types.Builtin(ULongLong)
+	}
+	for _, k := range integerLiteralCandidates(body, suffix) {
+		if uintValueFitsBuiltin(value, k) {
+			return s.Types.Builtin(k)
+		}
+	}
+	return s.Types.Builtin(ULongLong)
+}
+
+func integerLiteralBody(lexeme string) string {
+	return lexeme[:len(lexeme)-len(integerSuffix(lexeme))]
+}
+
+func integerSuffix(lexeme string) string {
+	i := len(lexeme)
+	for i > 0 {
+		c := lexeme[i-1]
 		if c == 'u' || c == 'U' || c == 'l' || c == 'L' {
-			end--
+			i--
 			continue
 		}
 		break
 	}
-	v, _ := strconv.ParseInt(lexeme[:end], 0, 64)
-	return v
+	return strings.ToLower(lexeme[i:])
+}
+
+func integerLiteralCandidates(body, suffix string) []BuiltinKind {
+	unsigned := strings.Contains(suffix, "u")
+	longs := strings.Count(suffix, "l")
+	decimal := integerLiteralIsDecimal(body)
+	switch {
+	case unsigned && longs >= 2:
+		return []BuiltinKind{ULongLong}
+	case unsigned && longs == 1:
+		return []BuiltinKind{ULong, ULongLong}
+	case unsigned:
+		return []BuiltinKind{UInt, ULong, ULongLong}
+	case longs >= 2 && decimal:
+		return []BuiltinKind{LongLong}
+	case longs >= 2:
+		return []BuiltinKind{LongLong, ULongLong}
+	case longs == 1 && decimal:
+		return []BuiltinKind{Long, LongLong}
+	case longs == 1:
+		return []BuiltinKind{Long, ULong, LongLong, ULongLong}
+	case decimal:
+		return []BuiltinKind{Int, Long, LongLong}
+	default:
+		return []BuiltinKind{Int, UInt, Long, ULong, LongLong, ULongLong}
+	}
+}
+
+func uintValueFitsBuiltin(v uint64, k BuiltinKind) bool {
+	if isSignedIntegerKind(k) {
+		return v <= uint64MaxForSignedKind(k)
+	}
+	return integerValueBits(k) >= 64 || v < (uint64(1)<<uint(integerValueBits(k)))
+}
+
+func uint64MaxForSignedKind(k BuiltinKind) uint64 {
+	bits := integerValueBits(k)
+	if bits >= 64 {
+		return uint64(int64Max)
+	}
+	return (uint64(1) << uint(bits-1)) - 1
+}
+
+func signedIntegerLiteralOverflow(lexeme string) bool {
+	suffix := integerSuffix(lexeme)
+	if strings.Contains(suffix, "u") {
+		return false
+	}
+	body := integerLiteralBody(lexeme)
+	value, err := strconv.ParseUint(body, 0, 64)
+	if err != nil {
+		return true
+	}
+	for _, k := range integerLiteralCandidates(body, suffix) {
+		if uintValueFitsBuiltin(value, k) {
+			return false
+		}
+	}
+	return true
+}
+
+func integerLiteralIsDecimal(body string) bool {
+	return !strings.HasPrefix(body, "0x") && !strings.HasPrefix(body, "0X") && !(len(body) > 1 && body[0] == '0')
 }
 
 func parseFloatLiteral(lexeme string) float64 {
@@ -169,14 +260,33 @@ func (s *Sema) typePrimary(node *entity.AstNode, scope *Scope) Expr {
 		return s.makeFloatLit(node.Children[0])
 	case node.ReducedBy(parser.PrimaryExpression, 6):
 		return s.typeExpr(node.Children[1], scope)
+	case node.ReducedBy(parser.PrimaryExpression, 7):
+		if !s.Options.GNUExtensions {
+			s.report(InvalidTypeSpec(node.SourceStart, "statement expression requires GNU C mode"))
+		}
+		block := s.typeBlock(node.Children[1], scope, &funcCtx{})
+		return &StmtExpr{Block: block, T: blockResultType(s, block), Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
+}
+
+func blockResultType(s *Sema, block *Block) Type {
+	if block == nil || len(block.Items) == 0 {
+		return s.Types.Builtin(Void)
+	}
+	if stmt, ok := block.Items[len(block.Items)-1].(*ExprStmt); ok && stmt.Expr != nil {
+		return stmt.Expr.GetType()
+	}
+	return s.Types.Builtin(Void)
 }
 
 func (s *Sema) lookupVar(node *entity.AstNode, scope *Scope) Expr {
 	name := node.Terminal.Lexeme
 	sym := scope.Lookup(name, NSOrdinary)
 	if sym == nil {
+		if builtin := s.lookupBuiltin(name, node.SourceStart); builtin != nil {
+			return &VarRef{Sym: builtin, T: builtin.T, Range: node.SourceRange}
+		}
 		s.report(UndeclaredIdentifier(node.SourceStart, name))
 		return s.errorExpr(node.SourceRange)
 	}
@@ -529,26 +639,40 @@ func (s *Sema) typeConditional(node *entity.AstNode, scope *Scope) Expr {
 		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[0], scope)))
 		then := s.castLValueToRValue(s.typeExpr(node.Children[2], scope))
 		els := s.castLValueToRValue(s.typeExpr(node.Children[4], scope))
-		var common Type
-		if isArithmetic(then.GetType()) && isArithmetic(els.GetType()) {
-			then, els, common = s.castUsualArithmetic(then, els)
-		} else if isPointer(then.GetType()) && s.isConditionalNullPointerConstant(els) {
-			els = s.castNullPointerConstant(els, then.GetType())
-			common = then.GetType()
-		} else if isPointer(els.GetType()) && s.isConditionalNullPointerConstant(then) {
-			then = s.castNullPointerConstant(then, els.GetType())
-			common = els.GetType()
-		} else if isPointer(then.GetType()) && isPointer(els.GetType()) {
-			then, els, common = s.balanceConditionalPointer(then, els, node.SourceStart)
-		} else {
-			common = then.GetType()
-			if common != els.GetType() {
-				els = s.assignmentConversion(els, common, node.SourceStart)
-			}
+		then, els, common := s.balanceConditionalOperands(then, els, node.SourceStart)
+		return &CondExpr{Cond: cond, Then: then, Else: els, T: common, Range: node.SourceRange}
+	case node.ReducedBy(parser.ConditionalExpression, 3):
+		if !s.Options.GNUExtensions || s.Options.PedanticErrors {
+			s.report(InvalidTypeSpec(node.SourceStart, "omitted middle operand requires GNU C mode"))
 		}
+		then := s.castLValueToRValue(s.typeExpr(node.Children[0], scope))
+		cond := s.castBoolConversion(then)
+		els := s.castLValueToRValue(s.typeExpr(node.Children[3], scope))
+		then, els, common := s.balanceConditionalOperands(then, els, node.SourceStart)
 		return &CondExpr{Cond: cond, Then: then, Else: els, T: common, Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
+}
+
+func (s *Sema) balanceConditionalOperands(then, els Expr, pos entity.SourcePos) (Expr, Expr, Type) {
+	var common Type
+	if isArithmetic(then.GetType()) && isArithmetic(els.GetType()) {
+		then, els, common = s.castUsualArithmetic(then, els)
+	} else if isPointer(then.GetType()) && s.isConditionalNullPointerConstant(els) {
+		els = s.castNullPointerConstant(els, then.GetType())
+		common = then.GetType()
+	} else if isPointer(els.GetType()) && s.isConditionalNullPointerConstant(then) {
+		then = s.castNullPointerConstant(then, els.GetType())
+		common = els.GetType()
+	} else if isPointer(then.GetType()) && isPointer(els.GetType()) {
+		then, els, common = s.balanceConditionalPointer(then, els, pos)
+	} else {
+		common = then.GetType()
+		if common != els.GetType() {
+			els = s.assignmentConversion(els, common, pos)
+		}
+	}
+	return then, els, common
 }
 
 func (s *Sema) isConditionalNullPointerConstant(e Expr) bool {
@@ -558,6 +682,7 @@ func (s *Sema) isConditionalNullPointerConstant(e Expr) bool {
 func (s *Sema) balanceConditionalPointer(then, els Expr, pos entity.SourcePos) (Expr, Expr, Type) {
 	tp := unqual(then.GetType()).(*PointerType)
 	ep := unqual(els.GetType()).(*PointerType)
+	commonArrayPointee := compositeConditionalArrayPointee(tp.Pointee, ep.Pointee)
 	switch {
 	case !isFunctionPointer(tp) && !isFunctionPointer(ep) && isVoidPointer(tp):
 		common := s.qualifiedVoidPointer(tp.Pointee, ep.Pointee)
@@ -577,6 +702,15 @@ func (s *Sema) balanceConditionalPointer(then, els Expr, pos entity.SourcePos) (
 			els = s.castVoidPointerConversion(els, common)
 		}
 		return then, els, common
+	case commonArrayPointee != nil:
+		common := s.Types.Pointer(commonArrayPointee)
+		if then.GetType() != common {
+			then = s.castPointerConversion(then, common)
+		}
+		if els.GetType() != common {
+			els = s.castPointerConversion(els, common)
+		}
+		return then, els, common
 	case pointerAssignmentCompatible(ep, tp):
 		if els.GetType() != then.GetType() {
 			els = s.castPointerConversion(els, then.GetType())
@@ -587,9 +721,52 @@ func (s *Sema) balanceConditionalPointer(then, els Expr, pos entity.SourcePos) (
 			then = s.castPointerConversion(then, els.GetType())
 		}
 		return then, els, els.GetType()
+	case compatibleTypeIgnoringTopLevelQualifiers(tp.Pointee, ep.Pointee):
+		common := s.Types.Pointer(mergePointeeQualifiers(s, tp.Pointee, ep.Pointee))
+		if then.GetType() != common {
+			then = s.castPointerConversion(then, common)
+		}
+		if els.GetType() != common {
+			els = s.castPointerConversion(els, common)
+		}
+		return then, els, common
 	default:
 		s.report(InvalidTypeSpec(pos, "incompatible pointer types in conditional expression"))
 		return then, els, then.GetType()
+	}
+}
+
+func mergePointeeQualifiers(s *Sema, a, b Type) Type {
+	c, v, r := qualifierUnion(a, b)
+	base := unqual(a)
+	if c || v || r {
+		return s.Types.Qualified(base, c, v, r)
+	}
+	return base
+}
+
+func compositeConditionalArrayPointee(a, b Type) Type {
+	aa, aok := unqual(a).(*ArrayType)
+	ba, bok := unqual(b).(*ArrayType)
+	if !aok || !bok || !compatibleTypeIgnoringTopLevelQualifiers(aa.Elem, ba.Elem) {
+		return nil
+	}
+	switch {
+	case aa.SizeKind == ArrayConstantSize && ba.SizeKind == ArrayConstantSize:
+		if aa.Size == ba.Size {
+			return aa
+		}
+		return nil
+	case aa.SizeKind == ArrayConstantSize:
+		return aa
+	case ba.SizeKind == ArrayConstantSize:
+		return ba
+	case aa.SizeKind == ArrayVLA:
+		return aa
+	case ba.SizeKind == ArrayVLA:
+		return ba
+	default:
+		return aa
 	}
 }
 
@@ -624,8 +801,8 @@ func (s *Sema) typeComma(node *entity.AstNode, scope *Scope) Expr {
 	case node.ReducedBy(parser.Expression, 1):
 		return s.typeExpr(node.Children[0], scope)
 	case node.ReducedBy(parser.Expression, 2):
-		l := s.typeExpr(node.Children[0], scope)
-		r := s.typeExpr(node.Children[2], scope)
+		l := s.castArrayDecay(s.castLValueToRValue(s.typeExpr(node.Children[0], scope)))
+		r := s.castArrayDecay(s.castLValueToRValue(s.typeExpr(node.Children[2], scope)))
 		return &CommaExpr{L: l, R: r, T: r.GetType(), Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
@@ -638,7 +815,7 @@ func (s *Sema) typeCast(node *entity.AstNode, scope *Scope) Expr {
 	case node.ReducedBy(parser.CastExpression, 2):
 		t := s.parseTypeName(node.Children[1])
 		x := s.castFunctionDecay(s.castArrayDecay(s.castLValueToRValue(s.typeExpr(node.Children[3], scope))))
-		if !castAllowed(x.GetType(), t) {
+		if !s.castAllowed(x.GetType(), t) {
 			s.report(InvalidTypeSpec(node.SourceStart, "invalid explicit cast"))
 		}
 		return &ExplicitCast{To: t, X: x, Range: node.SourceRange}
@@ -651,14 +828,22 @@ func (s *Sema) typePostfix(node *entity.AstNode, scope *Scope) Expr {
 	case node.ReducedBy(parser.PostfixExpression, 1):
 		return s.typeExpr(node.Children[0], scope)
 	case node.ReducedBy(parser.PostfixExpression, 2):
-		base := s.castArrayDecay(s.castLValueToRValue(s.typeExpr(node.Children[0], scope)))
+		rawBase := s.typeExpr(node.Children[0], scope)
+		category := indexExprCategory(rawBase)
+		base := s.castArrayDecay(s.castLValueToRValue(rawBase))
 		idx := s.castIntegerPromotion(s.castLValueToRValue(s.typeExpr(node.Children[2], scope)))
 		pt, ok := unqual(base.GetType()).(*PointerType)
 		if !ok {
-			s.report(InvalidTypeSpec(node.SourceStart, "subscript on non-pointer/non-array"))
-			return &IndexExpr{Base: base, Index: idx, T: ErrorTypeSingleton, Range: node.SourceRange}
+			if idxPtr, idxOK := unqual(idx.GetType()).(*PointerType); idxOK && isInteger(base.GetType()) {
+				base, idx = idx, base
+				pt, ok = idxPtr, true
+			}
 		}
-		return &IndexExpr{Base: base, Index: idx, T: pt.Pointee, Range: node.SourceRange}
+		if !ok {
+			s.report(InvalidTypeSpec(node.SourceStart, "subscript on non-pointer/non-array"))
+			return &IndexExpr{Base: base, Index: idx, T: ErrorTypeSingleton, Category: category, Range: node.SourceRange}
+		}
+		return &IndexExpr{Base: base, Index: idx, T: pt.Pointee, Category: category, Range: node.SourceRange}
 	case node.ReducedBy(parser.PostfixExpression, 3):
 		return s.typeCall(node, scope, nil)
 	case node.ReducedBy(parser.PostfixExpression, 4):
@@ -676,8 +861,22 @@ func (s *Sema) typePostfix(node *entity.AstNode, scope *Scope) Expr {
 	case node.ReducedBy(parser.PostfixExpression, 9), node.ReducedBy(parser.PostfixExpression, 10):
 		t := s.parseTypeName(node.Children[1])
 		return &CompoundLit{T: t, Init: s.typeInitListForType(node.Children[4], t), Range: node.SourceRange}
+	case node.ReducedBy(parser.PostfixExpression, 11):
+		s.reportEmptyInitializerExtension(node.SourceStart)
+		t := s.parseTypeName(node.Children[1])
+		return &CompoundLit{T: t, Init: &InitList{T: t, Range: node.SourceRange}, Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
+}
+
+func indexExprCategory(base Expr) ValueCategory {
+	if base == nil {
+		return LValue
+	}
+	if _, ok := unqual(base.GetType()).(*ArrayType); ok && base.GetCategory() != LValue {
+		return RValue
+	}
+	return LValue
 }
 
 func (s *Sema) typeCall(node *entity.AstNode, scope *Scope, argList *entity.AstNode) Expr {

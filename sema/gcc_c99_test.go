@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"shinya.click/cvm/entity"
 	"shinya.click/cvm/parser"
 	"shinya.click/cvm/preprocessor"
 )
@@ -60,11 +61,10 @@ func TestGCCC99OnlyPreprocessorSkipsRemain(t *testing.T) {
 			continue
 		}
 		allowed := map[string]bool{
-			"requires real system header":                              true,
-			"requires GCC pragma semantics":                            true,
-			"requires GNU preprocessor extension":                      true,
-			"requires target-specific runtime behavior":                true,
-			"requires frontend semantic follow-up after preprocessing": true,
+			"requires real system header":               true,
+			"requires GCC pragma semantics":             true,
+			"requires GNU preprocessor extension":       true,
+			"requires target-specific runtime behavior": true,
 		}
 		if !allowed[reason] {
 			t.Fatalf("unknown GCC C99 skip remains at line %d: %s: %s", lineNo+1, fields[0], reason)
@@ -91,9 +91,15 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 				t.Fatal(err)
 			}
 			originalSrc := string(srcBytes)
-			opts := SemaOptions{PedanticErrors: gccPedanticErrors(originalSrc)}
+			opts := SemaOptions{PedanticErrors: gccPedanticErrors(originalSrc), GNUExtensions: gccGNUExtensions(originalSrc)}
 			src := stripGCCDirectives(originalSrc)
 			if wantAccept {
+				if gccDoPreprocessOnly(originalSrc) {
+					if _, err := preprocessor.PreprocessSource(path, src, preprocessor.Options{}); err != nil {
+						t.Fatalf("preprocessor rejected GCC C99 preprocess case %s: %v", path, err)
+					}
+					return
+				}
 				if err := preprocessParseAnalyze(t, path, src, opts); err != nil {
 					t.Fatalf("preprocessor+parser+sema rejected GCC C99 case %s: %v", path, err)
 				}
@@ -113,6 +119,9 @@ func preprocessParseAnalyze(t *testing.T, path string, src string, opts SemaOpti
 	if err != nil {
 		return err
 	}
+	if parserTokenCount(pp.Tokens) == 0 {
+		return nil
+	}
 	candidates, err := parser.NewParser(pp.Tokens).Parse()
 	if err != nil {
 		return err
@@ -121,9 +130,37 @@ func preprocessParseAnalyze(t *testing.T, path string, src string, opts SemaOpti
 	return err
 }
 
+func parserTokenCount(tokens []entity.Token) int {
+	count := 0
+	for _, tok := range tokens {
+		if tok.Typ != entity.EOF {
+			count++
+		}
+	}
+	return count
+}
+
+func gccDoPreprocessOnly(src string) bool {
+	for _, line := range strings.Split(src, "\n") {
+		if strings.Contains(line, "dg-do") && strings.Contains(line, "preprocess") {
+			return true
+		}
+	}
+	return false
+}
+
 func gccPedanticErrors(src string) bool {
 	for _, line := range strings.Split(src, "\n") {
 		if strings.Contains(line, "dg-options") && strings.Contains(line, "-pedantic-errors") {
+			return true
+		}
+	}
+	return false
+}
+
+func gccGNUExtensions(src string) bool {
+	for _, line := range strings.Split(src, "\n") {
+		if strings.Contains(line, "dg-options") && strings.Contains(line, "-std=gnu") {
 			return true
 		}
 	}

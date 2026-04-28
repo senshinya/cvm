@@ -659,6 +659,54 @@ func TestC99RejectsOverflowingIntegerConstantExpression(t *testing.T) {
 	mustReject(t, `enum { E = -(-2147483647 - 1) };`)
 }
 
+func TestC99NullPointerConstantsDoNotUseConstObjects(t *testing.T) {
+	prefix := `
+		static const int ZERO = 0;
+		static const double DZERO = 0;
+		int *a;
+		long *c;
+	`
+	for name, expr := range map[string]string{
+		"const object":       `ZERO`,
+		"const plus zero":    `ZERO + 0`,
+		"const plus const":   `ZERO + ZERO`,
+		"cast const object":  `(int)ZERO`,
+		"cast const double":  `(int)DZERO`,
+		"cast char const":    `(char)ZERO`,
+		"cast unary float":   `(int)+0.0`,
+		"cast float sum":     `(int)(0.0 + 0.0)`,
+		"cast cast float":    `(int)(double)0.0`,
+		"unary const object": `+ZERO`,
+		"minus const object": `-ZERO`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			mustAnalyze(t, prefix+`void f(void) { c = (1 ? a : (void *)(unsigned long)(`+expr+`)); }`)
+		})
+	}
+}
+
+func TestC99NullPointerConstantZeroCasts(t *testing.T) {
+	prefix := `
+		int *a;
+		int b;
+	`
+	for name, expr := range map[string]string{
+		"zero":             `0`,
+		"zero plus zero":   `0 + 0`,
+		"unary plus zero":  `+0`,
+		"unary minus zero": `-0`,
+		"char zero":        `(char)0`,
+		"int zero":         `(int)0`,
+		"int float zero":   `(int)0.0`,
+		"void zero":        `(void *)0`,
+		"conditional zero": `(void *)(1 ? 0 : (0, 0))`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			mustAnalyze(t, prefix+`void f(void) { b = *(1 ? a : (`+expr+`)); }`)
+		})
+	}
+}
+
 func mustAnalyze(t *testing.T, src string) *Program {
 	t.Helper()
 	return mustAnalyzeWithOptions(t, src, SemaOptions{})
