@@ -1,0 +1,113 @@
+path	status	expected	reason
+gcc/testsuite/gcc.dg/940510-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/Wdeclaration-after-statement-4.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/Werror-implicit-function-declaration.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/Wimplicit-function-declaration-c89-default.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/Wimplicit-function-declaration-c89-pedantic.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/Wimplicit-function-declaration-c89.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/Wincompatible-pointer-types-3.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/Wincompatible-pointer-types-4.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c89-asm.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c89-ext.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c89-no.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c89.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c90-asm.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c90-ext.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c90.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/Wreturn-mismatch-6.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/Wvla-1.c	skipped	accept	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/Wvla-3.c	skipped	accept	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/Wvla-5.c	skipped	accept	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/Wvla-6.c	skipped	accept	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/Wvla-7.c	skipped	accept	requires C99 variably modified type edge-case support
+gcc/testsuite/gcc.dg/anon-struct-1.c	skipped	reject	requires GNU C extension support
+gcc/testsuite/gcc.dg/atomic-pr51256.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/bf-ms-attrib.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/builtin-complex-err-2.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/builtins-12.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/builtins-13.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/builtins-16.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/builtins-35.c	skipped	reject	requires GCC builtin namespace diagnostics
+gcc/testsuite/gcc.dg/c90-align-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-anon-struct-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-array-lval-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-array-lval-2.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-array-lval-3.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-array-lval-4.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-array-lval-5.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-array-lval-6.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-array-lval-7.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-array-lval-8.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-arraydecl-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-atomic-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-auto-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-complex-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-complit-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-complit-2.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-const-expr-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-const-expr-10.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-const-expr-11.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-const-expr-2.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-const-expr-3.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-const-expr-4.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-const-expr-5.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-const-expr-6.c	skipped	reject	requires GNU C extension support
+gcc/testsuite/gcc.dg/c90-const-expr-7.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-const-expr-8.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-const-expr-9.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-digraph-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/c90-dupqual-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-enum-comma-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-flex-array-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-flex-array-2.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-float-1.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-fordecl-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-func-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-func-2.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-hexfloat-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-hexfloat-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/c90-idem-qual-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-idem-qual-2.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-idem-qual-3.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-impl-decl-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-impl-int-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-impl-int-2.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-init-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-intconst-1.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-intprom-1.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-left-shift-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-left-shift-2.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-left-shift-3.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/c90-longlong-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-mixdecl-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-noreturn-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-restrict-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-return-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-scope-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/c90-static-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-static-assert-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-thread-local-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-typedef-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-typespec-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/c90-vla-1.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/complex-2.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/float-range-1.c	skipped	accept	requires floating constant range diagnostics
+gcc/testsuite/gcc.dg/float-range-2.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/long-long-typespec-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/lvalue-6.c	skipped	reject	requires C99 void lvalue/address diagnostics
+gcc/testsuite/gcc.dg/pr101364-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/pr25682.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr29467.c	imported-accept	accept	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/pr33694.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr67088.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pr97986-2.c	skipped	reject	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pragma-diag-2.c	skipped	accept	requires preprocessor or system macro handling
+gcc/testsuite/gcc.dg/pthread-init-2.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/redecl-1.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/redecl-4.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/redecl-5.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
+gcc/testsuite/gcc.dg/register-var-1.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/register-var-2.c	skipped	reject	requires C99 register-address diagnostics
+gcc/testsuite/gcc.dg/sync-2.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/sync-3.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/union-cast-2.c	imported-reject	reject	explicit C89/C90 case reclassified under C99
