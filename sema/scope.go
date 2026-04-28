@@ -46,6 +46,7 @@ type Symbol struct {
 	T        Type
 	Storage  StorageClass
 	Linkage  Linkage
+	Used     bool
 	Decl     Decl
 	Defs     []Decl
 	Pos      entity.SourcePos
@@ -74,6 +75,7 @@ type Scope struct {
 	Parent   *Scope
 	Ordinary map[string]*Symbol
 	Tags     map[string]*TagInfo
+	Range    entity.SourceRange
 }
 
 func NewScope(kind ScopeKind, parent *Scope) *Scope {
@@ -111,6 +113,10 @@ func (s *Scope) LookupTag(name string) *TagInfo {
 		}
 	}
 	return nil
+}
+
+func (s *Scope) LookupCurrentTag(name string) *TagInfo {
+	return s.Tags[name]
 }
 
 func (s *Scope) Insert(name string, sym *Symbol) {

@@ -218,12 +218,16 @@ func (s *Sema) buildStructUnion(node *entity.AstNode) Type {
 	switch {
 	case node.ReducedBy(parser.StructOrUnionSpecifier, 1):
 		t := s.newAnonStructUnion(isUnion)
-		s.completeStructUnion(t, s.parseStructDeclList(node.Children[2]))
+		fields := s.parseStructDeclList(node.Children[2])
+		s.validateFlexibleArrayMembers(fields, isUnion, node.SourceStart)
+		s.completeStructUnion(t, fields)
 		return t
 	case node.ReducedBy(parser.StructOrUnionSpecifier, 2):
 		name := node.Children[1].Terminal.Lexeme
-		t := s.lookupOrCreateTag(name, isUnion, node.SourceStart)
-		s.completeStructUnion(t, s.parseStructDeclList(node.Children[3]))
+		t := s.lookupOrCreateCurrentTag(name, isUnion, node.SourceStart)
+		fields := s.parseStructDeclList(node.Children[3])
+		s.validateFlexibleArrayMembers(fields, isUnion, node.SourceStart)
+		s.completeStructUnion(t, fields)
 		return t
 	case node.ReducedBy(parser.StructOrUnionSpecifier, 3):
 		return s.lookupOrCreateTag(node.Children[1].Terminal.Lexeme, isUnion, node.SourceStart)
@@ -241,8 +245,38 @@ func (s *Sema) newAnonStructUnion(isUnion bool) Type {
 
 func (s *Sema) lookupOrCreateTag(name string, isUnion bool, pos entity.SourcePos) Type {
 	if existing := s.scope.LookupTag(name); existing != nil {
+		if !tagInfoMatchesStructUnion(existing.T, isUnion) {
+			s.report(InvalidTypeSpec(pos, "tag defined as wrong kind"))
+			return ErrorTypeSingleton
+		}
 		return existing.T
 	}
+	return s.createTag(name, isUnion, pos)
+}
+
+func (s *Sema) lookupOrCreateCurrentTag(name string, isUnion bool, pos entity.SourcePos) Type {
+	if existing := s.scope.LookupCurrentTag(name); existing != nil {
+		if !tagInfoMatchesStructUnion(existing.T, isUnion) {
+			s.report(InvalidTypeSpec(pos, "tag defined as wrong kind"))
+			return ErrorTypeSingleton
+		}
+		return existing.T
+	}
+	return s.createTag(name, isUnion, pos)
+}
+
+func tagInfoMatchesStructUnion(t Type, isUnion bool) bool {
+	switch t.(type) {
+	case *StructType:
+		return !isUnion
+	case *UnionType:
+		return isUnion
+	default:
+		return false
+	}
+}
+
+func (s *Sema) createTag(name string, isUnion bool, pos entity.SourcePos) Type {
 	tag := s.Types.NewTagID()
 	var t Type
 	if isUnion {
@@ -279,6 +313,34 @@ func (s *Sema) completeStructUnion(t Type, fields []*Field) {
 	}
 }
 
+// C99 flexible array member 只能出现在结构体最后，并且前面必须有其他具名成员。
+func (s *Sema) validateFlexibleArrayMembers(fields []*Field, isUnion bool, pos entity.SourcePos) {
+	hasNamedField := false
+	for i, f := range fields {
+		if f == nil {
+			continue
+		}
+		if isFlexibleArrayMember(f.T) {
+			if isUnion {
+				s.report(InvalidTypeSpec(pos, "flexible array member cannot appear in union"))
+			}
+			if i != len(fields)-1 {
+				s.report(InvalidTypeSpec(pos, "flexible array member must be last"))
+			}
+			if !hasNamedField {
+				s.report(InvalidTypeSpec(pos, "flexible array member requires a previous named member"))
+			}
+		} else if !isUnion && typeContainsFlexibleArrayMember(f.T) {
+			s.report(InvalidTypeSpec(pos, "invalid use of structure containing flexible array member"))
+		} else if !isObjectType(f.T) {
+			s.report(InvalidTypeSpec(pos, "field type must be complete object type"))
+		}
+		if f.Name != "" {
+			hasNamedField = true
+		}
+	}
+}
+
 func (s *Sema) parseStructDeclList(node *entity.AstNode) []*Field {
 	var fields []*Field
 	switch {
@@ -293,6 +355,7 @@ func (s *Sema) parseStructDeclList(node *entity.AstNode) []*Field {
 
 func (s *Sema) parseStructDeclaration(node *entity.AstNode) []*Field {
 	spec := s.parseSpec(node.Children[0])
+	s.validateRestrictType(spec.Type, node.SourceStart)
 	return s.parseStructDeclaratorList(node.Children[1], spec.Type)
 }
 
@@ -311,22 +374,37 @@ func (s *Sema) parseStructDeclaratorList(node *entity.AstNode, base Type) []*Fie
 func (s *Sema) parseStructDeclarator(node *entity.AstNode, base Type) *Field {
 	switch {
 	case node.ReducedBy(parser.StructDeclarator, 1):
+		s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 		t, name := s.applyDeclarator(node.Children[0], base)
+		s.validateRestrictType(t, node.SourceStart)
 		return &Field{Name: name, T: t}
 	case node.ReducedBy(parser.StructDeclarator, 2):
-		return &Field{T: base, BitWidth: s.evalBitWidth(node.Children[1]), IsBitField: true}
+		width := s.evalBitWidth(node.Children[1])
+		s.validateBitFieldWidth(base, width, node.SourceStart)
+		return &Field{T: base, BitWidth: width, IsBitField: true}
 	case node.ReducedBy(parser.StructDeclarator, 3):
+		s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 		t, name := s.applyDeclarator(node.Children[0], base)
-		return &Field{Name: name, T: t, BitWidth: s.evalBitWidth(node.Children[2]), IsBitField: true}
+		s.validateRestrictType(t, node.SourceStart)
+		width := s.evalBitWidth(node.Children[2])
+		s.validateBitFieldWidth(t, width, node.SourceStart)
+		return &Field{Name: name, T: t, BitWidth: width, IsBitField: true}
 	}
 	return &Field{T: ErrorTypeSingleton}
 }
 
+func (s *Sema) validateBitFieldWidth(t Type, width int, pos entity.SourcePos) {
+	// GCC/C99 中 _Bool 只有 0 和 1 两个值，位域宽度不能超过一个值位。
+	if bt, ok := unqual(t).(*BuiltinType); ok && bt.Kind == Bool && width > 1 {
+		s.report(InvalidTypeSpec(pos, "_Bool bit-field width must not exceed 1"))
+	}
+}
+
 func (s *Sema) evalBitWidth(node *entity.AstNode) int {
 	expr := s.typeExpr(node, s.scope)
-	cv, ok := NewEvaluator(s).EvalIntegerConstant(expr)
+	cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr)
 	if !ok {
-		s.report(InvalidTypeSpec(node.SourceStart, "bit-field width must be integer constant"))
+		s.report(InvalidTypeSpec(node.SourceStart, "bit-field width must be integer constant expression"))
 		return 0
 	}
 	return int(cv.Int)
@@ -338,10 +416,17 @@ func (s *Sema) buildEnum(node *entity.AstNode) Type {
 	case node.ReducedBy(parser.EnumSpecifier, 5):
 		name := node.Children[1].Terminal.Lexeme
 		if existing := s.scope.LookupTag(name); existing != nil {
+			if _, ok := existing.T.(*EnumType); !ok {
+				s.report(InvalidTypeSpec(node.SourceStart, "tag defined as wrong kind"))
+				return ErrorTypeSingleton
+			}
 			return existing.T
 		}
-		s.report(UndeclaredIdentifier(node.SourceStart, "enum "+name))
-		return ErrorTypeSingleton
+		// GCC 的 C99 warning-only 用例会接受 enum 前向声明；当前没有 warning 通道，因此按可继续分析处理。
+		tag := s.Types.NewTagID()
+		et := s.Types.Enum(tag)
+		_ = s.scope.InsertTagChecked(name, &TagInfo{Tag: tag, T: et}, node.SourceStart)
+		return et
 	case node.ReducedBy(parser.EnumSpecifier, 1), node.ReducedBy(parser.EnumSpecifier, 3):
 		tag := s.Types.NewTagID()
 		et := s.Types.Enum(tag)
@@ -352,7 +437,7 @@ func (s *Sema) buildEnum(node *entity.AstNode) Type {
 	case node.ReducedBy(parser.EnumSpecifier, 2), node.ReducedBy(parser.EnumSpecifier, 4):
 		name := node.Children[1].Terminal.Lexeme
 		var et *EnumType
-		if existing := s.scope.LookupTag(name); existing != nil {
+		if existing := s.scope.LookupCurrentTag(name); existing != nil {
 			et, _ = existing.T.(*EnumType)
 		}
 		if et == nil {
@@ -389,10 +474,10 @@ func (s *Sema) parseEnumerator(node *entity.AstNode, defaultVal int64, base Type
 	val := defaultVal
 	if node.ReducedBy(parser.Enumerator, 2) {
 		expr := s.typeExpr(node.Children[2], s.scope)
-		if cv, ok := NewEvaluator(s).EvalIntegerConstant(expr); ok {
+		if cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr); ok {
 			val = cv.Int
 		} else {
-			s.report(InvalidTypeSpec(node.SourceStart, "enum value must be integer constant"))
+			s.report(InvalidTypeSpec(node.SourceStart, "enum value must be integer constant expression"))
 		}
 	}
 	return &Enumerator{Name: name, Value: val}

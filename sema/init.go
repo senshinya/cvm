@@ -6,6 +6,9 @@ import (
 )
 
 func (s *Sema) typeInitializer(node *entity.AstNode, target Type) Expr {
+	if expr := s.tryStringArrayInitializer(node, target); expr != nil {
+		return expr
+	}
 	switch {
 	case node.ReducedBy(parser.Initializer, 1):
 		expr := s.typeExpr(node.Children[0], s.scope)
@@ -17,8 +20,74 @@ func (s *Sema) typeInitializer(node *entity.AstNode, target Type) Expr {
 	return s.errorExpr(node.SourceRange)
 }
 
+func (s *Sema) tryStringArrayInitializer(node *entity.AstNode, target Type) Expr {
+	at, ok := unqual(target).(*ArrayType)
+	if !ok || !isCharacterType(unqual(at.Elem)) {
+		return nil
+	}
+	if node.ReducedBy(parser.Initializer, 1) {
+		if !hasStringLiteralToken(node.Children[0]) {
+			return nil
+		}
+		expr := s.typeExpr(node.Children[0], s.scope)
+		if _, ok := expr.(*StringLit); ok {
+			return expr
+		}
+		return nil
+	}
+	if !node.ReducedBy(parser.Initializer, 2) && !node.ReducedBy(parser.Initializer, 3) {
+		return nil
+	}
+	return s.tryStringArrayInitializerList(node.Children[1])
+}
+
+func (s *Sema) tryStringArrayInitializerList(list *entity.AstNode) Expr {
+	if !list.ReducedBy(parser.InitializerList, 1) {
+		return nil
+	}
+	elem := list.Children[0]
+	if !elem.ReducedBy(parser.Initializer, 1) {
+		return nil
+	}
+	if !hasStringLiteralToken(elem.Children[0]) {
+		return nil
+	}
+	expr := s.typeExpr(elem.Children[0], s.scope)
+	if _, ok := expr.(*StringLit); !ok {
+		return nil
+	}
+	return expr
+}
+
+func hasStringLiteralToken(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	if node.Typ == entity.STRING {
+		return true
+	}
+	for _, child := range node.Children {
+		if hasStringLiteralToken(child) {
+			return true
+		}
+	}
+	return false
+}
+
+func isCharacterType(t Type) bool {
+	bt, ok := unqual(t).(*BuiltinType)
+	return ok && (bt.Kind == Char || bt.Kind == SChar || bt.Kind == UChar)
+}
+
 func (s *Sema) typeInitListForType(node *entity.AstNode, t Type) *InitList {
 	il := &InitList{T: t, Range: node.SourceRange}
+	at, ok := unqual(t).(*ArrayType)
+	if ok && isCharacterType(unqual(at.Elem)) {
+		if expr := s.tryStringArrayInitializerList(node); expr != nil {
+			il.Elems = append(il.Elems, InitElem{Value: expr})
+			return il
+		}
+	}
 	s.collectInitList(node, t, il)
 	return il
 }
@@ -43,6 +112,9 @@ func (s *Sema) collectInitList(node *entity.AstNode, target Type, out *InitList)
 }
 
 func (s *Sema) makeInitElem(ds []Designator, value *entity.AstNode, elemType Type) InitElem {
+	if at, ok := unqual(elemType).(*ArrayType); ok && at.SizeKind == ArrayUnsized {
+		s.report(InvalidTypeSpec(value.SourceStart, "cannot initialize flexible array member"))
+	}
 	return InitElem{Designators: ds, Value: s.typeInitializer(value, elemType)}
 }
 
@@ -67,7 +139,19 @@ func (s *Sema) parseDesignator(node *entity.AstNode) Designator {
 	switch {
 	case node.ReducedBy(parser.Designator, 1):
 		expr := s.typeExpr(node.Children[1], s.scope)
-		cv, _ := NewEvaluator(s).EvalIntegerConstant(expr)
+		if !isInteger(expr.GetType()) {
+			s.report(InvalidTypeSpec(node.SourceStart, "array designator expression must have integer type"))
+			return Designator{Kind: DesigArrayIndex}
+		}
+		cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr)
+		if !ok {
+			s.report(InvalidTypeSpec(node.SourceStart, "array designator expression must be integer constant expression"))
+			return Designator{Kind: DesigArrayIndex}
+		}
+		if cv.Int < 0 {
+			s.report(InvalidTypeSpec(node.SourceStart, "array designator index must be nonnegative"))
+			return Designator{Kind: DesigArrayIndex}
+		}
 		return Designator{Kind: DesigArrayIndex, Index: cv.Int}
 	case node.ReducedBy(parser.Designator, 2):
 		return Designator{Kind: DesigFieldName, Field: &Field{Name: node.Children[1].Terminal.Lexeme}}

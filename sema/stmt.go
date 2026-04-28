@@ -11,6 +11,12 @@ type funcCtx struct {
 	loopDepth    int
 	switchStack  []*SwitchStmt
 	pendingGotos []*GotoStmt
+	vmScopes     []vmScopeBarrier
+}
+
+type vmScopeBarrier struct {
+	decl  entity.SourceRange
+	scope entity.SourceRange
 }
 
 func (s *Sema) typeStmt(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
@@ -60,6 +66,7 @@ func (s *Sema) typeExprStmt(node *entity.AstNode, scope *Scope) Stmt {
 
 func (s *Sema) typeBlock(node *entity.AstNode, parent *Scope, ctx *funcCtx) *Block {
 	scope := NewScope(ScopeBlock, parent)
+	scope.Range = node.SourceRange
 	prev := s.scope
 	s.scope = scope
 	defer func() { s.scope = prev }()
@@ -94,8 +101,20 @@ func (s *Sema) appendBlockItem(node *entity.AstNode, scope *Scope, ctx *funcCtx,
 }
 
 func (s *Sema) walkBlockDecl(node *entity.AstNode, scope *Scope, ctx *funcCtx, out *[]Decl) {
+	if node.ReducedBy(parser.Declaration, 3) {
+		s.typeStaticAssert(node.Children[0])
+		return
+	}
+	invalidEmptyTagRedecl := s.qualifiedEmptyTagRedeclaration(node.Children[0])
 	spec := s.parseSpec(node.Children[0])
+	if s.Options.PedanticErrors && hasEnumReferenceSpecifier(node.Children[0]) {
+		s.report(InvalidTypeSpec(node.SourceStart, "ISO C forbids forward references to enum types"))
+	}
 	if node.ReducedBy(parser.Declaration, 1) {
+		s.validateRestrictType(spec.Type, node.SourceStart)
+		if invalidEmptyTagRedecl {
+			s.report(InvalidTypeSpec(node.SourceStart, "empty declaration with type qualifier or storage class does not redeclare tag"))
+		}
 		if isTagType(spec.Type) {
 			*out = append(*out, &TagDecl{T: spec.Type, Range: node.SourceRange})
 		}
@@ -119,20 +138,27 @@ func (s *Sema) walkBlockInitDeclList(node *entity.AstNode, spec SpecResult, scop
 }
 
 func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *Scope, ctx *funcCtx, srcRange entity.SourceRange) Decl {
+	s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 	t, name := s.applyDeclarator(node.Children[0], spec.Type)
 	pos := node.Children[0].SourceStart
+	s.validateRestrictType(t, pos)
 	if spec.IsTypedef {
+		markTypedefVMBounds(t)
 		sym := &Symbol{Name: name, Kind: SymTypedef, T: t, Storage: StorageTypedef, Pos: pos}
 		td := &TypedefDecl{Sym: sym, T: t, Range: srcRange}
 		sym.Decl = td
 		if err := scope.InsertChecked(name, sym); err != nil {
 			s.report(err.(*common.CvmError))
 		}
+		recordVMScopeBarrier(ctx, scope, srcRange, t)
 		return td
 	}
 	storage := spec.Storage
 	if storage == StorageNone {
 		storage = StorageAuto
+	}
+	if storage == StorageStatic && typeHasDisallowedStaticArrayBound(t) {
+		s.report(InvalidTypeSpec(pos, "array size must be integer constant expression"))
 	}
 	sym := &Symbol{Name: name, Kind: SymVar, T: t, Storage: storage, Pos: pos}
 	vd := &VarDecl{Sym: sym, T: t, Storage: storage, Range: srcRange}
@@ -146,6 +172,7 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 	if ctx != nil && ctx.def != nil {
 		ctx.def.Locals = append(ctx.def.Locals, vd)
 	}
+	recordVMScopeBarrier(ctx, scope, srcRange, t)
 	return vd
 }
 
@@ -164,6 +191,7 @@ func (s *Sema) typeSelection(node *entity.AstNode, scope *Scope, ctx *funcCtx) S
 		sw.Body = s.typeStmt(node.Children[4], scope, ctx)
 		ctx.switchStack = ctx.switchStack[:len(ctx.switchStack)-1]
 		collectCasesAndDefault(sw.Body, sw, s)
+		validateSwitchVMJumps(sw, ctx.vmScopes, s)
 		return sw
 	}
 	return &EmptyStmt{Range: node.SourceRange}
@@ -194,6 +222,14 @@ func collectCasesAndDefault(stmt Stmt, sw *SwitchStmt, s *Sema) {
 	case *IfStmt:
 		collectCasesAndDefault(x.Then, sw, s)
 		collectCasesAndDefault(x.Else, sw, s)
+	case *WhileStmt:
+		collectCasesAndDefault(x.Body, sw, s)
+	case *ForStmt:
+		collectCasesAndDefault(x.Body, sw, s)
+	case *SwitchStmt:
+		// 嵌套 switch 的 case/default 归内层 switch 管理；外层只需要看到
+		// 自己语句树里的标签，即使它们藏在循环或 if 里面。
+		return
 	}
 }
 
@@ -203,9 +239,9 @@ func (s *Sema) typeLabeled(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stm
 		return &LabeledStmt{Name: node.Children[0].Terminal.Lexeme, Body: s.typeStmt(node.Children[2], scope, ctx), Range: node.SourceRange}
 	case node.ReducedBy(parser.LabeledStatement, 2):
 		expr := s.typeExpr(node.Children[1], scope)
-		cv, ok := NewEvaluator(s).EvalIntegerConstant(expr)
+		cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr)
 		if !ok {
-			s.report(InvalidTypeSpec(node.SourceStart, "case value must be integer constant"))
+			s.report(InvalidTypeSpec(node.SourceStart, "case value must be integer constant expression"))
 		}
 		return &CaseStmt{Value: cv.Int, Body: s.typeStmt(node.Children[3], scope, ctx), Range: node.SourceRange}
 	case node.ReducedBy(parser.LabeledStatement, 3):
@@ -230,6 +266,7 @@ func (s *Sema) typeIteration(node *entity.AstNode, scope *Scope, ctx *funcCtx) S
 		return &WhileStmt{Cond: cond, Body: body, DoWhile: true, Range: node.SourceRange}
 	}
 	forScope := NewScope(ScopeBlock, scope)
+	forScope.Range = node.SourceRange
 	prev := s.scope
 	s.scope = forScope
 	defer func() { s.scope = prev }()
@@ -253,7 +290,9 @@ func (s *Sema) collectForParts(node *entity.AstNode, scope *Scope, ctx *funcCtx)
 	if node.ReducedBy(parser.IterationStatement, 11) || node.ReducedBy(parser.IterationStatement, 12) ||
 		node.ReducedBy(parser.IterationStatement, 13) || node.ReducedBy(parser.IterationStatement, 14) {
 		var decls []Decl
-		s.walkBlockDecl(node.Children[2], scope, ctx, &decls)
+		declNode := node.Children[2]
+		s.walkBlockDecl(declNode, scope, ctx, &decls)
+		s.validateForInitDeclaration(declNode, decls)
 		fp.init = &DeclStmt{Decls: decls, Range: node.Children[2].SourceRange}
 		slot := 0
 		for i := 3; i < len(node.Children)-1; i++ {
@@ -293,6 +332,50 @@ func (s *Sema) collectForParts(node *entity.AstNode, scope *Scope, ctx *funcCtx)
 		}
 	}
 	return fp
+}
+
+func (s *Sema) validateForInitDeclaration(node *entity.AstNode, decls []Decl) {
+	if forDeclarationDefinesTagOrEnum(node) {
+		s.report(InvalidTypeSpec(node.SourceStart, "tag or enumerator declaration is not allowed in for init declaration"))
+	}
+	for _, d := range decls {
+		switch x := d.(type) {
+		case *FuncDecl:
+			s.report(InvalidTypeSpec(x.Range.SourceStart, "function declaration is not allowed in for init declaration"))
+		case *VarDecl:
+			if _, ok := unqual(x.T).(*FunctionType); ok {
+				s.report(InvalidTypeSpec(x.Range.SourceStart, "function declaration is not allowed in for init declaration"))
+			}
+			if x.Storage == StorageStatic || x.Storage == StorageExtern {
+				s.report(InvalidTypeSpec(x.Range.SourceStart, "static or extern declaration is not allowed in for init declaration"))
+			}
+		case *TypedefDecl:
+			s.report(InvalidTypeSpec(x.Range.SourceStart, "non-variable declaration is not allowed in for init declaration"))
+		case *TagDecl:
+			s.report(InvalidTypeSpec(x.Range.SourceStart, "tag declaration is not allowed in for init declaration"))
+		}
+	}
+}
+
+func forDeclarationDefinesTagOrEnum(node *entity.AstNode) bool {
+	if node == nil {
+		return false
+	}
+	switch {
+	case node.ReducedBy(parser.StructOrUnionSpecifier, 1),
+		node.ReducedBy(parser.StructOrUnionSpecifier, 2),
+		node.ReducedBy(parser.EnumSpecifier, 1),
+		node.ReducedBy(parser.EnumSpecifier, 2),
+		node.ReducedBy(parser.EnumSpecifier, 3),
+		node.ReducedBy(parser.EnumSpecifier, 4):
+		return true
+	}
+	for _, child := range node.Children {
+		if forDeclarationDefinesTagOrEnum(child) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Sema) typeJump(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
@@ -348,14 +431,80 @@ func collectLabels(stmt Stmt, out map[string]*LabeledStmt) {
 	}
 }
 
-func resolveGotos(pending []*GotoStmt, labels map[string]*LabeledStmt, s *Sema) {
+func resolveGotos(pending []*GotoStmt, labels map[string]*LabeledStmt, barriers []vmScopeBarrier, s *Sema) {
 	for _, g := range pending {
 		target := labels[g.Name]
 		if target == nil {
 			s.report(UndeclaredIdentifier(g.Range.SourceStart, g.Name))
 			continue
 		}
+		validateGotoVMJump(g, target, barriers, s)
 		g.Target = target
 		g.Name = ""
 	}
+}
+
+func recordVMScopeBarrier(ctx *funcCtx, scope *Scope, declRange entity.SourceRange, t Type) {
+	if ctx == nil || scope == nil || !typeHasVariablyModifiedType(t) {
+		return
+	}
+	ctx.vmScopes = append(ctx.vmScopes, vmScopeBarrier{
+		decl:  declRange,
+		scope: scope.Range,
+	})
+}
+
+func validateGotoVMJump(g *GotoStmt, target *LabeledStmt, barriers []vmScopeBarrier, s *Sema) {
+	if g == nil || target == nil {
+		return
+	}
+	for _, barrier := range barriers {
+		if jumpEntersVMBarrier(g.Range.SourceStart, target.Range.SourceStart, barrier) {
+			s.report(InvalidTypeSpec(g.Range.SourceStart, "jump into scope of identifier with variably modified type"))
+			return
+		}
+	}
+}
+
+func validateSwitchVMJumps(sw *SwitchStmt, barriers []vmScopeBarrier, s *Sema) {
+	if sw == nil {
+		return
+	}
+	for _, c := range sw.Cases {
+		if switchEntersVMBarrier(sw.Range.SourceStart, c.Range.SourceStart, barriers) {
+			s.report(InvalidTypeSpec(c.Range.SourceStart, "switch jumps into scope of identifier with variably modified type"))
+		}
+	}
+	if sw.Default != nil && switchEntersVMBarrier(sw.Range.SourceStart, sw.Default.Range.SourceStart, barriers) {
+		s.report(InvalidTypeSpec(sw.Default.Range.SourceStart, "switch jumps into scope of identifier with variably modified type"))
+	}
+}
+
+func switchEntersVMBarrier(from, target entity.SourcePos, barriers []vmScopeBarrier) bool {
+	for _, barrier := range barriers {
+		if jumpEntersVMBarrier(from, target, barrier) {
+			return true
+		}
+	}
+	return false
+}
+
+func jumpEntersVMBarrier(from, target entity.SourcePos, barrier vmScopeBarrier) bool {
+	// VM 标识符的作用域从声明之后开始，到声明所在作用域结束；
+	// 跳转源点若还不在这个区间内，落到区间内部就是 C99 禁止的进入。
+	if !posInRange(target, barrier.scope) || compareSourcePos(target, barrier.decl.SourceEnd) <= 0 {
+		return false
+	}
+	return !posInRange(from, barrier.scope) || compareSourcePos(from, barrier.decl.SourceEnd) <= 0
+}
+
+func compareSourcePos(a, b entity.SourcePos) int {
+	if a.Line != b.Line {
+		return a.Line - b.Line
+	}
+	return a.Column - b.Column
+}
+
+func posInRange(pos entity.SourcePos, r entity.SourceRange) bool {
+	return compareSourcePos(pos, r.SourceStart) >= 0 && compareSourcePos(pos, r.SourceEnd) <= 0
 }

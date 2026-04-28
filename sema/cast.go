@@ -84,6 +84,24 @@ func (s *Sema) castVoidPointerConversion(e Expr, target Type) Expr {
 }
 
 func (s *Sema) isNullPointerConstant(e Expr) bool {
+	if isPointer(e.GetType()) {
+		return s.isVoidPointerZero(e)
+	}
+	cv, ok := NewEvaluator(s).EvalIntegerConstant(e)
+	return ok && cv.Int == 0
+}
+
+func (s *Sema) isVoidPointerZero(e Expr) bool {
+	pt, ok := unqual(e.GetType()).(*PointerType)
+	if !ok {
+		return false
+	}
+	if _, qualified := pt.Pointee.(*QualType); qualified {
+		return false
+	}
+	if !isVoidPointer(pt) {
+		return false
+	}
 	cv, ok := NewEvaluator(s).EvalIntegerConstant(e)
 	return ok && cv.Int == 0
 }
@@ -101,10 +119,14 @@ func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) E
 	}
 	if pf, ok := unqual(from).(*PointerType); ok {
 		if pt, ok := unqual(target).(*PointerType); ok {
-			if isVoidPointer(pf) || isVoidPointer(pt) {
-				return s.castVoidPointerConversion(e, target)
+			if pointerAssignmentCompatible(pf, pt) {
+				if isVoidPointer(pf) || isVoidPointer(pt) {
+					return s.castVoidPointerConversion(e, target)
+				}
+				return s.castPointerConversion(e, target)
 			}
-			return s.castPointerConversion(e, target)
+			s.report(IncompatibleAssignment(pos, from.String(), target.String()))
+			return e
 		}
 	}
 	if bt, ok := unqual(target).(*BuiltinType); ok && bt.Kind == Bool {
@@ -112,6 +134,37 @@ func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) E
 	}
 	s.report(IncompatibleAssignment(pos, from.String(), target.String()))
 	return e
+}
+
+func pointerAssignmentCompatible(from, to *PointerType) bool {
+	if losesQualifier(from.Pointee, to.Pointee) {
+		return false
+	}
+	fromFunc := isFunctionPointer(from)
+	toFunc := isFunctionPointer(to)
+	if fromFunc || toFunc {
+		return fromFunc && toFunc && compatibleType(from.Pointee, to.Pointee)
+	}
+	if isVoidPointer(from) || isVoidPointer(to) {
+		return true
+	}
+	if compatibleVMPointerPointee(from.Pointee, to.Pointee) {
+		return true
+	}
+	return compatibleTypeIgnoringTopLevelQualifiers(from.Pointee, to.Pointee)
+}
+
+func compatibleVMPointerPointee(from, to Type) bool {
+	fa, fok := unqual(from).(*ArrayType)
+	ta, tok := unqual(to).(*ArrayType)
+	if !fok || !tok {
+		return false
+	}
+	// 指向 VLA 的指针赋值按运行期边界兼容处理；元素类型仍必须兼容。
+	if fa.SizeKind != ArrayVLA && ta.SizeKind != ArrayVLA {
+		return false
+	}
+	return compatibleTypeIgnoringTopLevelQualifiers(fa.Elem, ta.Elem)
 }
 
 func (s *Sema) arithmeticConversion(e Expr, target Type) Expr {
@@ -216,6 +269,11 @@ func isPointer(t Type) bool {
 func isVoidPointer(p *PointerType) bool {
 	bt, ok := unqual(p.Pointee).(*BuiltinType)
 	return ok && bt.Kind == Void
+}
+
+func isFunctionPointer(p *PointerType) bool {
+	_, ok := unqual(p.Pointee).(*FunctionType)
+	return ok
 }
 
 func castAllowed(from, to Type) bool {

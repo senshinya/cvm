@@ -41,6 +41,30 @@ func TestGCCC99FixtureCoverage(t *testing.T) {
 	}
 }
 
+func TestGCCC99OnlyPreprocessorSkipsRemain(t *testing.T) {
+	manifest := filepath.Join("testdata", "gcc-c99", "manifest.tsv")
+	content, err := os.ReadFile(manifest)
+	if err != nil {
+		t.Fatalf("read GCC C99 manifest: %v", err)
+	}
+	for lineNo, line := range strings.Split(string(content), "\n") {
+		if strings.TrimSpace(line) == "" || lineNo == 0 {
+			continue
+		}
+		fields := strings.Split(line, "\t")
+		if len(fields) != 4 {
+			t.Fatalf("manifest line %d malformed: %q", lineNo+1, line)
+		}
+		status, reason := fields[1], fields[3]
+		if status != "skipped" {
+			continue
+		}
+		if reason != "requires preprocessor or system macro handling" {
+			t.Fatalf("non-preprocessor GCC C99 skip remains at line %d: %s: %s", lineNo+1, fields[0], reason)
+		}
+	}
+}
+
 func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -59,7 +83,9 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			src := stripGCCDirectives(string(srcBytes))
+			originalSrc := string(srcBytes)
+			opts := SemaOptions{PedanticErrors: gccPedanticErrors(originalSrc)}
+			src := stripGCCDirectives(originalSrc)
 			tokens, err := lexer.NewLexer(src).ScanTokens()
 			if err != nil {
 				if !wantAccept {
@@ -75,17 +101,26 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 				t.Fatalf("parser rejected GCC C99 case %s: %v", path, err)
 			}
 			if wantAccept {
-				if _, err := Analyze(candidates); err != nil {
+				if _, err := AnalyzeWithOptions(candidates, opts); err != nil {
 					t.Fatalf("lexer+parser+sema rejected GCC C99 case %s: %v", path, err)
 				}
 				return
 			}
-			if _, err := Analyze(candidates); err != nil {
+			if _, err := AnalyzeWithOptions(candidates, opts); err != nil {
 				return
 			}
 			t.Fatalf("lexer+parser+sema accepted GCC reject case %s", path)
 		})
 	}
+}
+
+func gccPedanticErrors(src string) bool {
+	for _, line := range strings.Split(src, "\n") {
+		if strings.Contains(line, "dg-options") && strings.Contains(line, "-pedantic-errors") {
+			return true
+		}
+	}
+	return false
 }
 
 func countCFiles(t *testing.T, root string) int {

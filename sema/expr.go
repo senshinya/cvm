@@ -201,7 +201,7 @@ func (s *Sema) typeBinaryExpression(node *entity.AstNode, scope *Scope) Expr {
 		r = s.castBoolConversion(r)
 		return &BinOp{Op: op, L: l, R: r, T: s.Types.Builtin(Int), Range: node.SourceRange}
 	case OpEq, OpNe, OpLt, OpLe, OpGt, OpGe:
-		l, r = s.balanceComparison(l, r, node.SourceStart)
+		l, r = s.balanceComparison(op, l, r, node.SourceStart)
 		return &BinOp{Op: op, L: l, R: r, T: s.Types.Builtin(Int), Range: node.SourceRange}
 	case OpShl, OpShr:
 		l = s.castIntegerPromotion(l)
@@ -258,27 +258,79 @@ func (s *Sema) binaryOpFromOperator(opNode *entity.AstNode) BinaryOp {
 	return OpAdd
 }
 
-func (s *Sema) balanceComparison(l, r Expr, pos entity.SourcePos) (Expr, Expr) {
+func (s *Sema) balanceComparison(op BinaryOp, l, r Expr, pos entity.SourcePos) (Expr, Expr) {
 	if isArithmetic(l.GetType()) && isArithmetic(r.GetType()) {
 		l, r, _ = s.castUsualArithmetic(l, r)
 		return l, r
 	}
-	if isPointer(l.GetType()) && isPointer(r.GetType()) {
-		if l.GetType() != r.GetType() {
-			r = s.castPointerConversion(r, l.GetType())
+	if op == OpEq || op == OpNe {
+		if isPointer(l.GetType()) && s.isComparisonNullPointerConstant(r) {
+			r = s.castNullPointerConstant(r, l.GetType())
+			return l, r
 		}
-		return l, r
+		if isPointer(r.GetType()) && s.isComparisonNullPointerConstant(l) {
+			l = s.castNullPointerConstant(l, r.GetType())
+			return l, r
+		}
 	}
-	if isPointer(l.GetType()) && s.isNullPointerConstant(r) {
-		r = s.castNullPointerConstant(r, l.GetType())
-		return l, r
-	}
-	if isPointer(r.GetType()) && s.isNullPointerConstant(l) {
-		l = s.castNullPointerConstant(l, r.GetType())
+	if isPointer(l.GetType()) && isPointer(r.GetType()) {
+		if comparisonPointerCompatible(op, l.GetType(), r.GetType()) {
+			if s.Options.PedanticErrors && isRelationalOp(op) {
+				lp := unqual(l.GetType()).(*PointerType)
+				rp := unqual(r.GetType()).(*PointerType)
+				if completeIncompleteArrayMismatch(lp.Pointee, rp.Pointee) {
+					s.report(InvalidTypeSpec(pos, "comparison of complete and incomplete pointer types"))
+				}
+			}
+			if l.GetType() != r.GetType() {
+				r = s.castPointerConversion(r, l.GetType())
+			}
+			return l, r
+		}
+		s.report(InvalidTypeSpec(pos, "invalid operands for comparison"))
 		return l, r
 	}
 	s.report(InvalidTypeSpec(pos, "invalid operands for comparison"))
 	return l, r
+}
+
+func isRelationalOp(op BinaryOp) bool {
+	return op == OpLt || op == OpLe || op == OpGt || op == OpGe
+}
+
+func (s *Sema) isComparisonNullPointerConstant(e Expr) bool {
+	return s.isNullPointerConstant(e) || s.isVoidPointerZero(e)
+}
+
+func comparisonPointerCompatible(op BinaryOp, left, right Type) bool {
+	lp, lok := unqual(left).(*PointerType)
+	rp, rok := unqual(right).(*PointerType)
+	if !lok || !rok {
+		return false
+	}
+	if op == OpEq || op == OpNe {
+		return equalityPointerCompatible(lp, rp)
+	}
+	return relationalPointerCompatible(lp, rp)
+}
+
+func equalityPointerCompatible(left, right *PointerType) bool {
+	leftFunc := isFunctionPointer(left)
+	rightFunc := isFunctionPointer(right)
+	if leftFunc || rightFunc {
+		return leftFunc && rightFunc && compatibleType(left.Pointee, right.Pointee)
+	}
+	if isVoidPointer(left) || isVoidPointer(right) {
+		return true
+	}
+	return compatibleTypeIgnoringTopLevelQualifiers(left.Pointee, right.Pointee)
+}
+
+func relationalPointerCompatible(left, right *PointerType) bool {
+	if isFunctionPointer(left) || isFunctionPointer(right) || isVoidPointer(left) || isVoidPointer(right) {
+		return false
+	}
+	return compatibleTypeIgnoringTopLevelQualifiers(left.Pointee, right.Pointee)
 }
 
 func (s *Sema) typePointerArithmetic(op BinaryOp, l, r Expr, srcRange entity.SourceRange) Expr {
@@ -319,8 +371,16 @@ func (s *Sema) typeUnary(node *entity.AstNode, scope *Scope) Expr {
 
 func (s *Sema) typeIncDec(node *entity.AstNode, scope *Scope, op UnaryOp) Expr {
 	x := s.typeExpr(node.Children[1], scope)
+	return s.buildIncDec(node, x, op)
+}
+
+func (s *Sema) buildIncDec(node *entity.AstNode, x Expr, op UnaryOp) Expr {
 	if x.GetCategory() != LValue {
 		s.report(InvalidTypeSpec(node.SourceStart, "operand of ++/-- must be lvalue"))
+		return &UnOp{Op: op, X: x, T: ErrorTypeSingleton, Range: node.SourceRange}
+	}
+	if isComplexType(x.GetType()) {
+		s.report(InvalidTypeSpec(node.SourceStart, "operand of ++/-- cannot have complex type"))
 		return &UnOp{Op: op, X: x, T: ErrorTypeSingleton, Range: node.SourceRange}
 	}
 	return &UnOp{Op: op, X: x, T: x.GetType(), Category: RValue, Range: node.SourceRange}
@@ -418,12 +478,14 @@ func (s *Sema) typeConditional(node *entity.AstNode, scope *Scope) Expr {
 		var common Type
 		if isArithmetic(then.GetType()) && isArithmetic(els.GetType()) {
 			then, els, common = s.castUsualArithmetic(then, els)
-		} else if isPointer(then.GetType()) && s.isNullPointerConstant(els) {
+		} else if isPointer(then.GetType()) && s.isConditionalNullPointerConstant(els) {
 			els = s.castNullPointerConstant(els, then.GetType())
 			common = then.GetType()
-		} else if isPointer(els.GetType()) && s.isNullPointerConstant(then) {
+		} else if isPointer(els.GetType()) && s.isConditionalNullPointerConstant(then) {
 			then = s.castNullPointerConstant(then, els.GetType())
 			common = els.GetType()
+		} else if isPointer(then.GetType()) && isPointer(els.GetType()) {
+			then, els, common = s.balanceConditionalPointer(then, els, node.SourceStart)
 		} else {
 			common = then.GetType()
 			if common != els.GetType() {
@@ -433,6 +495,74 @@ func (s *Sema) typeConditional(node *entity.AstNode, scope *Scope) Expr {
 		return &CondExpr{Cond: cond, Then: then, Else: els, T: common, Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
+}
+
+func (s *Sema) isConditionalNullPointerConstant(e Expr) bool {
+	return s.isNullPointerConstant(e) || s.isVoidPointerZero(e)
+}
+
+func (s *Sema) balanceConditionalPointer(then, els Expr, pos entity.SourcePos) (Expr, Expr, Type) {
+	tp := unqual(then.GetType()).(*PointerType)
+	ep := unqual(els.GetType()).(*PointerType)
+	switch {
+	case !isFunctionPointer(tp) && !isFunctionPointer(ep) && isVoidPointer(tp):
+		common := s.qualifiedVoidPointer(tp.Pointee, ep.Pointee)
+		if then.GetType() != common {
+			then = s.castVoidPointerConversion(then, common)
+		}
+		if els.GetType() != common {
+			els = s.castVoidPointerConversion(els, common)
+		}
+		return then, els, common
+	case !isFunctionPointer(tp) && !isFunctionPointer(ep) && isVoidPointer(ep):
+		common := s.qualifiedVoidPointer(tp.Pointee, ep.Pointee)
+		if then.GetType() != common {
+			then = s.castVoidPointerConversion(then, common)
+		}
+		if els.GetType() != common {
+			els = s.castVoidPointerConversion(els, common)
+		}
+		return then, els, common
+	case pointerAssignmentCompatible(ep, tp):
+		if els.GetType() != then.GetType() {
+			els = s.castPointerConversion(els, then.GetType())
+		}
+		return then, els, then.GetType()
+	case pointerAssignmentCompatible(tp, ep):
+		if then.GetType() != els.GetType() {
+			then = s.castPointerConversion(then, els.GetType())
+		}
+		return then, els, els.GetType()
+	default:
+		s.report(InvalidTypeSpec(pos, "incompatible pointer types in conditional expression"))
+		return then, els, then.GetType()
+	}
+}
+
+func (s *Sema) qualifiedVoidPointer(a, b Type) Type {
+	c, v, r := qualifierUnion(a, b)
+	var voidT Type = s.Types.Builtin(Void)
+	if c || v || r {
+		voidT = s.Types.Qualified(voidT, c, v, r)
+	}
+	return s.Types.Pointer(voidT)
+}
+
+func qualifierUnion(a, b Type) (bool, bool, bool) {
+	aq, _ := a.(*QualType)
+	bq, _ := b.(*QualType)
+	var c, v, r bool
+	if aq != nil {
+		c = c || aq.Const
+		v = v || aq.Volatile
+		r = r || aq.Restrict
+	}
+	if bq != nil {
+		c = c || bq.Const
+		v = v || bq.Volatile
+		r = r || bq.Restrict
+	}
+	return c, v, r
 }
 
 func (s *Sema) typeComma(node *entity.AstNode, scope *Scope) Expr {
@@ -485,10 +615,10 @@ func (s *Sema) typePostfix(node *entity.AstNode, scope *Scope) Expr {
 		return s.typeMember(node, scope, true)
 	case node.ReducedBy(parser.PostfixExpression, 7):
 		x := s.typeExpr(node.Children[0], scope)
-		return &UnOp{Op: UnIncPost, X: x, T: x.GetType(), Category: RValue, Range: node.SourceRange}
+		return s.buildIncDec(node, x, UnIncPost)
 	case node.ReducedBy(parser.PostfixExpression, 8):
 		x := s.typeExpr(node.Children[0], scope)
-		return &UnOp{Op: UnDecPost, X: x, T: x.GetType(), Category: RValue, Range: node.SourceRange}
+		return s.buildIncDec(node, x, UnDecPost)
 	case node.ReducedBy(parser.PostfixExpression, 9), node.ReducedBy(parser.PostfixExpression, 10):
 		t := s.parseTypeName(node.Children[1])
 		return &CompoundLit{T: t, Init: s.typeInitListForType(node.Children[4], t), Range: node.SourceRange}
@@ -556,6 +686,7 @@ func (s *Sema) typeMember(node *entity.AstNode, scope *Scope, arrow bool) Expr {
 	base := s.typeExpr(node.Children[0], scope)
 	name := node.Children[2].Terminal.Lexeme
 	var fields []*Field
+	var baseQual *QualType
 	category := base.GetCategory()
 	if arrow {
 		base = s.castArrayDecay(s.castLValueToRValue(base))
@@ -564,6 +695,7 @@ func (s *Sema) typeMember(node *entity.AstNode, scope *Scope, arrow bool) Expr {
 			s.report(InvalidTypeSpec(node.SourceStart, "operand of -> must be pointer"))
 			return &MemberExpr{Base: base, Arrow: true, T: ErrorTypeSingleton, Range: node.SourceRange}
 		}
+		baseQual, _ = pt.Pointee.(*QualType)
 		switch st := unqual(pt.Pointee).(type) {
 		case *StructType:
 			fields = st.Fields
@@ -572,6 +704,7 @@ func (s *Sema) typeMember(node *entity.AstNode, scope *Scope, arrow bool) Expr {
 		}
 		category = LValue
 	} else {
+		baseQual, _ = base.GetType().(*QualType)
 		switch st := unqual(base.GetType()).(type) {
 		case *StructType:
 			fields = st.Fields
@@ -581,9 +714,36 @@ func (s *Sema) typeMember(node *entity.AstNode, scope *Scope, arrow bool) Expr {
 	}
 	for _, f := range fields {
 		if f.Name == name {
-			return &MemberExpr{Base: base, Field: f, Arrow: arrow, T: f.T, Category: category, Range: node.SourceRange}
+			return &MemberExpr{Base: base, Field: f, Arrow: arrow, T: qualifyMemberType(f.T, baseQual), Category: category, Range: node.SourceRange}
 		}
 	}
 	s.report(UndeclaredIdentifier(node.SourceStart, name))
 	return &MemberExpr{Base: base, Arrow: arrow, T: ErrorTypeSingleton, Range: node.SourceRange}
+}
+
+func qualifyMemberType(t Type, q *QualType) Type {
+	if q == nil || (!q.Const && !q.Volatile && !q.Restrict) {
+		return t
+	}
+	if at, ok := unqual(t).(*ArrayType); ok {
+		return &ArrayType{
+			Elem:          qualifyMemberType(at.Elem, q),
+			Size:          at.Size,
+			SizeExpr:      at.SizeExpr,
+			SizeKind:      at.SizeKind,
+			VMFromTypedef: at.VMFromTypedef,
+			ParamConst:    at.ParamConst,
+			ParamVolatile: at.ParamVolatile,
+			ParamRestrict: at.ParamRestrict,
+		}
+	}
+	base := t
+	constQ, volatileQ, restrictQ := q.Const, q.Volatile, q.Restrict
+	if tq, ok := t.(*QualType); ok {
+		base = tq.Base
+		constQ = constQ || tq.Const
+		volatileQ = volatileQ || tq.Volatile
+		restrictQ = restrictQ || tq.Restrict
+	}
+	return &QualType{Base: base, Const: constQ, Volatile: volatileQ, Restrict: restrictQ}
 }
