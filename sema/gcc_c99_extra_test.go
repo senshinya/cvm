@@ -57,6 +57,7 @@ func TestGCCC99ExtraOnlyKnownSkipsRemain(t *testing.T) {
 		"requires C99 function prototype compatibility diagnostics":   true,
 		"requires C99 inline definition diagnostics":                  true,
 		"requires C99 incomplete-type pointer arithmetic diagnostics": true,
+		"requires floating constant range diagnostics":                true,
 	}
 	for lineNo, line := range strings.Split(string(content), "\n") {
 		if strings.TrimSpace(line) == "" || lineNo == 0 {

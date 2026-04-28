@@ -180,18 +180,18 @@ func punctuatorLen(bytes []scanByte, i int) int {
 	if i+2 < len(bytes) && bytes[i].b == '.' && bytes[i+1].b == '.' && bytes[i+2].b == '.' {
 		return 3
 	}
+	if i+2 < len(bytes) {
+		three := string([]byte{bytes[i].b, bytes[i+1].b, bytes[i+2].b})
+		if three == "<<=" || three == ">>=" {
+			return 3
+		}
+	}
 	if i+1 < len(bytes) {
 		two := string([]byte{bytes[i].b, bytes[i+1].b})
 		switch two {
 		case "##", "->", "++", "--", "<<", ">>", "<=", ">=", "==", "!=", "&&", "||",
 			"*=", "/=", "%=", "+=", "-=", "&=", "^=", "|=":
 			return 2
-		}
-		if i+2 < len(bytes) {
-			three := string([]byte{bytes[i].b, bytes[i+1].b, bytes[i+2].b})
-			if three == "<<=" || three == ">>=" {
-				return 3
-			}
 		}
 	}
 	return 1

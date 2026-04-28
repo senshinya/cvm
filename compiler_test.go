@@ -13,6 +13,13 @@ int main() {
 }`)
 }
 
+func TestCompilerRunsPreprocessor(t *testing.T) {
+	(&Compiler{}).RunSource(`#define T int
+T main(void) {
+	return 0;
+}`)
+}
+
 func TestAbstractDeclaration(t *testing.T) {
 
 	(&Compiler{}).RunSource(`void func2(int (*)[10]);

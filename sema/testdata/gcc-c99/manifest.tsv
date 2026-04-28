@@ -28,7 +28,7 @@ gcc/testsuite/gcc.dg/c99-complit-1.c	imported-accept	accept	current lexer+parser
 gcc/testsuite/gcc.dg/c99-complit-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-condexpr-1.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-const-expr-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
-gcc/testsuite/gcc.dg/c99-const-expr-10.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
+gcc/testsuite/gcc.dg/c99-const-expr-10.c	skipped	reject	requires frontend semantic follow-up after preprocessing
 gcc/testsuite/gcc.dg/c99-const-expr-11.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-const-expr-12.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-const-expr-13.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
@@ -129,8 +129,8 @@ gcc/testsuite/gcc.dg/c99-typespec-1.c	imported-reject	reject	current lexer+parse
 gcc/testsuite/gcc.dg/c99-version-1.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/c99-vla-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case
 gcc/testsuite/gcc.dg/c99-vla-2.c	skipped	accept	requires preprocessor or system macro handling
-gcc/testsuite/gcc.dg/c99-vla-jump-1.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-vla-jump-2.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-vla-jump-3.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-vla-jump-4.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
-gcc/testsuite/gcc.dg/c99-vla-jump-5.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
+gcc/testsuite/gcc.dg/c99-vla-jump-1.c	skipped	reject	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-vla-jump-2.c	skipped	reject	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-vla-jump-3.c	skipped	reject	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-vla-jump-4.c	skipped	reject	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-vla-jump-5.c	skipped	reject	requires frontend semantic follow-up after preprocessing

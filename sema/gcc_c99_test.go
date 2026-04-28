@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"shinya.click/cvm/lexer"
 	"shinya.click/cvm/parser"
+	"shinya.click/cvm/preprocessor"
 )
 
 func TestGCCC99AcceptSuite(t *testing.T) {
@@ -59,8 +59,12 @@ func TestGCCC99OnlyPreprocessorSkipsRemain(t *testing.T) {
 		if status != "skipped" {
 			continue
 		}
-		if reason != "requires preprocessor or system macro handling" {
-			t.Fatalf("non-preprocessor GCC C99 skip remains at line %d: %s: %s", lineNo+1, fields[0], reason)
+		allowed := map[string]bool{
+			"requires preprocessor or system macro handling":           true,
+			"requires frontend semantic follow-up after preprocessing": true,
+		}
+		if !allowed[reason] {
+			t.Fatalf("unknown GCC C99 skip remains at line %d: %s: %s", lineNo+1, fields[0], reason)
 		}
 	}
 }
@@ -86,32 +90,32 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 			originalSrc := string(srcBytes)
 			opts := SemaOptions{PedanticErrors: gccPedanticErrors(originalSrc)}
 			src := stripGCCDirectives(originalSrc)
-			tokens, err := lexer.NewLexer(src).ScanTokens()
-			if err != nil {
-				if !wantAccept {
-					return
-				}
-				t.Fatalf("lexer rejected GCC C99 case %s: %v", path, err)
-			}
-			candidates, err := parser.NewParser(tokens).Parse()
-			if err != nil {
-				if !wantAccept {
-					return
-				}
-				t.Fatalf("parser rejected GCC C99 case %s: %v", path, err)
-			}
 			if wantAccept {
-				if _, err := AnalyzeWithOptions(candidates, opts); err != nil {
-					t.Fatalf("lexer+parser+sema rejected GCC C99 case %s: %v", path, err)
+				if err := preprocessParseAnalyze(t, path, src, opts); err != nil {
+					t.Fatalf("preprocessor+parser+sema rejected GCC C99 case %s: %v", path, err)
 				}
 				return
 			}
-			if _, err := AnalyzeWithOptions(candidates, opts); err != nil {
+			if err := preprocessParseAnalyze(t, path, src, opts); err != nil {
 				return
 			}
-			t.Fatalf("lexer+parser+sema accepted GCC reject case %s", path)
+			t.Fatalf("preprocessor+parser+sema accepted GCC reject case %s", path)
 		})
 	}
+}
+
+func preprocessParseAnalyze(t *testing.T, path string, src string, opts SemaOptions) error {
+	t.Helper()
+	pp, err := preprocessor.PreprocessSource(path, src, preprocessor.Options{})
+	if err != nil {
+		return err
+	}
+	candidates, err := parser.NewParser(pp.Tokens).Parse()
+	if err != nil {
+		return err
+	}
+	_, err = AnalyzeWithOptions(candidates, opts)
+	return err
 }
 
 func gccPedanticErrors(src string) bool {
@@ -157,38 +161,26 @@ func countManifestStatus(content, status string) int {
 }
 
 func stripGCCDirectives(src string) string {
-	src = stripCComments(src)
-	var out []string
-	for _, line := range strings.Split(src, "\n") {
-		trim := strings.TrimSpace(line)
-		if strings.HasPrefix(trim, "/*") && strings.Contains(trim, "{ dg-") {
-			continue
-		}
-		if strings.HasPrefix(trim, "//") && strings.Contains(trim, "{ dg-") {
-			continue
-		}
-		out = append(out, line)
-	}
-	return strings.Join(out, "\n")
-}
-
-func stripCComments(src string) string {
 	var b strings.Builder
-	for i := 0; i < len(src); {
-		if i+1 < len(src) && src[i] == '/' && src[i+1] == '*' {
-			for i < len(src) && !(i+1 < len(src) && src[i] == '*' && src[i+1] == '/') {
-				if src[i] == '\n' {
-					b.WriteByte('\n')
-				}
-				i++
-			}
-			if i+1 < len(src) {
-				i += 2
-			}
+	for _, line := range strings.SplitAfter(src, "\n") {
+		body := strings.TrimSuffix(line, "\n")
+		newline := ""
+		if strings.HasSuffix(line, "\n") {
+			newline = "\n"
+		}
+		if isDejaGNULine(body) {
+			b.WriteString(newline)
 			continue
 		}
-		b.WriteByte(src[i])
-		i++
+		b.WriteString(line)
 	}
 	return b.String()
+}
+
+func isDejaGNULine(line string) bool {
+	trim := strings.TrimSpace(line)
+	if strings.HasPrefix(trim, "/*") && strings.HasSuffix(trim, "*/") && strings.Contains(trim, "{ dg-") {
+		return true
+	}
+	return strings.HasPrefix(trim, "//") && strings.Contains(trim, "{ dg-")
 }

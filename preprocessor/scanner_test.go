@@ -40,6 +40,19 @@ func TestScannerTrigraphWhenC99(t *testing.T) {
 	}
 }
 
+func TestScannerThreeCharacterAssignmentPunctuators(t *testing.T) {
+	sm := NewSourceManager()
+	fileID := sm.AddFile("main.c", "a <<= b; c >>= d;\n")
+	toks, err := scanFile(sm, fileID, "a <<= b; c >>= d;\n", Options{})
+	if err != nil {
+		t.Fatalf("scanFile failed: %v", err)
+	}
+	want := []string{"a", "<<=", "b", ";", "c", ">>=", "d", ";", "\n"}
+	if got := ppLexemes(toks); !sameStrings(got, want) {
+		t.Fatalf("lexemes = %#v, want %#v", got, want)
+	}
+}
+
 func ppLexemes(toks []PPToken) []string {
 	out := make([]string, 0, len(toks))
 	for _, tok := range toks {

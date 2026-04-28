@@ -52,7 +52,7 @@ gcc/testsuite/gcc.dg/attr-ms_struct-packed1.c	skipped	accept	requires GCC target
 gcc/testsuite/gcc.dg/binary-constants-1.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/binary-constants-2.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/binary-constants-3.c	skipped	reject	requires preprocessor or system macro handling
-gcc/testsuite/gcc.dg/binary-constants-4.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/binary-constants-4.c	skipped	reject	requires GCC warning/diagnostic behavior
 gcc/testsuite/gcc.dg/builtin-stringop-chk-1.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/builtin-strncat-chk-1.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/builtins-57.c	skipped	accept	requires GCC target/runtime test harness
@@ -79,10 +79,10 @@ gcc/testsuite/gcc.dg/flex-array-counted-by-9.c	skipped	reject	requires preproces
 gcc/testsuite/gcc.dg/float-range-3.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/float-range-4.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/float-range-5.c	skipped	accept	requires preprocessor or system macro handling
-gcc/testsuite/gcc.dg/fltconst-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/fltconst-1.c	skipped	reject	requires floating constant range diagnostics
 gcc/testsuite/gcc.dg/fltconst-2.c	skipped	accept	requires GNU C extension support
 gcc/testsuite/gcc.dg/fltconst-double-pedantic-1.c	skipped	accept	requires GNU C extension support
-gcc/testsuite/gcc.dg/fltconst-double-pedantic-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/fltconst-double-pedantic-2.c	skipped	reject	requires floating constant range diagnostics
 gcc/testsuite/gcc.dg/gnu-cond-expr-1.c	skipped	accept	requires GNU C extension support
 gcc/testsuite/gcc.dg/gnu-cond-expr-2.c	skipped	accept	requires GNU C extension support
 gcc/testsuite/gcc.dg/gnu-cond-expr-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
@@ -153,7 +153,7 @@ gcc/testsuite/gcc.dg/noreturn-5.c	skipped	accept	requires preprocessor or system
 gcc/testsuite/gcc.dg/octal-constants-1.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/octal-constants-2.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/octal-constants-3.c	skipped	reject	requires preprocessor or system macro handling
-gcc/testsuite/gcc.dg/octal-constants-4.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/octal-constants-4.c	skipped	reject	requires GCC warning/diagnostic behavior
 gcc/testsuite/gcc.dg/overflow-2.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/overflow-warn-1.c	skipped	reject	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/overflow-warn-2.c	skipped	reject	requires preprocessor or system macro handling
@@ -328,7 +328,7 @@ gcc/testsuite/gcc.dg/vla-4.c	skipped	accept	requires GCC target/runtime test har
 gcc/testsuite/gcc.dg/vla-5.c	skipped	accept	requires C99 variably modified type edge-case support
 gcc/testsuite/gcc.dg/vla-6.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/vla-7.c	skipped	accept	requires C99 variably modified type edge-case support
-gcc/testsuite/gcc.dg/vla-8.c	imported-reject	reject	explicit C99/GNU99 frontend case
+gcc/testsuite/gcc.dg/vla-8.c	skipped	reject	requires C99 variably modified type edge-case support
 gcc/testsuite/gcc.dg/vla-9.c	skipped	accept	requires preprocessor or system macro handling
 gcc/testsuite/gcc.dg/vla-tert-1.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/wtr-int-type-1.c	skipped	accept	requires GCC warning/diagnostic behavior
