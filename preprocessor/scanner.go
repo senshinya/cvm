@@ -1,9 +1,5 @@
 package preprocessor
 
-import (
-	"shinya.click/cvm/entity"
-)
-
 type scanByte struct {
 	b             byte
 	offset        int
@@ -244,5 +240,3 @@ func isDigit(b byte) bool {
 func isPPNumberByte(b byte) bool {
 	return isIdentContinue(b) || b == '.' || b == '+' || b == '-'
 }
-
-var _ = entity.SourcePos{}

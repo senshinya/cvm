@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"shinya.click/cvm/entity"
-	"shinya.click/cvm/lexer"
 )
 
 type Result struct {
@@ -14,10 +13,13 @@ type Result struct {
 
 func PreprocessSource(name, source string, opts Options) (*Result, error) {
 	opts = normalizeOptions(opts)
-	_ = opts
 	sm := NewSourceManager()
-	sm.AddFile(name, source)
-	tokens, err := lexer.NewLexer(source).ScanTokens()
+	fileID := sm.AddFile(name, source)
+	ppTokens, err := scanFile(sm, fileID, source, opts)
+	if err != nil {
+		return nil, err
+	}
+	tokens, err := convertToParserTokens(ppTokens, sm)
 	if err != nil {
 		return nil, err
 	}

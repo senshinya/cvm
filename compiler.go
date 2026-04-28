@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 	"shinya.click/cvm/common"
-	"shinya.click/cvm/lexer"
+	"shinya.click/cvm/entity"
 	"shinya.click/cvm/parser"
+	"shinya.click/cvm/preprocessor"
 	"shinya.click/cvm/sema"
 	"strings"
 )
@@ -15,6 +16,7 @@ type Compiler struct {
 	FileName string
 	Source   string
 	Lines    []string
+	Sources  *preprocessor.SourceManager
 }
 
 func (c *Compiler) RunSource(source string) {
@@ -23,12 +25,13 @@ func (c *Compiler) RunSource(source string) {
 	}
 	c.Source = source
 	c.Lines = strings.Split(source, "\n")
-	tokens, err := lexer.NewLexer(c.Source).ScanTokens()
+	pp, err := preprocessor.PreprocessSource(c.FileName, source, preprocessor.Options{})
 	if err != nil {
 		c.handleError(err)
 		return
 	}
-	candidates, err := parser.NewParser(tokens).Parse()
+	c.Sources = pp.Sources
+	candidates, err := parser.NewParser(pp.Tokens).Parse()
 	if err != nil {
 		c.handleError(err)
 		return
@@ -57,13 +60,14 @@ func (c *Compiler) handleError(err error) {
 	switch {
 	case errors.As(err, &cvmError):
 		for _, message := range cvmError.Messages {
-			fmt.Printf("%s:%d:%d: %s %s\n", c.FileName,
-				message.SourcePos.Line, message.SourcePos.Column,
+			file, line, column, text := c.displayErrorLocation(message.SourcePos)
+			fmt.Printf("%s:%d:%d: %s %s\n", file,
+				line, column,
 				common.IfElse(message.Level == common.MessageLevelError, common.RedText("error:"), common.GrayText("note:")),
 				message.CustomMessage)
-			fmt.Printf("    %d | %s\n", message.SourcePos.Line, c.Lines[message.SourcePos.Line-1])
-			fmt.Printf("    %s | ", spaceByStringLength(fmt.Sprintf("%d", message.SourcePos.Line)))
-			for i := 0; i < message.SourcePos.Column-1; i++ {
+			fmt.Printf("    %d | %s\n", line, text)
+			fmt.Printf("    %s | ", spaceByStringLength(fmt.Sprintf("%d", line)))
+			for i := 0; i < column-1; i++ {
 				fmt.Print(" ")
 			}
 			fmt.Printf("%s\n", common.GreenText("^"))
@@ -71,6 +75,31 @@ func (c *Compiler) handleError(err error) {
 	default:
 		fmt.Println(err.Error())
 	}
+}
+
+func (c *Compiler) displayErrorLocation(pos entity.SourcePos) (string, int, int, string) {
+	if c.Sources != nil {
+		display := c.Sources.DisplayLocation(pos)
+		file := display.File
+		if file == "" {
+			file = c.FileName
+		}
+		if display.Line > 0 && display.Column > 0 {
+			return file, display.Line, display.Column, display.Text
+		}
+	}
+	line, column := pos.Line, pos.Column
+	if line <= 0 {
+		line = 1
+	}
+	if column <= 0 {
+		column = 1
+	}
+	text := ""
+	if line-1 >= 0 && line-1 < len(c.Lines) {
+		text = c.Lines[line-1]
+	}
+	return c.FileName, line, column, text
 }
 
 func spaceByStringLength(str string) string {
