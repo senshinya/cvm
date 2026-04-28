@@ -73,7 +73,24 @@ func (s *Sema) makeIntLit(node *entity.AstNode) Expr {
 }
 
 func (s *Sema) makeFloatLit(node *entity.AstNode) Expr {
+	if invalidFloatSuffix(node.Terminal.Lexeme) {
+		s.report(InvalidTypeSpec(node.SourceStart, "invalid floating constant suffix"))
+	}
 	return &FloatLit{Value: parseFloatLiteral(node.Terminal.Lexeme), T: s.Types.Builtin(Double), Range: node.SourceRange}
+}
+
+func invalidFloatSuffix(lexeme string) bool {
+	i := len(lexeme)
+	for i > 0 {
+		c := lexeme[i-1]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			i--
+			continue
+		}
+		break
+	}
+	suffix := lexeme[i:]
+	return strings.Trim(suffix, "fFlL") != ""
 }
 
 func (s *Sema) makeCharLit(node *entity.AstNode) Expr {
@@ -337,17 +354,31 @@ func (s *Sema) typePointerArithmetic(op BinaryOp, l, r Expr, srcRange entity.Sou
 	switch op {
 	case OpAdd, OpSub:
 		if isPointer(l.GetType()) && isArithmetic(r.GetType()) {
+			s.validatePointerArithmeticOperand(l.GetType(), srcRange.SourceStart)
 			return &BinOp{Op: op, L: l, R: s.castIntegerPromotion(r), T: l.GetType(), Range: srcRange}
 		}
 		if op == OpAdd && isArithmetic(l.GetType()) && isPointer(r.GetType()) {
+			s.validatePointerArithmeticOperand(r.GetType(), srcRange.SourceStart)
 			return &BinOp{Op: op, L: s.castIntegerPromotion(l), R: r, T: r.GetType(), Range: srcRange}
 		}
 		if op == OpSub && isPointer(l.GetType()) && isPointer(r.GetType()) {
+			s.validatePointerArithmeticOperand(l.GetType(), srcRange.SourceStart)
+			s.validatePointerArithmeticOperand(r.GetType(), srcRange.SourceStart)
 			return &BinOp{Op: op, L: l, R: r, T: s.Types.Builtin(Long), Range: srcRange}
 		}
 	}
 	s.report(InvalidTypeSpec(srcRange.SourceStart, "invalid pointer arithmetic"))
 	return &BinOp{Op: op, L: l, R: r, T: ErrorTypeSingleton, Range: srcRange}
+}
+
+func (s *Sema) validatePointerArithmeticOperand(t Type, pos entity.SourcePos) {
+	pt, ok := unqual(t).(*PointerType)
+	if !ok {
+		return
+	}
+	if !isObjectType(pt.Pointee) {
+		s.report(InvalidTypeSpec(pos, "pointer arithmetic requires pointer to complete object type"))
+	}
 }
 
 func (s *Sema) typeUnary(node *entity.AstNode, scope *Scope) Expr {
@@ -383,6 +414,9 @@ func (s *Sema) buildIncDec(node *entity.AstNode, x Expr, op UnaryOp) Expr {
 		s.report(InvalidTypeSpec(node.SourceStart, "operand of ++/-- cannot have complex type"))
 		return &UnOp{Op: op, X: x, T: ErrorTypeSingleton, Range: node.SourceRange}
 	}
+	if isPointer(x.GetType()) {
+		s.validatePointerArithmeticOperand(x.GetType(), node.SourceStart)
+	}
 	return &UnOp{Op: op, X: x, T: x.GetType(), Category: RValue, Range: node.SourceRange}
 }
 
@@ -393,6 +427,14 @@ func (s *Sema) typeUnaryOperator(node *entity.AstNode, scope *Scope) Expr {
 	case entity.AND:
 		if x.GetCategory() != LValue {
 			s.report(InvalidTypeSpec(node.SourceStart, "cannot take address of rvalue"))
+			return &UnOp{Op: UnAddr, X: x, T: ErrorTypeSingleton, Range: node.SourceRange}
+		}
+		if vr, ok := x.(*VarRef); ok && vr.Sym != nil && vr.Sym.Storage == StorageRegister {
+			s.report(InvalidTypeSpec(node.SourceStart, "cannot take address of register variable"))
+			return &UnOp{Op: UnAddr, X: x, T: ErrorTypeSingleton, Range: node.SourceRange}
+		}
+		if vr, ok := x.(*VarRef); ok && vr.Sym != nil && isPlainVoidType(vr.Sym.T) {
+			s.report(InvalidTypeSpec(node.SourceStart, "cannot take address of void object"))
 			return &UnOp{Op: UnAddr, X: x, T: ErrorTypeSingleton, Range: node.SourceRange}
 		}
 		return &UnOp{Op: UnAddr, X: x, T: s.Types.Pointer(x.GetType()), Category: RValue, Range: node.SourceRange}
@@ -420,6 +462,14 @@ func (s *Sema) typeUnaryOperator(node *entity.AstNode, scope *Scope) Expr {
 	return s.errorExpr(node.SourceRange)
 }
 
+func isPlainVoidType(t Type) bool {
+	if _, qualified := t.(*QualType); qualified {
+		return false
+	}
+	bt, ok := unqual(t).(*BuiltinType)
+	return ok && bt.Kind == Void
+}
+
 func (s *Sema) typeAssignment(node *entity.AstNode, scope *Scope) Expr {
 	switch {
 	case node.ReducedBy(parser.AssignmentExpression, 1):
@@ -436,7 +486,11 @@ func (s *Sema) typeAssignment(node *entity.AstNode, scope *Scope) Expr {
 			r = s.assignmentConversion(r, l.GetType(), node.SourceStart)
 			return &AssignExpr{L: l, R: r, T: l.GetType(), Range: node.SourceRange}
 		}
-		return &CompoundAssign{Op: s.compoundAssignOp(opTyp), L: l, R: r, T: l.GetType(), Range: node.SourceRange}
+		op := s.compoundAssignOp(opTyp)
+		if (op == OpAdd || op == OpSub) && isPointer(l.GetType()) && isArithmetic(r.GetType()) {
+			s.validatePointerArithmeticOperand(l.GetType(), node.SourceStart)
+		}
+		return &CompoundAssign{Op: op, L: l, R: r, T: l.GetType(), Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
 }
@@ -651,7 +705,20 @@ func (s *Sema) typeCall(node *entity.AstNode, scope *Scope, argList *entity.AstN
 	if ft.HasProto && !ft.Variadic && len(args) != len(ft.Params) {
 		s.report(InvalidTypeSpec(node.SourceStart, "wrong number of arguments"))
 	}
+	s.validateCallReturnType(ft.Ret, node.SourceStart)
 	return &CallExpr{Callee: callee, Args: args, T: ft.Ret, Range: node.SourceRange}
+}
+
+func (s *Sema) validateCallReturnType(t Type, pos entity.SourcePos) {
+	if bt, ok := unqual(t).(*BuiltinType); ok && bt.Kind == Void {
+		if _, qualified := t.(*QualType); qualified {
+			s.report(InvalidTypeSpec(pos, "function call returns qualified void"))
+		}
+		return
+	}
+	if !isObjectType(t) {
+		s.report(InvalidTypeSpec(pos, "function call returns incomplete type"))
+	}
 }
 
 func (s *Sema) collectCallArgs(node *entity.AstNode, scope *Scope) []Expr {

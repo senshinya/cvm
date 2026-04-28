@@ -86,6 +86,7 @@ struct_or_union := UNION|2
 struct_declaration_list := struct_declaration|1
 struct_declaration_list := struct_declaration_list struct_declaration|2
 struct_declaration := specifier_qualifier_list struct_declarator_list SEMICOLON|1
+struct_declaration := specifier_qualifier_list SEMICOLON|2
 specifier_qualifier_list := type_specifier|1
 specifier_qualifier_list := type_specifier specifier_qualifier_list|2
 specifier_qualifier_list := type_qualifier|3

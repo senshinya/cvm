@@ -29,6 +29,24 @@ func (s *Sema) parseSpec(node *entity.AstNode) SpecResult {
 	return SpecResult{Type: t, Storage: storage, IsTypedef: typedef, IsInline: inline}
 }
 
+func (s *Sema) validateInlineSpecifier(spec SpecResult, t Type, name string, pos entity.SourcePos, parameter bool) {
+	if !spec.IsInline || !s.Options.PedanticErrors {
+		return
+	}
+	switch {
+	case parameter:
+		s.report(InvalidTypeSpec(pos, "parameter declared inline"))
+	case spec.IsTypedef:
+		s.report(InvalidTypeSpec(pos, "typedef declared inline"))
+	case name == "main":
+		s.report(InvalidTypeSpec(pos, "cannot inline function main"))
+	default:
+		if _, ok := unqual(t).(*FunctionType); !ok {
+			s.report(InvalidTypeSpec(pos, "variable declared inline"))
+		}
+	}
+}
+
 func (s *Sema) collectSpecParts(node *entity.AstNode, typeSpecs *[]*entity.AstNode, c, v, r *bool, storage *StorageClass, typedef *bool, inline *bool) {
 	switch node.Typ {
 	case parser.DeclarationSpecifiers:
@@ -291,6 +309,10 @@ func (s *Sema) createTag(name string, isUnion bool, pos entity.SourcePos) Type {
 }
 
 func (s *Sema) completeStructUnion(t Type, fields []*Field) {
+	if len(fields) == 0 {
+		s.report(InvalidTypeSpec(entity.SourcePos{}, "struct/union must have at least one member"))
+	}
+	s.validateDuplicateFields(fields)
 	var offset int64
 	for _, f := range fields {
 		f.Offset = offset
@@ -310,6 +332,20 @@ func (s *Sema) completeStructUnion(t Type, fields []*Field) {
 				info.Complete = true
 			}
 		}
+	}
+}
+
+func (s *Sema) validateDuplicateFields(fields []*Field) {
+	seen := map[string]bool{}
+	for _, f := range fields {
+		if f == nil || f.Name == "" {
+			continue
+		}
+		if seen[f.Name] {
+			s.report(InvalidTypeSpec(entity.SourcePos{}, "duplicate member name"))
+			continue
+		}
+		seen[f.Name] = true
 	}
 }
 
@@ -356,7 +392,28 @@ func (s *Sema) parseStructDeclList(node *entity.AstNode) []*Field {
 func (s *Sema) parseStructDeclaration(node *entity.AstNode) []*Field {
 	spec := s.parseSpec(node.Children[0])
 	s.validateRestrictType(spec.Type, node.SourceStart)
+	if node.ReducedBy(parser.StructDeclaration, 2) {
+		if s.Options.PedanticErrors {
+			s.report(InvalidTypeSpec(node.SourceStart, "unnamed struct/union member is not permitted in C99"))
+		}
+		fields := anonymousAggregateFields(spec.Type)
+		if fields == nil {
+			s.report(InvalidTypeSpec(node.SourceStart, "declaration does not declare a member"))
+		}
+		return fields
+	}
 	return s.parseStructDeclaratorList(node.Children[1], spec.Type)
+}
+
+func anonymousAggregateFields(t Type) []*Field {
+	switch x := unqual(t).(type) {
+	case *StructType:
+		return x.Fields
+	case *UnionType:
+		return x.Fields
+	default:
+		return nil
+	}
 }
 
 func (s *Sema) parseStructDeclaratorList(node *entity.AstNode, base Type) []*Field {

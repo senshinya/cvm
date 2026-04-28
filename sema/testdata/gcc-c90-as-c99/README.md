@@ -22,6 +22,6 @@ VLA、`long long` 等。
 
 截至本次导入，清单共 112 个显式 C89/C90 用例：
 
-- 已导入 58 个：24 个 accept，34 个 reject。
-- 跳过 54 个：主要原因是预处理器或系统宏、GCC target/runtime harness、GNU 扩展、
-  以及当前前端尚未覆盖的 C99 边界诊断。
+- 已导入 90 个：32 个 accept，58 个 reject。
+- 跳过 22 个：主要原因是 GCC target/runtime harness、GNU 扩展、GCC builtin、
+  GCC warning/diagnostic 行为，以及当前前端尚未覆盖的 C99 边界诊断。

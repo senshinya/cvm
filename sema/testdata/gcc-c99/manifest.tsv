@@ -40,7 +40,7 @@ gcc/testsuite/gcc.dg/c99-const-expr-4.c	imported-accept	accept	current lexer+par
 gcc/testsuite/gcc.dg/c99-const-expr-5.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: sema-error
 gcc/testsuite/gcc.dg/c99-const-expr-6.c	imported-reject	reject	current lexer+parser+sema rejects GCC C99 reject case: parser-error
 gcc/testsuite/gcc.dg/c99-const-expr-7.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
-gcc/testsuite/gcc.dg/c99-const-expr-8.c	skipped	reject	requires frontend semantic follow-up after preprocessing
+gcc/testsuite/gcc.dg/c99-const-expr-8.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-const-expr-9.c	imported-reject	reject	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-digraph-1.c	imported-accept	accept	preprocessed by cvm C99 preprocessor
 gcc/testsuite/gcc.dg/c99-dupqual-1.c	imported-accept	accept	current lexer+parser+sema accepts GCC C99 accept case

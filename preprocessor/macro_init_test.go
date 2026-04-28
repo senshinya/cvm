@@ -25,7 +25,7 @@ func TestOptionsDefinesAndUndefines(t *testing.T) {
 
 func TestPredefinedTargetMacros(t *testing.T) {
 	pp := newPreprocessor("main.c", "", Options{})
-	for _, name := range []string{"__STDC__", "__STDC_VERSION__", "__STDC_HOSTED__", "__SIZE_TYPE__", "__PTRDIFF_TYPE__", "__WCHAR_TYPE__"} {
+	for _, name := range []string{"__STDC__", "__STDC_VERSION__", "__STDC_HOSTED__", "__SIZE_TYPE__", "__PTRDIFF_TYPE__", "__WCHAR_TYPE__", "__CHAR_BIT__"} {
 		if _, ok := pp.macros.Lookup(name); !ok {
 			t.Fatalf("predefined macro %s missing", name)
 		}

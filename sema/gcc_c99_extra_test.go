@@ -45,19 +45,13 @@ func TestGCCC99ExtraOnlyKnownSkipsRemain(t *testing.T) {
 		t.Fatalf("read GCC C99 extra manifest: %v", err)
 	}
 	allowed := map[string]bool{
-		"requires preprocessor or system macro handling":              true,
-		"requires GNU C extension support":                            true,
-		"requires GCC target/runtime test harness":                    true,
-		"requires GCC warning/diagnostic behavior":                    true,
-		"requires C99 nested initializer/designator coverage":         true,
-		"requires C99 variably modified type edge-case support":       true,
-		"requires Unicode/UCN lexer support":                          true,
-		"requires C99 incomplete return type diagnostics":             true,
-		"requires C99 void lvalue/address diagnostics":                true,
-		"requires C99 function prototype compatibility diagnostics":   true,
-		"requires C99 inline definition diagnostics":                  true,
-		"requires C99 incomplete-type pointer arithmetic diagnostics": true,
-		"requires floating constant range diagnostics":                true,
+		"requires GNU C extension support":                         true,
+		"requires GCC target/runtime test harness":                 true,
+		"requires GCC warning/diagnostic behavior":                 true,
+		"requires GCC builtin support":                             true,
+		"requires GCC inline dialect/codegen behavior":             true,
+		"requires Unicode/UCN lexer support":                       true,
+		"requires frontend semantic follow-up after preprocessing": true,
 	}
 	for lineNo, line := range strings.Split(string(content), "\n") {
 		if strings.TrimSpace(line) == "" || lineNo == 0 {
@@ -72,6 +66,9 @@ func TestGCCC99ExtraOnlyKnownSkipsRemain(t *testing.T) {
 		}
 		if !allowed[fields[3]] {
 			t.Fatalf("unknown GCC C99 extra skip at line %d: %s: %s", lineNo+1, fields[0], fields[3])
+		}
+		if fields[3] == "requires preprocessor or system macro handling" {
+			t.Fatalf("obsolete GCC C99 extra preprocessor skip remains at line %d: %s", lineNo+1, fields[0])
 		}
 	}
 }

@@ -97,6 +97,8 @@ func (s *Sema) walkFunctionDefinition(node *entity.AstNode, prog *Program) {
 		s.report(InvalidTypeSpec(node.SourceStart, "function definition declarator did not yield a function type"))
 		return
 	}
+	oldStyleParamTypes := s.oldStyleDefinitionParamTypes(node, functionDeclaratorIdentifierList(node.Children[1]))
+	s.validateInlineSpecifier(spec, t, name, node.Children[1].SourceStart, false)
 	sym := s.scope.LookupCurrent(name, NSOrdinary)
 	if sym == nil {
 		sym = &Symbol{Name: name, Kind: SymFunc, T: ft, Storage: spec.Storage, Linkage: LinkageExternal, Pos: node.Children[1].SourceStart}
@@ -104,13 +106,37 @@ func (s *Sema) walkFunctionDefinition(node *entity.AstNode, prog *Program) {
 	} else if sym.Kind != SymFunc {
 		s.report(RedefinitionSymbol(node.Children[1].SourceStart, sym.Pos, name))
 		return
+	} else if prev := firstFunctionDefinition(sym); prev != nil {
+		s.report(RedefinitionSymbol(node.Children[1].SourceStart, prev.Pos().SourceStart, name))
+		return
+	} else {
+		s.validateOldStyleDefinitionPrototype(node.SourceStart, oldStyleParamTypes, sym)
 	}
-	def := &FuncDef{Sym: sym, T: ft, Range: node.SourceRange, Labels: map[string]*LabeledStmt{}}
+	def := &FuncDef{
+		Sym:                sym,
+		T:                  ft,
+		OldStyleParamTypes: oldStyleParamTypes,
+		IsInlineDefinition: spec.IsInline && spec.Storage != StorageExtern && spec.Storage != StorageStatic,
+		Range:              node.SourceRange,
+		Labels:             map[string]*LabeledStmt{},
+	}
 	def.Params = s.collectParamDecls(node.Children[1], ft)
 	sym.Decl = def
 	sym.Defs = append(sym.Defs, def)
 	prog.Funcs = append(prog.Funcs, def)
 	s.pendingFuncs = append(s.pendingFuncs, &pendingFunc{def: def, bodyAst: node.Children[len(node.Children)-1]})
+}
+
+func firstFunctionDefinition(sym *Symbol) *FuncDef {
+	if sym == nil {
+		return nil
+	}
+	for _, d := range sym.Defs {
+		if def, ok := d.(*FuncDef); ok {
+			return def
+		}
+	}
+	return nil
 }
 
 func (s *Sema) walkDeclaration(node *entity.AstNode, prog *Program) {
@@ -249,6 +275,7 @@ func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *P
 		s.report(InvalidTypeSpec(pos, "missing declarator name"))
 		return
 	}
+	s.validateInlineSpecifier(spec, t, name, pos, false)
 	s.validateRestrictType(t, pos)
 	if spec.IsTypedef {
 		if typeHasDisallowedFileScopeVMType(t) {
@@ -297,6 +324,7 @@ func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *P
 }
 
 func (s *Sema) declareFunction(name string, ft *FunctionType, storage StorageClass, pos entity.SourcePos, srcRange entity.SourceRange, prog *Program) {
+	s.validateFunctionVMReturn(ft, pos)
 	sym := s.scope.LookupCurrent(name, NSOrdinary)
 	if sym == nil {
 		sym = &Symbol{Name: name, Kind: SymFunc, T: ft, Storage: storage, Pos: pos, Linkage: LinkageExternal}
@@ -304,11 +332,45 @@ func (s *Sema) declareFunction(name string, ft *FunctionType, storage StorageCla
 	} else if sym.Kind != SymFunc {
 		s.report(RedefinitionSymbol(pos, sym.Pos, name))
 		return
+	} else if !s.mergeFunctionDeclaration(sym, ft, pos) {
+		return
 	}
 	fd := &FuncDecl{Sym: sym, T: ft, Storage: storage, Range: srcRange}
 	sym.Decl = fd
 	sym.Defs = append(sym.Defs, fd)
 	prog.Globals = append(prog.Globals, fd)
+}
+
+func (s *Sema) validateFunctionVMReturn(ft *FunctionType, pos entity.SourcePos) {
+	if ft != nil && typeHasVariablyModifiedType(ft.Ret) {
+		s.report(InvalidTypeSpec(pos, "function return type cannot be variably modified"))
+	}
+}
+
+func (s *Sema) mergeFunctionDeclaration(sym *Symbol, ft *FunctionType, pos entity.SourcePos) bool {
+	prev, ok := unqual(sym.T).(*FunctionType)
+	if ok && !compatibleFunctionType(prev, ft) {
+		s.report(RedefinitionSymbol(pos, sym.Pos, sym.Name))
+		return false
+	}
+	if ft.HasProto {
+		for _, d := range sym.Defs {
+			def, ok := d.(*FuncDef)
+			if !ok || len(def.OldStyleParamTypes) == 0 {
+				continue
+			}
+			if !compatiblePrototypeWithOldStyleParams(ft, def.OldStyleParamTypes) {
+				s.report(InvalidTypeSpec(pos, "old-style definition parameter type does not match prototype"))
+				return false
+			}
+		}
+		// 后续带 prototype 的声明会细化早先的旧式声明；反过来不能丢掉
+		// 已知 prototype，因为旧式函数定义需要用它做兼容性校验。
+		if !ok || !prev.HasProto {
+			sym.T = ft
+		}
+	}
+	return true
 }
 
 func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
@@ -341,8 +403,137 @@ func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
 	pf.def.Labels = map[string]*LabeledStmt{}
 	collectLabels(body, pf.def.Labels)
 	resolveGotos(ctx.pendingGotos, pf.def.Labels, ctx.vmScopes, s)
+	s.validateInlineDefinitionBody(pf.def)
 	s.markStaticFunctionUsesInStmt(body)
 	_ = prog
+}
+
+func (s *Sema) validateInlineDefinitionBody(def *FuncDef) {
+	if def == nil || !def.IsInlineDefinition || !s.Options.PedanticErrors {
+		return
+	}
+	s.validateInlineDefinitionStmt(def.Body)
+}
+
+func (s *Sema) validateInlineDefinitionStmt(stmt Stmt) {
+	switch x := stmt.(type) {
+	case nil:
+		return
+	case *Block:
+		for _, it := range x.Items {
+			s.validateInlineDefinitionStmt(it)
+		}
+	case *IfStmt:
+		s.validateInlineDefinitionExpr(x.Cond)
+		s.validateInlineDefinitionStmt(x.Then)
+		s.validateInlineDefinitionStmt(x.Else)
+	case *WhileStmt:
+		s.validateInlineDefinitionExpr(x.Cond)
+		s.validateInlineDefinitionStmt(x.Body)
+	case *ForStmt:
+		s.validateInlineDefinitionStmt(x.Init)
+		s.validateInlineDefinitionExpr(x.Cond)
+		s.validateInlineDefinitionExpr(x.Post)
+		s.validateInlineDefinitionStmt(x.Body)
+	case *SwitchStmt:
+		s.validateInlineDefinitionExpr(x.Cond)
+		s.validateInlineDefinitionStmt(x.Body)
+	case *CaseStmt:
+		s.validateInlineDefinitionStmt(x.Body)
+	case *DefaultStmt:
+		s.validateInlineDefinitionStmt(x.Body)
+	case *LabeledStmt:
+		s.validateInlineDefinitionStmt(x.Body)
+	case *ExprStmt:
+		s.validateInlineDefinitionExpr(x.Expr)
+	case *ReturnStmt:
+		s.validateInlineDefinitionExpr(x.Value)
+	case *DeclStmt:
+		for _, d := range x.Decls {
+			s.validateInlineDefinitionDecl(d)
+		}
+	}
+}
+
+func (s *Sema) validateInlineDefinitionDecl(decl Decl) {
+	vd, ok := decl.(*VarDecl)
+	if !ok {
+		return
+	}
+	if vd.Storage == StorageStatic && typeIsModifiableObject(vd.T) {
+		s.report(InvalidTypeSpec(vd.Range.SourceStart, "modifiable static object declared in inline definition"))
+	}
+	s.validateInlineDefinitionExpr(vd.Init)
+}
+
+func (s *Sema) validateInlineDefinitionExpr(expr Expr) {
+	switch x := expr.(type) {
+	case nil:
+		return
+	case *VarRef:
+		if x.Sym != nil && x.Sym.Linkage == LinkageInternal {
+			s.report(InvalidTypeSpec(x.Range.SourceStart, "internal linkage identifier used in inline definition"))
+		}
+	case *BinOp:
+		s.validateInlineDefinitionExpr(x.L)
+		s.validateInlineDefinitionExpr(x.R)
+	case *UnOp:
+		s.validateInlineDefinitionExpr(x.X)
+	case *AssignExpr:
+		s.validateInlineDefinitionExpr(x.L)
+		s.validateInlineDefinitionExpr(x.R)
+	case *CompoundAssign:
+		s.validateInlineDefinitionExpr(x.L)
+		s.validateInlineDefinitionExpr(x.R)
+	case *CallExpr:
+		s.validateInlineDefinitionExpr(x.Callee)
+		for _, arg := range x.Args {
+			s.validateInlineDefinitionExpr(arg)
+		}
+	case *MemberExpr:
+		s.validateInlineDefinitionExpr(x.Base)
+	case *IndexExpr:
+		s.validateInlineDefinitionExpr(x.Base)
+		s.validateInlineDefinitionExpr(x.Index)
+	case *CondExpr:
+		s.validateInlineDefinitionExpr(x.Cond)
+		s.validateInlineDefinitionExpr(x.Then)
+		s.validateInlineDefinitionExpr(x.Else)
+	case *SizeofExpr:
+		if x.Operand.Expr != nil && typeHasVariableSize(x.Operand.Expr.GetType()) {
+			s.validateInlineDefinitionExpr(x.Operand.Expr)
+		}
+	case *CommaExpr:
+		s.validateInlineDefinitionExpr(x.L)
+		s.validateInlineDefinitionExpr(x.R)
+	case *CompoundLit:
+		s.validateInlineDefinitionInitList(x.Init)
+	case *InitList:
+		s.validateInlineDefinitionInitList(x)
+	case *ImplicitCast:
+		s.validateInlineDefinitionExpr(x.X)
+	case *ExplicitCast:
+		s.validateInlineDefinitionExpr(x.X)
+	}
+}
+
+func (s *Sema) validateInlineDefinitionInitList(il *InitList) {
+	if il == nil {
+		return
+	}
+	for _, elem := range il.Elems {
+		s.validateInlineDefinitionExpr(elem.Value)
+	}
+}
+
+func typeIsModifiableObject(t Type) bool {
+	if q, ok := t.(*QualType); ok && q.Const {
+		return false
+	}
+	if at, ok := unqual(t).(*ArrayType); ok {
+		return typeIsModifiableObject(at.Elem)
+	}
+	return true
 }
 
 func (s *Sema) validateOldStyleImplicitIntParams(node *entity.AstNode) {
@@ -357,6 +548,84 @@ func (s *Sema) validateOldStyleImplicitIntParams(node *entity.AstNode) {
 	for _, name := range names {
 		if !declared[name] {
 			s.report(InvalidTypeSpec(node.SourceStart, "old-style function parameter defaults to int"))
+		}
+	}
+}
+
+func (s *Sema) validateOldStyleDefinitionPrototype(pos entity.SourcePos, paramTypes []Type, sym *Symbol) {
+	if len(paramTypes) == 0 || sym == nil {
+		return
+	}
+	prev, ok := unqual(sym.T).(*FunctionType)
+	if !ok || !prev.HasProto {
+		return
+	}
+	if !compatiblePrototypeWithOldStyleParams(prev, paramTypes) {
+		s.report(InvalidTypeSpec(pos, "old-style definition parameter type does not match prototype"))
+	}
+}
+
+func compatiblePrototypeWithOldStyleParams(proto *FunctionType, params []Type) bool {
+	if proto == nil || !proto.HasProto || proto.Variadic || len(params) != len(proto.Params) {
+		return false
+	}
+	for i := range params {
+		if !compatibleTypeIgnoringTopLevelQualifiers(defaultPromotedType(params[i]), proto.Params[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Sema) oldStyleDefinitionParamTypes(node *entity.AstNode, names []string) []Type {
+	declared := map[string]Type{}
+	if node.ReducedBy(parser.FunctionDefinition, 2) {
+		s.collectOldStyleParameterTypes(node.Children[2], declared)
+	}
+	params := make([]Type, 0, len(names))
+	for _, name := range names {
+		if t := declared[name]; t != nil {
+			params = append(params, s.adjustParamType(t))
+			continue
+		}
+		params = append(params, s.Types.Builtin(Int))
+	}
+	return params
+}
+
+func (s *Sema) collectOldStyleParameterTypes(node *entity.AstNode, out map[string]Type) {
+	if node == nil {
+		return
+	}
+	switch {
+	case node.ReducedBy(parser.DeclarationList, 1):
+		s.collectOldStyleDeclarationTypes(node.Children[0], out)
+	case node.ReducedBy(parser.DeclarationList, 2):
+		s.collectOldStyleParameterTypes(node.Children[0], out)
+		s.collectOldStyleDeclarationTypes(node.Children[1], out)
+	}
+}
+
+func (s *Sema) collectOldStyleDeclarationTypes(node *entity.AstNode, out map[string]Type) {
+	if node == nil || !node.ReducedBy(parser.Declaration, 2) {
+		return
+	}
+	spec := s.parseSpec(node.Children[0])
+	s.collectOldStyleInitDeclaratorTypes(node.Children[1], spec.Type, out)
+}
+
+func (s *Sema) collectOldStyleInitDeclaratorTypes(node *entity.AstNode, base Type, out map[string]Type) {
+	switch {
+	case node.ReducedBy(parser.InitDeclaratorList, 1):
+		t, name := s.applyDeclarator(node.Children[0].Children[0], base)
+		if name != "" {
+			out[name] = t
+		}
+	case node.ReducedBy(parser.InitDeclaratorList, 2):
+		s.collectOldStyleInitDeclaratorTypes(node.Children[0], base, out)
+		t, name := s.applyDeclarator(node.Children[2].Children[0], base)
+		if name != "" {
+			out[name] = t
 		}
 	}
 }

@@ -40,6 +40,7 @@ func NewMacroTable(target TargetInfo) *MacroTable {
 	m.DefineObject("__SIZE_TYPE__", typeSpellingTokens(target.SizeType))
 	m.DefineObject("__PTRDIFF_TYPE__", typeSpellingTokens(target.PtrdiffType))
 	m.DefineObject("__WCHAR_TYPE__", typeSpellingTokens(target.WCharType))
+	m.DefineObject("__CHAR_BIT__", []PPToken{{Kind: PPNumber, Lexeme: "8"}})
 	return m
 }
 

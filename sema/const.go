@@ -54,7 +54,7 @@ func (e *Evaluator) EvalIntegerConstant(expr Expr) (ConstValue, bool) {
 		if !lok || !rok {
 			return ConstValue{}, false
 		}
-		v, ok := evalBinOpInt(x.Op, l.Int, r.Int)
+		v, ok := evalC99BinOpInt(x.Op, l.Int, r.Int, x.T)
 		if !ok {
 			return ConstValue{}, false
 		}
@@ -68,6 +68,9 @@ func (e *Evaluator) EvalIntegerConstant(expr Expr) (ConstValue, bool) {
 		case UnPlus:
 			return v, true
 		case UnMinus:
+			if !validC99UnaryMinus(x.T, v.Int) {
+				return ConstValue{}, false
+			}
 			return ConstValue{Kind: ConstInt, Int: -v.Int, Uint: uint64(-v.Int), T: x.T}, true
 		case UnBitNot:
 			return ConstValue{Kind: ConstInt, Int: ^v.Int, Uint: uint64(^v.Int), T: x.T}, true
@@ -173,10 +176,10 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		if !rok {
 			return ConstValue{}, false
 		}
-		if x.Op == OpShl && isSignedIntegerType(x.L.GetType()) && l.Int < 0 {
+		if x.Op == OpShl && !validC99LeftShift(x.L.GetType(), l.Int, r.Int) {
 			return ConstValue{}, false
 		}
-		v, ok := evalBinOpInt(x.Op, l.Int, r.Int)
+		v, ok := evalC99BinOpInt(x.Op, l.Int, r.Int, x.T)
 		if !ok {
 			return ConstValue{}, false
 		}
@@ -190,6 +193,9 @@ func (e *Evaluator) evalC99IntegerConstantExpression(expr Expr) (ConstValue, boo
 		case UnPlus:
 			return ConstValue{Kind: ConstInt, Int: v.Int, Uint: uint64(v.Int), T: x.T}, true
 		case UnMinus:
+			if !validC99UnaryMinus(x.T, v.Int) {
+				return ConstValue{}, false
+			}
 			return ConstValue{Kind: ConstInt, Int: -v.Int, Uint: uint64(-v.Int), T: x.T}, true
 		case UnBitNot:
 			return ConstValue{Kind: ConstInt, Int: ^v.Int, Uint: uint64(^v.Int), T: x.T}, true
@@ -237,12 +243,7 @@ func (e *Evaluator) isC99UnevaluatedIntegerConstantOperand(expr Expr) bool {
 	case *IntLit, *CharLit, *EnumRef:
 		return true
 	case *SizeofExpr:
-		if x.Operand.Type != nil {
-			return !typeHasVariableSize(x.Operand.Type) && sizeofType(x.Operand.Type) > 0
-		}
-		if x.Operand.Expr != nil {
-			return !typeHasVariableSize(x.Operand.Expr.GetType()) && sizeofType(x.Operand.Expr.GetType()) > 0
-		}
+		return true
 	case *BinOp:
 		return isInteger(x.T) &&
 			e.isC99UnevaluatedIntegerConstantOperand(x.L) &&
@@ -342,6 +343,9 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, al
 				}
 				return ConstValue{Kind: ConstFloat, Float: -cv.Float, T: x.T}, true
 			}
+			if !validC99UnaryMinus(x.T, cv.Int) {
+				return ConstValue{}, false
+			}
 			return ConstValue{Kind: ConstInt, Int: -cv.Int, Uint: uint64(-cv.Int), T: x.T}, true
 		case UnLogNot:
 			return ConstValue{Kind: ConstInt, Int: boolToInt(!constNonZero(cv)), Uint: uint64(boolToInt(!constNonZero(cv))), T: x.T}, true
@@ -418,10 +422,10 @@ func (e *Evaluator) evalC99ArithmeticBinOp(x *BinOp, allowUnaryFloat, allowFloat
 		}
 		return evalC99FloatArithmeticBinOp(x.Op, constToFloat(l), constToFloat(r), x.T)
 	}
-	if x.Op == OpShl && isSignedIntegerType(x.L.GetType()) && l.Int < 0 {
+	if x.Op == OpShl && !validC99LeftShift(x.L.GetType(), l.Int, r.Int) {
 		return ConstValue{}, false
 	}
-	v, ok := evalBinOpInt(x.Op, l.Int, r.Int)
+	v, ok := evalC99BinOpInt(x.Op, l.Int, r.Int, x.T)
 	if !ok {
 		return ConstValue{}, false
 	}
@@ -435,12 +439,7 @@ func (e *Evaluator) isC99UnevaluatedArithmeticConstantOperand(expr Expr) bool {
 	case *IntLit, *CharLit, *EnumRef:
 		return true
 	case *SizeofExpr:
-		if x.Operand.Type != nil {
-			return !typeHasVariableSize(x.Operand.Type) && sizeofType(x.Operand.Type) > 0
-		}
-		if x.Operand.Expr != nil {
-			return !typeHasVariableSize(x.Operand.Expr.GetType()) && sizeofType(x.Operand.Expr.GetType()) > 0
-		}
+		return true
 	case *BinOp:
 		return isArithmetic(x.T) &&
 			e.isC99UnevaluatedArithmeticConstantOperand(x.L) &&
@@ -544,6 +543,88 @@ func isSignedIntegerType(t Type) bool {
 		return false
 	}
 	return true
+}
+
+func validC99LeftShift(t Type, left, right int64) bool {
+	if right < 0 {
+		return false
+	}
+	if !isSignedIntegerType(t) {
+		return true
+	}
+	if left < 0 {
+		return false
+	}
+	bits := sizeofType(t) * 8
+	if bits <= 0 || right >= bits {
+		return false
+	}
+	if bits >= 63 {
+		return right < 63 && left <= (int64Max>>uint(right))
+	}
+	max := (int64(1) << uint(bits-1)) - 1
+	return left <= (max >> uint(right))
+}
+
+const int64Max = int64(^uint64(0) >> 1)
+const int64Min = -int64Max - 1
+
+func evalC99BinOpInt(op BinaryOp, l, r int64, t Type) (int64, bool) {
+	if !validC99SignedBinOp(op, l, r, t) {
+		return 0, false
+	}
+	v, ok := evalBinOpInt(op, l, r)
+	if !ok || !valueFitsSignedIntegerType(t, v) {
+		return 0, false
+	}
+	return v, true
+}
+
+func validC99UnaryMinus(t Type, v int64) bool {
+	min, _, ok := signedIntegerRange(t)
+	return !ok || v != min
+}
+
+func validC99SignedBinOp(op BinaryOp, l, r int64, t Type) bool {
+	min, max, ok := signedIntegerRange(t)
+	if !ok {
+		return true
+	}
+	switch op {
+	case OpAdd:
+		return (r <= 0 || l <= max-r) && (r >= 0 || l >= min-r)
+	case OpSub:
+		return (r >= 0 || l <= max+r) && (r <= 0 || l >= min+r)
+	case OpMul:
+		if l == 0 || r == 0 {
+			return true
+		}
+		v := l * r
+		return v/r == l && v >= min && v <= max
+	case OpDiv, OpMod:
+		return !(l == min && r == -1)
+	}
+	return true
+}
+
+func valueFitsSignedIntegerType(t Type, v int64) bool {
+	min, max, ok := signedIntegerRange(t)
+	return !ok || (v >= min && v <= max)
+}
+
+func signedIntegerRange(t Type) (int64, int64, bool) {
+	if !isSignedIntegerType(t) {
+		return 0, 0, false
+	}
+	bits := sizeofType(t) * 8
+	if bits >= 64 {
+		return int64Min, int64Max, true
+	}
+	if bits <= 0 {
+		return 0, 0, false
+	}
+	max := (int64(1) << uint(bits-1)) - 1
+	return -max - 1, max, true
 }
 
 func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
@@ -795,14 +876,8 @@ func typeHasDisallowedStaticArrayBound(t Type) bool {
 	case *PointerType:
 		return false
 	case *FunctionType:
-		if typeHasDisallowedStaticArrayBound(x.Ret) {
-			return true
-		}
-		for _, p := range x.Params {
-			if typeHasDisallowedStaticArrayBound(p) {
-				return true
-			}
-		}
+		// 函数原型参数里的 [*]/VLA 不改变函数类型对象自身的大小。
+		return typeHasDisallowedStaticArrayBound(x.Ret)
 	case *QualType:
 		return typeHasDisallowedStaticArrayBound(x.Base)
 	}
@@ -824,14 +899,8 @@ func typeHasDisallowedFileScopeVMType(t Type) bool {
 	case *PointerType:
 		return typeHasDisallowedFileScopeVMType(x.Pointee)
 	case *FunctionType:
-		if typeHasDisallowedFileScopeVMType(x.Ret) {
-			return true
-		}
-		for _, p := range x.Params {
-			if typeHasDisallowedFileScopeVMType(p) {
-				return true
-			}
-		}
+		// 文件作用域的函数原型允许参数含 VM 形式；只有返回类型会让函数类型本身非法。
+		return typeHasDisallowedFileScopeVMType(x.Ret)
 	case *QualType:
 		return typeHasDisallowedFileScopeVMType(x.Base)
 	}

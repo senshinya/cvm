@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"errors"
 	"shinya.click/cvm/entity"
 	"strconv"
 	"strings"
@@ -141,7 +142,7 @@ func constructFloatToken(rawStr string, l, sc, ec int) (entity.Token, error) {
 	}
 
 	raw, err := strconv.ParseFloat(s, 64)
-	if err != nil {
+	if err != nil && !errors.Is(err, strconv.ErrRange) {
 		return emptyToken, UnidentifiedToken(l, sc)
 	}
 	if float {

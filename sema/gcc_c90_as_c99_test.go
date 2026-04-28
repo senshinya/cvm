@@ -45,22 +45,12 @@ func TestGCCC90AsC99OnlyKnownSkipsRemain(t *testing.T) {
 		t.Fatalf("read GCC C90-as-C99 manifest: %v", err)
 	}
 	allowed := map[string]bool{
-		"requires preprocessor or system macro handling":              true,
-		"requires GNU C extension support":                            true,
-		"requires GCC target/runtime test harness":                    true,
-		"requires GCC warning/diagnostic behavior":                    true,
-		"requires C99 variably modified type edge-case support":       true,
-		"requires C99 function prototype compatibility diagnostics":   true,
-		"requires C99 inline definition diagnostics":                  true,
-		"requires C99 incomplete-type pointer arithmetic diagnostics": true,
-		"requires C99 void lvalue/address diagnostics":                true,
-		"requires C99 register-address diagnostics":                   true,
-		"requires C99 constant-expression edge-case support":          true,
-		"requires GCC builtin namespace diagnostics":                  true,
-		"requires floating constant range diagnostics":                true,
-		"requires Unicode/UCN lexer support":                          true,
-		"requires parser support for legacy C declarator edge cases":  true,
-		"requires frontend behavior outside current C99 gate":         true,
+		"requires GNU C extension support":           true,
+		"requires GCC target/runtime test harness":   true,
+		"requires GCC warning/diagnostic behavior":   true,
+		"requires GCC builtin support":               true,
+		"requires GCC pragma semantics":              true,
+		"requires GCC builtin namespace diagnostics": true,
 	}
 	for lineNo, line := range strings.Split(string(content), "\n") {
 		if strings.TrimSpace(line) == "" || lineNo == 0 {
@@ -75,6 +65,9 @@ func TestGCCC90AsC99OnlyKnownSkipsRemain(t *testing.T) {
 		}
 		if !allowed[fields[3]] {
 			t.Fatalf("unknown GCC C90-as-C99 skip at line %d: %s: %s", lineNo+1, fields[0], fields[3])
+		}
+		if fields[3] == "requires preprocessor or system macro handling" {
+			t.Fatalf("obsolete GCC C90-as-C99 preprocessor skip remains at line %d: %s", lineNo+1, fields[0])
 		}
 	}
 }

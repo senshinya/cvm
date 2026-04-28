@@ -297,6 +297,14 @@ func (s *Sema) validateArrayElement(elem Type, pos entity.SourcePos) {
 
 func (s *Sema) buildFunctionType(paramList *entity.AstNode, ret Type) *FunctionType {
 	s.validateFunctionReturn(ret, paramList.SourceStart)
+	prevScope := s.scope
+	prevAllowArrayStar := s.allowArrayStar
+	s.scope = NewScope(ScopeFuncProto, prevScope)
+	s.allowArrayStar = true
+	defer func() {
+		s.scope = prevScope
+		s.allowArrayStar = prevAllowArrayStar
+	}()
 	var params []Type
 	var variadic bool
 	switch {
@@ -389,9 +397,11 @@ func (s *Sema) parameterDeclarationType(node *entity.AstNode) Type {
 		return spec.Type
 	case node.ReducedBy(parser.ParameterDeclaration, 2):
 		s.validateDeclaratorArrayQualifiers(node.Children[1], true)
-		t, _ := s.applyDeclarator(node.Children[1], spec.Type)
+		t, name := s.applyDeclarator(node.Children[1], spec.Type)
 		s.validateRestrictType(t, node.SourceStart)
-		return s.adjustParamType(t)
+		t = s.adjustParamType(t)
+		s.insertPrototypeParameter(name, t, node.SourceStart)
+		return t
 	case node.ReducedBy(parser.ParameterDeclaration, 3):
 		s.validateAbstractDeclaratorArrayQualifiers(node.Children[1], true)
 		t := s.applyAbstractDeclarator(node.Children[1], spec.Type)
@@ -399,6 +409,13 @@ func (s *Sema) parameterDeclarationType(node *entity.AstNode) Type {
 		return s.adjustParamType(t)
 	}
 	return ErrorTypeSingleton
+}
+
+func (s *Sema) insertPrototypeParameter(name string, t Type, pos entity.SourcePos) {
+	if name == "" || s.scope == nil || s.scope.Kind != ScopeFuncProto {
+		return
+	}
+	s.scope.Insert(name, &Symbol{Name: name, Kind: SymParam, T: t, Storage: StorageAuto, Pos: pos})
 }
 
 func (s *Sema) adjustParamType(t Type) Type {
@@ -434,6 +451,14 @@ func (s *Sema) collectParamDecls(declarator *entity.AstNode, ft *FunctionType) [
 }
 
 func (s *Sema) paramDeclsFromList(node *entity.AstNode) []*VarDecl {
+	prevScope := s.scope
+	prevAllowArrayStar := s.allowArrayStar
+	s.scope = NewScope(ScopeFuncProto, prevScope)
+	s.allowArrayStar = true
+	defer func() {
+		s.scope = prevScope
+		s.allowArrayStar = prevAllowArrayStar
+	}()
 	var out []*VarDecl
 	var walk func(*entity.AstNode)
 	walk = func(p *entity.AstNode) {
@@ -463,9 +488,11 @@ func (s *Sema) paramDecl(node *entity.AstNode) *VarDecl {
 		s.validateAbstractDeclaratorArrayQualifiers(node.Children[1], true)
 		t = s.applyAbstractDeclarator(node.Children[1], spec.Type)
 	}
+	s.validateInlineSpecifier(spec, t, name, node.SourceStart, true)
 	s.validateRestrictType(t, node.SourceStart)
 	t = s.adjustParamType(t)
 	sym := &Symbol{Name: name, Kind: SymParam, T: t, Storage: StorageAuto, Pos: node.SourceStart}
+	s.insertPrototypeParameter(name, t, node.SourceStart)
 	return &VarDecl{Sym: sym, T: t, Storage: StorageAuto, IsParam: true, Range: node.SourceRange}
 }
 

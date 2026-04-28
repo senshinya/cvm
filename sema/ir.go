@@ -127,6 +127,7 @@ func (*ContinueStmt) isStmt()                   {}
 type GotoStmt struct {
 	Target *LabeledStmt
 	Name   string
+	Order  int
 	Range  entity.SourceRange
 }
 
@@ -136,6 +137,7 @@ func (*GotoStmt) isStmt()                   {}
 type LabeledStmt struct {
 	Name  string
 	Body  Stmt
+	Order int
 	Range entity.SourceRange
 }
 
@@ -445,13 +447,15 @@ func (d *FuncDecl) Pos() entity.SourceRange { return d.Range }
 func (*FuncDecl) isDecl()                   {}
 
 type FuncDef struct {
-	Sym    *Symbol
-	T      *FunctionType
-	Params []*VarDecl
-	Body   *Block
-	Locals []*VarDecl
-	Labels map[string]*LabeledStmt
-	Range  entity.SourceRange
+	Sym                *Symbol
+	T                  *FunctionType
+	Params             []*VarDecl
+	OldStyleParamTypes []Type
+	Body               *Block
+	Locals             []*VarDecl
+	Labels             map[string]*LabeledStmt
+	IsInlineDefinition bool
+	Range              entity.SourceRange
 }
 
 func (d *FuncDef) Pos() entity.SourceRange { return d.Range }

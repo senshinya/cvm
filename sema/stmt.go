@@ -12,11 +12,21 @@ type funcCtx struct {
 	switchStack  []*SwitchStmt
 	pendingGotos []*GotoStmt
 	vmScopes     []vmScopeBarrier
+	order        int
 }
 
 type vmScopeBarrier struct {
-	decl  entity.SourceRange
-	scope entity.SourceRange
+	decl      entity.SourceRange
+	scope     entity.SourceRange
+	declOrder int
+}
+
+func (ctx *funcCtx) nextOrder() int {
+	if ctx == nil {
+		return 0
+	}
+	ctx.order++
+	return ctx.order
 }
 
 func (s *Sema) typeStmt(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
@@ -141,6 +151,7 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 	s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 	t, name := s.applyDeclarator(node.Children[0], spec.Type)
 	pos := node.Children[0].SourceStart
+	s.validateInlineSpecifier(spec, t, name, pos, false)
 	s.validateRestrictType(t, pos)
 	if spec.IsTypedef {
 		markTypedefVMBounds(t)
@@ -154,6 +165,13 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 		return td
 	}
 	storage := spec.Storage
+	if ft, ok := unqual(t).(*FunctionType); ok {
+		if node.ReducedBy(parser.InitDeclarator, 2) {
+			s.report(InvalidTypeSpec(pos, "function declarator cannot have initializer"))
+			return nil
+		}
+		return s.declareBlockFunction(name, ft, storage, pos, srcRange, scope)
+	}
 	if storage == StorageNone {
 		storage = StorageAuto
 	}
@@ -174,6 +192,32 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 	}
 	recordVMScopeBarrier(ctx, scope, srcRange, t)
 	return vd
+}
+
+func (s *Sema) declareBlockFunction(name string, ft *FunctionType, storage StorageClass, pos entity.SourcePos, srcRange entity.SourceRange, scope *Scope) Decl {
+	s.validateFunctionVMReturn(ft, pos)
+	if storage != StorageNone && storage != StorageExtern {
+		s.report(InvalidTypeSpec(pos, "block-scope function declaration must be extern"))
+		return nil
+	}
+	fileSym := s.SymTab.File.LookupCurrent(name, NSOrdinary)
+	if fileSym == nil {
+		fileSym = &Symbol{Name: name, Kind: SymFunc, T: ft, Storage: StorageExtern, Linkage: LinkageExternal, Pos: pos}
+		s.SymTab.File.Insert(name, fileSym)
+	} else if fileSym.Kind != SymFunc {
+		s.report(RedefinitionSymbol(pos, fileSym.Pos, name))
+		return nil
+	} else if !s.mergeFunctionDeclaration(fileSym, ft, pos) {
+		return nil
+	}
+	if cur := scope.LookupCurrent(name, NSOrdinary); cur != nil && cur.Kind != SymFunc {
+		s.report(RedefinitionSymbol(pos, cur.Pos, name))
+		return nil
+	}
+	scope.Insert(name, fileSym)
+	fd := &FuncDecl{Sym: fileSym, T: ft, Storage: StorageExtern, Range: srcRange}
+	fileSym.Defs = append(fileSym.Defs, fd)
+	return fd
 }
 
 func (s *Sema) typeSelection(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
@@ -236,7 +280,8 @@ func collectCasesAndDefault(stmt Stmt, sw *SwitchStmt, s *Sema) {
 func (s *Sema) typeLabeled(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
 	switch {
 	case node.ReducedBy(parser.LabeledStatement, 1):
-		return &LabeledStmt{Name: node.Children[0].Terminal.Lexeme, Body: s.typeStmt(node.Children[2], scope, ctx), Range: node.SourceRange}
+		order := ctx.nextOrder()
+		return &LabeledStmt{Name: node.Children[0].Terminal.Lexeme, Body: s.typeStmt(node.Children[2], scope, ctx), Order: order, Range: node.SourceRange}
 	case node.ReducedBy(parser.LabeledStatement, 2):
 		expr := s.typeExpr(node.Children[1], scope)
 		cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr)
@@ -381,7 +426,7 @@ func forDeclarationDefinesTagOrEnum(node *entity.AstNode) bool {
 func (s *Sema) typeJump(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
 	switch {
 	case node.ReducedBy(parser.JumpStatement, 1):
-		g := &GotoStmt{Name: node.Children[1].Terminal.Lexeme, Range: node.SourceRange}
+		g := &GotoStmt{Name: node.Children[1].Terminal.Lexeme, Order: ctx.nextOrder(), Range: node.SourceRange}
 		ctx.pendingGotos = append(ctx.pendingGotos, g)
 		return g
 	case node.ReducedBy(parser.JumpStatement, 2):
@@ -449,8 +494,9 @@ func recordVMScopeBarrier(ctx *funcCtx, scope *Scope, declRange entity.SourceRan
 		return
 	}
 	ctx.vmScopes = append(ctx.vmScopes, vmScopeBarrier{
-		decl:  declRange,
-		scope: scope.Range,
+		decl:      declRange,
+		scope:     scope.Range,
+		declOrder: ctx.nextOrder(),
 	})
 }
 
@@ -459,7 +505,8 @@ func validateGotoVMJump(g *GotoStmt, target *LabeledStmt, barriers []vmScopeBarr
 		return
 	}
 	for _, barrier := range barriers {
-		if jumpEntersVMBarrier(g.Range.SourceStart, target.Range.SourceStart, barrier) {
+		if orderJumpsIntoVMBarrier(g.Order, target.Order, barrier.declOrder) ||
+			jumpEntersVMBarrier(g.Range.SourceStart, target.Range.SourceStart, barrier) {
 			s.report(InvalidTypeSpec(g.Range.SourceStart, "jump into scope of identifier with variably modified type"))
 			return
 		}
@@ -496,6 +543,10 @@ func jumpEntersVMBarrier(from, target entity.SourcePos, barrier vmScopeBarrier) 
 		return false
 	}
 	return !posInRange(from, barrier.scope) || compareSourcePos(from, barrier.decl.SourceEnd) <= 0
+}
+
+func orderJumpsIntoVMBarrier(from, target, decl int) bool {
+	return decl > 0 && from > 0 && target > 0 && from < decl && target > decl
 }
 
 func compareSourcePos(a, b entity.SourcePos) int {

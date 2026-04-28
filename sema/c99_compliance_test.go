@@ -115,6 +115,91 @@ func TestC99RejectsNestedArrayQualifierConversion(t *testing.T) {
 	`)
 }
 
+func TestC99PedanticRejectsInlineOnNonFunctionDeclarations(t *testing.T) {
+	mustRejectWithOptions(t, `
+		inline int a;
+		inline int (*b)(void);
+		typedef inline void c(void);
+		typedef inline int d;
+		void e(inline int f(void));
+		void g(inline int(void));
+	`, SemaOptions{PedanticErrors: true})
+}
+
+func TestC99PedanticRejectsInlineMain(t *testing.T) {
+	mustRejectWithOptions(t, `inline int main(void);`, SemaOptions{PedanticErrors: true})
+}
+
+func TestC99RejectsDuplicateFunctionDefinitions(t *testing.T) {
+	mustReject(t, `
+		int f(void) { return 1; }
+		int f(void) { return 2; }
+	`)
+}
+
+func TestC99PedanticRejectsPlainInlineReferenceToInternalLinkageObject(t *testing.T) {
+	mustRejectWithOptions(t, `
+		static int a;
+		inline int f(void) { return a; }
+	`, SemaOptions{PedanticErrors: true})
+}
+
+func TestC99PedanticRejectsPlainInlineStaticModifiableLocal(t *testing.T) {
+	mustRejectWithOptions(t, `
+		inline int f(void) {
+			static int a;
+			return a;
+		}
+	`, SemaOptions{PedanticErrors: true})
+}
+
+func TestC99PedanticAcceptsExternAndStaticInlineStaticObjects(t *testing.T) {
+	mustAnalyzeWithOptions(t, `
+		static int a;
+		extern inline int f(void) { static int b; return a + b; }
+		static inline int g(void) { static int c; return a + c; }
+	`, SemaOptions{PedanticErrors: true})
+}
+
+func TestC99RejectsOldStyleDefinitionMismatchingPreviousPrototype(t *testing.T) {
+	mustReject(t, `
+		void f(int);
+		void f(a) long a; {}
+	`)
+	mustReject(t, `
+		void g(void);
+		void g(a) int a; {}
+	`)
+}
+
+func TestC99RejectsOldStyleDefinitionMismatchingBlockScopeExternPrototype(t *testing.T) {
+	mustReject(t, `
+		void outer(void) { void g(void); }
+		void g(a) int a; {}
+	`)
+}
+
+func TestC99RejectsAddressOfRegisterObject(t *testing.T) {
+	mustReject(t, `
+		void g(int *);
+		void f(void) {
+			register int x;
+			g(&x);
+		}
+	`)
+}
+
+func TestC99RejectsAddressOfPlainVoidObject(t *testing.T) {
+	mustReject(t, `
+		extern void v;
+		void f(void) { &v; }
+	`)
+	mustAnalyze(t, `
+		extern const void cv;
+		void f(void) { &cv; }
+	`)
+}
+
 func TestC99FunctionPointerAcceptsVoidPointerNullAssignment(t *testing.T) {
 	mustAnalyze(t, `
 		void (*fp)(void);
@@ -569,10 +654,20 @@ func TestC99RejectsQualifiedEmptyTagRedeclarations(t *testing.T) {
 	mustReject(t, `union u3 { float v; }; void h(void) { const struct u3; }`)
 }
 
+func TestC99RejectsOverflowingIntegerConstantExpression(t *testing.T) {
+	mustReject(t, `enum { E = 2147483647 + 1 };`)
+	mustReject(t, `enum { E = -(-2147483647 - 1) };`)
+}
+
 func mustAnalyze(t *testing.T, src string) *Program {
 	t.Helper()
+	return mustAnalyzeWithOptions(t, src, SemaOptions{})
+}
+
+func mustAnalyzeWithOptions(t *testing.T, src string, opts SemaOptions) *Program {
+	t.Helper()
 	candidates := parseCandidates(t, src)
-	prog, err := Analyze(candidates)
+	prog, err := AnalyzeWithOptions(candidates, opts)
 	if err != nil {
 		t.Fatalf("Analyze rejected source: %v", err)
 	}
