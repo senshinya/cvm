@@ -19,7 +19,13 @@ func PreprocessSource(name, source string, opts Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	tokens, err := convertToParserTokens(ppTokens, sm)
+	pp := newPreprocessor(name, source, opts)
+	pp.sm = sm
+	processed, err := pp.process(ppTokens)
+	if err != nil {
+		return nil, err
+	}
+	tokens, err := convertToParserTokens(processed, sm)
 	if err != nil {
 		return nil, err
 	}
