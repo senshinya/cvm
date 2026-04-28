@@ -230,8 +230,9 @@ func (t Token) String() string {
 }
 
 type SourcePos struct {
-	Line   int
-	Column int
+	LocationID int
+	Line       int
+	Column     int
 }
 
 type SourceRange struct {
