@@ -1,0 +1,1 @@
+char *restrict foo;
