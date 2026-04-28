@@ -1,5 +1,7 @@
 package preprocessor
 
+import "os"
+
 type Standard int
 
 const (
@@ -43,6 +45,12 @@ func DefaultTarget() TargetInfo {
 
 type FileSystem interface {
 	ReadFile(path string) ([]byte, error)
+}
+
+type osFileSystem struct{}
+
+func (osFileSystem) ReadFile(path string) ([]byte, error) {
+	return os.ReadFile(path)
 }
 
 type Options struct {

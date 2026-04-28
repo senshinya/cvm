@@ -6,11 +6,13 @@ import (
 )
 
 type preprocessor struct {
-	opts   Options
-	sm     *SourceManager
-	macros *MacroTable
-	output []PPToken
-	conds  []conditionalGroup
+	opts         Options
+	sm           *SourceManager
+	macros       *MacroTable
+	output       []PPToken
+	conds        []conditionalGroup
+	includeDepth int
+	includeTrace []IncludeTraceEntry
 }
 
 type conditionalGroup struct {
@@ -58,6 +60,11 @@ func (pp *preprocessor) scanReplacement(value string) []PPToken {
 
 func (pp *preprocessor) process(tokens []PPToken) ([]PPToken, error) {
 	pp.output = nil
+	return pp.processLines(tokens)
+}
+
+func (pp *preprocessor) processLines(tokens []PPToken) ([]PPToken, error) {
+	condDepth := len(pp.conds)
 	for _, line := range splitLogicalLines(tokens) {
 		if len(line) == 0 {
 			continue
@@ -72,7 +79,7 @@ func (pp *preprocessor) process(tokens []PPToken) ([]PPToken, error) {
 			pp.output = append(pp.output, line...)
 		}
 	}
-	if len(pp.conds) != 0 {
+	if len(pp.conds) != condDepth {
 		return nil, ppError(tokens[len(tokens)-1].Location, "unterminated conditional inclusion")
 	}
 	return pp.output, nil
@@ -173,6 +180,10 @@ func (pp *preprocessor) handleDirective(line []PPToken) error {
 			return nil
 		}
 		return pp.handleDefine(body[1:])
+	case "include":
+		if pp.isActive() {
+			return pp.handleInclude(body[1:], name)
+		}
 	case "undef":
 		if pp.isActive() && len(body) >= 2 {
 			pp.macros.Undef(body[1].Lexeme)

@@ -1,10 +1,6 @@
 package preprocessor
 
-import (
-	"os"
-
-	"shinya.click/cvm/entity"
-)
+import "shinya.click/cvm/entity"
 
 type Result struct {
 	Tokens  []entity.Token
@@ -37,9 +33,15 @@ func PreprocessSource(name, source string, opts Options) (*Result, error) {
 }
 
 func PreprocessFile(path string, opts Options) (*Result, error) {
-	content, err := os.ReadFile(path)
+	opts = normalizeOptions(opts)
+	fs := opts.FileSystem
+	if fs == nil {
+		fs = osFileSystem{}
+	}
+	content, err := fs.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
+	opts.FileSystem = fs
 	return PreprocessSource(path, string(content), opts)
 }
