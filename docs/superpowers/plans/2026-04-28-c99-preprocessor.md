@@ -52,8 +52,11 @@ These requirements are mandatory and override any narrower task wording below:
 - Internal expansion must use `Preprocessor.Lex()` plus `TokenSource` contexts, not only one bulk `expand([]PPToken)` pass. The public API may still collect all final parser tokens into a slice.
 - Macro recursion suppression must preserve GCC/Clang "blue paint": a token seen while its macro is disabled is permanently marked `DisableExpand`.
 - Whitespace across macro boundaries must preserve enough information for stringification and function-like macro invocation. Use `LeadingSpace` plus either explicit `PPPadding` tokens or an equivalent padding representation.
-- `Options.Defines` and `Options.Undefines` must be applied during preprocessor initialization, matching command-line `-D`/`-U` ordering.
+- Command-line macro actions must preserve order. `-UA -DA=1` and `-DA=1 -UA` are different.
+- Function-like macro lookup must implement GCC/Clang-style `(` lookahead: skip padding, inspect the next real token, and push it back unchanged if no invocation occurs.
+- Included source should be recursively scanned and directive-processed, then injected into the ordinary token stream before the one final macro expansion pass. Do not expand included ordinary tokens twice.
 - Built-in standard headers must be protected against repeated include with include guards.
+- `__FILE__` and `__LINE__` are special builtin macros based on the expansion/use location and must be tested with `#line` and includes.
 - UCNs and non-ASCII identifiers are first-version out of scope unless a primary GCC C99 case requires them; scanner tests should document this boundary with an expected diagnostic.
 
 ## Task 1: Source Locations And Public API Skeleton
@@ -194,6 +197,19 @@ type TargetInfo struct {
 	Hosted      bool
 }
 
+type MacroActionKind int
+
+const (
+	MacroDefine MacroActionKind = iota
+	MacroUndef
+)
+
+type MacroAction struct {
+	Kind  MacroActionKind
+	Name  string
+	Value string
+}
+
 func DefaultTarget() TargetInfo {
 	return TargetInfo{
 		SizeType:    "unsigned long",
@@ -212,8 +228,7 @@ type FileSystem interface {
 
 type Options struct {
 	IncludePaths []string
-	Defines      []string
-	Undefines    []string
+	MacroActions []MacroAction
 	Std          Standard
 	Target       TargetInfo
 	FileSystem   FileSystem
@@ -230,7 +245,7 @@ func normalizeOptions(opts Options) Options {
 }
 ```
 
-`Options.Defines` entries use `NAME` or `NAME=replacement` spelling. `Options.Undefines` entries are macro names. Apply them in `newPreprocessor` after standard predefined macros are installed and before any source tokens are processed; if the same name appears in both lists, apply the slices in their listed order by first processing all `Defines`, then all `Undefines`.
+`Options.MacroActions` preserves command-line `-D`/`-U` ordering. `MacroDefine` uses `Name` plus optional `Value`; an empty `Value` means define the macro as `1`, matching common compiler behavior for `-DNAME`. Apply actions in listed order after standard predefined macros are installed and before any source tokens are processed.
 
 Create `preprocessor/source.go` with these exported types and methods:
 
@@ -251,6 +266,12 @@ type DisplayLocation struct {
 	Text   string
 }
 
+type IncludeTraceEntry struct {
+	File   string
+	Line   int
+	Column int
+}
+
 type ExpansionTrace struct {
 	Spelling   entity.SourcePos
 	Expansion  entity.SourcePos
@@ -261,6 +282,7 @@ type SourceManager struct {
 	files      []sourceFile
 	locations []sourceLocation
 	expansions []ExpansionTrace
+	includes  map[int][]IncludeTraceEntry
 }
 
 type sourceFile struct {
@@ -286,6 +308,7 @@ func NewSourceManager() *SourceManager {
 		files: []sourceFile{{name: "<invalid>", lineStart: []int{0}}},
 		locations: []sourceLocation{{}},
 		expansions: []ExpansionTrace{{}},
+		includes: map[int][]IncludeTraceEntry{},
 	}
 }
 
@@ -315,6 +338,18 @@ func (sm *SourceManager) AddExpansion(spelling, expansion, definition entity.Sou
 	sm.expansions = append(sm.expansions, ExpansionTrace{Spelling: spelling, Expansion: expansion, Definition: definition})
 	idx := len(sm.expansions) - 1
 	return entity.SourcePos{LocationID: -idx}
+}
+
+func (sm *SourceManager) SetIncludeTrace(fileID int, trace []IncludeTraceEntry) {
+	sm.includes[fileID] = append([]IncludeTraceEntry(nil), trace...)
+}
+
+func (sm *SourceManager) IncludeTrace(pos entity.SourcePos) []IncludeTraceEntry {
+	if pos.LocationID <= 0 || pos.LocationID >= len(sm.locations) {
+		return nil
+	}
+	loc := sm.locations[pos.LocationID]
+	return append([]IncludeTraceEntry(nil), sm.includes[loc.fileID]...)
 }
 
 func (sm *SourceManager) ExpansionTrace(pos entity.SourcePos) ExpansionTrace {
@@ -864,14 +899,22 @@ import "testing"
 
 func TestOptionsDefinesAndUndefines(t *testing.T) {
 	pp := newPreprocessor("main.c", "", Options{
-		Defines:   []string{"A=1", "B"},
-		Undefines: []string{"B"},
+		MacroActions: []MacroAction{
+			{Kind: MacroDefine, Name: "A", Value: "1"},
+			{Kind: MacroDefine, Name: "B"},
+			{Kind: MacroUndef, Name: "B"},
+			{Kind: MacroUndef, Name: "C"},
+			{Kind: MacroDefine, Name: "C", Value: "2"},
+		},
 	})
 	if _, ok := pp.macros.Lookup("A"); !ok {
 		t.Fatalf("A macro was not defined from options")
 	}
 	if _, ok := pp.macros.Lookup("B"); ok {
 		t.Fatalf("B macro should be undefined by options")
+	}
+	if _, ok := pp.macros.Lookup("C"); !ok {
+		t.Fatalf("C macro should be defined because actions preserve -U/-D order")
 	}
 }
 
@@ -1095,7 +1138,7 @@ Rules:
 - `#error ...` reports an error with the directive location.
 - `#define` installs object-like macros in this task. Function-like macro parsing may be stored but full expansion waits until Task 5.
 - `#undef` removes a macro.
-- `newPreprocessor` initializes `MacroTable` with `NewMacroTable(opts.Target)` and applies `Options.Defines` followed by `Options.Undefines`.
+- `newPreprocessor` initializes `MacroTable` with `NewMacroTable(opts.Target)` and applies `Options.MacroActions` in exact slice order.
 
 - [ ] **Step 5: Implement `#if` expression evaluator**
 
@@ -1122,6 +1165,15 @@ Implement recursive-descent precedence for:
 - object-like macros from `MacroTable` are expanded before expression parsing, except when they are operands of `defined`
 
 Use `int64` for signed values in this task. Add a file comment explaining that the implementation models C99 preprocessing integer evaluation and can be widened to explicit `uintmax_t` when GCC cases demand it.
+
+Add a file-level note and a focused skipped-looking test comment in `expr_test.go` documenting the next required widening:
+
+```go
+// C99 preprocessing expressions are specified in intmax_t/uintmax_t terms.
+// This first evaluator uses int64 for the initial C99 gate; Task 8 must either
+// confirm GCC cases do not require unsigned wraparound yet or add uintmax_t
+// evaluation before importing UINT64_MAX/SIZE_MAX #if cases.
+```
 
 - [ ] **Step 6: Route `PreprocessSource` through directive processing**
 
@@ -1304,6 +1356,36 @@ int x = F EMPTY ();
 	}
 }
 
+func TestFunctionLikeMacroLookaheadPushback(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#define F() 1
+int a = F;
+int b = F + 2;
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	if !hasIdentifier(res.Tokens, "F") {
+		t.Fatalf("non-invoked function-like macro name should remain: %#v", res.Tokens)
+	}
+	if !hasLexeme(res.Tokens, "2") {
+		t.Fatalf("lookahead must push back + and following tokens: %#v", res.Tokens)
+	}
+}
+
+func TestBuiltinFileAndLineMacros(t *testing.T) {
+	res, err := PreprocessSource("main.c", "#line 40 \"virt.c\"\nchar *f = __FILE__;\nint l = __LINE__;\n", Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	if !hasString(res.Tokens, "\"virt.c\"") {
+		t.Fatalf("__FILE__ did not use presumed file: %#v", res.Tokens)
+	}
+	if !hasLexeme(res.Tokens, "41") {
+		t.Fatalf("__LINE__ did not use presumed line: %#v", res.Tokens)
+	}
+}
+
 func nonEOFParserLexemes(tokens []entity.Token) []string {
 	var out []string
 	for _, tok := range tokens {
@@ -1318,7 +1400,7 @@ func nonEOFParserLexemes(tokens []entity.Token) []string {
 - [ ] **Step 2: Run macro tests and verify failure**
 
 ```bash
-GOCACHE=/tmp/cvm-go-cache go test ./preprocessor/ -run 'TestObject|TestStringify|TestBluePaint|TestMacroArgument|TestGCCClassic|TestEmptyMacro' -count=1 -v
+GOCACHE=/tmp/cvm-go-cache go test ./preprocessor/ -run 'TestObject|TestStringify|TestBluePaint|TestMacroArgument|TestGCCClassic|TestEmptyMacro|TestFunctionLikeMacroLookahead|TestBuiltinFileAndLine' -count=1 -v
 ```
 
 Expected: FAIL because macro definition and expansion are not implemented.
@@ -1369,6 +1451,7 @@ func NewTokenPreprocessor(pp *preprocessor, tokens []PPToken) *Preprocessor
 func (p *Preprocessor) Lex() (PPToken, error)
 func (p *Preprocessor) push(src TokenSource)
 func (p *Preprocessor) pop()
+func (p *Preprocessor) unread(tok PPToken)
 ```
 
 Create `preprocessor/expand.go` with:
@@ -1386,6 +1469,7 @@ Required rules:
 
 - If `tok.DisableExpand` is true, emit it unchanged.
 - If an identifier names a disabled macro, set `DisableExpand` and emit it unchanged.
+- For function-like macros, look ahead past padding tokens for `(`. If the next real token is not `(`, push that token and padding back in original order and emit the macro name unchanged.
 - Disable a macro while scanning its replacement list; re-enable only after that replacement context is exhausted.
 - The macro remains disabled while the last token of its replacement list is considered for expansion.
 - Prescan macro arguments unless the parameter is adjacent to `#` or `##` in the replacement list.
@@ -1393,6 +1477,7 @@ Required rules:
 - Implement `#` by producing a `PPString` token with escaped argument spelling.
 - Implement `##` by concatenating adjacent token lexemes, retokenizing the result with `scanFile`, and requiring exactly one non-newline token.
 - Implement `__VA_ARGS__` substitution for variadic macros.
+- Implement `__FILE__` and `__LINE__` as special builtin macros using the token's expansion/use location and `SourceManager.DisplayLocation`.
 - Implement `_Pragma("...")` recognition after macro expansion; first behavior is to consume it and emit no ordinary token.
 
 Add Chinese comments in the disable/reenable and `DisableExpand` blocks explaining the blue-paint rule.
@@ -1414,7 +1499,7 @@ Do not expand directive lines as ordinary output.
 - [ ] **Step 6: Run macro tests**
 
 ```bash
-GOCACHE=/tmp/cvm-go-cache go test ./preprocessor/ -run 'TestObject|TestStringify|TestBluePaint|TestMacroArgument|TestGCCClassic|TestEmptyMacro' -count=1 -v
+GOCACHE=/tmp/cvm-go-cache go test ./preprocessor/ -run 'TestObject|TestStringify|TestBluePaint|TestMacroArgument|TestGCCClassic|TestEmptyMacro|TestFunctionLikeMacroLookahead|TestBuiltinFileAndLine' -count=1 -v
 GOCACHE=/tmp/cvm-go-cache go test ./preprocessor/ -count=1
 GOCACHE=/tmp/cvm-go-cache go test ./... -count=1
 ```
@@ -1471,6 +1556,47 @@ func TestQuotedIncludeAndMacroExpandedInclude(t *testing.T) {
 	if !hasIdentifier(res.Tokens, "T") {
 		t.Fatalf("included typedef token missing: %#v", res.Tokens)
 	}
+}
+
+func TestIncludedSourceIsExpandedOnceWithOuterStream(t *testing.T) {
+	fs := mapFS{
+		"/work/main.c":  "#define X 1\n#include \"defs.h\"\n",
+		"/work/defs.h": "int y = X;\n",
+	}
+	res, err := PreprocessFile("/work/main.c", Options{FileSystem: fs})
+	if err != nil {
+		t.Fatalf("PreprocessFile failed: %v", err)
+	}
+	count := 0
+	for _, tok := range res.Tokens {
+		if tok.Lexeme == "1" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("included tokens should be expanded exactly once, saw %d ones: %#v", count, res.Tokens)
+	}
+}
+
+func TestIncludeStackTraceForHeaderToken(t *testing.T) {
+	fs := mapFS{
+		"/work/main.c":  "#include \"defs.h\"\n",
+		"/work/defs.h": "int from_header;\n",
+	}
+	res, err := PreprocessFile("/work/main.c", Options{FileSystem: fs})
+	if err != nil {
+		t.Fatalf("PreprocessFile failed: %v", err)
+	}
+	for _, tok := range res.Tokens {
+		if tok.Lexeme == "from_header" {
+			trace := res.Sources.IncludeTrace(tok.SourceStart)
+			if len(trace) != 1 || trace[0].File != "/work/main.c" {
+				t.Fatalf("include trace = %#v, want one entry for /work/main.c", trace)
+			}
+			return
+		}
+	}
+	t.Fatalf("from_header token missing: %#v", res.Tokens)
 }
 ```
 
@@ -1574,6 +1700,7 @@ Rules:
 - Missing include reports `include file not found: %s`.
 - Track include depth in `preprocessor` and reject depth over `maxIncludeDepth`.
 - `PreprocessFile` reads through `Options.FileSystem` when provided; only fall back to `os.ReadFile` through `osFileSystem` when it is nil.
+- `SourceManager` records include stack entries so `IncludeTrace(pos)` can report which include directive pulled in a token.
 
 - [ ] **Step 4: Implement built-in headers**
 
@@ -1611,7 +1738,8 @@ In `directive.go`, implement include handling:
 - For `<name>` tokens, call `resolveAngled`.
 - For `"name"` string tokens, unquote and call `resolveQuoted`.
 - For any other operand, macro-expand operand first, then require a header-name or string token.
-- Scan, process, and expand the included source using the same macro table and source manager.
+- Scan and directive-process the included source using the same macro table and source manager.
+- Inject included ordinary tokens into `pp.output` before the one final macro expansion pass. Do not call `pp.expand` on included ordinary tokens inside `#include` handling.
 - Built-in headers get virtual file names like `<stdint.h>`.
 - Included tokens are injected into `pp.output` at the directive location.
 
@@ -1784,6 +1912,37 @@ Start with cases involving:
 - simple object/function macros
 - conditional inclusion
 - `#line`
+
+- [ ] **Step 3a: Audit `#if` integer width before importing unsigned-boundary cases**
+
+Before importing any case whose active branch depends on `UINT64_MAX`, `UINTMAX_MAX`, `SIZE_MAX`, unsigned suffix arithmetic, or overflow/shift wraparound, add `uintmax_t`-style evaluation to `preprocessor/expr.go`.
+
+Minimum regression test to add if such a case appears:
+
+```go
+func TestIfExpressionUnsignedBoundary(t *testing.T) {
+	pp := newPreprocessor("main.c", "", Options{})
+	got, err := pp.evalIfExpression([]PPToken{
+		{Kind: PPNumber, Lexeme: "18446744073709551615UL"},
+		{Kind: PPPunctuator, Lexeme: ">"},
+		{Kind: PPNumber, Lexeme: "0"},
+	})
+	if err != nil {
+		t.Fatalf("evalIfExpression failed: %v", err)
+	}
+	if got == 0 {
+		t.Fatalf("unsigned boundary expression evaluated false, want true")
+	}
+}
+```
+
+Run:
+
+```bash
+GOCACHE=/tmp/cvm-go-cache go test ./preprocessor/ -run TestIfExpressionUnsignedBoundary -count=1 -v
+```
+
+Expected: PASS before importing unsigned-boundary GCC cases.
 
 - [ ] **Step 4: Reclassify supported reject cases**
 
@@ -1963,10 +2122,11 @@ If Step 5 is clean, do not create an empty commit.
   - Token-source context stack: Task 5.
   - Source manager and spelling/expansion/presumed locations: Task 1 and Task 3.
   - Token flags, padding, and preprocessing scanner: Task 2 and Task 5.
-  - Minimal macro table, command-line defines/undefines, directives, and conditionals: Task 4.
-  - Macro expansion, blue paint, stringification, token paste, variadics, `_Pragma`: Task 5.
-  - Macro-expanded include, include guards, and header shims: Task 6.
+  - Minimal macro table, ordered command-line macro actions, directives, and conditionals: Task 4.
+  - Macro expansion, function-like lookahead/pushback, blue paint, stringification, token paste, variadics, `__FILE__`, `__LINE__`, `_Pragma`: Task 5.
+  - Macro-expanded include, include-stack traces, single final expansion for included tokens, include guards, and header shims: Task 6.
   - TargetInfo: Task 6.
+  - `#if` unsigned-boundary audit before importing UINT/SIZE macro cases: Task 8.
   - UCN first-version boundary: Task 2.
   - Compiler and GCC gates: Task 7 through Task 10.
 - Placeholder scan completed: the plan contains no unfinished placeholder steps.
