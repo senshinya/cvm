@@ -22,3 +22,18 @@ func TestIfExpressionDefinedAndIdentifiers(t *testing.T) {
 		t.Fatalf("expression evaluated false, want true")
 	}
 }
+
+func TestIfExpressionUnsignedBoundary(t *testing.T) {
+	pp := newPreprocessor("main.c", "", Options{})
+	got, err := pp.evalIfExpression([]PPToken{
+		{Kind: PPNumber, Lexeme: "18446744073709551615UL"},
+		{Kind: PPPunctuator, Lexeme: ">"},
+		{Kind: PPNumber, Lexeme: "0"},
+	})
+	if err != nil {
+		t.Fatalf("evalIfExpression failed: %v", err)
+	}
+	if got == 0 {
+		t.Fatalf("unsigned boundary expression evaluated false, want true")
+	}
+}

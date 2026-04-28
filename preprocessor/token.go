@@ -71,7 +71,7 @@ func convertOneToken(tok PPToken) (entity.Token, error) {
 		}
 		return entity.Token{Typ: entity.IDENTIFIER, Lexeme: tok.Lexeme}, nil
 	case PPPunctuator:
-		if tok.Lexeme == "#" || tok.Lexeme == "##" {
+		if isHash(tok) || isPaste(tok) {
 			return entity.Token{}, ppError(tok.Location, "unexpected preprocessing token %q", tok.Lexeme)
 		}
 		if typ, ok := punctuatorTokens[tok.Lexeme]; ok {
@@ -137,11 +137,15 @@ var keywordTokens = map[string]entity.TokenType{
 
 var punctuatorTokens = map[string]entity.TokenType{
 	"[":   entity.LEFT_BRACKETS,
+	"<:":  entity.LEFT_BRACKETS,
 	"]":   entity.RIGHT_BRACKETS,
+	":>":  entity.RIGHT_BRACKETS,
 	"(":   entity.LEFT_PARENTHESES,
 	")":   entity.RIGHT_PARENTHESES,
 	"{":   entity.LEFT_BRACES,
+	"<%":  entity.LEFT_BRACES,
 	"}":   entity.RIGHT_BRACES,
+	"%>":  entity.RIGHT_BRACES,
 	".":   entity.PERIOD,
 	"->":  entity.ARROW,
 	"++":  entity.PLUS_PLUS,

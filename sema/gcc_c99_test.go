@@ -60,7 +60,10 @@ func TestGCCC99OnlyPreprocessorSkipsRemain(t *testing.T) {
 			continue
 		}
 		allowed := map[string]bool{
-			"requires preprocessor or system macro handling":           true,
+			"requires real system header":                              true,
+			"requires GCC pragma semantics":                            true,
+			"requires GNU preprocessor extension":                      true,
+			"requires target-specific runtime behavior":                true,
 			"requires frontend semantic follow-up after preprocessing": true,
 		}
 		if !allowed[reason] {

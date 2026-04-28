@@ -1,6 +1,7 @@
 package preprocessor
 
 import (
+	"math"
 	"strconv"
 	"strings"
 )
@@ -338,7 +339,18 @@ func parseIfNumber(s string) (int64, error) {
 	if clean == "" {
 		return 0, nil
 	}
-	return strconv.ParseInt(clean, 0, 64)
+	v, err := strconv.ParseInt(clean, 0, 64)
+	if err == nil {
+		return v, nil
+	}
+	u, uerr := strconv.ParseUint(clean, 0, 64)
+	if uerr != nil {
+		return 0, err
+	}
+	if u > math.MaxInt64 {
+		return math.MaxInt64, nil
+	}
+	return int64(u), nil
 }
 
 func truth(ok bool) int64 {

@@ -212,7 +212,7 @@ func (pp *preprocessor) substitute(m *Macro, args []macroArg, use entity.SourceP
 	var out []PPToken
 	for i := 0; i < len(m.Replacement); i++ {
 		tok := m.Replacement[i]
-		if tok.Kind == PPPunctuator && tok.Lexeme == "#" && i+1 < len(m.Replacement) {
+		if isHash(tok) && i+1 < len(m.Replacement) {
 			next := m.Replacement[i+1]
 			if idx, ok := paramIndex[next.Lexeme]; ok {
 				out = append(out, PPToken{Kind: PPString, Lexeme: stringifyArg(args[idx].raw), Location: use})
@@ -220,7 +220,7 @@ func (pp *preprocessor) substitute(m *Macro, args []macroArg, use entity.SourceP
 				continue
 			}
 		}
-		if tok.Kind == PPPunctuator && tok.Lexeme == "##" {
+		if isPaste(tok) {
 			if len(out) == 0 || i+1 >= len(m.Replacement) {
 				continue
 			}
@@ -255,10 +255,10 @@ func rawParamSet(replacement []PPToken, params map[string]int) map[string]bool {
 		if _, ok := params[tok.Lexeme]; !ok {
 			continue
 		}
-		if i > 0 && replacement[i-1].Kind == PPPunctuator && (replacement[i-1].Lexeme == "#" || replacement[i-1].Lexeme == "##") {
+		if i > 0 && replacement[i-1].Kind == PPPunctuator && (isHash(replacement[i-1]) || isPaste(replacement[i-1])) {
 			raw[tok.Lexeme] = true
 		}
-		if i+1 < len(replacement) && replacement[i+1].Kind == PPPunctuator && replacement[i+1].Lexeme == "##" {
+		if i+1 < len(replacement) && replacement[i+1].Kind == PPPunctuator && isPaste(replacement[i+1]) {
 			raw[tok.Lexeme] = true
 		}
 	}
@@ -354,6 +354,14 @@ func cloneTokens(tokens []PPToken) []PPToken {
 	out := make([]PPToken, len(tokens))
 	copy(out, tokens)
 	return out
+}
+
+func isHash(tok PPToken) bool {
+	return tok.Kind == PPPunctuator && (tok.Lexeme == "#" || tok.Lexeme == "%:")
+}
+
+func isPaste(tok PPToken) bool {
+	return tok.Kind == PPPunctuator && (tok.Lexeme == "##" || tok.Lexeme == "%:%:")
 }
 
 func withLocation(tokens []PPToken, loc entity.SourcePos) []PPToken {

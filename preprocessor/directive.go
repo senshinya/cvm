@@ -106,7 +106,7 @@ func isDirectiveLine(line []PPToken) bool {
 		if tok.Kind == PPPadding || tok.Kind == PPNewline {
 			continue
 		}
-		return tok.StartOfLine && tok.Kind == PPPunctuator && tok.Lexeme == "#"
+		return tok.StartOfLine && tok.Kind == PPPunctuator && isHash(tok)
 	}
 	return false
 }
@@ -212,7 +212,7 @@ func directiveBody(line []PPToken) []PPToken {
 			continue
 		}
 		if !sawSharp {
-			if tok.Kind == PPPunctuator && tok.Lexeme == "#" {
+			if tok.Kind == PPPunctuator && isHash(tok) {
 				sawSharp = true
 			}
 			continue

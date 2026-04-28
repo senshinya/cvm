@@ -53,6 +53,19 @@ func TestScannerThreeCharacterAssignmentPunctuators(t *testing.T) {
 	}
 }
 
+func TestScannerDigraphPunctuators(t *testing.T) {
+	sm := NewSourceManager()
+	fileID := sm.AddFile("main.c", "%:define X(a, b) a %:%: b\n<: %> <% :>\n")
+	toks, err := scanFile(sm, fileID, "%:define X(a, b) a %:%: b\n<: %> <% :>\n", Options{})
+	if err != nil {
+		t.Fatalf("scanFile failed: %v", err)
+	}
+	want := []string{"%:", "define", "X", "(", "a", ",", "b", ")", "a", "%:%:", "b", "\n", "<:", "%>", "<%", ":>", "\n"}
+	if got := ppLexemes(toks); !sameStrings(got, want) {
+		t.Fatalf("lexemes = %#v, want %#v", got, want)
+	}
+}
+
 func ppLexemes(toks []PPToken) []string {
 	out := make([]string, 0, len(toks))
 	for _, tok := range toks {

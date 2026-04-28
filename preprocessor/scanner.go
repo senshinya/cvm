@@ -177,6 +177,9 @@ func makePPToken(kind PPTokenKind, bytes []scanByte, sm *SourceManager, fileID i
 }
 
 func punctuatorLen(bytes []scanByte, i int) int {
+	if i+3 < len(bytes) && bytes[i].b == '%' && bytes[i+1].b == ':' && bytes[i+2].b == '%' && bytes[i+3].b == ':' {
+		return 4
+	}
 	if i+2 < len(bytes) && bytes[i].b == '.' && bytes[i+1].b == '.' && bytes[i+2].b == '.' {
 		return 3
 	}
@@ -190,7 +193,7 @@ func punctuatorLen(bytes []scanByte, i int) int {
 		two := string([]byte{bytes[i].b, bytes[i+1].b})
 		switch two {
 		case "##", "->", "++", "--", "<<", ">>", "<=", ">=", "==", "!=", "&&", "||",
-			"*=", "/=", "%=", "+=", "-=", "&=", "^=", "|=":
+			"*=", "/=", "%=", "+=", "-=", "&=", "^=", "|=", "<:", ":>", "<%", "%>", "%:":
 			return 2
 		}
 	}
