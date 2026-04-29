@@ -63,6 +63,8 @@ var keywords = map[string]entity.TokenType{
 	"long":           entity.LONG,
 	"register":       entity.REGISTER,
 	"restrict":       entity.RESTRICT,
+	"__restrict":     entity.RESTRICT,
+	"__restrict__":   entity.RESTRICT,
 	"return":         entity.RETURN,
 	"short":          entity.SHORT,
 	"signed":         entity.SIGNED,

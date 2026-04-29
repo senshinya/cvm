@@ -20,6 +20,7 @@ type Sema struct {
 type SemaOptions struct {
 	PedanticErrors bool
 	GNUExtensions  bool
+	Permissive     bool
 }
 
 type pendingFunc struct {
@@ -351,6 +352,10 @@ func (s *Sema) validateFunctionVMReturn(ft *FunctionType, pos entity.SourcePos) 
 func (s *Sema) mergeFunctionDeclaration(sym *Symbol, ft *FunctionType, pos entity.SourcePos) bool {
 	prev, ok := unqual(sym.T).(*FunctionType)
 	if ok && !compatibleFunctionType(prev, ft) {
+		if s.Options.GNUExtensions && compatibleFunctionTypeWithTransparentUnion(prev, ft) {
+			sym.T = ft
+			return true
+		}
 		s.report(RedefinitionSymbol(pos, sym.Pos, sym.Name))
 		return false
 	}
@@ -395,7 +400,7 @@ func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
 	prev := s.scope
 	s.scope = bodyScope
 	defer func() { s.scope = prev }()
-	ctx := &funcCtx{def: pf.def}
+	ctx := &funcCtx{def: pf.def, prog: prog}
 	body, _ := s.typeStmt(pf.bodyAst, bodyScope, ctx).(*Block)
 	if body == nil {
 		body = &Block{Range: pf.bodyAst.SourceRange, Scope: bodyScope}

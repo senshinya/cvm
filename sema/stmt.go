@@ -7,12 +7,15 @@ import (
 )
 
 type funcCtx struct {
-	def          *FuncDef
-	loopDepth    int
-	switchStack  []*SwitchStmt
-	pendingGotos []*GotoStmt
-	vmScopes     []vmScopeBarrier
-	order        int
+	def           *FuncDef
+	prog          *Program
+	loopDepth     int
+	switchStack   []*SwitchStmt
+	namedBreak    []string
+	namedContinue []string
+	pendingGotos  []*GotoStmt
+	vmScopes      []vmScopeBarrier
+	order         int
 }
 
 type vmScopeBarrier struct {
@@ -107,6 +110,10 @@ func (s *Sema) appendBlockItem(node *entity.AstNode, scope *Scope, ctx *funcCtx,
 		}
 	case node.ReducedBy(parser.BlockItem, 2):
 		*out = append(*out, s.typeStmt(node.Children[0], scope, ctx))
+	case node.ReducedBy(parser.BlockItem, 3):
+		if ctx != nil && ctx.prog != nil {
+			s.walkFunctionDefinition(node.Children[0], ctx.prog)
+		}
 	}
 }
 
@@ -147,6 +154,14 @@ func (s *Sema) walkBlockInitDeclList(node *entity.AstNode, spec SpecResult, scop
 	}
 }
 
+func (s *Sema) walkConditionDecl(node *entity.AstNode, scope *Scope, ctx *funcCtx, out *[]Decl) {
+	if !node.ReducedBy(parser.ConditionDeclaration, 1) {
+		return
+	}
+	spec := s.parseSpec(node.Children[0])
+	s.walkBlockInitDeclList(node.Children[1], spec, scope, ctx, out, node.SourceRange)
+}
+
 func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *Scope, ctx *funcCtx, srcRange entity.SourceRange) Decl {
 	s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 	t, name := s.applyDeclarator(node.Children[0], spec.Type)
@@ -181,11 +196,11 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 	sym := &Symbol{Name: name, Kind: SymVar, T: t, Storage: storage, Pos: pos}
 	vd := &VarDecl{Sym: sym, T: t, Storage: storage, Range: srcRange}
 	sym.Decl = vd
-	if node.ReducedBy(parser.InitDeclarator, 2) {
-		vd.Init = s.typeInitializer(node.Children[2], t)
-	}
 	if err := scope.InsertChecked(name, sym); err != nil {
 		s.report(err.(*common.CvmError))
+	}
+	if node.ReducedBy(parser.InitDeclarator, 2) {
+		vd.Init = s.typeInitializer(node.Children[2], t)
 	}
 	if ctx != nil && ctx.def != nil {
 		ctx.def.Locals = append(ctx.def.Locals, vd)
@@ -237,6 +252,50 @@ func (s *Sema) typeSelection(node *entity.AstNode, scope *Scope, ctx *funcCtx) S
 		collectCasesAndDefault(sw.Body, sw, s)
 		validateSwitchVMJumps(sw, ctx.vmScopes, s)
 		return sw
+	case node.ReducedBy(parser.SelectionStatement, 4),
+		node.ReducedBy(parser.SelectionStatement, 5),
+		node.ReducedBy(parser.SelectionStatement, 6),
+		node.ReducedBy(parser.SelectionStatement, 7):
+		declScope := NewScope(ScopeBlock, scope)
+		declScope.Range = node.SourceRange
+		prev := s.scope
+		s.scope = declScope
+		defer func() { s.scope = prev }()
+		var decls []Decl
+		s.walkConditionDecl(node.Children[2], declScope, ctx, &decls)
+		stmtIdx := 4
+		cond := Expr(&IntLit{Value: 1, T: s.Types.Builtin(Int), Range: node.Children[2].SourceRange})
+		if node.ReducedBy(parser.SelectionStatement, 5) || node.ReducedBy(parser.SelectionStatement, 7) {
+			cond = s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[4], declScope)))
+			stmtIdx = 6
+		}
+		stmt := &IfStmt{Cond: cond, Then: s.typeStmt(node.Children[stmtIdx], declScope, ctx), Range: node.SourceRange}
+		if node.ReducedBy(parser.SelectionStatement, 6) || node.ReducedBy(parser.SelectionStatement, 7) {
+			stmt.Else = s.typeStmt(node.Children[len(node.Children)-1], declScope, ctx)
+		}
+		return stmt
+	case node.ReducedBy(parser.SelectionStatement, 8),
+		node.ReducedBy(parser.SelectionStatement, 9):
+		declScope := NewScope(ScopeBlock, scope)
+		declScope.Range = node.SourceRange
+		prev := s.scope
+		s.scope = declScope
+		defer func() { s.scope = prev }()
+		var decls []Decl
+		s.walkConditionDecl(node.Children[2], declScope, ctx, &decls)
+		stmtIdx := 4
+		cond := Expr(&IntLit{Value: 0, T: s.Types.Builtin(Int), Range: node.Children[2].SourceRange})
+		if node.ReducedBy(parser.SelectionStatement, 9) {
+			cond = s.castIntegerPromotion(s.castLValueToRValue(s.typeExpr(node.Children[4], declScope)))
+			stmtIdx = 6
+		}
+		sw := &SwitchStmt{Cond: cond, Order: ctx.nextOrder(), Range: node.SourceRange}
+		ctx.switchStack = append(ctx.switchStack, sw)
+		sw.Body = s.typeStmt(node.Children[stmtIdx], declScope, ctx)
+		ctx.switchStack = ctx.switchStack[:len(ctx.switchStack)-1]
+		collectCasesAndDefault(sw.Body, sw, s)
+		validateSwitchVMJumps(sw, ctx.vmScopes, s)
+		return sw
 	}
 	return &EmptyStmt{Range: node.SourceRange}
 }
@@ -281,7 +340,17 @@ func (s *Sema) typeLabeled(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stm
 	switch {
 	case node.ReducedBy(parser.LabeledStatement, 1):
 		order := ctx.nextOrder()
-		return &LabeledStmt{Name: node.Children[0].Terminal.Lexeme, Body: s.typeStmt(node.Children[2], scope, ctx), Order: order, Range: node.SourceRange}
+		name := node.Children[0].Terminal.Lexeme
+		target := namedLabelTargetKind(node.Children[2])
+		if target == namedLabelLoop || target == namedLabelSwitch {
+			ctx.namedBreak = append(ctx.namedBreak, name)
+			defer func() { ctx.namedBreak = ctx.namedBreak[:len(ctx.namedBreak)-1] }()
+		}
+		if target == namedLabelLoop {
+			ctx.namedContinue = append(ctx.namedContinue, name)
+			defer func() { ctx.namedContinue = ctx.namedContinue[:len(ctx.namedContinue)-1] }()
+		}
+		return &LabeledStmt{Name: name, Body: s.typeStmt(node.Children[2], scope, ctx), Order: order, Range: node.SourceRange}
 	case node.ReducedBy(parser.LabeledStatement, 2):
 		expr := s.typeExpr(node.Children[1], scope)
 		cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr)
@@ -293,6 +362,38 @@ func (s *Sema) typeLabeled(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stm
 		return &DefaultStmt{Body: s.typeStmt(node.Children[2], scope, ctx), Order: ctx.nextOrder(), Range: node.SourceRange}
 	}
 	return &EmptyStmt{Range: node.SourceRange}
+}
+
+type namedLabelTarget int
+
+const (
+	namedLabelNone namedLabelTarget = iota
+	namedLabelLoop
+	namedLabelSwitch
+)
+
+func namedLabelTargetKind(node *entity.AstNode) namedLabelTarget {
+	for node != nil && node.Typ == parser.Statement {
+		node = node.Children[0]
+	}
+	if node == nil {
+		return namedLabelNone
+	}
+	if node.ReducedBy(parser.LabeledStatement, 1) {
+		return namedLabelTargetKind(node.Children[2])
+	}
+	if node.ReducedBy(parser.LabeledStatement, 2) || node.ReducedBy(parser.LabeledStatement, 3) {
+		return namedLabelSwitch
+	}
+	if node.Typ == parser.IterationStatement {
+		return namedLabelLoop
+	}
+	if node.ReducedBy(parser.SelectionStatement, 3) ||
+		node.ReducedBy(parser.SelectionStatement, 8) ||
+		node.ReducedBy(parser.SelectionStatement, 9) {
+		return namedLabelSwitch
+	}
+	return namedLabelNone
 }
 
 func (s *Sema) typeIteration(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
@@ -447,8 +548,33 @@ func (s *Sema) typeJump(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
 			expr = s.assignmentConversion(expr, ctx.def.T.Ret, node.SourceStart)
 		}
 		return &ReturnStmt{Value: expr, Range: node.SourceRange}
+	case node.ReducedBy(parser.JumpStatement, 6):
+		if ctx.loopDepth == 0 {
+			s.report(InvalidTypeSpec(node.SourceStart, "continue outside loop"))
+		}
+		if !namedTargetActive(ctx.namedContinue, node.Children[1].Terminal.Lexeme) {
+			s.report(InvalidTypeSpec(node.SourceStart, "continue target is not an enclosing named loop"))
+		}
+		return &ContinueStmt{Range: node.SourceRange}
+	case node.ReducedBy(parser.JumpStatement, 7):
+		if ctx.loopDepth == 0 && len(ctx.switchStack) == 0 {
+			s.report(InvalidTypeSpec(node.SourceStart, "break outside loop or switch"))
+		}
+		if !namedTargetActive(ctx.namedBreak, node.Children[1].Terminal.Lexeme) {
+			s.report(InvalidTypeSpec(node.SourceStart, "break target is not an enclosing named loop or switch"))
+		}
+		return &BreakStmt{Range: node.SourceRange}
 	}
 	return &EmptyStmt{Range: node.SourceRange}
+}
+
+func namedTargetActive(stack []string, name string) bool {
+	for i := len(stack) - 1; i >= 0; i-- {
+		if stack[i] == name {
+			return true
+		}
+	}
+	return false
 }
 
 func collectLabels(stmt Stmt, out map[string]*LabeledStmt) {

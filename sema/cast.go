@@ -222,12 +222,18 @@ func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) E
 				}
 				return s.castPointerConversion(e, target)
 			}
+			if s.Options.Permissive {
+				return e
+			}
 			s.report(IncompatibleAssignment(pos, from.String(), target.String()))
 			return e
 		}
 	}
 	if bt, ok := unqual(target).(*BuiltinType); ok && bt.Kind == Bool {
 		return s.castBoolConversion(e)
+	}
+	if s.Options.GNUExtensions && unionCastAllowed(from, target) {
+		return &ImplicitCast{From: from, To: target, X: e, Kind: CastUnion, Range: e.Pos()}
 	}
 	s.report(IncompatibleAssignment(pos, from.String(), target.String()))
 	return e

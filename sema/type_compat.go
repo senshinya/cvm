@@ -158,6 +158,37 @@ func compatiblePrototypeParams(a, b *FunctionType) bool {
 	return true
 }
 
+func compatibleFunctionTypeWithTransparentUnion(a, b *FunctionType) bool {
+	if !compatibleTypeIgnoringTopLevelQualifiers(a.Ret, b.Ret) {
+		return false
+	}
+	if !a.HasProto || !b.HasProto || a.Variadic != b.Variadic || len(a.Params) != len(b.Params) {
+		return false
+	}
+	for i := range a.Params {
+		if compatibleTypeIgnoringTopLevelQualifiers(a.Params[i], b.Params[i]) {
+			continue
+		}
+		if !transparentUnionParamCompatible(a.Params[i], b.Params[i]) && !transparentUnionParamCompatible(b.Params[i], a.Params[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func transparentUnionParamCompatible(unionParam, other Type) bool {
+	u, ok := unqual(unionParam).(*UnionType)
+	if !ok || !u.Complete {
+		return false
+	}
+	for _, field := range u.Fields {
+		if compatibleTypeIgnoringTopLevelQualifiers(field.T, other) {
+			return true
+		}
+	}
+	return false
+}
+
 func compatiblePrototypeWithNoProto(proto, noProto *FunctionType) bool {
 	if proto.Variadic || len(noProto.Params) != 0 {
 		return false

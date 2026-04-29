@@ -49,6 +49,15 @@ func (pp *preprocessor) expand(tokens []PPToken) ([]PPToken, error) {
 			}
 			continue
 		}
+		if tok.Kind == PPPunctuator && tok.Lexeme == "[" {
+			consumed, err := p.discardEmptyC23Attribute()
+			if err != nil {
+				return nil, err
+			}
+			if consumed {
+				continue
+			}
+		}
 		out = append(out, tok)
 	}
 	return out, nil
@@ -130,6 +139,36 @@ func (p *Preprocessor) discardAsmLabel() error {
 		}
 	}
 	return nil
+}
+
+func (p *Preprocessor) discardEmptyC23Attribute() (bool, error) {
+	var consumed []PPToken
+	meaningful := 0
+	for meaningful < 3 {
+		tok, err := p.readRaw()
+		if err != nil {
+			p.unreadTokens(consumed)
+			return false, err
+		}
+		consumed = append(consumed, tok)
+		if tok.Kind == PPPadding || tok.Kind == PPNewline {
+			continue
+		}
+		meaningful++
+		switch meaningful {
+		case 1:
+			if tok.Kind != PPPunctuator || tok.Lexeme != "[" {
+				p.unreadTokens(consumed)
+				return false, nil
+			}
+		case 2, 3:
+			if tok.Kind != PPPunctuator || tok.Lexeme != "]" {
+				p.unreadTokens(consumed)
+				return false, nil
+			}
+		}
+	}
+	return true, nil
 }
 
 func (p *Preprocessor) expandIdentifier(tok PPToken) (PPToken, bool, error) {
