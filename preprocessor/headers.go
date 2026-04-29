@@ -8,6 +8,8 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return "#ifndef __CVM_STDBOOL_H\n#define __CVM_STDBOOL_H\n#define bool _Bool\n#define true 1\n#define false 0\n#define __bool_true_false_are_defined 1\n#endif\n", true
 	case "stddef.h":
 		return fmt.Sprintf("#ifndef __CVM_STDDEF_H\n#define __CVM_STDDEF_H\n#define __SIZE_TYPE__ %s\n#define __PTRDIFF_TYPE__ %s\ntypedef __SIZE_TYPE__ size_t;\ntypedef __PTRDIFF_TYPE__ ptrdiff_t;\n#define NULL ((void *)0)\n#endif\n", target.SizeType, target.PtrdiffType), true
+	case "stdarg.h":
+		return "#ifndef __CVM_STDARG_H\n#define __CVM_STDARG_H\ntypedef __builtin_va_list va_list;\n#define va_start(ap, last) __builtin_va_start(ap, last)\n#define va_end(ap) __builtin_va_end(ap)\n#define va_arg(ap, type) ((type)0)\n#endif\n", true
 	case "stdint.h":
 		return stdintHeader(target), true
 	case "inttypes.h":

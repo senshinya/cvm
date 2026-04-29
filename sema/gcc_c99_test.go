@@ -91,7 +91,12 @@ func runGCCC99Suite(t *testing.T, root string, wantAccept bool) {
 				t.Fatal(err)
 			}
 			originalSrc := string(srcBytes)
-			opts := SemaOptions{PedanticErrors: gccPedanticErrors(originalSrc), GNUExtensions: gccGNUExtensions(originalSrc), Permissive: gccPermissive(originalSrc)}
+			opts := SemaOptions{
+				PedanticErrors:                  gccPedanticErrors(originalSrc),
+				GNUExtensions:                   gccGNUExtensions(originalSrc),
+				Permissive:                      gccPermissive(originalSrc),
+				WErrorDeclarationAfterStatement: gccWErrorDeclarationAfterStatement(originalSrc),
+			}
 			src := stripGCCDirectives(originalSrc)
 			if wantAccept {
 				if gccDoPreprocessOnly(originalSrc) {
@@ -173,6 +178,15 @@ func gccGNUExtensions(src string) bool {
 func gccPermissive(src string) bool {
 	for _, line := range strings.Split(src, "\n") {
 		if strings.Contains(line, "dg-options") && strings.Contains(line, "-fpermissive") {
+			return true
+		}
+	}
+	return false
+}
+
+func gccWErrorDeclarationAfterStatement(src string) bool {
+	for _, line := range strings.Split(src, "\n") {
+		if strings.Contains(line, "dg-options") && strings.Contains(line, "-Werror=declaration-after-statement") {
 			return true
 		}
 	}

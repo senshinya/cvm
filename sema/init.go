@@ -148,7 +148,7 @@ func (s *Sema) collectInitList(node *entity.AstNode, target Type, out *InitList)
 }
 
 func (s *Sema) makeInitElem(ds []Designator, value *entity.AstNode, elemType Type) InitElem {
-	if at, ok := unqual(elemType).(*ArrayType); ok && at.SizeKind == ArrayUnsized {
+	if at, ok := unqual(elemType).(*ArrayType); ok && at.SizeKind == ArrayUnsized && s.Options.PedanticErrors {
 		s.report(InvalidTypeSpec(value.SourceStart, "cannot initialize flexible array member"))
 	}
 	return InitElem{Designators: ds, Value: s.typeInitializer(value, elemType)}
@@ -210,6 +210,21 @@ func (s *Sema) parseDesignator(node *entity.AstNode) Designator {
 		return Designator{Kind: DesigArrayIndex, Index: cv.Int}
 	case node.ReducedBy(parser.Designator, 2):
 		return Designator{Kind: DesigFieldName, Field: &Field{Name: node.Children[1].Terminal.Lexeme}}
+	case node.ReducedBy(parser.Designator, 3):
+		if !s.Options.GNUExtensions && s.Options.PedanticErrors {
+			s.report(InvalidTypeSpec(node.SourceStart, "range designator requires GNU C mode"))
+		}
+		expr := s.typeExpr(node.Children[1], s.scope)
+		cv, ok := NewEvaluator(s).EvalC99IntegerConstantExpression(expr)
+		if !ok {
+			s.report(InvalidTypeSpec(node.SourceStart, "array designator expression must be integer constant expression"))
+			return Designator{Kind: DesigArrayIndex}
+		}
+		if cv.Int < 0 {
+			s.report(InvalidTypeSpec(node.SourceStart, "array designator index must be nonnegative"))
+			return Designator{Kind: DesigArrayIndex}
+		}
+		return Designator{Kind: DesigArrayIndex, Index: cv.Int}
 	}
 	return Designator{}
 }

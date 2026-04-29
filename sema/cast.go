@@ -235,6 +235,9 @@ func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) E
 	if s.Options.GNUExtensions && unionCastAllowed(from, target) {
 		return &ImplicitCast{From: from, To: target, X: e, Kind: CastUnion, Range: e.Pos()}
 	}
+	if s.Options.Permissive {
+		return e
+	}
 	s.report(IncompatibleAssignment(pos, from.String(), target.String()))
 	return e
 }

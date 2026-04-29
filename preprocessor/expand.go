@@ -91,7 +91,7 @@ func (p *Preprocessor) discardAttribute() error {
 		if tok.Kind == PPEOF {
 			return ppError(open.Location, "unterminated attribute")
 		}
-		if tok.Kind == PPIdentifier && (tok.Lexeme == "alias" || tok.Lexeme == "mode" || tok.Lexeme == "__mode__") && unsupported == nil {
+		if tok.Kind == PPIdentifier && (tok.Lexeme == "alias" || tok.Lexeme == "mode" || tok.Lexeme == "__mode__" || tok.Lexeme == "designated_init") && unsupported == nil {
 			unsupported = &tok
 		}
 		if tok.Kind != PPPunctuator {

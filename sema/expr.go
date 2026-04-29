@@ -73,7 +73,61 @@ func (s *Sema) makeIntLit(node *entity.AstNode) Expr {
 	if s.Options.PedanticErrors && signedIntegerLiteralOverflow(lexeme) {
 		s.report(InvalidTypeSpec(node.SourceStart, "integer constant is too large for signed type"))
 	}
+	s.validateIntegerLiteralPrefix(lexeme, node.SourceStart)
 	return &IntLit{Value: parseIntLiteral(lexeme), T: integerLiteralType(s, lexeme), Range: node.SourceRange}
+}
+
+func (s *Sema) validateIntegerLiteralPrefix(lexeme string, pos entity.SourcePos) {
+	lower := strings.ToLower(lexeme)
+	switch {
+	case strings.HasPrefix(lower, "0b"):
+		if s.Options.PedanticErrors && !s.Options.GNUExtensions {
+			s.report(InvalidTypeSpec(pos, "binary integer constants require GNU C mode"))
+			return
+		}
+		if !validBasedIntegerLiteral(lower[2:], 2) {
+			s.report(InvalidTypeSpec(pos, "invalid binary integer constant"))
+		}
+	case strings.HasPrefix(lower, "0o"):
+		if s.Options.PedanticErrors && !s.Options.GNUExtensions {
+			s.report(InvalidTypeSpec(pos, "0o integer constants require GNU C mode"))
+			return
+		}
+		if !validBasedIntegerLiteral(lower[2:], 8) {
+			s.report(InvalidTypeSpec(pos, "invalid octal integer constant"))
+		}
+	}
+}
+
+func validBasedIntegerLiteral(body string, base int) bool {
+	digits := 0
+	for len(body) > 0 {
+		c := body[0]
+		if c == 'u' || c == 'l' {
+			break
+		}
+		switch base {
+		case 2:
+			if c != '0' && c != '1' {
+				return false
+			}
+		case 8:
+			if c < '0' || c > '7' {
+				return false
+			}
+		}
+		digits++
+		body = body[1:]
+	}
+	if digits == 0 {
+		return false
+	}
+	for _, c := range body {
+		if c != 'u' && c != 'l' {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Sema) makeFloatLit(node *entity.AstNode) Expr {
@@ -120,14 +174,14 @@ func (s *Sema) makeStringLit(node *entity.AstNode) Expr {
 
 func parseIntLiteral(lexeme string) int64 {
 	body := integerLiteralBody(lexeme)
-	v, _ := strconv.ParseUint(body, 0, 64)
+	v, _ := parseBasedIntLiteral(body)
 	return int64(v)
 }
 
 func integerLiteralType(s *Sema, lexeme string) Type {
 	suffix := integerSuffix(lexeme)
 	body := integerLiteralBody(lexeme)
-	value, err := strconv.ParseUint(body, 0, 64)
+	value, err := parseBasedIntLiteral(body)
 	if err != nil {
 		return s.Types.Builtin(ULongLong)
 	}
@@ -137,6 +191,17 @@ func integerLiteralType(s *Sema, lexeme string) Type {
 		}
 	}
 	return s.Types.Builtin(ULongLong)
+}
+
+func parseBasedIntLiteral(body string) (uint64, error) {
+	lower := strings.ToLower(body)
+	if strings.HasPrefix(lower, "0b") {
+		return strconv.ParseUint(lower[2:], 2, 64)
+	}
+	if strings.HasPrefix(lower, "0o") {
+		return strconv.ParseUint(lower[2:], 8, 64)
+	}
+	return strconv.ParseUint(body, 0, 64)
 }
 
 func integerLiteralBody(lexeme string) string {
@@ -298,6 +363,12 @@ func (s *Sema) lookupVar(node *entity.AstNode, scope *Scope) Expr {
 	if sym == nil {
 		if builtin := s.lookupBuiltin(name, node.SourceStart); builtin != nil {
 			return &VarRef{Sym: builtin, T: builtin.T, Range: node.SourceRange}
+		}
+		if s.Options.Permissive {
+			ft := s.Types.Function(s.Types.Builtin(Int), nil, false, false)
+			sym = &Symbol{Name: name, Kind: SymFunc, T: ft, Storage: StorageExtern, Linkage: LinkageExternal, Pos: node.SourceStart}
+			s.SymTab.File.Insert(name, sym)
+			return &VarRef{Sym: sym, T: sym.T, Range: node.SourceRange}
 		}
 		s.report(UndeclaredIdentifier(node.SourceStart, name))
 		return s.errorExpr(node.SourceRange)

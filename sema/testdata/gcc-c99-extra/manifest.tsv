@@ -5,36 +5,36 @@ gcc/testsuite/gcc.dg/20031222-1.c	imported-reject	reject	explicit C99/GNU99 fron
 gcc/testsuite/gcc.dg/20050922-1.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/20050922-2.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/20090922-1.c	imported-accept	accept	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/Wc90-c99-compat-2.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wc90-c99-compat-2.c	imported-accept	accept	frontend warning-only compile case supported by cvm
 gcc/testsuite/gcc.dg/Wc90-c99-compat-9.c	imported-accept	accept	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/Wc99-c11-compat-2.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/Wc99-c11-compat-4.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wc99-c11-compat-2.c	skipped	unknown	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wc99-c11-compat-4.c	skipped	unknown	requires GCC warning/diagnostic behavior
 gcc/testsuite/gcc.dg/Wc99-c11-compat-7.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/Wconversion-complex-c99.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/Wconversion-complex-gnu.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/Wconversion-complex-c99.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/Wconversion-complex-gnu.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/Wconversion-integer-no-sign.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/Wconversion-integer.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
-gcc/testsuite/gcc.dg/Wconversion-real-integer.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/Wconversion-real-integer.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/Wdeclaration-after-statement-2.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/Wdeclaration-after-statement-3.c	skipped	reject	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wdeclaration-after-statement-3.c	imported-reject	reject	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/Wdesignated-init.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/Wimplicit-function-declaration-c99-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/Wimplicit-function-declaration-c99-pedantic.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/Wimplicit-function-declaration-c99.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wimplicit-function-declaration-c99.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/Wjump-misses-init-2.c	imported-accept	accept	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99-asm.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99-ext.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99-no.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99-asm.c	skipped	unknown	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99-ext.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99-no.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/Woverlength-strings-pedantic-c99.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/Wparentheses-10.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/Wparentheses-3.c	imported-accept	accept	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/Wsign-conversion.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/Wstrict-aliasing-bogus-vla-1.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wsign-conversion.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/Wstrict-aliasing-bogus-vla-1.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/Wtraditional-conversion-2.c	imported-accept	accept	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/Wunsuffixed-float-constants-1.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/Wunused-var-4.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/Wvla-2.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/Wvla-4.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wunsuffixed-float-constants-1.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/Wunused-var-4.c	skipped	unknown	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/Wvla-2.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/Wvla-4.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/anon-struct-5.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/array-const-1.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/array-const-2.c	imported-accept	accept	GNU frontend extension supported by cvm
@@ -51,8 +51,8 @@ gcc/testsuite/gcc.dg/attr-ms_struct-2.c	skipped	accept	requires GCC target/runti
 gcc/testsuite/gcc.dg/attr-ms_struct-packed1.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/binary-constants-1.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/binary-constants-2.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
-gcc/testsuite/gcc.dg/binary-constants-3.c	skipped	reject	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/binary-constants-4.c	skipped	reject	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/binary-constants-3.c	imported-reject	reject	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/binary-constants-4.c	imported-reject	reject	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/builtin-stringop-chk-1.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/builtin-strncat-chk-1.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/builtins-57.c	skipped	accept	requires GCC target/runtime test harness
@@ -105,14 +105,14 @@ gcc/testsuite/gcc.dg/imag-1.c	skipped	accept	requires GCC target/runtime test ha
 gcc/testsuite/gcc.dg/init-bad-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/init-bad-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/init-bad-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/init-bad-7.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/init-bad-7.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/init-desig-obs-2.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/init-desig-obs-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/init-empty-1.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/init-empty-2.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/init-empty-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/init-string-1.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
-gcc/testsuite/gcc.dg/init-string-2.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/init-string-2.c	imported-reject	reject	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/inline-10.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/inline-11.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/inline-12.c	imported-reject	reject	explicit C99/GNU99 frontend case after inline diagnostics
@@ -136,8 +136,8 @@ gcc/testsuite/gcc.dg/inline-7.c	imported-accept	accept	explicit C99/GNU99 fronte
 gcc/testsuite/gcc.dg/inline-8.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/inline-9.c	imported-reject	reject	explicit C99/GNU99 frontend case after inline diagnostics
 gcc/testsuite/gcc.dg/lvalue-7.c	imported-reject	reject	explicit C99/GNU99 frontend case after void-address diagnostics
-gcc/testsuite/gcc.dg/missing-field-init-1.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/missing-field-init-2.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/missing-field-init-1.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/missing-field-init-2.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/multiple-overflow-warn-1.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/multiple-overflow-warn-2.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/nested-calls-1.c	skipped	accept	requires GCC target/runtime test harness
@@ -150,18 +150,18 @@ gcc/testsuite/gcc.dg/nodfp-1.c	skipped	reject	requires GCC target/runtime test h
 gcc/testsuite/gcc.dg/nofixed-point-1.c	skipped	reject	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/nofixed-point-2.c	skipped	reject	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/noreturn-5.c	imported-accept	accept	GNU frontend extension supported by cvm
-gcc/testsuite/gcc.dg/octal-constants-1.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/octal-constants-1.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/octal-constants-2.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
-gcc/testsuite/gcc.dg/octal-constants-3.c	skipped	reject	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/octal-constants-4.c	skipped	reject	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/overflow-2.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/octal-constants-3.c	imported-reject	reject	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/octal-constants-4.c	imported-reject	reject	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/overflow-2.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/overflow-warn-1.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/overflow-warn-2.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/overflow-warn-3.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/overflow-warn-4.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/overflow-warn-6.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
-gcc/testsuite/gcc.dg/overflow-warn-9.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/pedwarn-init.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/overflow-warn-9.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/pedwarn-init.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/pr102897.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/pr104198.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr104380.c	skipped	accept	requires GCC target/runtime test harness
@@ -181,7 +181,7 @@ gcc/testsuite/gcc.dg/pr15698-5.c	imported-reject	reject	explicit C99/GNU99 front
 gcc/testsuite/gcc.dg/pr15698-6.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr15698-7.c	imported-reject	reject	explicit C99/GNU99 frontend case after prototype compatibility diagnostics
 gcc/testsuite/gcc.dg/pr15698-8.c	imported-reject	reject	explicit C99/GNU99 frontend case after block-scope prototype diagnostics
-gcc/testsuite/gcc.dg/pr15749-1.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr15749-1.c	skipped	unknown	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr18241-1.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr18241-2.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr18502-1.c	imported-accept	accept	GNU frontend extension supported by cvm
@@ -189,10 +189,10 @@ gcc/testsuite/gcc.dg/pr19967.c	imported-accept	accept	explicit C99/GNU99 fronten
 gcc/testsuite/gcc.dg/pr19984.c	imported-accept	accept	GCC builtin frontend model
 gcc/testsuite/gcc.dg/pr22356-1.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr25801.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/pr26865.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/pr26865.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/pr27639.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/pr30360.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/pr30457.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/pr30457.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/pr33666.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/pr35334.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr35440.c	imported-reject	reject	explicit C99/GNU99 frontend case
@@ -204,11 +204,11 @@ gcc/testsuite/gcc.dg/pr38934.c	imported-accept	accept	explicit C99/GNU99 fronten
 gcc/testsuite/gcc.dg/pr51034.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr51821.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr52132.c	imported-accept	accept	explicit C99/GNU99 frontend case after preprocessing
-gcc/testsuite/gcc.dg/pr52592.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/pr52592.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/pr53196-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr53196-2.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr54121.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/pr54363.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/pr54363.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/pr56078.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pr57773.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/pr59011.c	imported-accept	accept	GNU frontend extension supported by cvm
@@ -231,12 +231,12 @@ gcc/testsuite/gcc.dg/pr88701.c	imported-accept	accept	explicit C99/GNU99 fronten
 gcc/testsuite/gcc.dg/pr91734.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pragma-align-2.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/pragma-pack-3.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/qual-return-1.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/qual-return-1.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/qual-return-2.c	imported-accept	accept	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/qual-return-3.c	skipped	reject	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/qual-return-3.c	imported-reject	reject	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/qual-return-4.c	imported-accept	accept	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/qual-return-7.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/signbit-sa.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/signbit-sa.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/simd-6.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/smod-1.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/spellcheck-fields-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
@@ -248,8 +248,8 @@ gcc/testsuite/gcc.dg/stmt-expr-2.c	imported-accept	accept	GNU frontend extension
 gcc/testsuite/gcc.dg/stmt-expr-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/stmt-expr-4.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/struct-parse-1.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/system-binary-constants-1.c	skipped	accept	requires GCC warning/diagnostic behavior
-gcc/testsuite/gcc.dg/system-octal-constants-1.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/system-binary-constants-1.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/system-octal-constants-1.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/transparent-union-1.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/transparent-union-1a.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/transparent-union-2.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
@@ -291,11 +291,11 @@ gcc/testsuite/gcc.dg/ucnid-9-utf8.c	skipped	accept	requires GCC target/runtime t
 gcc/testsuite/gcc.dg/ucnid-9.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/union-cast-3.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/union-duplicate-field.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/utf-array-short-wchar.c	skipped	reject	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/utf-array.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf-array-short-wchar.c	imported-reject	reject	frontend diagnostic/compile-only case supported by cvm
+gcc/testsuite/gcc.dg/utf-array.c	imported-reject	reject	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/utf-badconcat.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/utf-badconcat2.c	imported-reject	reject	explicit C99/GNU99 frontend case
-gcc/testsuite/gcc.dg/utf-cvt.c	skipped	accept	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf-cvt.c	skipped	unknown	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/utf-inc-init.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/utf-type.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/utf16-1.c	skipped	accept	requires GCC target/runtime test harness
@@ -307,7 +307,7 @@ gcc/testsuite/gcc.dg/utf32-2.c	skipped	accept	requires GCC target/runtime test h
 gcc/testsuite/gcc.dg/utf32-3.c	skipped	accept	requires GCC target/runtime test harness
 gcc/testsuite/gcc.dg/utf32-4.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/utf8-1.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/utf8-2.c	skipped	reject	requires GCC target/runtime test harness
+gcc/testsuite/gcc.dg/utf8-2.c	imported-reject	reject	frontend diagnostic/compile-only case supported by cvm
 gcc/testsuite/gcc.dg/visibility-8.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/vla-11.c	imported-reject	reject	explicit C99/GNU99 frontend case after preprocessing
 gcc/testsuite/gcc.dg/vla-12.c	skipped	accept	requires GCC target/runtime test harness
@@ -331,4 +331,4 @@ gcc/testsuite/gcc.dg/vla-7.c	imported-accept	accept	explicit C99/GNU99 frontend 
 gcc/testsuite/gcc.dg/vla-8.c	imported-reject	reject	explicit C99/GNU99 frontend case
 gcc/testsuite/gcc.dg/vla-9.c	imported-accept	accept	GNU frontend extension supported by cvm
 gcc/testsuite/gcc.dg/vla-tert-1.c	skipped	accept	requires GCC target/runtime test harness
-gcc/testsuite/gcc.dg/wtr-int-type-1.c	skipped	accept	requires GCC warning/diagnostic behavior
+gcc/testsuite/gcc.dg/wtr-int-type-1.c	imported-accept	accept	frontend diagnostic/compile-only case supported by cvm

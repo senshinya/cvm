@@ -117,6 +117,12 @@ func (pp *preprocessor) handleDirective(line []PPToken) error {
 		return nil
 	}
 	name := body[0]
+	if name.Kind == PPNumber {
+		if pp.isActive() {
+			return pp.handleLine(body, line)
+		}
+		return nil
+	}
 	if name.Kind != PPIdentifier {
 		return ppError(name.Location, "invalid preprocessing directive")
 	}

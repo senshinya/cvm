@@ -16,6 +16,7 @@ type funcCtx struct {
 	pendingGotos  []*GotoStmt
 	vmScopes      []vmScopeBarrier
 	order         int
+	seenStatement bool
 }
 
 type vmScopeBarrier struct {
@@ -103,12 +104,18 @@ func (s *Sema) collectBlockItems(node *entity.AstNode, scope *Scope, ctx *funcCt
 func (s *Sema) appendBlockItem(node *entity.AstNode, scope *Scope, ctx *funcCtx, out *[]Stmt) {
 	switch {
 	case node.ReducedBy(parser.BlockItem, 1):
+		if ctx != nil && ctx.seenStatement && s.Options.WErrorDeclarationAfterStatement {
+			s.report(InvalidTypeSpec(node.SourceStart, "declaration after statement"))
+		}
 		var decls []Decl
 		s.walkBlockDecl(node.Children[0], scope, ctx, &decls)
 		if len(decls) > 0 {
 			*out = append(*out, &DeclStmt{Decls: decls, Range: node.SourceRange})
 		}
 	case node.ReducedBy(parser.BlockItem, 2):
+		if ctx != nil {
+			ctx.seenStatement = true
+		}
 		*out = append(*out, s.typeStmt(node.Children[0], scope, ctx))
 	case node.ReducedBy(parser.BlockItem, 3):
 		if ctx != nil && ctx.prog != nil {

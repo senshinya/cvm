@@ -38,13 +38,17 @@ type TokenSource interface {
 func convertToParserTokens(tokens []PPToken, sm *SourceManager) ([]entity.Token, error) {
 	var out []entity.Token
 	var last entity.SourcePos
-	for _, tok := range tokens {
+	for i := 0; i < len(tokens); i++ {
+		tok := tokens[i]
 		if tok.Kind == PPNewline || tok.Kind == PPPadding {
 			continue
 		}
 		last = tok.Location
 		if tok.Kind == PPEOF {
 			break
+		}
+		if tok.Kind == PPString {
+			tok, i = concatenateStringTokens(tokens, i)
 		}
 		converted, err := convertOneToken(tok)
 		if err != nil {
@@ -63,6 +67,32 @@ func convertToParserTokens(tokens []PPToken, sm *SourceManager) ([]entity.Token,
 		},
 	})
 	return out, nil
+}
+
+func concatenateStringTokens(tokens []PPToken, start int) (PPToken, int) {
+	combined := tokens[start]
+	end := start
+	for i := start + 1; i < len(tokens); i++ {
+		tok := tokens[i]
+		if tok.Kind == PPPadding || tok.Kind == PPNewline {
+			continue
+		}
+		if tok.Kind != PPString {
+			break
+		}
+		combined.Lexeme = mergeStringLexemes(combined.Lexeme, tok.Lexeme)
+		end = i
+	}
+	return combined, end
+}
+
+func mergeStringLexemes(a, b string) string {
+	ap := strings.TrimPrefix(a, "L")
+	bp := strings.TrimPrefix(b, "L")
+	if len(ap) < 2 || len(bp) < 2 {
+		return a + b
+	}
+	return `"` + ap[1:len(ap)-1] + bp[1:len(bp)-1] + `"`
 }
 
 func convertOneToken(tok PPToken) (entity.Token, error) {

@@ -8,6 +8,7 @@ const (
 	ConstInt ConstKind = iota
 	ConstUint
 	ConstFloat
+	ConstComplex
 	ConstAddress
 	ConstString
 )
@@ -740,6 +741,16 @@ func (e *Evaluator) evalBuiltinConstantCall(call *CallExpr) (ConstValue, bool) {
 		return ConstValue{Kind: ConstFloat, Float: math.NaN(), T: call.T}, true
 	case "__builtin_huge_val", "__builtin_huge_valf", "__builtin_huge_vall":
 		return ConstValue{Kind: ConstFloat, Float: math.Inf(1), T: call.T}, true
+	case "__builtin_complex":
+		if len(call.Args) != 2 {
+			return ConstValue{}, false
+		}
+		for _, arg := range call.Args {
+			if _, ok := e.EvalConstant(arg); !ok {
+				return ConstValue{}, false
+			}
+		}
+		return ConstValue{Kind: ConstComplex, T: call.T}, true
 	}
 	return ConstValue{}, false
 }

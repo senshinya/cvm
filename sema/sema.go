@@ -18,9 +18,10 @@ type Sema struct {
 }
 
 type SemaOptions struct {
-	PedanticErrors bool
-	GNUExtensions  bool
-	Permissive     bool
+	PedanticErrors                  bool
+	GNUExtensions                   bool
+	Permissive                      bool
+	WErrorDeclarationAfterStatement bool
 }
 
 type pendingFunc struct {
@@ -85,6 +86,8 @@ func (s *Sema) walkExternalDeclaration(node *entity.AstNode, prog *Program) {
 		s.walkFunctionDefinition(node.Children[0], prog)
 	case node.ReducedBy(parser.ExternalDeclaration, 2):
 		s.walkDeclaration(node.Children[0], prog)
+	case node.ReducedBy(parser.ExternalDeclaration, 3):
+		return
 	}
 }
 
@@ -112,6 +115,12 @@ func (s *Sema) walkFunctionDefinition(node *entity.AstNode, prog *Program) {
 		s.report(RedefinitionSymbol(node.Children[1].SourceStart, prev.Pos().SourceStart, name))
 		return
 	} else {
+		if prev, ok := unqual(sym.T).(*FunctionType); ok {
+			if !sameQualifiers(prev.Ret, ft.Ret) {
+				s.report(RedefinitionSymbol(node.Children[1].SourceStart, sym.Pos, name))
+				return
+			}
+		}
 		s.validateOldStyleDefinitionPrototype(node.SourceStart, oldStyleParamTypes, sym)
 	}
 	def := &FuncDef{
@@ -356,6 +365,10 @@ func (s *Sema) mergeFunctionDeclaration(sym *Symbol, ft *FunctionType, pos entit
 			sym.T = ft
 			return true
 		}
+		s.report(RedefinitionSymbol(pos, sym.Pos, sym.Name))
+		return false
+	}
+	if ok && !sameQualifiers(prev.Ret, ft.Ret) {
 		s.report(RedefinitionSymbol(pos, sym.Pos, sym.Name))
 		return false
 	}
