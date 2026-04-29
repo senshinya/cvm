@@ -57,6 +57,7 @@ const (
 	NullPointerConstant
 	BoolConversion
 	DefaultArgPromotion
+	CastUnion
 )
 
 type DesignatorKind int

@@ -155,10 +155,25 @@ func (s *Sema) makeInitElem(ds []Designator, value *entity.AstNode, elemType Typ
 }
 
 func (s *Sema) parseDesignators(node *entity.AstNode, target Type) []Designator {
+	if node.ReducedBy(parser.Designation, 2) {
+		s.reportObsoleteDesignator(node.SourceStart)
+		out := []Designator{{Kind: DesigFieldName, Field: &Field{Name: node.Children[0].Terminal.Lexeme}}}
+		s.resolveDesignators(target, out, node.SourceStart)
+		return out
+	}
+	if node.ReducedBy(parser.Designation, 3) {
+		s.reportObsoleteDesignator(node.SourceStart)
+	}
 	var out []Designator
 	s.collectDesignatorList(node.Children[0], &out)
-	resolveDesignators(target, out)
+	s.resolveDesignators(target, out, node.SourceStart)
 	return out
+}
+
+func (s *Sema) reportObsoleteDesignator(pos entity.SourcePos) {
+	if !s.Options.GNUExtensions || s.Options.PedanticErrors {
+		s.report(InvalidTypeSpec(pos, "obsolete GNU designated initializer requires GNU C mode"))
+	}
 }
 
 func (s *Sema) collectDesignatorList(node *entity.AstNode, out *[]Designator) {
@@ -224,7 +239,7 @@ func elementType(t Type, ds []Designator) Type {
 				cur = at.Elem
 			}
 		case DesigFieldName:
-			if d.Field != nil {
+			if d.Field != nil && d.Field.T != nil {
 				cur = d.Field.T
 			}
 		}
@@ -232,7 +247,7 @@ func elementType(t Type, ds []Designator) Type {
 	return cur
 }
 
-func resolveDesignators(t Type, ds []Designator) {
+func (s *Sema) resolveDesignators(t Type, ds []Designator, pos entity.SourcePos) {
 	cur := t
 	for i := range ds {
 		switch ds[i].Kind {
@@ -242,11 +257,13 @@ func resolveDesignators(t Type, ds []Designator) {
 			}
 		case DesigFieldName:
 			name := ds[i].Field.Name
+			found := false
 			if st, ok := unqual(cur).(*StructType); ok {
 				for _, f := range st.Fields {
 					if f.Name == name {
 						ds[i].Field = f
 						cur = f.T
+						found = true
 						break
 					}
 				}
@@ -255,9 +272,13 @@ func resolveDesignators(t Type, ds []Designator) {
 					if f.Name == name {
 						ds[i].Field = f
 						cur = f.T
+						found = true
 						break
 					}
 				}
+			}
+			if !found {
+				s.report(InvalidTypeSpec(pos, "field designator does not match any field"))
 			}
 		}
 	}
