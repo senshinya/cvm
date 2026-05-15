@@ -519,6 +519,26 @@ int main(void) {
 	}
 }
 
+func TestGenerateUnionAggregateDesignatorFirstLeaf(t *testing.T) {
+	mod := compileModule(t, `
+union U { double d; struct { int a; int b; } s; };
+union U u = { .s = 1 };
+int main(void) {
+	union U lu = { .s = 1 };
+	return u.s.a + lu.s.a;
+}`)
+	if err := bytecode.ValidateModule(mod); err != nil {
+		t.Fatalf("validate bytecode: %v\n%s", err, bytecode.PrintModule(mod))
+	}
+	bytes := mod.Globals[0].Init.Bytes
+	if got := binary.LittleEndian.Uint32(bytes[:4]); got != 1 {
+		t.Fatalf("union struct first field = %d, want 1; bytes=%x", got, bytes)
+	}
+	if got := binary.LittleEndian.Uint32(bytes[4:8]); got != 0 {
+		t.Fatalf("union struct second field = %d, want 0; bytes=%x", got, bytes)
+	}
+}
+
 func TestGenerateUnbracedNestedAggregateLocalInitializer(t *testing.T) {
 	mod := compileModule(t, `
 struct S { int a[2]; int b; };

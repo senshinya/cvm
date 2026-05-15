@@ -190,11 +190,11 @@ func (g *generator) writeStaticDesignatedElem(buf []byte, relocs *[]bytecode.Rel
 		}
 		return span.end, nil
 	}
-	leaves := g.initLeaves(typ, nil)
-	if span.start < 0 || span.start >= len(leaves) {
+	leaves := g.initLeaves(span.typ, span.designators)
+	if len(leaves) == 0 {
 		return 0, fmt.Errorf("designator does not name an initializable subobject")
 	}
-	leaf := leaves[span.start]
+	leaf := leaves[0]
 	if err := g.writeStaticDesignatedInitializer(buf, relocs, offset, typ, leaf.designators, init); err != nil {
 		return 0, err
 	}
@@ -496,11 +496,11 @@ func (fg *funcGen) emitDesignatedElem(dst address, typ sema.Type, ds []sema.Desi
 		}
 		return span.end, nil
 	}
-	leaves := fg.g.initLeaves(typ, nil)
-	if span.start < 0 || span.start >= len(leaves) {
+	leaves := fg.g.initLeaves(span.typ, span.designators)
+	if len(leaves) == 0 {
 		return 0, fmt.Errorf("designator does not name an initializable subobject")
 	}
-	leaf := leaves[span.start]
+	leaf := leaves[0]
 	if err := fg.emitDesignatedInitializer(dst, typ, leaf.designators, init); err != nil {
 		return 0, err
 	}

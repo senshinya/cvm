@@ -199,11 +199,11 @@ func (s *Sema) typeDesignatedInitElem(target Type, elem rawInitElem) (InitElem, 
 	if !isAggregateInitType(span.T) || s.useWholeInitializer(elem.Value, span.T) {
 		return s.makeInitElem(elem.Designators, elem.Value, span.T), span.End
 	}
-	leaves := initLeaves(target, nil)
-	if span.Start < 0 || span.Start >= len(leaves) {
+	leaves := initLeaves(span.T, span.Designators)
+	if len(leaves) == 0 {
 		return s.makeInitElem(elem.Designators, elem.Value, span.T), span.End
 	}
-	leaf := leaves[span.Start]
+	leaf := leaves[0]
 	return s.makeInitElem(leaf.Designators, elem.Value, leaf.T), span.Start + 1
 }
 
