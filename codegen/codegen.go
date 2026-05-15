@@ -66,6 +66,11 @@ func (g *generator) collectGlobals() error {
 	}
 	for i, fn := range g.prog.Funcs {
 		g.addGlobal(fn.Sym, bytecode.GlobalFunc, i)
+		for _, local := range fn.Locals {
+			if local != nil && local.Storage == sema.StorageStatic {
+				g.addGlobal(local.Sym, bytecode.GlobalVar, -1)
+			}
+		}
 	}
 	return nil
 }
@@ -118,12 +123,12 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		Name:     fn.Sym.Name,
 		Sig:      sig,
 	}
-	for i, p := range fn.Params {
+	for _, p := range fn.Params {
 		pt, err := g.lowerValueType(p.T)
 		if err != nil {
 			return err
 		}
-		f.Params = append(f.Params, bytecode.Param{Name: p.Sym.Name, Type: pt, Slot: i})
+		f.Params = append(f.Params, bytecode.Param{Name: p.Sym.Name, Type: pt, Slot: p.Sym.SlotID})
 	}
 	fg := &funcGen{g: g, fn: fn, out: &f}
 	if err := fg.emitStmt(fn.Body); err != nil {
@@ -173,9 +178,127 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(t, x.Value))
 	case *sema.ImplicitCast:
-		return fg.emitValue(x.X)
+		if err := fg.emitValue(x.X); err != nil {
+			return err
+		}
+		from, err := fg.g.lowerValueType(x.From)
+		if err != nil {
+			return err
+		}
+		to, err := fg.g.lowerValueType(x.To)
+		if err != nil {
+			return err
+		}
+		if from != to {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(from, to, castOpFor(x.Kind, from, to)))
+		}
 	default:
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "no expression lowering registered before scalar dispatcher task"}
 	}
 	return nil
+}
+
+func castOpFor(kind sema.CastKind, from, to bytecode.ValueType) bytecode.CastOp {
+	switch kind {
+	case sema.BoolConversion:
+		return bytecode.CastBool
+	case sema.IntToFloat:
+		return bytecode.CastIntToFloat
+	case sema.FloatToInt:
+		return bytecode.CastFloatToInt
+	case sema.IntToPointer:
+		return bytecode.CastIntToPtr
+	case sema.PointerToInt:
+		return bytecode.CastPtrToInt
+	case sema.PointerConversion, sema.VoidPointerConversion, sema.ArrayDecay, sema.FunctionDecay, sema.NullPointerConstant:
+		return bytecode.CastBit
+	}
+	switch {
+	case isIntegerType(from) && to == bytecode.TypeBool:
+		return bytecode.CastBool
+	case isIntegerType(from) && isIntegerType(to):
+		return integerCastOp(from, to)
+	case isIntegerType(from) && isFloatType(to):
+		return bytecode.CastIntToFloat
+	case isFloatType(from) && isIntegerType(to):
+		return bytecode.CastFloatToInt
+	case isFloatType(from) && isFloatType(to):
+		if typeSize(from) < typeSize(to) {
+			return bytecode.CastFExt
+		}
+		if typeSize(from) > typeSize(to) {
+			return bytecode.CastFTrunc
+		}
+		return bytecode.CastBit
+	case isPointerType(from) && isIntegerType(to):
+		return bytecode.CastPtrToInt
+	case isIntegerType(from) && isPointerType(to):
+		return bytecode.CastIntToPtr
+	case isPointerType(from) && isPointerType(to):
+		return bytecode.CastBit
+	default:
+		return bytecode.CastBit
+	}
+}
+
+func integerCastOp(from, to bytecode.ValueType) bytecode.CastOp {
+	fromSize, toSize := typeSize(from), typeSize(to)
+	switch {
+	case fromSize > toSize:
+		return bytecode.CastTrunc
+	case fromSize < toSize && isUnsignedType(from):
+		return bytecode.CastZExt
+	case fromSize < toSize:
+		return bytecode.CastSExt
+	default:
+		return bytecode.CastBit
+	}
+}
+
+func isIntegerType(t bytecode.ValueType) bool {
+	switch t {
+	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeI32, bytecode.TypeI64, bytecode.TypeU8, bytecode.TypeU16, bytecode.TypeU32, bytecode.TypeU64:
+		return true
+	default:
+		return false
+	}
+}
+
+func isUnsignedType(t bytecode.ValueType) bool {
+	switch t {
+	case bytecode.TypeBool, bytecode.TypeU8, bytecode.TypeU16, bytecode.TypeU32, bytecode.TypeU64:
+		return true
+	default:
+		return false
+	}
+}
+
+func isFloatType(t bytecode.ValueType) bool {
+	switch t {
+	case bytecode.TypeF32, bytecode.TypeF64, bytecode.TypeFLong:
+		return true
+	default:
+		return false
+	}
+}
+
+func isPointerType(t bytecode.ValueType) bool {
+	return t == bytecode.TypePtr || t == bytecode.TypeObjectAddr
+}
+
+func typeSize(t bytecode.ValueType) int {
+	switch t {
+	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeU8:
+		return 1
+	case bytecode.TypeI16, bytecode.TypeU16:
+		return 2
+	case bytecode.TypeI32, bytecode.TypeU32, bytecode.TypeF32:
+		return 4
+	case bytecode.TypeI64, bytecode.TypeU64, bytecode.TypeF64, bytecode.TypePtr, bytecode.TypeObjectAddr:
+		return 8
+	case bytecode.TypeFLong:
+		return 16
+	default:
+		return 0
+	}
 }
