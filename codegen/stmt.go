@@ -57,14 +57,26 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 			fg.mark(elseLabel)
 		}
 	case *sema.WhileStmt:
+		pendingBreakNames := append([]string(nil), fg.pendingBreakNames...)
+		pendingContinueNames := append([]string(nil), fg.pendingContinueNames...)
+		fg.pendingBreakNames = nil
+		fg.pendingContinueNames = nil
+		defer func() {
+			fg.pendingBreakNames = pendingBreakNames
+			fg.pendingContinueNames = pendingContinueNames
+		}()
 		condLabel := fg.newLabel(true, nil)
 		bodyLabel := fg.newLabel(true, nil)
 		endLabel := fg.newLabel(true, nil)
 		fg.breaks = append(fg.breaks, endLabel)
 		fg.continues = append(fg.continues, condLabel)
+		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel)
+		popNamedContinues := fg.pushNamedContinues(pendingContinueNames, condLabel)
 		if x.DoWhile {
 			fg.mark(bodyLabel)
 			if err := fg.emitStmt(x.Body); err != nil {
+				popNamedContinues()
+				popNamedBreaks()
 				return err
 			}
 			fg.mark(condLabel)
@@ -80,14 +92,26 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 			}
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.JumpIfZero(bytecode.TypeBool, endLabel))
 			if err := fg.emitStmt(x.Body); err != nil {
+				popNamedContinues()
+				popNamedBreaks()
 				return err
 			}
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(condLabel))
 			fg.mark(endLabel)
 		}
+		popNamedContinues()
+		popNamedBreaks()
 		fg.breaks = fg.breaks[:len(fg.breaks)-1]
 		fg.continues = fg.continues[:len(fg.continues)-1]
 	case *sema.ForStmt:
+		pendingBreakNames := append([]string(nil), fg.pendingBreakNames...)
+		pendingContinueNames := append([]string(nil), fg.pendingContinueNames...)
+		fg.pendingBreakNames = nil
+		fg.pendingContinueNames = nil
+		defer func() {
+			fg.pendingBreakNames = pendingBreakNames
+			fg.pendingContinueNames = pendingContinueNames
+		}()
 		if x.Init != nil {
 			if err := fg.emitStmt(x.Init); err != nil {
 				return err
@@ -98,19 +122,27 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		endLabel := fg.newLabel(true, nil)
 		fg.breaks = append(fg.breaks, endLabel)
 		fg.continues = append(fg.continues, postLabel)
+		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel)
+		popNamedContinues := fg.pushNamedContinues(pendingContinueNames, postLabel)
 		fg.mark(condLabel)
 		if x.Cond != nil {
 			if err := fg.emitBoolValue(x.Cond); err != nil {
+				popNamedContinues()
+				popNamedBreaks()
 				return err
 			}
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.JumpIfZero(bytecode.TypeBool, endLabel))
 		}
 		if err := fg.emitStmt(x.Body); err != nil {
+			popNamedContinues()
+			popNamedBreaks()
 			return err
 		}
 		fg.mark(postLabel)
 		if x.Post != nil {
 			if err := fg.emitValue(x.Post); err != nil {
+				popNamedContinues()
+				popNamedBreaks()
 				return err
 			}
 			if exprLeavesValue(x.Post) {
@@ -119,9 +151,16 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(condLabel))
 		fg.mark(endLabel)
+		popNamedContinues()
+		popNamedBreaks()
 		fg.breaks = fg.breaks[:len(fg.breaks)-1]
 		fg.continues = fg.continues[:len(fg.continues)-1]
 	case *sema.SwitchStmt:
+		pendingBreakNames := append([]string(nil), fg.pendingBreakNames...)
+		fg.pendingBreakNames = nil
+		defer func() {
+			fg.pendingBreakNames = pendingBreakNames
+		}()
 		endLabel := fg.newLabel(true, nil)
 		defaultLabel := endLabel
 		if x.Default != nil {
@@ -143,36 +182,86 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpSwitch, Type: t, Label: defaultLabel, Labels: cases})
 		fg.breaks = append(fg.breaks, endLabel)
+		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel)
 		if err := fg.emitStmt(x.Body); err != nil {
+			popNamedBreaks()
 			return err
 		}
+		popNamedBreaks()
 		fg.breaks = fg.breaks[:len(fg.breaks)-1]
 		fg.mark(endLabel)
 	case *sema.CaseStmt:
 		fg.mark(fg.caseLabel(x))
+		popNamedBreaks := func() {}
+		if len(fg.pendingBreakNames) > 0 && len(fg.breaks) > 0 {
+			pendingBreakNames := append([]string(nil), fg.pendingBreakNames...)
+			fg.pendingBreakNames = nil
+			popNamedBreaks = fg.pushNamedBreaks(pendingBreakNames, fg.breaks[len(fg.breaks)-1])
+		}
 		if err := fg.emitStmt(x.Body); err != nil {
+			popNamedBreaks()
 			return err
 		}
+		popNamedBreaks()
 	case *sema.DefaultStmt:
 		fg.mark(fg.defaultLabel(x))
+		popNamedBreaks := func() {}
+		if len(fg.pendingBreakNames) > 0 && len(fg.breaks) > 0 {
+			pendingBreakNames := append([]string(nil), fg.pendingBreakNames...)
+			fg.pendingBreakNames = nil
+			popNamedBreaks = fg.pushNamedBreaks(pendingBreakNames, fg.breaks[len(fg.breaks)-1])
+		}
 		if err := fg.emitStmt(x.Body); err != nil {
+			popNamedBreaks()
 			return err
 		}
+		popNamedBreaks()
 	case *sema.BreakStmt:
-		if len(fg.breaks) == 0 {
+		target := 0
+		if x.Name != "" {
+			stack := fg.namedBreaks[x.Name]
+			if len(stack) == 0 {
+				return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: fmt.Sprintf("named break target %q is not active", x.Name)}
+			}
+			target = stack[len(stack)-1]
+		} else if len(fg.breaks) == 0 {
 			return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: "break outside breakable statement"}
+		} else {
+			target = fg.breaks[len(fg.breaks)-1]
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(fg.breaks[len(fg.breaks)-1]))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(target))
 	case *sema.ContinueStmt:
-		if len(fg.continues) == 0 {
+		target := 0
+		if x.Name != "" {
+			stack := fg.namedContinues[x.Name]
+			if len(stack) == 0 {
+				return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: fmt.Sprintf("named continue target %q is not active", x.Name)}
+			}
+			target = stack[len(stack)-1]
+		} else if len(fg.continues) == 0 {
 			return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: "continue outside loop"}
+		} else {
+			target = fg.continues[len(fg.continues)-1]
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(fg.continues[len(fg.continues)-1]))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(target))
 	case *sema.LabeledStmt:
 		fg.mark(fg.namedLabel(x))
+		target := labeledStmtTargetKind(x.Body)
+		prevBreakNames := fg.pendingBreakNames
+		prevContinueNames := fg.pendingContinueNames
+		if target == namedTargetLoop || target == namedTargetSwitch {
+			fg.pendingBreakNames = append(fg.pendingBreakNames, x.Name)
+		}
+		if target == namedTargetLoop {
+			fg.pendingContinueNames = append(fg.pendingContinueNames, x.Name)
+		}
 		if err := fg.emitStmt(x.Body); err != nil {
+			fg.pendingBreakNames = prevBreakNames
+			fg.pendingContinueNames = prevContinueNames
 			return err
 		}
+		fg.pendingBreakNames = prevBreakNames
+		fg.pendingContinueNames = prevContinueNames
 	case *sema.GotoStmt:
 		if x.Target == nil {
 			return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: "goto target is unresolved"}
@@ -247,6 +336,61 @@ func (fg *funcGen) defaultLabel(s *sema.DefaultStmt) int {
 	label := fg.newLabel(true, nil)
 	fg.defaultLabels[s] = label
 	return label
+}
+
+func (fg *funcGen) pushNamedBreaks(names []string, label int) func() {
+	for _, name := range names {
+		fg.namedBreaks[name] = append(fg.namedBreaks[name], label)
+	}
+	return func() {
+		for i := len(names) - 1; i >= 0; i-- {
+			name := names[i]
+			stack := fg.namedBreaks[name]
+			if len(stack) <= 1 {
+				delete(fg.namedBreaks, name)
+				continue
+			}
+			fg.namedBreaks[name] = stack[:len(stack)-1]
+		}
+	}
+}
+
+func (fg *funcGen) pushNamedContinues(names []string, label int) func() {
+	for _, name := range names {
+		fg.namedContinues[name] = append(fg.namedContinues[name], label)
+	}
+	return func() {
+		for i := len(names) - 1; i >= 0; i-- {
+			name := names[i]
+			stack := fg.namedContinues[name]
+			if len(stack) <= 1 {
+				delete(fg.namedContinues, name)
+				continue
+			}
+			fg.namedContinues[name] = stack[:len(stack)-1]
+		}
+	}
+}
+
+type namedTargetKind int
+
+const (
+	namedTargetNone namedTargetKind = iota
+	namedTargetLoop
+	namedTargetSwitch
+)
+
+func labeledStmtTargetKind(s sema.Stmt) namedTargetKind {
+	switch x := s.(type) {
+	case *sema.LabeledStmt:
+		return labeledStmtTargetKind(x.Body)
+	case *sema.ForStmt, *sema.WhileStmt:
+		return namedTargetLoop
+	case *sema.SwitchStmt, *sema.CaseStmt, *sema.DefaultStmt:
+		return namedTargetSwitch
+	default:
+		return namedTargetNone
+	}
 }
 
 func (fg *funcGen) emitInitStore(vd *sema.VarDecl) error {

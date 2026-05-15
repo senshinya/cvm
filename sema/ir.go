@@ -128,12 +128,18 @@ type ReturnStmt struct {
 func (s *ReturnStmt) Pos() entity.SourceRange { return s.Range }
 func (*ReturnStmt) isStmt()                   {}
 
-type BreakStmt struct{ Range entity.SourceRange }
+type BreakStmt struct {
+	Name  string
+	Range entity.SourceRange
+}
 
 func (s *BreakStmt) Pos() entity.SourceRange { return s.Range }
 func (*BreakStmt) isStmt()                   {}
 
-type ContinueStmt struct{ Range entity.SourceRange }
+type ContinueStmt struct {
+	Name  string
+	Range entity.SourceRange
+}
 
 func (s *ContinueStmt) Pos() entity.SourceRange { return s.Range }
 func (*ContinueStmt) isStmt()                   {}

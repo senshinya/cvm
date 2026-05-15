@@ -152,6 +152,75 @@ done:
 	}
 }
 
+func TestGenerateNamedBreakTargetsOuterLoop(t *testing.T) {
+	mod := compileModule(t, `
+int main(void) {
+	int x = 0;
+outer:
+	for (int i = 0; i < 3; i = i + 1) {
+		for (int j = 0; j < 3; j = j + 1) {
+			x = 1;
+			break outer;
+		}
+		x = 2;
+	}
+	return x;
+}`)
+	fn := mod.Functions[0]
+	outerEnd := labelBeforeReturnLoad(t, fn, 0)
+	namedBreak := jumpAfterStoreConst(t, fn, 1)
+	if namedBreak != outerEnd {
+		t.Fatalf("break outer jumps to L%d, want outer end L%d:\n%s", namedBreak, outerEnd, bytecode.PrintModule(mod))
+	}
+}
+
+func TestGenerateNamedContinueTargetsOuterLoop(t *testing.T) {
+	mod := compileModule(t, `
+int main(void) {
+	int x = 0;
+outer:
+	for (int i = 0; i < 3; i = i + 1) {
+		for (int j = 0; j < 3; j = j + 1) {
+			x = 1;
+			continue outer;
+		}
+		x = 2;
+	}
+	return x;
+}`)
+	fn := mod.Functions[0]
+	outerPost := labelBeforePostStore(t, fn, 1)
+	namedContinue := jumpAfterStoreConst(t, fn, 1)
+	if namedContinue != outerPost {
+		t.Fatalf("continue outer jumps to L%d, want outer continue L%d:\n%s", namedContinue, outerPost, bytecode.PrintModule(mod))
+	}
+}
+
+func TestGenerateNamedBreakTargetsSwitch(t *testing.T) {
+	mod := compileModule(t, `
+int route(int x) {
+	int y = 0;
+done:
+	switch (x) {
+	case 1:
+		while (x) {
+			y = 10;
+			break done;
+		}
+	default:
+		y = 20;
+	}
+	y = 30;
+	return y;
+}`)
+	fn := mod.Functions[0]
+	switchEnd := labelBeforeStoreConst(t, fn, 30)
+	namedBreak := jumpAfterStoreConst(t, fn, 10)
+	if namedBreak != switchEnd {
+		t.Fatalf("break done jumps to L%d, want switch end L%d:\n%s", namedBreak, switchEnd, bytecode.PrintModule(mod))
+	}
+}
+
 func TestGenerateAssignmentExpressionStatementResult(t *testing.T) {
 	compileModule(t, `int main(void) { int x; x = 1; return x; }`)
 }
@@ -449,4 +518,72 @@ func analyzeProgram(t *testing.T, source string) *sema.Program {
 		t.Fatalf("sema: %v", err)
 	}
 	return prog
+}
+
+func jumpAfterStoreConst(t *testing.T, fn bytecode.Function, value int64) int {
+	t.Helper()
+
+	for i := 0; i+3 < len(fn.Instrs); i++ {
+		if fn.Instrs[i].Op == bytecode.OpConst && fn.Instrs[i].Int == value &&
+			fn.Instrs[i+1].Op == bytecode.OpDup &&
+			fn.Instrs[i+2].Op == bytecode.OpStoreLocal &&
+			fn.Instrs[i+3].Op == bytecode.OpPop {
+			for j := i + 4; j < len(fn.Instrs); j++ {
+				if fn.Instrs[j].Op == bytecode.OpJump {
+					return fn.Instrs[j].Label
+				}
+				if fn.Instrs[j].Op == bytecode.OpLabel {
+					break
+				}
+			}
+		}
+	}
+	t.Fatalf("missing jump after assignment to %d in %#v", value, fn.Instrs)
+	return -1
+}
+
+func labelBeforeStoreConst(t *testing.T, fn bytecode.Function, value int64) int {
+	t.Helper()
+
+	for i := 1; i+3 < len(fn.Instrs); i++ {
+		if fn.Instrs[i-1].Op == bytecode.OpLabel &&
+			fn.Instrs[i].Op == bytecode.OpConst && fn.Instrs[i].Int == value &&
+			fn.Instrs[i+1].Op == bytecode.OpDup &&
+			fn.Instrs[i+2].Op == bytecode.OpStoreLocal &&
+			fn.Instrs[i+3].Op == bytecode.OpPop {
+			return fn.Instrs[i-1].Label
+		}
+	}
+	t.Fatalf("missing label before assignment to %d in %#v", value, fn.Instrs)
+	return -1
+}
+
+func labelBeforeReturnLoad(t *testing.T, fn bytecode.Function, slot int) int {
+	t.Helper()
+
+	for i := 1; i+1 < len(fn.Instrs); i++ {
+		if fn.Instrs[i-1].Op == bytecode.OpLabel &&
+			fn.Instrs[i].Op == bytecode.OpLoadLocal && fn.Instrs[i].Slot == slot &&
+			fn.Instrs[i+1].Op == bytecode.OpReturn {
+			return fn.Instrs[i-1].Label
+		}
+	}
+	t.Fatalf("missing label before return load of local slot %d in %#v", slot, fn.Instrs)
+	return -1
+}
+
+func labelBeforePostStore(t *testing.T, fn bytecode.Function, slot int) int {
+	t.Helper()
+
+	for i := 0; i+4 < len(fn.Instrs); i++ {
+		if fn.Instrs[i].Op == bytecode.OpLabel &&
+			fn.Instrs[i+1].Op == bytecode.OpLoadLocal && fn.Instrs[i+1].Slot == slot &&
+			fn.Instrs[i+2].Op == bytecode.OpConst && fn.Instrs[i+2].Int == 1 &&
+			fn.Instrs[i+3].Op == bytecode.OpBinary &&
+			fn.Instrs[i+4].Op == bytecode.OpDup {
+			return fn.Instrs[i].Label
+		}
+	}
+	t.Fatalf("missing post label before increment of local slot %d in %#v", slot, fn.Instrs)
+	return -1
 }

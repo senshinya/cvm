@@ -39,17 +39,21 @@ type generator struct {
 }
 
 type funcGen struct {
-	g             *generator
-	fn            *sema.FuncDef
-	out           *bytecode.Function
-	nextLabel     int
-	objectMap     map[*sema.Symbol]int
-	addressTaken  map[*sema.Symbol]bool
-	breaks        []int
-	continues     []int
-	labels        map[*sema.LabeledStmt]int
-	caseLabels    map[*sema.CaseStmt]int
-	defaultLabels map[*sema.DefaultStmt]int
+	g                    *generator
+	fn                   *sema.FuncDef
+	out                  *bytecode.Function
+	nextLabel            int
+	objectMap            map[*sema.Symbol]int
+	addressTaken         map[*sema.Symbol]bool
+	breaks               []int
+	continues            []int
+	namedBreaks          map[string][]int
+	namedContinues       map[string][]int
+	pendingBreakNames    []string
+	pendingContinueNames []string
+	labels               map[*sema.LabeledStmt]int
+	caseLabels           map[*sema.CaseStmt]int
+	defaultLabels        map[*sema.DefaultStmt]int
 }
 
 func (g *generator) emitModule() error {
@@ -215,14 +219,16 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		f.Objects = append(f.Objects, bytecode.LocalObject{ID: objectID, Name: local.Sym.Name, Size: layout.Size, Align: layout.Align, Layout: layout.ID})
 	}
 	fg := &funcGen{
-		g:             g,
-		fn:            fn,
-		out:           &f,
-		objectMap:     objectMap,
-		addressTaken:  addressTaken,
-		labels:        map[*sema.LabeledStmt]int{},
-		caseLabels:    map[*sema.CaseStmt]int{},
-		defaultLabels: map[*sema.DefaultStmt]int{},
+		g:              g,
+		fn:             fn,
+		out:            &f,
+		objectMap:      objectMap,
+		addressTaken:   addressTaken,
+		namedBreaks:    map[string][]int{},
+		namedContinues: map[string][]int{},
+		labels:         map[*sema.LabeledStmt]int{},
+		caseLabels:     map[*sema.CaseStmt]int{},
+		defaultLabels:  map[*sema.DefaultStmt]int{},
 	}
 	for _, p := range fn.Params {
 		if !addressTaken[p.Sym] {
