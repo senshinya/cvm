@@ -780,31 +780,6 @@ func labeledStmtTargetKind(s sema.Stmt) namedTargetKind {
 
 func (fg *funcGen) emitInitStore(vd *sema.VarDecl) error {
 	lhs := &sema.VarRef{Sym: vd.Sym, T: vd.T, Range: vd.Range}
-	vt, err := fg.g.lowerValueType(vd.T)
-	if err != nil {
-		return err
-	}
-	if vt == bytecode.TypeObjectAddr {
-		if _, ok := vd.Init.(*sema.InitList); ok {
-			object, err := fg.newLocalObject(vd.Sym.Name+"$init", vd.T)
-			if err != nil {
-				return err
-			}
-			tmp := address{emit: func() error {
-				fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
-				return nil
-			}}
-			if err := fg.emitInitializer(tmp, vd.Init, vd.T); err != nil {
-				return err
-			}
-			if err := fg.emitAddress(lhs); err != nil {
-				return err
-			}
-			fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
-			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(vd.T), Align: fg.g.alignof(vd.T), Volatile: isVolatile(vd.T)})
-			return nil
-		}
-	}
 	dst := address{emit: func() error {
 		return fg.emitAddress(lhs)
 	}}

@@ -369,9 +369,10 @@ func TestGenerateStaticInitializersStringsAndRelocations(t *testing.T) {
 int g = 3;
 int *gp = &g;
 char *s = "hi";
+const int cg = 4;
 int main(void) { return g; }`)
 	out := bytecode.PrintModule(mod)
-	for _, want := range []string{"Global #0 var name=\"g\"", "reloc", "String #0 value=\"hi", "readonly"} {
+	for _, want := range []string{"Global #0 var name=\"g\"", "kind=global target=global#0(\"g\")", "String #0 value=\"hi", "var name=\"cg\"", "readonly=true"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("bytecode missing %q:\n%s", want, out)
 		}
@@ -384,14 +385,19 @@ struct B { unsigned x:3; unsigned y:5; };
 struct P { int a[2]; struct B b; };
 int main(void) {
 	struct P p = {{1, 2}, {3, 4}};
+	struct P q = {{0, 0}, {0, 0}};
+	q = p;
 	p.b.x = 5;
-	return p.a[1] + p.b.x;
+	return q.a[1] + p.b.x;
 }`)
 	out := bytecode.PrintModule(mod)
 	for _, want := range []string{"BitFieldStore", "BitFieldLoad", "MemCopy", "Layout #"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("bytecode missing %q:\n%s", want, out)
 		}
+	}
+	if strings.Contains(out, "$init") {
+		t.Fatalf("initializer list unexpectedly lowered through temporary object:\n%s", out)
 	}
 }
 
