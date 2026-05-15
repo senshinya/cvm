@@ -201,7 +201,7 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		if p.Slot > maxSlot {
 			maxSlot = p.Slot
 		}
-		if pd := paramDeclsBySlot[p.Slot]; pd != nil && addressTaken[pd.Sym] {
+		if pd := paramDeclsBySlot[p.Slot]; pd != nil && (addressTaken[pd.Sym] || isVolatile(pd.T)) {
 			layout, err := g.lowerLayout(pd.T)
 			if err != nil {
 				return err
@@ -225,7 +225,7 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		if err != nil {
 			return err
 		}
-		if local.Sym.SlotID >= 0 && isSlotType(vt) && !addressTaken[local.Sym] {
+		if local.Sym.SlotID >= 0 && isSlotType(vt) && !addressTaken[local.Sym] && !isVolatile(local.T) {
 			if seenSlots[local.Sym.SlotID] {
 				continue
 			}
@@ -262,9 +262,6 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		defaultLabels:         map[*sema.DefaultStmt]int{},
 	}
 	for _, p := range fn.Params {
-		if !addressTaken[p.Sym] {
-			continue
-		}
 		objectID, ok := objectMap[p.Sym]
 		if !ok {
 			continue
@@ -289,12 +286,41 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 	if err := fg.emitStmt(fn.Body); err != nil {
 		return err
 	}
+	if err := fg.emitImplicitTerminal(); err != nil {
+		return err
+	}
 	g.mod.Functions = append(g.mod.Functions, *fg.out)
 	if fn.Sym.GlobalID >= 0 && fn.Sym.GlobalID < len(g.mod.Globals) {
 		g.mod.Globals[fn.Sym.GlobalID].Func = f.ID
 		g.mod.Globals[fn.Sym.GlobalID].Kind = bytecode.GlobalFunc
 	}
 	return nil
+}
+
+func (fg *funcGen) emitImplicitTerminal() error {
+	if len(fg.out.Instrs) > 0 && isTerminalInstr(fg.out.Instrs[len(fg.out.Instrs)-1]) {
+		return nil
+	}
+	ret := fg.g.mod.Sigs[fg.out.Sig].Ret
+	if ret == bytecode.TypeVoid {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpReturnVoid})
+		return nil
+	}
+	if fg.out.Name == "main" {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(ret, 0), bytecode.Return(ret))
+		return nil
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnreachable})
+	return nil
+}
+
+func isTerminalInstr(ins bytecode.Instr) bool {
+	switch ins.Op {
+	case bytecode.OpReturn, bytecode.OpReturnVoid, bytecode.OpReturnObject, bytecode.OpJump, bytecode.OpUnreachable:
+		return true
+	default:
+		return false
+	}
 }
 
 func castOpFor(kind sema.CastKind, from, to bytecode.ValueType) bytecode.CastOp {

@@ -81,7 +81,7 @@ func validateGlobalInit(m *Module, g Global) error {
 				return fmt.Errorf("global %q relocation references invalid global %d", g.Name, r.Target)
 			}
 		case RelocFunc:
-			if r.Target < 0 || r.Target >= len(m.Globals) || m.Globals[r.Target].Kind != GlobalFunc {
+			if r.Target < 0 || r.Target >= len(m.Globals) || !isFunctionGlobal(m.Globals[r.Target]) {
 				return fmt.Errorf("global %q relocation references invalid function global %d", g.Name, r.Target)
 			}
 		case RelocString:
@@ -93,6 +93,10 @@ func validateGlobalInit(m *Module, g Global) error {
 		}
 	}
 	return nil
+}
+
+func isFunctionGlobal(g Global) bool {
+	return g.Kind == GlobalFunc || (g.Kind == GlobalExtern && g.Size == 0 && g.Align == 0)
 }
 
 func validateLayout(m *Module, l ObjectLayout) error {

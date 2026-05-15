@@ -474,7 +474,26 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: rightType, Unary: bytecode.UnaryNeg})
 		return fg.emitPtrAddForExpr(x.L, x.L.GetType())
 	case x.Op == sema.OpSub && isPointerType(leftType) && isPointerType(rightType):
-		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "pointer difference lowering is not implemented"}
+		if err := fg.emitValue(x.L); err != nil {
+			return err
+		}
+		if err := fg.emitValue(x.R); err != nil {
+			return err
+		}
+		if slot, ok := fg.dynamicElemSizeSlotForExpr(x.L, x.L.GetType()); ok {
+			fg.out.Instrs = append(fg.out.Instrs,
+				bytecode.Instr{Op: bytecode.OpPtrDiff, Size: 1},
+				bytecode.LoadLocal(bytecode.TypeI64, slot),
+				bytecode.Binary(bytecode.TypeI64, bytecode.BinDivS),
+			)
+			return nil
+		}
+		size := fg.g.elemSize(x.L.GetType())
+		if size <= 0 {
+			return fmt.Errorf("cannot lower pointer difference with zero element size for %s", x.L.GetType())
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPtrDiff, Size: size})
+		return nil
 	default:
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "unsupported pointer arithmetic"}
 	}

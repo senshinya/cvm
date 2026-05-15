@@ -28,7 +28,7 @@ func (fg *funcGen) storageForVar(sym *sema.Symbol, t sema.Type) (storage, error)
 	if err != nil {
 		return storage{}, err
 	}
-	if sym != nil && fg.addressTaken[sym] {
+	if sym != nil {
 		if id, ok := fg.objectMap[sym]; ok {
 			return storage{kind: storageAddress, object: id, global: -1, typ: vt, sym: sym}, nil
 		}

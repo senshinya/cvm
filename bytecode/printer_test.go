@@ -62,7 +62,7 @@ func TestPrintModuleFullStateExactOutput(t *testing.T) {
 					Bytes:    []byte{0x01, 0x02, 0xff},
 					Relocations: []Relocation{
 						{Offset: 0, Kind: RelocGlobal, Target: 0, Addend: 1},
-						{Offset: 1, Kind: RelocFunc, Target: 0, Addend: 2},
+						{Offset: 1, Kind: RelocFunc, Target: 1, Addend: 2},
 						{Offset: 2, Kind: RelocString, Target: 0, Addend: 9},
 					},
 				},

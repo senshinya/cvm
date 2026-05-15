@@ -351,9 +351,19 @@ func relocationTarget(m *Module, r Relocation) string {
 		}
 		return fmt.Sprintf("global#%d(<invalid>)", r.Target)
 	case RelocFunc:
-		if r.Target >= 0 && r.Target < len(m.Functions) {
-			f := m.Functions[r.Target]
-			return fmt.Sprintf("func#%d(%q)", f.ID, f.Name)
+		if r.Target >= 0 && r.Target < len(m.Globals) {
+			g := m.Globals[r.Target]
+			switch g.Kind {
+			case GlobalFunc:
+				if g.Func >= 0 && g.Func < len(m.Functions) {
+					f := m.Functions[g.Func]
+					return fmt.Sprintf("func#%d(%q)", f.ID, f.Name)
+				}
+			case GlobalExtern:
+				if g.Size == 0 && g.Align == 0 {
+					return fmt.Sprintf("extern#%d(%q)", g.ID, g.Name)
+				}
+			}
 		}
 		return fmt.Sprintf("func#%d(<invalid>)", r.Target)
 	case RelocString:

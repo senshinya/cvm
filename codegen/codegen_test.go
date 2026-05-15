@@ -124,6 +124,54 @@ int main(void) {
 	}
 }
 
+func TestGenerateVolatileAutomaticUsesAddressPath(t *testing.T) {
+	mod := compileModule(t, `
+int main(void) {
+	volatile int x = 1;
+	x = 2;
+	return x;
+}`)
+	out := bytecode.PrintModule(mod)
+	if strings.Contains(out, "LoadLocal") || strings.Contains(out, "StoreLocal") {
+		t.Fatalf("volatile automatic used local slot ops:\n%s", out)
+	}
+	for _, want := range []string{"Object #", "I32Store align=4 volatile=true", "I32Load align=4 volatile=true"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("volatile automatic bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGenerateImplicitFallthroughTerminals(t *testing.T) {
+	mod := compileModule(t, `void f(void) {} int main(void) {}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{`Func #0`, "ReturnVoid", `Func #1`, "I32Const 0", "I32Return"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("fallthrough bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGeneratePointerDifference(t *testing.T) {
+	mod := compileModule(t, `long f(int *a, int *b) { return b - a; }`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{"PtrDiff elem_size=4", "I64Return"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("pointer diff bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGenerateExternFunctionPointerInitializer(t *testing.T) {
+	mod := compileModule(t, `int ext(int); int (*fp)(int) = ext; int main(void) { return 0; }`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{`Global #0 extern name="ext"`, `var name="fp"`, "reloc offset=0 kind=func target=extern#0(\"ext\")"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("extern function pointer initializer missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestGenerateScalarComparisonResultTypes(t *testing.T) {
 	tests := []string{
 		`int main(void) { return 1 < 2; }`,
