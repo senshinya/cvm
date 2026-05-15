@@ -198,7 +198,8 @@ func AddrLocalObject(object int) Instr {
 func AddrGlobal(global int) Instr {
 	return Instr{Op: OpAddrGlobal, Global: global, Type: TypeObjectAddr}
 }
-func AddrString(id int) Instr { return Instr{Op: OpAddrString, Int: int64(id), Type: TypeObjectAddr} }
+func AddrFunc(global int) Instr { return Instr{Op: OpAddrFunc, Global: global, Type: TypePtr} }
+func AddrString(id int) Instr   { return Instr{Op: OpAddrString, Int: int64(id), Type: TypeObjectAddr} }
 func Load(t ValueType, align int64, vol bool) Instr {
 	return Instr{Op: OpLoad, Type: t, Align: align, Volatile: vol}
 }

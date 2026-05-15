@@ -64,7 +64,7 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(bytecode.TypeObjectAddr, bytecode.TypePtr, bytecode.CastBit))
 			return nil
 		case sema.FunctionDecay:
-			return fg.emitFunctionAddress(x.X)
+			return fg.emitFunctionDecay(x.X)
 		}
 		if err := fg.emitValue(x.X); err != nil {
 			return err
@@ -90,7 +90,11 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		if err != nil {
 			return err
 		}
-		fg.emitCast(from, to, sema.IntegralConversion)
+		kind := sema.IntegralConversion
+		if to == bytecode.TypeBool {
+			kind = sema.BoolConversion
+		}
+		fg.emitCast(from, to, kind)
 	case *sema.BinOp:
 		return fg.emitBinOp(x)
 	case *sema.AssignExpr:
@@ -226,14 +230,20 @@ func (fg *funcGen) emitFunctionAddress(e sema.Expr) error {
 	if global >= len(fg.g.mod.Globals) {
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: fmt.Sprintf("function global %d is missing", global)}
 	}
-	if fg.g.mod.Globals[global].Kind == bytecode.GlobalFunc && fg.g.mod.Globals[global].Func >= 0 {
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpAddrFunc, Func: fg.g.mod.Globals[global].Func, Type: bytecode.TypePtr})
-		return nil
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrFunc(global))
+	return nil
+}
+
+func (fg *funcGen) emitFunctionDecay(e sema.Expr) error {
+	if isFunctionExpr(e) {
+		return fg.emitFunctionAddress(e)
 	}
-	fg.out.Instrs = append(fg.out.Instrs,
-		bytecode.AddrGlobal(global),
-		bytecode.Cast(bytecode.TypeObjectAddr, bytecode.TypePtr, bytecode.CastBit),
-	)
+	if inner := dereferencedFunctionPointer(e); inner != nil {
+		return fg.emitValue(inner)
+	}
+	if err := fg.emitValue(e); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -453,6 +463,20 @@ func functionVarRef(e sema.Expr) *sema.VarRef {
 	case *sema.ImplicitCast:
 		if x.Kind == sema.LValueToRValue || x.Kind == sema.FunctionDecay {
 			return functionVarRef(x.X)
+		}
+	}
+	return nil
+}
+
+func dereferencedFunctionPointer(e sema.Expr) sema.Expr {
+	switch x := e.(type) {
+	case *sema.ImplicitCast:
+		if x.Kind == sema.LValueToRValue {
+			return dereferencedFunctionPointer(x.X)
+		}
+	case *sema.UnOp:
+		if x.Op == sema.UnDeref {
+			return x.X
 		}
 	}
 	return nil

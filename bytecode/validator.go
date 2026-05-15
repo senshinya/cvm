@@ -179,22 +179,6 @@ func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, labelPCs map[
 		}
 		return nil
 	}
-	requireFunc := func(fn int) error {
-		if fn < 0 || fn >= len(m.Functions) {
-			return fmt.Errorf("%v references invalid function %d", ins.Op, fn)
-		}
-		global := m.Functions[fn].GlobalID
-		if global < 0 || global >= len(m.Globals) {
-			return fmt.Errorf("%v references function %d with invalid global %d", ins.Op, fn, global)
-		}
-		if m.Globals[global].Kind != GlobalFunc {
-			return fmt.Errorf("%v references function %d with non-function global %d", ins.Op, fn, global)
-		}
-		if m.Globals[global].Func != fn {
-			return fmt.Errorf("%v references function %d whose global %d points to function %d", ins.Op, fn, global, m.Globals[global].Func)
-		}
-		return nil
-	}
 	requireObject := func(object int) error {
 		if _, ok := objects[object]; !ok {
 			return fmt.Errorf("%v references invalid object %d", ins.Op, object)
@@ -240,7 +224,12 @@ func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, labelPCs map[
 	case OpAddrGlobal, OpLoadConst:
 		return requireGlobal(ins.Global)
 	case OpAddrFunc:
-		return requireFunc(ins.Func)
+		if err := requireGlobal(ins.Global); err != nil {
+			return err
+		}
+		if m.Globals[ins.Global].Kind != GlobalFunc && m.Globals[ins.Global].Kind != GlobalExtern {
+			return fmt.Errorf("%v references non-function global %d", ins.Op, ins.Global)
+		}
 	case OpLoadLocal, OpStoreLocal:
 		return requireLocal(ins.Slot, ins.Type)
 	case OpAddrLocalObject:

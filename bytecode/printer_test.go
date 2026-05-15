@@ -185,7 +185,7 @@ func TestFormatInstrCoversCurrentOpcodeEnum(t *testing.T) {
 		{"const", I64Const(7), "I64Const 7"},
 		{"addr-string", AddrString(1), "AddrString 1"},
 		{"addr-global", AddrGlobal(2), "AddrGlobal 2"},
-		{"addr-func", Instr{Op: OpAddrFunc, Func: 3}, "AddrFunc 3"},
+		{"addr-func", AddrFunc(3), "AddrFunc 3"},
 		{"load-const", Instr{Op: OpLoadConst, Type: TypeI32, Global: 4, Int: 8}, "I32LoadConst global=4 offset=8"},
 		{"dup", Instr{Op: OpDup}, "Dup"},
 		{"pop", Instr{Op: OpPop}, "Pop"},

@@ -518,6 +518,44 @@ int f(int n, ...) {
 	}
 }
 
+func TestGenerateFunctionPointerDerefCall(t *testing.T) {
+	mod := compileModule(t, `
+int inc(int x) { return x + 1; }
+int main(void) {
+	int (*fp)(int) = inc;
+	return (*fp)(2);
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{"AddrFunc 0", "PtrLoadLocal 0", "CallIndirect"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGenerateExternFunctionAddressUsesAddrFuncGlobal(t *testing.T) {
+	mod := compileModule(t, `
+int ext(int);
+int main(void) {
+	int (*fp)(int) = ext;
+	return 0;
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{`Global #0 extern name="ext"`, "AddrFunc 0"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGenerateExplicitFloatCastToBoolUsesBoolCast(t *testing.T) {
+	mod := compileModule(t, `_Bool main(void) { return (_Bool)1.5; }`)
+	out := bytecode.PrintModule(mod)
+	if !strings.Contains(out, "Cast f64->bool Bool") {
+		t.Fatalf("bytecode missing explicit bool cast:\n%s", out)
+	}
+}
+
 func compileModule(t *testing.T, source string) *bytecode.Module {
 	t.Helper()
 

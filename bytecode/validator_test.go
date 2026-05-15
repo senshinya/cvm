@@ -194,31 +194,31 @@ func TestValidateModuleAcceptsValidReferencesAndStackEffects(t *testing.T) {
 	}
 }
 
-func TestValidateModuleAcceptsAddrFuncUsingFuncField(t *testing.T) {
+func TestValidateModuleAcceptsAddrFuncUsingGlobalField(t *testing.T) {
 	mod := moduleWithCallee()
 	mod.Functions[0].Instrs = []Instr{
-		{Op: OpAddrFunc, Func: 1, Global: 99, Type: TypePtr},
+		AddrFunc(1),
 		{Op: OpPop},
 		I32Const(0),
 		Return(TypeI32),
 	}
 
 	if err := ValidateModule(mod); err != nil {
-		t.Fatalf("ValidateModule rejected AddrFunc with valid Func field: %v", err)
+		t.Fatalf("ValidateModule rejected AddrFunc with valid global field: %v", err)
 	}
 }
 
-func TestValidateModuleRejectsInvalidAddrFuncFunction(t *testing.T) {
+func TestValidateModuleRejectsInvalidAddrFuncGlobal(t *testing.T) {
 	mod := moduleWithCallee()
 	mod.Functions[0].Instrs = []Instr{
-		{Op: OpAddrFunc, Func: 99, Type: TypePtr},
+		AddrFunc(99),
 		{Op: OpPop},
 		I32Const(0),
 		Return(TypeI32),
 	}
 
 	if err := ValidateModule(mod); err == nil {
-		t.Fatal("ValidateModule accepted AddrFunc with invalid Func field")
+		t.Fatal("ValidateModule accepted AddrFunc with invalid global field")
 	}
 }
 

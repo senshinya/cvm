@@ -104,7 +104,7 @@ func FormatInstr(i Instr) string {
 	case OpAddrGlobal:
 		return fmt.Sprintf("AddrGlobal %d", i.Global)
 	case OpAddrFunc:
-		return fmt.Sprintf("AddrFunc %d", i.Func)
+		return fmt.Sprintf("AddrFunc %d", i.Global)
 	case OpLoadConst:
 		return fmt.Sprintf("%sLoadConst global=%d offset=%d", instrTypePrefix(i.Type), i.Global, i.Int)
 	case OpDup:
