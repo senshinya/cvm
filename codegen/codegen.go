@@ -39,11 +39,12 @@ type generator struct {
 }
 
 type funcGen struct {
-	g         *generator
-	fn        *sema.FuncDef
-	out       *bytecode.Function
-	nextLabel int
-	objectMap map[*sema.Symbol]int
+	g            *generator
+	fn           *sema.FuncDef
+	out          *bytecode.Function
+	nextLabel    int
+	objectMap    map[*sema.Symbol]int
+	addressTaken map[*sema.Symbol]bool
 }
 
 func (g *generator) emitModule() error {
@@ -139,23 +140,35 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		params = append(params, pt)
 	}
 	sig := g.internSig(ret, params, fn.T.Variadic)
+	addressTaken := findAddressTaken(fn)
 	f := bytecode.Function{
 		ID:       len(g.mod.Functions),
 		GlobalID: fn.Sym.GlobalID,
 		Name:     fn.Sym.Name,
 		Sig:      sig,
 	}
+	paramDeclsBySlot := map[int]*sema.VarDecl{}
 	for _, p := range fn.Params {
 		pt, err := g.lowerValueType(p.T)
 		if err != nil {
 			return err
 		}
 		f.Params = append(f.Params, bytecode.Param{Name: p.Sym.Name, Type: pt, Slot: p.Sym.SlotID})
+		paramDeclsBySlot[p.Sym.SlotID] = p
 	}
 	seenSlots := map[int]bool{}
 	objectMap := map[*sema.Symbol]int{}
 	for _, p := range f.Params {
 		seenSlots[p.Slot] = true
+		if pd := paramDeclsBySlot[p.Slot]; pd != nil && addressTaken[pd.Sym] {
+			layout, err := g.lowerLayout(pd.T)
+			if err != nil {
+				return err
+			}
+			objectID := len(f.Objects)
+			objectMap[pd.Sym] = objectID
+			f.Objects = append(f.Objects, bytecode.LocalObject{ID: objectID, Name: pd.Sym.Name, Size: layout.Size, Align: layout.Align, Layout: layout.ID})
+		}
 	}
 	for _, local := range fn.Locals {
 		if local == nil || local.Sym == nil || local.Storage == sema.StorageStatic || local.Storage == sema.StorageExtern {
@@ -165,7 +178,7 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		if err != nil {
 			return err
 		}
-		if local.Sym.SlotID >= 0 && isSlotType(vt) {
+		if local.Sym.SlotID >= 0 && isSlotType(vt) && !addressTaken[local.Sym] {
 			if seenSlots[local.Sym.SlotID] {
 				continue
 			}
@@ -181,7 +194,25 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		objectMap[local.Sym] = objectID
 		f.Objects = append(f.Objects, bytecode.LocalObject{ID: objectID, Name: local.Sym.Name, Size: layout.Size, Align: layout.Align, Layout: layout.ID})
 	}
-	fg := &funcGen{g: g, fn: fn, out: &f, objectMap: objectMap}
+	fg := &funcGen{g: g, fn: fn, out: &f, objectMap: objectMap, addressTaken: addressTaken}
+	for _, p := range fn.Params {
+		if !addressTaken[p.Sym] {
+			continue
+		}
+		objectID, ok := objectMap[p.Sym]
+		if !ok {
+			continue
+		}
+		vt, err := g.lowerValueType(p.T)
+		if err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs,
+			bytecode.AddrLocalObject(objectID),
+			bytecode.LoadLocal(vt, p.Sym.SlotID),
+			bytecode.Store(vt, g.alignof(p.T), isVolatile(p.T)),
+		)
+	}
 	if err := fg.emitStmt(fn.Body); err != nil {
 		return err
 	}

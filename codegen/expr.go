@@ -177,6 +177,9 @@ func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
 	if err != nil {
 		return err
 	}
+	if isPointerArithmeticExpr(x) {
+		return fg.emitPointerArithmetic(x)
+	}
 	if x.Op == sema.OpLAnd || x.Op == sema.OpLOr {
 		if err := fg.emitBoolValue(x.L); err != nil {
 			return err
@@ -219,6 +222,60 @@ func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
 		fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
 	}
 	return nil
+}
+
+func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
+	leftType, err := fg.g.lowerValueType(x.L.GetType())
+	if err != nil {
+		return err
+	}
+	rightType, err := fg.g.lowerValueType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	switch {
+	case x.Op == sema.OpAdd && isPointerType(leftType) && isIntegerType(rightType):
+		if err := fg.emitValue(x.L); err != nil {
+			return err
+		}
+		if err := fg.emitValue(x.R); err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPtrAdd, Size: fg.g.elemSize(x.L.GetType())})
+		return nil
+	case x.Op == sema.OpAdd && isIntegerType(leftType) && isPointerType(rightType):
+		if err := fg.emitValue(x.R); err != nil {
+			return err
+		}
+		if err := fg.emitValue(x.L); err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPtrAdd, Size: fg.g.elemSize(x.R.GetType())})
+		return nil
+	case x.Op == sema.OpSub && isPointerType(leftType) && isIntegerType(rightType):
+		if err := fg.emitValue(x.L); err != nil {
+			return err
+		}
+		if err := fg.emitValue(x.R); err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: rightType, Unary: bytecode.UnaryNeg})
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPtrAdd, Size: fg.g.elemSize(x.L.GetType())})
+		return nil
+	case x.Op == sema.OpSub && isPointerType(leftType) && isPointerType(rightType):
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "pointer difference lowering is not implemented"}
+	default:
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "unsupported pointer arithmetic"}
+	}
+}
+
+func isPointerArithmeticExpr(x *sema.BinOp) bool {
+	if x == nil || (x.Op != sema.OpAdd && x.Op != sema.OpSub) {
+		return false
+	}
+	_, leftPtr := sema.Unqual(x.L.GetType()).(*sema.PointerType)
+	_, rightPtr := sema.Unqual(x.R.GetType()).(*sema.PointerType)
+	return leftPtr || rightPtr
 }
 
 func (fg *funcGen) emitBoolValue(e sema.Expr) error {

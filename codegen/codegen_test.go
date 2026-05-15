@@ -129,6 +129,65 @@ int main(void) {
 			t.Fatalf("bytecode missing %q:\n%s", want, out)
 		}
 	}
+	if got := mod.Globals[0]; got.Size != 4 || got.Align != 4 {
+		t.Fatalf("global g metadata = size %d align %d, want size 4 align 4", got.Size, got.Align)
+	}
+	if got := mod.Globals[1]; got.Size != 12 || got.Align != 4 {
+		t.Fatalf("global a metadata = size %d align %d, want size 12 align 4", got.Size, got.Align)
+	}
+	var arrayLayout *bytecode.ObjectLayout
+	for i := range mod.Layouts {
+		if mod.Layouts[i].ElemSize == 4 {
+			arrayLayout = &mod.Layouts[i]
+			break
+		}
+	}
+	if arrayLayout == nil {
+		t.Fatalf("missing array layout with elem size 4: %#v", mod.Layouts)
+	}
+}
+
+func TestGenerateAddressTakenScalarLocal(t *testing.T) {
+	mod := compileModule(t, `
+int main(void) {
+	int x;
+	int *p = &x;
+	*p = 7;
+	return x;
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{
+		"AddrLocalObject",
+		"PtrStoreLocal",
+		"I32Store",
+		"I32Load",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+	if got := mod.Functions[0].Objects; len(got) == 0 || got[0].Size != 4 || got[0].Align != 4 {
+		t.Fatalf("address-taken local object metadata = %#v, want first object size 4 align 4", got)
+	}
+}
+
+func TestGeneratePointerArithmeticOutsideIndexing(t *testing.T) {
+	mod := compileModule(t, `
+int a[3];
+int main(void) {
+	int *p = a;
+	return *(p + 1);
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{
+		"PtrAdd elem_size=4",
+		"I32Load",
+		"I32Return",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
 }
 
 func TestGenerateStructMemberAccess(t *testing.T) {

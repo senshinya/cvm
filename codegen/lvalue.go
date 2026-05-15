@@ -28,6 +28,11 @@ func (fg *funcGen) storageForVar(sym *sema.Symbol, t sema.Type) (storage, error)
 	if err != nil {
 		return storage{}, err
 	}
+	if sym != nil && fg.addressTaken[sym] {
+		if id, ok := fg.objectMap[sym]; ok {
+			return storage{kind: storageAddress, object: id, global: -1, typ: vt, sym: sym}, nil
+		}
+	}
 	if sym != nil && sym.SlotID >= 0 && isSlotType(vt) {
 		return storage{kind: storageLocalSlot, slot: sym.SlotID, object: -1, global: -1, typ: vt, sym: sym}, nil
 	}

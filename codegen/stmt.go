@@ -26,6 +26,9 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 				return err
 			}
 			if st.kind != storageLocalSlot {
+				if err := fg.emitInitStore(vd); err != nil {
+					return err
+				}
 				continue
 			}
 			if err := fg.emitValue(vd.Init); err != nil {
@@ -59,5 +62,31 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 	default:
 		return &Error{Pos: s.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: "statement lowering is not implemented for this node"}
 	}
+	return nil
+}
+
+func (fg *funcGen) emitInitStore(vd *sema.VarDecl) error {
+	lhs := &sema.VarRef{Sym: vd.Sym, T: vd.T, Range: vd.Range}
+	vt, err := fg.g.lowerValueType(vd.T)
+	if err != nil {
+		return err
+	}
+	if vt == bytecode.TypeObjectAddr {
+		if err := fg.emitAddress(lhs); err != nil {
+			return err
+		}
+		if err := fg.emitAddress(vd.Init); err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(vd.T), Align: fg.g.alignof(vd.T), Volatile: isVolatile(vd.T)})
+		return nil
+	}
+	if err := fg.emitAddress(lhs); err != nil {
+		return err
+	}
+	if err := fg.emitValue(vd.Init); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.g.alignof(vd.T), isVolatile(vd.T)))
 	return nil
 }
