@@ -48,6 +48,56 @@ const (
 	OpVaEnd
 )
 
+func (op Opcode) String() string {
+	names := [...]string{
+		"OpConst",
+		"OpAddrString",
+		"OpAddrGlobal",
+		"OpAddrFunc",
+		"OpLoadConst",
+		"OpDup",
+		"OpPop",
+		"OpSwap",
+		"OpLoadLocal",
+		"OpStoreLocal",
+		"OpAddrLocalObject",
+		"OpAllocDynamicObject",
+		"OpFreeDynamicObject",
+		"OpDynamicObjectAddr",
+		"OpLoad",
+		"OpStore",
+		"OpMemCopy",
+		"OpMemSet",
+		"OpOffset",
+		"OpFieldAddr",
+		"OpBitFieldLoad",
+		"OpBitFieldStore",
+		"OpPtrAdd",
+		"OpPtrDiff",
+		"OpBinary",
+		"OpUnary",
+		"OpCast",
+		"OpLabel",
+		"OpJump",
+		"OpJumpIfZero",
+		"OpJumpIfNonZero",
+		"OpSwitch",
+		"OpReturn",
+		"OpReturnVoid",
+		"OpReturnObject",
+		"OpUnreachable",
+		"OpCall",
+		"OpCallIndirect",
+		"OpVaStart",
+		"OpVaArg",
+		"OpVaEnd",
+	}
+	if int(op) >= 0 && int(op) < len(names) {
+		return names[op]
+	}
+	return fmt.Sprintf("Opcode(%d)", int(op))
+}
+
 type BinaryOp int
 
 const (

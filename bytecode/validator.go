@@ -27,16 +27,16 @@ func ValidateModule(m *Module) error {
 		}
 	}
 	for i := range m.Functions {
-		if err := validateFunction(m, &m.Functions[i]); err != nil {
+		if err := validateFunction(m, i, &m.Functions[i]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func validateFunction(m *Module, f *Function) error {
-	if f.ID < 0 || f.ID >= len(m.Functions) {
-		return fmt.Errorf("function %q has invalid id %d", f.Name, f.ID)
+func validateFunction(m *Module, index int, f *Function) error {
+	if f.ID != index {
+		return fmt.Errorf("function index %d has id %d", index, f.ID)
 	}
 	if f.Sig < 0 || f.Sig >= len(m.Sigs) {
 		return fmt.Errorf("function %q references invalid signature %d", f.Name, f.Sig)
@@ -44,9 +44,17 @@ func validateFunction(m *Module, f *Function) error {
 	if f.GlobalID < 0 || f.GlobalID >= len(m.Globals) {
 		return fmt.Errorf("function %q references invalid global %d", f.Name, f.GlobalID)
 	}
+	g := m.Globals[f.GlobalID]
+	if g.Kind != GlobalFunc {
+		return fmt.Errorf("function %q references non-function global %d", f.Name, f.GlobalID)
+	}
+	if g.Func != f.ID {
+		return fmt.Errorf("function %q global %d points to function %d", f.Name, f.GlobalID, g.Func)
+	}
+	ret := m.Sigs[f.Sig].Ret
 	stack := []ValueType{}
 	for pc, ins := range f.Instrs {
-		next, err := validateInstrStack(stack, ins)
+		next, err := validateInstrStack(stack, ins, ret)
 		if err != nil {
 			return fmt.Errorf("function %q pc %d: %w", f.Name, pc, err)
 		}
@@ -55,7 +63,7 @@ func validateFunction(m *Module, f *Function) error {
 	return nil
 }
 
-func validateInstrStack(stack []ValueType, ins Instr) ([]ValueType, error) {
+func validateInstrStack(stack []ValueType, ins Instr, ret ValueType) ([]ValueType, error) {
 	pop := func(want ValueType) error {
 		if len(stack) == 0 {
 			return fmt.Errorf("%v stack underflow", ins.Op)
@@ -79,6 +87,15 @@ func validateInstrStack(stack []ValueType, ins Instr) ([]ValueType, error) {
 		if err := pop(ins.Type); err != nil {
 			return nil, err
 		}
+	case OpPop:
+		if err := pop(TypeVoid); err != nil {
+			return nil, err
+		}
+	case OpSwap:
+		if len(stack) < 2 {
+			return nil, fmt.Errorf("swap stack underflow")
+		}
+		stack[len(stack)-1], stack[len(stack)-2] = stack[len(stack)-2], stack[len(stack)-1]
 	case OpBinary:
 		if err := pop(ins.Type); err != nil {
 			return nil, err
@@ -92,10 +109,19 @@ func validateInstrStack(stack []ValueType, ins Instr) ([]ValueType, error) {
 			push(ins.Type)
 		}
 	case OpReturn:
+		if ret == TypeVoid {
+			return nil, fmt.Errorf("return value in void function")
+		}
+		if ins.Type != ret {
+			return nil, fmt.Errorf("return type %s does not match signature return %s", ins.Type, ret)
+		}
 		if err := pop(ins.Type); err != nil {
 			return nil, err
 		}
 	case OpReturnVoid:
+		if ret != TypeVoid {
+			return nil, fmt.Errorf("return void in %s function", ret)
+		}
 		if len(stack) != 0 {
 			return nil, fmt.Errorf("return void with non-empty stack")
 		}
