@@ -29,6 +29,9 @@ func (c *Compiler) RunSource(source string) error {
 	if c.FileName == "" {
 		c.FileName = "main.c"
 	}
+	if err := c.validateDumpModes(); err != nil {
+		return err
+	}
 	c.Source = source
 	c.Lines = strings.Split(source, "\n")
 	pp, err := preprocessor.PreprocessSource(c.FileName, source, preprocessor.Options{})
@@ -43,9 +46,6 @@ func (c *Compiler) RunSource(source string) error {
 	prog, err := sema.Analyze(candidates)
 	if err != nil {
 		return err
-	}
-	if c.DumpIR && c.DumpBytecode {
-		return fmt.Errorf("--dump-ir and --dump-bytecode are mutually exclusive")
 	}
 	if c.DumpIR {
 		fmt.Fprint(c.output(), sema.PrintProgram(prog))
@@ -69,8 +69,18 @@ func (c *Compiler) output() io.Writer {
 	return os.Stdout
 }
 
+func (c *Compiler) validateDumpModes() error {
+	if c.DumpIR && c.DumpBytecode {
+		return fmt.Errorf("--dump-ir and --dump-bytecode are mutually exclusive")
+	}
+	return nil
+}
+
 func (c *Compiler) RunFile(fileName string) error {
 	c.FileName = fileName
+	if err := c.validateDumpModes(); err != nil {
+		return err
+	}
 	source, err := os.ReadFile(fileName)
 	if err != nil {
 		return err
