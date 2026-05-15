@@ -348,7 +348,11 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, 
 		if err := pop(ins.Type); err != nil {
 			return nil, err
 		}
-	case OpAllocDynamicObject, OpFreeDynamicObject:
+	case OpAllocDynamicObject:
+		if err := pop(TypeI64); err != nil {
+			return nil, err
+		}
+	case OpFreeDynamicObject:
 	case OpLoad:
 		if err := pop(TypeObjectAddr); err != nil {
 			return nil, err

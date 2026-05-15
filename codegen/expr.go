@@ -38,6 +38,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(t, value))
 	case *sema.VarRef:
+		if isFunctionDesignator(x) {
+			return fg.emitFunctionAddress(x)
+		}
 		st, err := fg.storageForVar(x.Sym, x.T)
 		if err != nil {
 			return err
@@ -50,6 +53,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 	case *sema.ImplicitCast:
 		switch x.Kind {
 		case sema.LValueToRValue:
+			if isFunctionExpr(x.X) {
+				return fg.emitFunctionAddress(x.X)
+			}
 			return fg.emitLValueValue(x.X, x.From)
 		case sema.ArrayDecay:
 			if err := fg.emitAddress(x.X); err != nil {
@@ -57,6 +63,8 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 			}
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(bytecode.TypeObjectAddr, bytecode.TypePtr, bytecode.CastBit))
 			return nil
+		case sema.FunctionDecay:
+			return fg.emitFunctionAddress(x.X)
 		}
 		if err := fg.emitValue(x.X); err != nil {
 			return err
@@ -87,6 +95,10 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		return fg.emitBinOp(x)
 	case *sema.AssignExpr:
 		return fg.emitAssign(x.L, x.R)
+	case *sema.CallExpr:
+		return fg.emitCall(x)
+	case *sema.SizeofExpr:
+		return fg.emitSizeof(x)
 	case *sema.UnOp:
 		switch x.Op {
 		case sema.UnAddr:
@@ -107,7 +119,128 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 	return nil
 }
 
+func (fg *funcGen) emitCall(x *sema.CallExpr) error {
+	ft, err := functionTypeFromCallee(x.Callee.GetType())
+	if err != nil {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
+	}
+	sig, err := fg.g.lowerFuncSig(ft)
+	if err != nil {
+		return err
+	}
+	if global := directCallGlobal(x.Callee); global >= 0 {
+		for _, arg := range x.Args {
+			if err := fg.emitValue(arg); err != nil {
+				return err
+			}
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Call(global, sig, len(x.Args)))
+		return nil
+	}
+	if err := fg.emitValue(x.Callee); err != nil {
+		return err
+	}
+	for _, arg := range x.Args {
+		if err := fg.emitValue(arg); err != nil {
+			return err
+		}
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpCallIndirect, Sig: sig, Argc: len(x.Args)})
+	return nil
+}
+
+func (fg *funcGen) emitSizeof(x *sema.SizeofExpr) error {
+	outType, err := fg.g.lowerValueType(x.T)
+	if err != nil {
+		return err
+	}
+	t := x.Operand.Type
+	if t == nil && x.Operand.Expr != nil {
+		t = x.Operand.Expr.GetType()
+	}
+	if t == nil {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "sizeof operand has no type"}
+	}
+	if !typeHasVariableSize(t) {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(outType, fg.g.sizeof(t)))
+		return nil
+	}
+	if x.Operand.Expr != nil {
+		if sym := dynamicObjectSymbol(x.Operand.Expr); sym != nil {
+			if object, ok := fg.dynamicObjectMap[sym]; ok {
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDynamicObjectAddr, Object: object, Type: bytecode.TypeObjectAddr})
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
+			}
+			if slot, ok := fg.dynamicSizeSlotMap[sym]; ok {
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeI64, slot))
+				fg.emitCast(bytecode.TypeI64, outType, sema.IntegralConversion)
+				return nil
+			}
+		}
+	}
+	if err := fg.emitRuntimeSizeof(t); err != nil {
+		return err
+	}
+	fg.emitCast(bytecode.TypeI64, outType, sema.IntegralConversion)
+	return nil
+}
+
+func (fg *funcGen) emitRuntimeSizeof(t sema.Type) error {
+	switch x := sema.Unqual(t).(type) {
+	case *sema.ArrayType:
+		if x.SizeKind == sema.ArrayStarSize {
+			return fmt.Errorf("cannot lower runtime sizeof for star-sized array")
+		}
+		if x.SizeKind == sema.ArrayVLA {
+			if x.SizeExpr == nil {
+				return fmt.Errorf("VLA type has no bound expression")
+			}
+			if err := fg.emitValue(x.SizeExpr); err != nil {
+				return err
+			}
+			from, err := fg.g.lowerValueType(x.SizeExpr.GetType())
+			if err != nil {
+				return err
+			}
+			fg.emitCast(from, bytecode.TypeI64, sema.IntegralConversion)
+		} else {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.I64Const(x.Size))
+		}
+		if err := fg.emitRuntimeSizeof(x.Elem); err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(bytecode.TypeI64, bytecode.BinMul))
+		return nil
+	default:
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.I64Const(fg.g.sizeof(t)))
+		return nil
+	}
+}
+
+func (fg *funcGen) emitFunctionAddress(e sema.Expr) error {
+	vr := functionVarRef(e)
+	if vr == nil || vr.Sym == nil || vr.Sym.GlobalID < 0 {
+		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "function address is not backed by a global symbol"}
+	}
+	global := vr.Sym.GlobalID
+	if global >= len(fg.g.mod.Globals) {
+		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: fmt.Sprintf("function global %d is missing", global)}
+	}
+	if fg.g.mod.Globals[global].Kind == bytecode.GlobalFunc && fg.g.mod.Globals[global].Func >= 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpAddrFunc, Func: fg.g.mod.Globals[global].Func, Type: bytecode.TypePtr})
+		return nil
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.AddrGlobal(global),
+		bytecode.Cast(bytecode.TypeObjectAddr, bytecode.TypePtr, bytecode.CastBit),
+	)
+	return nil
+}
+
 func (fg *funcGen) emitLValueValue(e sema.Expr, t sema.Type) error {
+	if isFunctionExpr(e) {
+		return fg.emitFunctionAddress(e)
+	}
 	vt, err := fg.g.lowerValueType(t)
 	if err != nil {
 		return err
@@ -290,6 +423,66 @@ func isPointerArithmeticExpr(x *sema.BinOp) bool {
 	_, leftPtr := sema.Unqual(x.L.GetType()).(*sema.PointerType)
 	_, rightPtr := sema.Unqual(x.R.GetType()).(*sema.PointerType)
 	return leftPtr || rightPtr
+}
+
+func functionTypeFromCallee(t sema.Type) (*sema.FunctionType, error) {
+	if ft, ok := sema.Unqual(t).(*sema.FunctionType); ok {
+		return ft, nil
+	}
+	if pt, ok := sema.Unqual(t).(*sema.PointerType); ok {
+		if ft, ok := sema.Unqual(pt.Pointee).(*sema.FunctionType); ok {
+			return ft, nil
+		}
+	}
+	return nil, fmt.Errorf("callee type %s is not a function pointer", t)
+}
+
+func directCallGlobal(e sema.Expr) int {
+	if vr := functionVarRef(e); vr != nil && vr.Sym != nil {
+		return vr.Sym.GlobalID
+	}
+	return -1
+}
+
+func functionVarRef(e sema.Expr) *sema.VarRef {
+	switch x := e.(type) {
+	case *sema.VarRef:
+		if isFunctionDesignator(x) {
+			return x
+		}
+	case *sema.ImplicitCast:
+		if x.Kind == sema.LValueToRValue || x.Kind == sema.FunctionDecay {
+			return functionVarRef(x.X)
+		}
+	}
+	return nil
+}
+
+func isFunctionDesignator(vr *sema.VarRef) bool {
+	if vr == nil {
+		return false
+	}
+	if vr.Sym != nil && vr.Sym.Kind == sema.SymFunc {
+		return true
+	}
+	_, ok := sema.Unqual(vr.T).(*sema.FunctionType)
+	return ok
+}
+
+func isFunctionExpr(e sema.Expr) bool {
+	return functionVarRef(e) != nil
+}
+
+func dynamicObjectSymbol(e sema.Expr) *sema.Symbol {
+	switch x := e.(type) {
+	case *sema.VarRef:
+		return x.Sym
+	case *sema.ImplicitCast:
+		if x.Kind == sema.LValueToRValue || x.Kind == sema.ArrayDecay {
+			return dynamicObjectSymbol(x.X)
+		}
+	}
+	return nil
 }
 
 func (fg *funcGen) emitBoolValue(e sema.Expr) error {

@@ -38,7 +38,11 @@ func PrintModule(m *Module) string {
 			}
 			b.WriteString("...")
 		}
-		b.WriteString(")\n")
+		b.WriteString(")")
+		if sig.Variadic {
+			b.WriteString(" variadic")
+		}
+		b.WriteString("\n")
 	}
 	for _, f := range m.Functions {
 		printFunction(&b, f)

@@ -48,6 +48,25 @@ func (g *generator) lowerValueType(t sema.Type) (bytecode.ValueType, error) {
 	return bytecode.TypeVoid, fmt.Errorf("cannot lower sema type %T (%s)", t, t)
 }
 
+func (g *generator) lowerFuncSig(t *sema.FunctionType) (int, error) {
+	if t == nil {
+		return 0, fmt.Errorf("cannot lower nil function type")
+	}
+	ret, err := g.lowerValueType(t.Ret)
+	if err != nil {
+		return 0, err
+	}
+	params := make([]bytecode.ValueType, 0, len(t.Params))
+	for _, p := range t.Params {
+		pt, err := g.lowerValueType(p)
+		if err != nil {
+			return 0, err
+		}
+		params = append(params, pt)
+	}
+	return g.internSig(ret, params, t.Variadic), nil
+}
+
 func (g *generator) lowerLayout(t sema.Type) (bytecode.ObjectLayout, error) {
 	key := sema.Unqual(t)
 	if id, ok := g.layoutMap[key]; ok {
@@ -194,6 +213,26 @@ func isObjectType(t sema.Type) bool {
 	switch sema.Unqual(t).(type) {
 	case *sema.ArrayType, *sema.StructType, *sema.UnionType:
 		return true
+	default:
+		return false
+	}
+}
+
+func isVLAType(t sema.Type) bool {
+	switch x := sema.Unqual(t).(type) {
+	case *sema.ArrayType:
+		return x.SizeKind == sema.ArrayVLA || x.SizeKind == sema.ArrayStarSize || isVLAType(x.Elem)
+	default:
+		return false
+	}
+}
+
+func typeHasVariableSize(t sema.Type) bool {
+	switch x := sema.Unqual(t).(type) {
+	case *sema.ArrayType:
+		return x.SizeKind == sema.ArrayVLA || x.SizeKind == sema.ArrayStarSize || typeHasVariableSize(x.Elem)
+	case *sema.PointerType:
+		return false
 	default:
 		return false
 	}

@@ -488,6 +488,36 @@ int main(void) { return 0; }
 	}
 }
 
+func TestGenerateCallsCastsAndFunctionPointers(t *testing.T) {
+	mod := compileModule(t, `
+int inc(int x) { return x + 1; }
+int main(void) {
+	int (*fp)(int) = inc;
+	long y = (long)fp(2);
+	return (int)y;
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{"CallIndirect", "SExt", "Trunc", "AddrFunc"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGenerateSizeofAndVarargsMetadata(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n, ...) {
+	int a[n];
+	return sizeof(a);
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{"variadic", "AllocDynamicObject", "DynamicObjectAddr"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func compileModule(t *testing.T, source string) *bytecode.Module {
 	t.Helper()
 

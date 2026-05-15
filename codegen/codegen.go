@@ -39,21 +39,28 @@ type generator struct {
 }
 
 type funcGen struct {
-	g                    *generator
-	fn                   *sema.FuncDef
-	out                  *bytecode.Function
-	nextLabel            int
-	objectMap            map[*sema.Symbol]int
-	addressTaken         map[*sema.Symbol]bool
-	breaks               []int
-	continues            []int
-	namedBreaks          map[string][]int
-	namedContinues       map[string][]int
-	pendingBreakNames    []string
-	pendingContinueNames []string
-	labels               map[*sema.LabeledStmt]int
-	caseLabels           map[*sema.CaseStmt]int
-	defaultLabels        map[*sema.DefaultStmt]int
+	g                     *generator
+	fn                    *sema.FuncDef
+	out                   *bytecode.Function
+	nextLabel             int
+	objectMap             map[*sema.Symbol]int
+	dynamicObjectMap      map[*sema.Symbol]int
+	dynamicSizeSlotMap    map[*sema.Symbol]int
+	activeDynamicObjects  []int
+	addressTaken          map[*sema.Symbol]bool
+	breaks                []int
+	continues             []int
+	breakCleanupMarks     []int
+	continueCleanupMarks  []int
+	namedBreaks           map[string][]int
+	namedContinues        map[string][]int
+	namedBreakCleanups    map[string][]int
+	namedContinueCleanups map[string][]int
+	pendingBreakNames     []string
+	pendingContinueNames  []string
+	labels                map[*sema.LabeledStmt]int
+	caseLabels            map[*sema.CaseStmt]int
+	defaultLabels         map[*sema.DefaultStmt]int
 }
 
 func (g *generator) emitModule() error {
@@ -81,6 +88,9 @@ func (g *generator) collectGlobals() error {
 			}
 		case *sema.FuncDecl:
 			if _, err := g.addGlobal(x.Sym, bytecode.GlobalExtern, -1); err != nil {
+				return err
+			}
+			if _, err := g.lowerFuncSig(x.T); err != nil {
 				return err
 			}
 		}
@@ -151,19 +161,10 @@ func (g *generator) internSig(ret bytecode.ValueType, params []bytecode.ValueTyp
 }
 
 func (g *generator) emitFunction(fn *sema.FuncDef) error {
-	ret, err := g.lowerValueType(fn.T.Ret)
+	sig, err := g.lowerFuncSig(fn.T)
 	if err != nil {
 		return err
 	}
-	params := make([]bytecode.ValueType, 0, len(fn.T.Params))
-	for _, p := range fn.T.Params {
-		pt, err := g.lowerValueType(p)
-		if err != nil {
-			return err
-		}
-		params = append(params, pt)
-	}
-	sig := g.internSig(ret, params, fn.T.Variadic)
 	addressTaken := findAddressTaken(fn)
 	f := bytecode.Function{
 		ID:       len(g.mod.Functions),
@@ -198,6 +199,9 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		if local == nil || local.Sym == nil || local.Storage == sema.StorageStatic || local.Storage == sema.StorageExtern {
 			continue
 		}
+		if isVLAType(local.T) {
+			continue
+		}
 		vt, err := g.lowerValueType(local.T)
 		if err != nil {
 			return err
@@ -219,16 +223,20 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		f.Objects = append(f.Objects, bytecode.LocalObject{ID: objectID, Name: local.Sym.Name, Size: layout.Size, Align: layout.Align, Layout: layout.ID})
 	}
 	fg := &funcGen{
-		g:              g,
-		fn:             fn,
-		out:            &f,
-		objectMap:      objectMap,
-		addressTaken:   addressTaken,
-		namedBreaks:    map[string][]int{},
-		namedContinues: map[string][]int{},
-		labels:         map[*sema.LabeledStmt]int{},
-		caseLabels:     map[*sema.CaseStmt]int{},
-		defaultLabels:  map[*sema.DefaultStmt]int{},
+		g:                     g,
+		fn:                    fn,
+		out:                   &f,
+		objectMap:             objectMap,
+		dynamicObjectMap:      map[*sema.Symbol]int{},
+		dynamicSizeSlotMap:    map[*sema.Symbol]int{},
+		addressTaken:          addressTaken,
+		namedBreaks:           map[string][]int{},
+		namedContinues:        map[string][]int{},
+		namedBreakCleanups:    map[string][]int{},
+		namedContinueCleanups: map[string][]int{},
+		labels:                map[*sema.LabeledStmt]int{},
+		caseLabels:            map[*sema.CaseStmt]int{},
+		defaultLabels:         map[*sema.DefaultStmt]int{},
 	}
 	for _, p := range fn.Params {
 		if !addressTaken[p.Sym] {

@@ -50,6 +50,10 @@ func (fg *funcGen) storageForVar(sym *sema.Symbol, t sema.Type) (storage, error)
 func (fg *funcGen) emitAddress(e sema.Expr) error {
 	switch x := e.(type) {
 	case *sema.VarRef:
+		if object, ok := fg.dynamicObjectMap[x.Sym]; ok {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDynamicObjectAddr, Object: object, Type: bytecode.TypeObjectAddr})
+			return nil
+		}
 		st, err := fg.storageForVar(x.Sym, x.T)
 		if err != nil {
 			return err

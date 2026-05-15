@@ -10,15 +10,30 @@ import (
 func (fg *funcGen) emitStmt(s sema.Stmt) error {
 	switch x := s.(type) {
 	case *sema.Block:
+		scopeMark := len(fg.activeDynamicObjects)
 		for _, item := range x.Items {
 			if err := fg.emitStmt(item); err != nil {
 				return err
 			}
 		}
+		if fg.lastInstrTerminal() {
+			fg.activeDynamicObjects = fg.activeDynamicObjects[:scopeMark]
+			return nil
+		}
+		fg.popDynamicObjectScope(scopeMark)
 	case *sema.DeclStmt:
 		for _, d := range x.Decls {
 			vd, ok := d.(*sema.VarDecl)
-			if !ok || vd.Init == nil || vd.Storage == sema.StorageStatic || vd.Storage == sema.StorageExtern {
+			if !ok || vd.Storage == sema.StorageStatic || vd.Storage == sema.StorageExtern {
+				continue
+			}
+			if isVLAType(vd.T) {
+				if err := fg.emitVLADecl(vd); err != nil {
+					return err
+				}
+				continue
+			}
+			if vd.Init == nil {
 				continue
 			}
 			st, err := fg.storageForVar(vd.Sym, vd.T)
@@ -70,8 +85,11 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		endLabel := fg.newLabel(true, nil)
 		fg.breaks = append(fg.breaks, endLabel)
 		fg.continues = append(fg.continues, condLabel)
-		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel)
-		popNamedContinues := fg.pushNamedContinues(pendingContinueNames, condLabel)
+		loopCleanupMark := len(fg.activeDynamicObjects)
+		fg.breakCleanupMarks = append(fg.breakCleanupMarks, loopCleanupMark)
+		fg.continueCleanupMarks = append(fg.continueCleanupMarks, loopCleanupMark)
+		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel, loopCleanupMark)
+		popNamedContinues := fg.pushNamedContinues(pendingContinueNames, condLabel, loopCleanupMark)
 		if x.DoWhile {
 			fg.mark(bodyLabel)
 			if err := fg.emitStmt(x.Body); err != nil {
@@ -103,6 +121,8 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		popNamedBreaks()
 		fg.breaks = fg.breaks[:len(fg.breaks)-1]
 		fg.continues = fg.continues[:len(fg.continues)-1]
+		fg.breakCleanupMarks = fg.breakCleanupMarks[:len(fg.breakCleanupMarks)-1]
+		fg.continueCleanupMarks = fg.continueCleanupMarks[:len(fg.continueCleanupMarks)-1]
 	case *sema.ForStmt:
 		pendingBreakNames := append([]string(nil), fg.pendingBreakNames...)
 		pendingContinueNames := append([]string(nil), fg.pendingContinueNames...)
@@ -122,8 +142,11 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		endLabel := fg.newLabel(true, nil)
 		fg.breaks = append(fg.breaks, endLabel)
 		fg.continues = append(fg.continues, postLabel)
-		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel)
-		popNamedContinues := fg.pushNamedContinues(pendingContinueNames, postLabel)
+		loopCleanupMark := len(fg.activeDynamicObjects)
+		fg.breakCleanupMarks = append(fg.breakCleanupMarks, loopCleanupMark)
+		fg.continueCleanupMarks = append(fg.continueCleanupMarks, loopCleanupMark)
+		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel, loopCleanupMark)
+		popNamedContinues := fg.pushNamedContinues(pendingContinueNames, postLabel, loopCleanupMark)
 		fg.mark(condLabel)
 		if x.Cond != nil {
 			if err := fg.emitBoolValue(x.Cond); err != nil {
@@ -155,6 +178,8 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		popNamedBreaks()
 		fg.breaks = fg.breaks[:len(fg.breaks)-1]
 		fg.continues = fg.continues[:len(fg.continues)-1]
+		fg.breakCleanupMarks = fg.breakCleanupMarks[:len(fg.breakCleanupMarks)-1]
+		fg.continueCleanupMarks = fg.continueCleanupMarks[:len(fg.continueCleanupMarks)-1]
 	case *sema.SwitchStmt:
 		pendingBreakNames := append([]string(nil), fg.pendingBreakNames...)
 		fg.pendingBreakNames = nil
@@ -182,13 +207,16 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpSwitch, Type: t, Label: defaultLabel, Labels: cases})
 		fg.breaks = append(fg.breaks, endLabel)
-		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel)
+		switchCleanupMark := len(fg.activeDynamicObjects)
+		fg.breakCleanupMarks = append(fg.breakCleanupMarks, switchCleanupMark)
+		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel, switchCleanupMark)
 		if err := fg.emitStmt(x.Body); err != nil {
 			popNamedBreaks()
 			return err
 		}
 		popNamedBreaks()
 		fg.breaks = fg.breaks[:len(fg.breaks)-1]
+		fg.breakCleanupMarks = fg.breakCleanupMarks[:len(fg.breakCleanupMarks)-1]
 		fg.mark(endLabel)
 	case *sema.CaseStmt:
 		fg.mark(fg.caseLabel(x))
@@ -196,7 +224,8 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		if len(fg.pendingBreakNames) > 0 && len(fg.breaks) > 0 {
 			pendingBreakNames := append([]string(nil), fg.pendingBreakNames...)
 			fg.pendingBreakNames = nil
-			popNamedBreaks = fg.pushNamedBreaks(pendingBreakNames, fg.breaks[len(fg.breaks)-1])
+			cleanupMark := fg.currentBreakCleanupMark()
+			popNamedBreaks = fg.pushNamedBreaks(pendingBreakNames, fg.breaks[len(fg.breaks)-1], cleanupMark)
 		}
 		if err := fg.emitStmt(x.Body); err != nil {
 			popNamedBreaks()
@@ -209,7 +238,8 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		if len(fg.pendingBreakNames) > 0 && len(fg.breaks) > 0 {
 			pendingBreakNames := append([]string(nil), fg.pendingBreakNames...)
 			fg.pendingBreakNames = nil
-			popNamedBreaks = fg.pushNamedBreaks(pendingBreakNames, fg.breaks[len(fg.breaks)-1])
+			cleanupMark := fg.currentBreakCleanupMark()
+			popNamedBreaks = fg.pushNamedBreaks(pendingBreakNames, fg.breaks[len(fg.breaks)-1], cleanupMark)
 		}
 		if err := fg.emitStmt(x.Body); err != nil {
 			popNamedBreaks()
@@ -224,10 +254,15 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 				return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: fmt.Sprintf("named break target %q is not active", x.Name)}
 			}
 			target = stack[len(stack)-1]
+			cleanupStack := fg.namedBreakCleanups[x.Name]
+			if len(cleanupStack) > 0 {
+				fg.emitDynamicObjectCleanups(cleanupStack[len(cleanupStack)-1])
+			}
 		} else if len(fg.breaks) == 0 {
 			return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: "break outside breakable statement"}
 		} else {
 			target = fg.breaks[len(fg.breaks)-1]
+			fg.emitDynamicObjectCleanups(fg.currentBreakCleanupMark())
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(target))
 	case *sema.ContinueStmt:
@@ -238,10 +273,15 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 				return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: fmt.Sprintf("named continue target %q is not active", x.Name)}
 			}
 			target = stack[len(stack)-1]
+			cleanupStack := fg.namedContinueCleanups[x.Name]
+			if len(cleanupStack) > 0 {
+				fg.emitDynamicObjectCleanups(cleanupStack[len(cleanupStack)-1])
+			}
 		} else if len(fg.continues) == 0 {
 			return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: "continue outside loop"}
 		} else {
 			target = fg.continues[len(fg.continues)-1]
+			fg.emitDynamicObjectCleanups(fg.currentContinueCleanupMark())
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(target))
 	case *sema.LabeledStmt:
@@ -280,6 +320,7 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		}
 	case *sema.ReturnStmt:
 		if x.Value == nil {
+			fg.emitDynamicObjectCleanups(0)
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpReturnVoid})
 			return nil
 		}
@@ -290,6 +331,7 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		if err != nil {
 			return err
 		}
+		fg.emitDynamicObjectCleanups(0)
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Return(t))
 	default:
 		return &Error{Pos: s.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: "statement lowering is not implemented for this node"}
@@ -338,9 +380,10 @@ func (fg *funcGen) defaultLabel(s *sema.DefaultStmt) int {
 	return label
 }
 
-func (fg *funcGen) pushNamedBreaks(names []string, label int) func() {
+func (fg *funcGen) pushNamedBreaks(names []string, label, cleanupMark int) func() {
 	for _, name := range names {
 		fg.namedBreaks[name] = append(fg.namedBreaks[name], label)
+		fg.namedBreakCleanups[name] = append(fg.namedBreakCleanups[name], cleanupMark)
 	}
 	return func() {
 		for i := len(names) - 1; i >= 0; i-- {
@@ -348,16 +391,24 @@ func (fg *funcGen) pushNamedBreaks(names []string, label int) func() {
 			stack := fg.namedBreaks[name]
 			if len(stack) <= 1 {
 				delete(fg.namedBreaks, name)
+				delete(fg.namedBreakCleanups, name)
 				continue
 			}
 			fg.namedBreaks[name] = stack[:len(stack)-1]
+			cleanups := fg.namedBreakCleanups[name]
+			if len(cleanups) <= 1 {
+				delete(fg.namedBreakCleanups, name)
+			} else {
+				fg.namedBreakCleanups[name] = cleanups[:len(cleanups)-1]
+			}
 		}
 	}
 }
 
-func (fg *funcGen) pushNamedContinues(names []string, label int) func() {
+func (fg *funcGen) pushNamedContinues(names []string, label, cleanupMark int) func() {
 	for _, name := range names {
 		fg.namedContinues[name] = append(fg.namedContinues[name], label)
+		fg.namedContinueCleanups[name] = append(fg.namedContinueCleanups[name], cleanupMark)
 	}
 	return func() {
 		for i := len(names) - 1; i >= 0; i-- {
@@ -365,11 +416,106 @@ func (fg *funcGen) pushNamedContinues(names []string, label int) func() {
 			stack := fg.namedContinues[name]
 			if len(stack) <= 1 {
 				delete(fg.namedContinues, name)
+				delete(fg.namedContinueCleanups, name)
 				continue
 			}
 			fg.namedContinues[name] = stack[:len(stack)-1]
+			cleanups := fg.namedContinueCleanups[name]
+			if len(cleanups) <= 1 {
+				delete(fg.namedContinueCleanups, name)
+			} else {
+				fg.namedContinueCleanups[name] = cleanups[:len(cleanups)-1]
+			}
 		}
 	}
+}
+
+func (fg *funcGen) currentBreakCleanupMark() int {
+	if len(fg.breakCleanupMarks) == 0 {
+		return len(fg.activeDynamicObjects)
+	}
+	return fg.breakCleanupMarks[len(fg.breakCleanupMarks)-1]
+}
+
+func (fg *funcGen) currentContinueCleanupMark() int {
+	if len(fg.continueCleanupMarks) == 0 {
+		return len(fg.activeDynamicObjects)
+	}
+	return fg.continueCleanupMarks[len(fg.continueCleanupMarks)-1]
+}
+
+func (fg *funcGen) emitDynamicObjectCleanups(mark int) {
+	if mark < 0 {
+		mark = 0
+	}
+	if mark > len(fg.activeDynamicObjects) {
+		mark = len(fg.activeDynamicObjects)
+	}
+	for i := len(fg.activeDynamicObjects) - 1; i >= mark; i-- {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpFreeDynamicObject, Object: fg.activeDynamicObjects[i]})
+	}
+}
+
+func (fg *funcGen) popDynamicObjectScope(mark int) {
+	fg.emitDynamicObjectCleanups(mark)
+	fg.activeDynamicObjects = fg.activeDynamicObjects[:mark]
+}
+
+func (fg *funcGen) lastInstrTerminal() bool {
+	if len(fg.out.Instrs) == 0 {
+		return false
+	}
+	switch fg.out.Instrs[len(fg.out.Instrs)-1].Op {
+	case bytecode.OpReturn, bytecode.OpReturnVoid, bytecode.OpReturnObject, bytecode.OpJump, bytecode.OpUnreachable:
+		return true
+	default:
+		return false
+	}
+}
+
+func (fg *funcGen) emitVLADecl(vd *sema.VarDecl) error {
+	if vd == nil || vd.Sym == nil {
+		return nil
+	}
+	layout, err := fg.g.lowerLayout(vd.T)
+	if err != nil {
+		return err
+	}
+	slot := vd.Sym.SlotID
+	if slot < 0 {
+		return &Error{Pos: vd.Pos().SourceStart, Node: fmt.Sprintf("%T", vd), Op: "emitStmt", Reason: "VLA declaration has no size slot"}
+	}
+	if !fg.hasLocalSlot(slot) {
+		fg.out.Locals = append(fg.out.Locals, bytecode.LocalSlot{ID: slot, Name: vd.Sym.Name + "$size", Type: bytecode.TypeI64})
+	}
+	objectID := len(fg.out.DynamicObjects)
+	fg.out.DynamicObjects = append(fg.out.DynamicObjects, bytecode.DynamicObject{ID: objectID, Name: vd.Sym.Name, Align: layout.Align, Layout: layout.ID})
+	fg.dynamicObjectMap[vd.Sym] = objectID
+	fg.dynamicSizeSlotMap[vd.Sym] = slot
+	if err := fg.emitRuntimeSizeof(vd.T); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.Instr{Op: bytecode.OpDup},
+		bytecode.StoreLocal(bytecode.TypeI64, slot),
+		bytecode.Instr{Op: bytecode.OpAllocDynamicObject, Object: objectID, Type: bytecode.TypeI64, Align: layout.Align, Layout: layout.ID},
+	)
+	fg.activeDynamicObjects = append(fg.activeDynamicObjects, objectID)
+	return nil
+}
+
+func (fg *funcGen) hasLocalSlot(slot int) bool {
+	for _, p := range fg.out.Params {
+		if p.Slot == slot {
+			return true
+		}
+	}
+	for _, l := range fg.out.Locals {
+		if l.ID == slot {
+			return true
+		}
+	}
+	return false
 }
 
 type namedTargetKind int

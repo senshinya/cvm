@@ -156,7 +156,7 @@ func TestPrintModuleFullStateExactOutput(t *testing.T) {
 		"Layout #0 name=\"Pair\" size=12 align=4 elem_size=6\n" +
 		"  Field #0 name=\"x\" offset=0 type=i32\n" +
 		"  BitField #1 name=\"flag\" container=u32 byte_offset=4 bit_offset=3 width=5 signed=true volatile=true policy=\"test-policy\"\n" +
-		"Sig #0 ret=i32 params=(i32, ptr, ...)\n" +
+		"Sig #0 ret=i32 params=(i32, ptr, ...) variadic\n" +
 		"Func #0 global=1 name=\"main\" sig=0 max_stack=5\n" +
 		"  Param slot=0 name=\"argc\" type=i32\n" +
 		"  Local #1 name=\"tmp\" type=i64\n" +
