@@ -130,6 +130,29 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		}
 		f.Params = append(f.Params, bytecode.Param{Name: p.Sym.Name, Type: pt, Slot: p.Sym.SlotID})
 	}
+	seenSlots := map[int]bool{}
+	for _, p := range f.Params {
+		seenSlots[p.Slot] = true
+	}
+	for _, local := range fn.Locals {
+		if local == nil || local.Sym == nil || local.Storage == sema.StorageStatic || local.Storage == sema.StorageExtern {
+			continue
+		}
+		vt, err := g.lowerValueType(local.T)
+		if err != nil {
+			return err
+		}
+		if local.Sym.SlotID >= 0 && isSlotType(vt) {
+			if seenSlots[local.Sym.SlotID] {
+				continue
+			}
+			seenSlots[local.Sym.SlotID] = true
+			f.Locals = append(f.Locals, bytecode.LocalSlot{ID: local.Sym.SlotID, Name: local.Sym.Name, Type: vt})
+			continue
+		}
+		layout := g.placeholderLayout(local.T)
+		f.Objects = append(f.Objects, bytecode.LocalObject{ID: len(f.Objects), Name: local.Sym.Name, Size: layout.Size, Align: layout.Align, Layout: layout.ID})
+	}
 	fg := &funcGen{g: g, fn: fn, out: &f}
 	if err := fg.emitStmt(fn.Body); err != nil {
 		return err
@@ -138,62 +161,6 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 	if fn.Sym.GlobalID >= 0 && fn.Sym.GlobalID < len(g.mod.Globals) {
 		g.mod.Globals[fn.Sym.GlobalID].Func = f.ID
 		g.mod.Globals[fn.Sym.GlobalID].Kind = bytecode.GlobalFunc
-	}
-	return nil
-}
-
-func (fg *funcGen) emitStmt(s sema.Stmt) error {
-	switch x := s.(type) {
-	case *sema.Block:
-		for _, item := range x.Items {
-			if err := fg.emitStmt(item); err != nil {
-				return err
-			}
-		}
-	case *sema.ReturnStmt:
-		if x.Value == nil {
-			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpReturnVoid})
-			return nil
-		}
-		if err := fg.emitValue(x.Value); err != nil {
-			return err
-		}
-		t, err := fg.g.lowerValueType(x.Value.GetType())
-		if err != nil {
-			return err
-		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Return(t))
-	default:
-		return &Error{Pos: s.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: "no statement lowering registered before scalar dispatcher task"}
-	}
-	return nil
-}
-
-func (fg *funcGen) emitValue(e sema.Expr) error {
-	switch x := e.(type) {
-	case *sema.IntLit:
-		t, err := fg.g.lowerValueType(x.T)
-		if err != nil {
-			return err
-		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(t, x.Value))
-	case *sema.ImplicitCast:
-		if err := fg.emitValue(x.X); err != nil {
-			return err
-		}
-		from, err := fg.g.lowerValueType(x.From)
-		if err != nil {
-			return err
-		}
-		to, err := fg.g.lowerValueType(x.To)
-		if err != nil {
-			return err
-		}
-		if from != to {
-			fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(from, to, castOpFor(x.Kind, from, to)))
-		}
-	default:
-		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "no expression lowering registered before scalar dispatcher task"}
 	}
 	return nil
 }
@@ -239,6 +206,90 @@ func castOpFor(kind sema.CastKind, from, to bytecode.ValueType) bytecode.CastOp 
 	default:
 		return bytecode.CastBit
 	}
+}
+
+func (g *generator) placeholderLayout(t sema.Type) bytecode.ObjectLayout {
+	id, ok := g.layoutMap[t]
+	if ok {
+		return g.mod.Layouts[id]
+	}
+	id = len(g.mod.Layouts)
+	layout := bytecode.ObjectLayout{ID: id, Name: t.String(), Size: sizeofType(t), Align: alignofType(t)}
+	g.layoutMap[t] = id
+	g.mod.Layouts = append(g.mod.Layouts, layout)
+	return layout
+}
+
+func sizeofType(t sema.Type) int64 {
+	switch x := sema.Unqual(t).(type) {
+	case *sema.BuiltinType:
+		switch x.Kind {
+		case sema.Void:
+			return 1
+		case sema.Bool, sema.Char, sema.SChar, sema.UChar:
+			return 1
+		case sema.Short, sema.UShort:
+			return 2
+		case sema.Int, sema.UInt, sema.Float:
+			return 4
+		case sema.Long, sema.ULong, sema.LongLong, sema.ULongLong, sema.Double:
+			return 8
+		case sema.LongDouble:
+			return 16
+		}
+	case *sema.PointerType, *sema.FunctionType:
+		return 8
+	case *sema.ArrayType:
+		if x.SizeKind == sema.ArrayConstantSize {
+			return x.Size * sizeofType(x.Elem)
+		}
+	case *sema.StructType:
+		var end int64
+		for _, f := range x.Fields {
+			if n := f.Offset + sizeofType(f.T); n > end {
+				end = n
+			}
+		}
+		return end
+	case *sema.UnionType:
+		var max int64
+		for _, f := range x.Fields {
+			if n := sizeofType(f.T); n > max {
+				max = n
+			}
+		}
+		return max
+	case *sema.EnumType:
+		return sizeofType(x.Underlying)
+	}
+	return 0
+}
+
+func alignofType(t sema.Type) int64 {
+	switch x := sema.Unqual(t).(type) {
+	case *sema.BuiltinType:
+		switch x.Kind {
+		case sema.Void, sema.Bool, sema.Char, sema.SChar, sema.UChar:
+			return 1
+		case sema.Short, sema.UShort:
+			return 2
+		case sema.Int, sema.UInt, sema.Float:
+			return 4
+		case sema.Long, sema.ULong, sema.LongLong, sema.ULongLong, sema.Double:
+			return 8
+		case sema.LongDouble:
+			return 16
+		}
+	case *sema.PointerType, *sema.FunctionType:
+		return 8
+	case *sema.ArrayType:
+		return alignofType(x.Elem)
+	case *sema.StructType, *sema.UnionType:
+		return 1
+	case *sema.EnumType:
+		return alignofType(x.Underlying)
+	}
+	return 1
 }
 
 func integerCastOp(from, to bytecode.ValueType) bytecode.CastOp {

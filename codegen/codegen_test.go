@@ -50,6 +50,29 @@ func TestGenerateReturnCastsIntLiteralToBool(t *testing.T) {
 	}
 }
 
+func TestGenerateLocalArithmetic(t *testing.T) {
+	mod := compileModule(t, `
+int main(void) {
+	int x = 1;
+	int y = 2;
+	return x + y * 3;
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{
+		"I32StoreLocal 0",
+		"I32StoreLocal 1",
+		"I32LoadLocal 0",
+		"I32LoadLocal 1",
+		"I32Mul",
+		"I32Add",
+		"I32Return",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestCollectGlobalsIncludesStaticLocals(t *testing.T) {
 	prog := analyzeProgram(t, `
 int g;
