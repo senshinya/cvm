@@ -120,7 +120,7 @@ func FormatInstr(i Instr) string {
 	case OpAddrLocalObject:
 		return fmt.Sprintf("AddrLocalObject %d", i.Object)
 	case OpAllocDynamicObject:
-		return fmt.Sprintf("AllocDynamicObject object=%d size=%d align=%d layout=%d", i.Object, i.Size, i.Align, i.Layout)
+		return fmt.Sprintf("AllocDynamicObject object=%d size=<stack:i64> align=%d layout=%d", i.Object, i.Align, i.Layout)
 	case OpFreeDynamicObject:
 		return fmt.Sprintf("FreeDynamicObject %d", i.Object)
 	case OpDynamicObjectAddr:

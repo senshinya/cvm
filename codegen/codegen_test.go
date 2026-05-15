@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -722,6 +723,25 @@ int f(int n, int m, int k) {
 	}
 }
 
+func TestGenerateSameBoundVLAInstancesDoNotAlias(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n, int m) {
+	int a[n][m];
+	m = m + 1;
+	int b[n][m];
+	return sizeof(a[0]) + sizeof(b[0]);
+}`)
+	out := bytecode.PrintModule(mod)
+	aSlot := localSlotByName(t, mod.Functions[0], "a$size$elem")
+	bSlot := localSlotByName(t, mod.Functions[0], "b$size$elem")
+	if aSlot == bSlot {
+		t.Fatalf("same-bound VLA instances share a size slot:\n%s", out)
+	}
+	if !strings.Contains(out, fmt.Sprintf("I64LoadLocal %d", aSlot)) || !strings.Contains(out, fmt.Sprintf("I64LoadLocal %d", bSlot)) {
+		t.Fatalf("sizeof should load both VLA instance size slots:\n%s", out)
+	}
+}
+
 func instrPC(t *testing.T, fn bytecode.Function, pred func(bytecode.Instr) bool) int {
 	t.Helper()
 	return instrPCAfter(t, fn, -1, pred)
@@ -735,6 +755,17 @@ func instrPCAfter(t *testing.T, fn bytecode.Function, after int, pred func(bytec
 		}
 	}
 	t.Fatalf("instruction not found after pc %d", after)
+	return -1
+}
+
+func localSlotByName(t *testing.T, fn bytecode.Function, name string) int {
+	t.Helper()
+	for _, l := range fn.Locals {
+		if l.Name == name {
+			return l.ID
+		}
+	}
+	t.Fatalf("local slot %q not found", name)
 	return -1
 }
 

@@ -193,7 +193,7 @@ func TestFormatInstrCoversCurrentOpcodeEnum(t *testing.T) {
 		{"load-local", LoadLocal(TypeI16, 5), "I16LoadLocal 5"},
 		{"store-local", StoreLocal(TypeI16, 5), "I16StoreLocal 5"},
 		{"addr-local-object", AddrLocalObject(6), "AddrLocalObject 6"},
-		{"alloc-dynamic-object", Instr{Op: OpAllocDynamicObject, Object: 7, Size: 32, Align: 8, Layout: 9}, "AllocDynamicObject object=7 size=32 align=8 layout=9"},
+		{"alloc-dynamic-object", Instr{Op: OpAllocDynamicObject, Object: 7, Size: 32, Align: 8, Layout: 9}, "AllocDynamicObject object=7 size=<stack:i64> align=8 layout=9"},
 		{"free-dynamic-object", Instr{Op: OpFreeDynamicObject, Object: 7}, "FreeDynamicObject 7"},
 		{"dynamic-object-addr", Instr{Op: OpDynamicObjectAddr, Object: 7, Type: TypeObjectAddr}, "DynamicObjectAddr 7"},
 		{"load", Load(TypeU32, 4, true), "U32Load align=4 volatile=true"},

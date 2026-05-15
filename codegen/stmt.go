@@ -34,7 +34,7 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 				continue
 			}
 			if typeHasVariablyModifiedType(vd.T) {
-				if err := fg.prepareDynamicSizeTypes(vd.T, vd.Sym.Name+"$size"); err != nil {
+				if err := fg.prepareDynamicSizeTypesForSymbol(vd.Sym, vd.T, vd.Sym.Name+"$size"); err != nil {
 					return err
 				}
 			}
@@ -567,7 +567,7 @@ func (fg *funcGen) emitVLADecl(vd *sema.VarDecl) error {
 	fg.out.DynamicObjects = append(fg.out.DynamicObjects, bytecode.DynamicObject{ID: objectID, Name: vd.Sym.Name, Align: layout.Align, Layout: layout.ID})
 	fg.dynamicObjectMap[vd.Sym] = objectID
 	fg.dynamicSizeSlotMap[vd.Sym] = slot
-	if err := fg.emitRuntimeSizeofSaved(vd.T, slot, vd.Sym.Name+"$size"); err != nil {
+	if err := fg.emitRuntimeSizeofSavedForSymbol(vd.Sym, vd.T, slot, vd.Sym.Name+"$size"); err != nil {
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs,
@@ -578,6 +578,10 @@ func (fg *funcGen) emitVLADecl(vd *sema.VarDecl) error {
 }
 
 func (fg *funcGen) emitRuntimeSizeofSaved(t sema.Type, slot int, name string) error {
+	return fg.emitRuntimeSizeofSavedForSymbol(nil, t, slot, name)
+}
+
+func (fg *funcGen) emitRuntimeSizeofSavedForSymbol(sym *sema.Symbol, t sema.Type, slot int, name string) error {
 	switch x := sema.Unqual(t).(type) {
 	case *sema.ArrayType:
 		if x.SizeKind == sema.ArrayStarSize {
@@ -602,7 +606,7 @@ func (fg *funcGen) emitRuntimeSizeofSaved(t sema.Type, slot int, name string) er
 		if typeHasVariableSize(x.Elem) {
 			elemSlot = fg.allocSyntheticI64Slot(name + "$elem")
 		}
-		if err := fg.emitRuntimeSizeofSaved(x.Elem, elemSlot, name+"$elem"); err != nil {
+		if err := fg.emitRuntimeSizeofSavedForSymbol(sym, x.Elem, elemSlot, name+"$elem"); err != nil {
 			return err
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(bytecode.TypeI64, bytecode.BinMul))
@@ -611,7 +615,9 @@ func (fg *funcGen) emitRuntimeSizeofSaved(t sema.Type, slot int, name string) er
 				slot = fg.allocSyntheticI64Slot(name)
 			}
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(bytecode.TypeI64, slot))
-			fg.dynamicSizeTypeSlots[dynamicSizeKey(t)] = slot
+			if sym != nil {
+				fg.bindDynamicSizeSlot(sym, t, slot)
+			}
 		}
 		return nil
 	default:
@@ -620,11 +626,11 @@ func (fg *funcGen) emitRuntimeSizeofSaved(t sema.Type, slot int, name string) er
 	}
 }
 
-func (fg *funcGen) prepareDynamicSizeTypes(t sema.Type, name string) error {
-	return fg.prepareDynamicSizeTypesSeen(t, name, map[sema.Type]bool{})
+func (fg *funcGen) prepareDynamicSizeTypesForSymbol(sym *sema.Symbol, t sema.Type, name string) error {
+	return fg.prepareDynamicSizeTypesSeen(sym, t, name, map[sema.Type]bool{})
 }
 
-func (fg *funcGen) prepareDynamicSizeTypesSeen(t sema.Type, name string, seen map[sema.Type]bool) error {
+func (fg *funcGen) prepareDynamicSizeTypesSeen(sym *sema.Symbol, t sema.Type, name string, seen map[sema.Type]bool) error {
 	key := sema.Unqual(t)
 	if seen[key] {
 		return nil
@@ -632,22 +638,52 @@ func (fg *funcGen) prepareDynamicSizeTypesSeen(t sema.Type, name string, seen ma
 	seen[key] = true
 	switch x := key.(type) {
 	case *sema.PointerType:
-		return fg.prepareDynamicSizeTypesSeen(x.Pointee, name+"$pointee", seen)
+		if err := fg.prepareDynamicSizeTypesSeen(sym, x.Pointee, name+"$pointee", seen); err != nil {
+			return err
+		}
+		if sym != nil {
+			fg.dynamicPointerTypeMap[sym] = fg.dynamicSizeSymbolMap[sym]
+		}
+		return nil
 	case *sema.ArrayType:
 		if !typeHasVariableSize(x) {
 			return nil
 		}
-		if _, ok := fg.dynamicSizeTypeSlots[dynamicSizeKey(key)]; !ok {
+		if _, ok := fg.dynamicSizeSlotForSymbol(sym, key); !ok {
 			slot := fg.allocSyntheticI64Slot(name)
-			if err := fg.emitRuntimeSizeofSaved(key, slot, name); err != nil {
+			if err := fg.emitRuntimeSizeofSavedForSymbol(sym, key, slot, name); err != nil {
 				return err
 			}
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
 		}
-		return fg.prepareDynamicSizeTypesSeen(x.Elem, name+"$elem", seen)
+		return fg.prepareDynamicSizeTypesSeen(sym, x.Elem, name+"$elem", seen)
 	default:
 		return nil
 	}
+}
+
+func (fg *funcGen) bindDynamicSizeSlot(sym *sema.Symbol, t sema.Type, slot int) {
+	if sym == nil {
+		return
+	}
+	m := fg.dynamicSizeSymbolMap[sym]
+	if m == nil {
+		m = map[string]int{}
+		fg.dynamicSizeSymbolMap[sym] = m
+	}
+	m[dynamicSizeKey(t)] = slot
+}
+
+func (fg *funcGen) dynamicSizeSlotForSymbol(sym *sema.Symbol, t sema.Type) (int, bool) {
+	if sym == nil {
+		return 0, false
+	}
+	m := fg.dynamicSizeSymbolMap[sym]
+	if m == nil {
+		return 0, false
+	}
+	slot, ok := m[dynamicSizeKey(t)]
+	return slot, ok
 }
 
 func dynamicSizeKey(t sema.Type) string {

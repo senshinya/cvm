@@ -178,17 +178,17 @@ func (fg *funcGen) emitSizeof(x *sema.SizeofExpr) error {
 				fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDynamicObjectAddr, Object: object, Type: bytecode.TypeObjectAddr})
 				fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
 			}
-			if slot, ok := fg.dynamicSizeSlotMap[sym]; ok {
+			if slot, ok := fg.dynamicSizeSlotForSymbol(sym, t); ok {
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeI64, slot))
+				fg.emitCast(bytecode.TypeI64, outType, sema.IntegralConversion)
+				return nil
+			}
+			if slot, ok := fg.dynamicSizeSlotMap[sym]; ok && sameUnqualType(t, x.Operand.Expr.GetType()) {
 				fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeI64, slot))
 				fg.emitCast(bytecode.TypeI64, outType, sema.IntegralConversion)
 				return nil
 			}
 		}
-	}
-	if slot, ok := fg.dynamicSizeTypeSlots[dynamicSizeKey(t)]; ok {
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeI64, slot))
-		fg.emitCast(bytecode.TypeI64, outType, sema.IntegralConversion)
-		return nil
 	}
 	if err := fg.emitRuntimeSizeof(t); err != nil {
 		return err
@@ -406,7 +406,7 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		if err := fg.emitValue(x.R); err != nil {
 			return err
 		}
-		return fg.emitPtrAddFor(x.L.GetType())
+		return fg.emitPtrAddForExpr(x.L, x.L.GetType())
 	case x.Op == sema.OpAdd && isIntegerType(leftType) && isPointerType(rightType):
 		if err := fg.emitValue(x.R); err != nil {
 			return err
@@ -414,7 +414,7 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		if err := fg.emitValue(x.L); err != nil {
 			return err
 		}
-		return fg.emitPtrAddFor(x.R.GetType())
+		return fg.emitPtrAddForExpr(x.R, x.R.GetType())
 	case x.Op == sema.OpSub && isPointerType(leftType) && isIntegerType(rightType):
 		if err := fg.emitValue(x.L); err != nil {
 			return err
@@ -423,7 +423,7 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 			return err
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: rightType, Unary: bytecode.UnaryNeg})
-		return fg.emitPtrAddFor(x.L.GetType())
+		return fg.emitPtrAddForExpr(x.L, x.L.GetType())
 	case x.Op == sema.OpSub && isPointerType(leftType) && isPointerType(rightType):
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "pointer difference lowering is not implemented"}
 	default:
@@ -432,7 +432,11 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 }
 
 func (fg *funcGen) emitPtrAddFor(baseType sema.Type) error {
-	if slot, ok := fg.dynamicElemSizeSlot(baseType); ok {
+	return fg.emitPtrAddForExpr(nil, baseType)
+}
+
+func (fg *funcGen) emitPtrAddForExpr(base sema.Expr, baseType sema.Type) error {
+	if slot, ok := fg.dynamicElemSizeSlotForExpr(base, baseType); ok {
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeI64, slot), bytecode.Instr{Op: bytecode.OpPtrAddDynamic})
 		return nil
 	}
@@ -444,7 +448,7 @@ func (fg *funcGen) emitPtrAddFor(baseType sema.Type) error {
 	return nil
 }
 
-func (fg *funcGen) dynamicElemSizeSlot(baseType sema.Type) (int, bool) {
+func (fg *funcGen) dynamicElemSizeSlotForExpr(base sema.Expr, baseType sema.Type) (int, bool) {
 	var elem sema.Type
 	switch x := sema.Unqual(baseType).(type) {
 	case *sema.PointerType:
@@ -457,8 +461,18 @@ func (fg *funcGen) dynamicElemSizeSlot(baseType sema.Type) (int, bool) {
 	if !typeHasVariableSize(elem) {
 		return 0, false
 	}
-	slot, ok := fg.dynamicSizeTypeSlots[dynamicSizeKey(elem)]
-	return slot, ok
+	if sym := dynamicObjectSymbol(base); sym != nil {
+		if slot, ok := fg.dynamicSizeSlotForSymbol(sym, elem); ok {
+			return slot, true
+		}
+	}
+	if sym := pointerSymbol(base); sym != nil {
+		if slots := fg.dynamicPointerTypeMap[sym]; slots != nil {
+			slot, ok := slots[dynamicSizeKey(elem)]
+			return slot, ok
+		}
+	}
+	return 0, false
 }
 
 func isPointerArithmeticExpr(x *sema.BinOp) bool {
@@ -540,8 +554,33 @@ func dynamicObjectSymbol(e sema.Expr) *sema.Symbol {
 		if x.Kind == sema.LValueToRValue || x.Kind == sema.ArrayDecay {
 			return dynamicObjectSymbol(x.X)
 		}
+	case *sema.IndexExpr:
+		return dynamicObjectSymbol(x.Base)
 	}
 	return nil
+}
+
+func pointerSymbol(e sema.Expr) *sema.Symbol {
+	switch x := e.(type) {
+	case *sema.VarRef:
+		return x.Sym
+	case *sema.ImplicitCast:
+		if x.Kind == sema.LValueToRValue || x.Kind == sema.ArrayDecay || x.Kind == sema.PointerConversion || x.Kind == sema.VoidPointerConversion {
+			return pointerSymbol(x.X)
+		}
+	case *sema.BinOp:
+		if x.Op == sema.OpAdd || x.Op == sema.OpSub {
+			if sym := pointerSymbol(x.L); sym != nil {
+				return sym
+			}
+			return pointerSymbol(x.R)
+		}
+	}
+	return nil
+}
+
+func sameUnqualType(a, b sema.Type) bool {
+	return sema.Unqual(a) == sema.Unqual(b)
 }
 
 func (fg *funcGen) emitBoolValue(e sema.Expr) error {
