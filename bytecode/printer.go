@@ -143,6 +143,8 @@ func FormatInstr(i Instr) string {
 		return fmt.Sprintf("%sBitFieldStore layout=%d field=%d volatile=%v", instrTypePrefix(i.Type), i.Layout, i.Field, i.Volatile)
 	case OpPtrAdd:
 		return fmt.Sprintf("PtrAdd elem_size=%d", i.Size)
+	case OpPtrAddDynamic:
+		return "PtrAddDynamic"
 	case OpPtrDiff:
 		return fmt.Sprintf("PtrDiff elem_size=%d", i.Size)
 	case OpBinary:

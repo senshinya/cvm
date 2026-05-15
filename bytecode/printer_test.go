@@ -205,6 +205,7 @@ func TestFormatInstrCoversCurrentOpcodeEnum(t *testing.T) {
 		{"bitfield-load", Instr{Op: OpBitFieldLoad, Type: TypeI32, Layout: 1, Field: 2, Volatile: true}, "I32BitFieldLoad layout=1 field=2 volatile=true"},
 		{"bitfield-store", Instr{Op: OpBitFieldStore, Type: TypeI32, Layout: 1, Field: 2, Volatile: true}, "I32BitFieldStore layout=1 field=2 volatile=true"},
 		{"ptr-add", Instr{Op: OpPtrAdd, Size: 4}, "PtrAdd elem_size=4"},
+		{"ptr-add-dynamic", Instr{Op: OpPtrAddDynamic}, "PtrAddDynamic"},
 		{"ptr-diff", Instr{Op: OpPtrDiff, Size: 4}, "PtrDiff elem_size=4"},
 		{"binary", Binary(TypeI32, BinShrS), "I32ShrS"},
 		{"unary", Instr{Op: OpUnary, Type: TypeI32, Unary: UnaryNeg}, "I32Neg"},

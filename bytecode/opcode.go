@@ -28,6 +28,7 @@ const (
 	OpBitFieldLoad
 	OpBitFieldStore
 	OpPtrAdd
+	OpPtrAddDynamic
 	OpPtrDiff
 	OpBinary
 	OpUnary
@@ -73,6 +74,7 @@ func (op Opcode) String() string {
 		"OpBitFieldLoad",
 		"OpBitFieldStore",
 		"OpPtrAdd",
+		"OpPtrAddDynamic",
 		"OpPtrDiff",
 		"OpBinary",
 		"OpUnary",

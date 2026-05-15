@@ -111,8 +111,7 @@ func (fg *funcGen) emitAddress(e sema.Expr) error {
 		if err := fg.emitValue(x.Index); err != nil {
 			return err
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPtrAdd, Size: fg.g.elemSize(x.Base.GetType())})
-		return nil
+		return fg.emitPtrAddFor(x.Base.GetType())
 	case *sema.StringLit:
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrString(fg.g.internString(x.Value)))
 		return nil

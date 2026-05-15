@@ -227,7 +227,8 @@ func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, labelPCs map[
 		if err := requireGlobal(ins.Global); err != nil {
 			return err
 		}
-		if m.Globals[ins.Global].Kind != GlobalFunc && m.Globals[ins.Global].Kind != GlobalExtern {
+		g := m.Globals[ins.Global]
+		if g.Kind != GlobalFunc && (g.Kind != GlobalExtern || g.Size != 0 || g.Align != 0) {
 			return fmt.Errorf("%v references non-function global %d", ins.Op, ins.Global)
 		}
 	case OpLoadLocal, OpStoreLocal:
@@ -258,11 +259,12 @@ func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, labelPCs map[
 		if err := requireGlobal(ins.Global); err != nil {
 			return err
 		}
-		if m.Globals[ins.Global].Kind != GlobalFunc && m.Globals[ins.Global].Kind != GlobalExtern {
+		g := m.Globals[ins.Global]
+		if g.Kind != GlobalFunc && (g.Kind != GlobalExtern || g.Size != 0 || g.Align != 0) {
 			return fmt.Errorf("%v references non-function global %d", ins.Op, ins.Global)
 		}
-		if m.Globals[ins.Global].Kind == GlobalFunc {
-			fn := m.Globals[ins.Global].Func
+		if g.Kind == GlobalFunc {
+			fn := g.Func
 			if fn < 0 || fn >= len(m.Functions) {
 				return fmt.Errorf("%v references invalid function %d", ins.Op, fn)
 			}
@@ -386,6 +388,18 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, 
 			return nil, err
 		}
 	case OpPtrAdd:
+		if _, err := popAnyOf(TypeI32, TypeI64, TypeU32, TypeU64); err != nil {
+			return nil, err
+		}
+		base, err := popAnyOf(TypePtr, TypeObjectAddr)
+		if err != nil {
+			return nil, err
+		}
+		push(base)
+	case OpPtrAddDynamic:
+		if err := pop(TypeI64); err != nil {
+			return nil, err
+		}
 		if _, err := popAnyOf(TypeI32, TypeI64, TypeU32, TypeU64); err != nil {
 			return nil, err
 		}

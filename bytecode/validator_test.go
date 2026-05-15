@@ -222,6 +222,38 @@ func TestValidateModuleRejectsInvalidAddrFuncGlobal(t *testing.T) {
 	}
 }
 
+func TestValidateModuleRejectsAddrFuncExternVariable(t *testing.T) {
+	mod := minimalModule()
+	mod.Globals = append(mod.Globals, Global{ID: 1, Name: "extern_var", Kind: GlobalExtern, Size: 4, Align: 4})
+	mod.Functions[0].Instrs = []Instr{
+		AddrFunc(1),
+		{Op: OpPop},
+		I32Const(0),
+		Return(TypeI32),
+	}
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted AddrFunc for extern variable")
+	}
+}
+
+func TestValidateModuleAcceptsDynamicPtrAdd(t *testing.T) {
+	mod := minimalModule()
+	mod.Functions[0].Instrs = []Instr{
+		{Op: OpConst, Type: TypePtr, Int: 0},
+		I32Const(2),
+		I64Const(16),
+		{Op: OpPtrAddDynamic},
+		{Op: OpPop},
+		I32Const(0),
+		Return(TypeI32),
+	}
+
+	if err := ValidateModule(mod); err != nil {
+		t.Fatalf("ValidateModule rejected dynamic ptr add: %v", err)
+	}
+}
+
 func TestValidateModuleAcceptsVariadicCallWithExtraArgs(t *testing.T) {
 	mod := moduleWithCallee()
 	mod.Sigs[1] = FuncSig{ID: 1, Ret: TypeI32, Params: []ValueType{TypeI32}, Variadic: true}

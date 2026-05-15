@@ -406,8 +406,7 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		if err := fg.emitValue(x.R); err != nil {
 			return err
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPtrAdd, Size: fg.g.elemSize(x.L.GetType())})
-		return nil
+		return fg.emitPtrAddFor(x.L.GetType())
 	case x.Op == sema.OpAdd && isIntegerType(leftType) && isPointerType(rightType):
 		if err := fg.emitValue(x.R); err != nil {
 			return err
@@ -415,8 +414,7 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		if err := fg.emitValue(x.L); err != nil {
 			return err
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPtrAdd, Size: fg.g.elemSize(x.R.GetType())})
-		return nil
+		return fg.emitPtrAddFor(x.R.GetType())
 	case x.Op == sema.OpSub && isPointerType(leftType) && isIntegerType(rightType):
 		if err := fg.emitValue(x.L); err != nil {
 			return err
@@ -425,13 +423,42 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 			return err
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: rightType, Unary: bytecode.UnaryNeg})
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPtrAdd, Size: fg.g.elemSize(x.L.GetType())})
-		return nil
+		return fg.emitPtrAddFor(x.L.GetType())
 	case x.Op == sema.OpSub && isPointerType(leftType) && isPointerType(rightType):
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "pointer difference lowering is not implemented"}
 	default:
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "unsupported pointer arithmetic"}
 	}
+}
+
+func (fg *funcGen) emitPtrAddFor(baseType sema.Type) error {
+	if slot, ok := fg.dynamicElemSizeSlot(baseType); ok {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeI64, slot), bytecode.Instr{Op: bytecode.OpPtrAddDynamic})
+		return nil
+	}
+	size := fg.g.elemSize(baseType)
+	if size <= 0 {
+		return fmt.Errorf("cannot lower pointer arithmetic with zero element size for %s", baseType)
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPtrAdd, Size: size})
+	return nil
+}
+
+func (fg *funcGen) dynamicElemSizeSlot(baseType sema.Type) (int, bool) {
+	var elem sema.Type
+	switch x := sema.Unqual(baseType).(type) {
+	case *sema.PointerType:
+		elem = x.Pointee
+	case *sema.ArrayType:
+		elem = x.Elem
+	default:
+		return 0, false
+	}
+	if !typeHasVariableSize(elem) {
+		return 0, false
+	}
+	slot, ok := fg.dynamicSizeTypeSlots[sema.Unqual(elem)]
+	return slot, ok
 }
 
 func isPointerArithmeticExpr(x *sema.BinOp) bool {

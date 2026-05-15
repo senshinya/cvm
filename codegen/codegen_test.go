@@ -653,6 +653,22 @@ int f(int n, int m) {
 	}
 }
 
+func TestGenerateMultidimensionalVLAIndexUsesDynamicStride(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n, int m) {
+	int a[n][m];
+	a[1][2] = 7;
+	return a[1][2];
+}`)
+	out := bytecode.PrintModule(mod)
+	if strings.Contains(out, "PtrAdd elem_size=0") {
+		t.Fatalf("bytecode used zero stride for multidimensional VLA index:\n%s", out)
+	}
+	if !strings.Contains(out, "PtrAddDynamic") {
+		t.Fatalf("bytecode missing dynamic stride for multidimensional VLA index:\n%s", out)
+	}
+}
+
 func instrPC(t *testing.T, fn bytecode.Function, pred func(bytecode.Instr) bool) int {
 	t.Helper()
 	return instrPCAfter(t, fn, -1, pred)
