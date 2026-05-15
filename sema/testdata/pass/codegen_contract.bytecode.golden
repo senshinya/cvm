@@ -1,0 +1,61 @@
+Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Global #0 var name="g" size=4 align=4 readonly=false init_zero=4 init_bytes=0 init_relocs=0
+Global #1 func name="sum" func=0
+Layout #0 name="int" size=4 align=4 elem_size=0
+Layout #1 name="int[<vla>]" size=0 align=4 elem_size=4
+Sig #0 ret=i32 params=(i32)
+Func #0 global=1 name="sum" sig=0 max_stack=0
+  Param slot=0 name="n" type=i32
+  Local #2 name="total" type=i32
+  Local #3 name="i" type=i32
+  Local #1 name="a$size" type=i64
+  DynamicObject #0 name="a" align=4 layout=1
+  Label #0 name="" stack=() statement=true
+  Label #1 name="" stack=() statement=true
+  Label #2 name="" stack=() statement=true
+  Label #3 name="" stack=() statement=true
+  0000: I32LoadLocal 0
+  0001: Cast i32->i64 SExt
+  0002: I64Const 4
+  0003: I64Mul
+  0004: Dup
+  0005: I64StoreLocal 1
+  0006: AllocDynamicObject object=0 size=<stack:i64> align=4 layout=1
+  0007: I32Const 0
+  0008: I32StoreLocal 2
+  0009: I32Const 0
+  0010: I32StoreLocal 3
+  0011: L0:
+  0012: I32LoadLocal 3
+  0013: I32LoadLocal 0
+  0014: I32LtS
+  0015: Cast bool->i32 ZExt
+  0016: Cast i32->bool Bool
+  0017: JumpIfZero bool L2
+  0018: I32LoadLocal 2
+  0019: DynamicObjectAddr 0
+  0020: Cast objectaddr->ptr Bit
+  0021: Cast ptr->objectaddr Bit
+  0022: I32LoadLocal 3
+  0023: PtrAdd elem_size=4
+  0024: I32Load align=4 volatile=false
+  0025: I32Add
+  0026: Dup
+  0027: I32StoreLocal 2
+  0028: Pop
+  0029: L1:
+  0030: I32LoadLocal 3
+  0031: I32Const 1
+  0032: I32Add
+  0033: Dup
+  0034: I32StoreLocal 3
+  0035: Pop
+  0036: Jump L0
+  0037: L2:
+  0038: L3:
+  0039: I32LoadLocal 2
+  0040: AddrGlobal 0
+  0041: I32Load align=4 volatile=false
+  0042: I32Add
+  0043: FreeDynamicObject 0
+  0044: I32Return

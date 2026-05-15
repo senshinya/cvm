@@ -2,7 +2,10 @@ package codegen
 
 import (
 	"encoding/binary"
+	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,6 +14,42 @@ import (
 	"shinya.click/cvm/parser"
 	"shinya.click/cvm/sema"
 )
+
+var updateGolden = flag.Bool("update", false, "regenerate codegen golden files")
+
+func TestGoldenPassBytecode(t *testing.T) {
+	matches, err := filepath.Glob(filepath.Join("..", "sema", "testdata", "pass", "*.c"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) == 0 {
+		t.Fatal("no sema pass cases")
+	}
+	for _, src := range matches {
+		t.Run(filepath.Base(src), func(t *testing.T) {
+			source, err := os.ReadFile(src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			mod := compileModule(t, string(source))
+			got := bytecode.PrintModule(mod)
+			goldenPath := strings.TrimSuffix(src, ".c") + ".bytecode.golden"
+			if *updateGolden {
+				if err := os.WriteFile(goldenPath, []byte(got), 0644); err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			want, err := os.ReadFile(goldenPath)
+			if err != nil {
+				t.Fatalf("read golden: %v (run with -update to create)", err)
+			}
+			if got != string(want) {
+				t.Fatalf("golden mismatch\n--- want ---\n%s\n--- got ---\n%s", want, got)
+			}
+		})
+	}
+}
 
 func TestGenerateMinimalReturn(t *testing.T) {
 	mod := compileModule(t, `int main(void) { return 0; }`)
@@ -46,6 +85,16 @@ func TestGenerateReturnCastsIntLiteralToBool(t *testing.T) {
 		"Cast i32->bool Bool",
 		"BoolReturn",
 	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGenerateUnaryMinus(t *testing.T) {
+	mod := compileModule(t, `int main(void) { return -1; }`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{"I32Const 1", "I32Neg", "I32Return"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("bytecode missing %q:\n%s", want, out)
 		}

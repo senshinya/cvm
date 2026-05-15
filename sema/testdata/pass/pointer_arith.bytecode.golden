@@ -1,0 +1,19 @@
+Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Global #0 var name="a" size=12 align=4 readonly=false init_zero=12 init_bytes=0 init_relocs=0
+Global #1 func name="main" func=0
+Layout #0 name="int[3]" size=12 align=4 elem_size=4
+Sig #0 ret=i32 params=()
+Func #0 global=1 name="main" sig=0 max_stack=0
+  Local #0 name="p" type=ptr
+  Local #1 name="v" type=i32
+  0000: AddrGlobal 0
+  0001: Cast objectaddr->ptr Bit
+  0002: PtrStoreLocal 0
+  0003: PtrLoadLocal 0
+  0004: I32Const 1
+  0005: PtrAdd elem_size=4
+  0006: Cast ptr->objectaddr Bit
+  0007: I32Load align=4 volatile=false
+  0008: I32StoreLocal 1
+  0009: I32LoadLocal 1
+  0010: I32Return

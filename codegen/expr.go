@@ -115,6 +115,17 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(bytecode.TypeObjectAddr, bytecode.TypePtr, bytecode.CastBit))
 		case sema.UnDeref:
 			return fg.emitLValueValue(x, x.T)
+		case sema.UnPlus:
+			return fg.emitValue(x.X)
+		case sema.UnMinus:
+			if err := fg.emitValue(x.X); err != nil {
+				return err
+			}
+			t, err := fg.g.lowerValueType(x.T)
+			if err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: t, Unary: bytecode.UnaryNeg})
 		default:
 			return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "unary expression lowering is not implemented for this operator"}
 		}
