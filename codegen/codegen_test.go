@@ -742,6 +742,37 @@ int f(int n, int m) {
 	}
 }
 
+func TestGenerateVLAMetadataAfterAddressTakenParamCopy(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n, int a[n]) {
+	int *p = &n;
+	return a[0];
+}`)
+	fn := mod.Functions[0]
+	copyStore := instrPC(t, fn, func(i bytecode.Instr) bool { return i.Op == bytecode.OpStore && i.Type == bytecode.TypeI32 })
+	boundLoad := instrPCAfter(t, fn, copyStore, func(i bytecode.Instr) bool { return i.Op == bytecode.OpLoad && i.Type == bytecode.TypeI32 })
+	if !(copyStore < boundLoad) {
+		t.Fatalf("VLA parameter metadata was prepared before address-taken param copy: copyStore=%d boundLoad=%d\n%s",
+			copyStore, boundLoad, bytecode.PrintModule(mod))
+	}
+}
+
+func TestGenerateSizeofDerefPointerToVLAUsesSavedMetadata(t *testing.T) {
+	mod := compileModule(t, `
+int f(int m) {
+	int (*p)[m];
+	return sizeof *p;
+}`)
+	out := bytecode.PrintModule(mod)
+	if strings.Count(out, "I32LoadLocal 0") != 1 {
+		t.Fatalf("sizeof *p should not reevaluate pointer-to-VLA bound:\n%s", out)
+	}
+	slot := localSlotByName(t, mod.Functions[0], "p$size$pointee")
+	if !strings.Contains(out, fmt.Sprintf("I64LoadLocal %d", slot)) {
+		t.Fatalf("sizeof *p should load saved pointer-to-VLA metadata slot %d:\n%s", slot, out)
+	}
+}
+
 func instrPC(t *testing.T, fn bytecode.Function, pred func(bytecode.Instr) bool) int {
 	t.Helper()
 	return instrPCAfter(t, fn, -1, pred)

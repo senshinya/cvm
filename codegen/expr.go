@@ -189,6 +189,13 @@ func (fg *funcGen) emitSizeof(x *sema.SizeofExpr) error {
 				return nil
 			}
 		}
+		if sym := pointerSymbol(x.Operand.Expr); sym != nil {
+			if slot, ok := fg.dynamicSizeSlotForPointerSymbol(sym, t); ok {
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeI64, slot))
+				fg.emitCast(bytecode.TypeI64, outType, sema.IntegralConversion)
+				return nil
+			}
+		}
 	}
 	if err := fg.emitRuntimeSizeof(t); err != nil {
 		return err
@@ -475,6 +482,18 @@ func (fg *funcGen) dynamicElemSizeSlotForExpr(base sema.Expr, baseType sema.Type
 	return 0, false
 }
 
+func (fg *funcGen) dynamicSizeSlotForPointerSymbol(sym *sema.Symbol, t sema.Type) (int, bool) {
+	if sym == nil {
+		return 0, false
+	}
+	slots := fg.dynamicPointerTypeMap[sym]
+	if slots == nil {
+		return 0, false
+	}
+	slot, ok := slots[dynamicSizeKey(t)]
+	return slot, ok
+}
+
 func isPointerArithmeticExpr(x *sema.BinOp) bool {
 	if x == nil || (x.Op != sema.OpAdd && x.Op != sema.OpSub) {
 		return false
@@ -566,6 +585,10 @@ func pointerSymbol(e sema.Expr) *sema.Symbol {
 		return x.Sym
 	case *sema.ImplicitCast:
 		if x.Kind == sema.LValueToRValue || x.Kind == sema.ArrayDecay || x.Kind == sema.PointerConversion || x.Kind == sema.VoidPointerConversion {
+			return pointerSymbol(x.X)
+		}
+	case *sema.UnOp:
+		if x.Op == sema.UnDeref {
 			return pointerSymbol(x.X)
 		}
 	case *sema.BinOp:

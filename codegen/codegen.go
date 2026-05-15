@@ -259,13 +259,6 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		defaultLabels:         map[*sema.DefaultStmt]int{},
 	}
 	for _, p := range fn.Params {
-		if p != nil && p.T != nil && typeHasVariablyModifiedType(p.T) {
-			if err := fg.prepareDynamicSizeTypesForSymbol(p.Sym, p.T, p.Sym.Name+"$size"); err != nil {
-				return err
-			}
-		}
-	}
-	for _, p := range fn.Params {
 		if !addressTaken[p.Sym] {
 			continue
 		}
@@ -282,6 +275,13 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 			bytecode.LoadLocal(vt, p.Sym.SlotID),
 			bytecode.Store(vt, g.alignof(p.T), isVolatile(p.T)),
 		)
+	}
+	for _, p := range fn.Params {
+		if p != nil && p.T != nil && typeHasVariablyModifiedType(p.T) {
+			if err := fg.prepareDynamicSizeTypesForSymbol(p.Sym, p.T, p.Sym.Name+"$size"); err != nil {
+				return err
+			}
+		}
 	}
 	if err := fg.emitStmt(fn.Body); err != nil {
 		return err
