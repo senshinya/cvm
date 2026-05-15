@@ -144,9 +144,10 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		fg.breaks = append(fg.breaks, endLabel)
 		fg.continues = append(fg.continues, postLabel)
 		fg.breakCleanupMarks = append(fg.breakCleanupMarks, loopCleanupMark)
-		fg.continueCleanupMarks = append(fg.continueCleanupMarks, loopCleanupMark)
+		continueCleanupMark := len(fg.activeDynamicObjects)
+		fg.continueCleanupMarks = append(fg.continueCleanupMarks, continueCleanupMark)
 		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel, loopCleanupMark)
-		popNamedContinues := fg.pushNamedContinues(pendingContinueNames, postLabel, loopCleanupMark)
+		popNamedContinues := fg.pushNamedContinues(pendingContinueNames, postLabel, continueCleanupMark)
 		fg.mark(condLabel)
 		if x.Cond != nil {
 			if err := fg.emitBoolValue(x.Cond); err != nil {

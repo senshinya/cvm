@@ -548,6 +548,19 @@ int main(void) {
 	}
 }
 
+func TestGenerateAddressOfFunctionUsesAddrFuncGlobal(t *testing.T) {
+	mod := compileModule(t, `
+int inc(int);
+int main(void) {
+	int (*fp)(int) = &inc;
+	return 0;
+}`)
+	out := bytecode.PrintModule(mod)
+	if !strings.Contains(out, "AddrFunc 0") {
+		t.Fatalf("bytecode missing AddrFunc for &function:\n%s", out)
+	}
+}
+
 func TestGenerateExplicitFloatCastToBoolUsesBoolCast(t *testing.T) {
 	mod := compileModule(t, `_Bool main(void) { return (_Bool)1.5; }`)
 	out := bytecode.PrintModule(mod)
@@ -592,6 +605,28 @@ int f(int n) {
 	if !(allocPC < breakFreePC && breakFreePC < breakJumpPC && breakJumpPC < endFreePC && endFreePC < returnPC) {
 		t.Fatalf("for-init VLA cleanup is not emitted on break and normal loop exit: alloc=%d breakFree=%d breakJump=%d endFree=%d return=%d\n%s",
 			allocPC, breakFreePC, breakJumpPC, endFreePC, returnPC, bytecode.PrintModule(mod))
+	}
+}
+
+func TestGenerateForInitVLAContinueDoesNotFreeBeforePost(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n) {
+	int x = 0;
+	for (int a[n]; x < 1; x = x + 1) {
+		continue;
+	}
+	return 0;
+}`)
+	fn := mod.Functions[0]
+	allocPC := instrPC(t, fn, func(i bytecode.Instr) bool { return i.Op == bytecode.OpAllocDynamicObject })
+	continueJumpPC := instrPCAfter(t, fn, allocPC, func(i bytecode.Instr) bool { return i.Op == bytecode.OpJump })
+	storeAfterContinuePC := instrPCAfter(t, fn, continueJumpPC, func(i bytecode.Instr) bool {
+		return i.Op == bytecode.OpStoreLocal && i.Slot == 1
+	})
+	freePC := instrPCAfter(t, fn, storeAfterContinuePC, func(i bytecode.Instr) bool { return i.Op == bytecode.OpFreeDynamicObject })
+	if !(allocPC < continueJumpPC && continueJumpPC < storeAfterContinuePC && storeAfterContinuePC < freePC) {
+		t.Fatalf("for-init VLA was freed before continue reached post expression: alloc=%d continueJump=%d postStore=%d free=%d\n%s",
+			allocPC, continueJumpPC, storeAfterContinuePC, freePC, bytecode.PrintModule(mod))
 	}
 }
 

@@ -106,6 +106,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 	case *sema.UnOp:
 		switch x.Op {
 		case sema.UnAddr:
+			if isFunctionExpr(x.X) {
+				return fg.emitFunctionAddress(x.X)
+			}
 			if err := fg.emitAddress(x.X); err != nil {
 				return err
 			}
