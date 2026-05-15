@@ -244,6 +244,61 @@ int main(void) {
 	}
 }
 
+func TestGenerateBitFieldOnlyStructObjectSize(t *testing.T) {
+	mod := compileModule(t, `
+struct S { int b:1; };
+struct S g;
+int main(void) { return 0; }`)
+	if got := mod.Globals[0].Size; got < 4 {
+		t.Fatalf("bit-field-only global size = %d, want at least sizeof(int)", got)
+	}
+	var layout *bytecode.ObjectLayout
+	for i := range mod.Layouts {
+		if len(mod.Layouts[i].Bit) == 1 && mod.Layouts[i].Bit[0].Name == "b" {
+			layout = &mod.Layouts[i]
+			break
+		}
+	}
+	if layout == nil {
+		t.Fatalf("missing bit-field struct layout: %#v", mod.Layouts)
+	}
+	if layout.Size < 4 {
+		t.Fatalf("bit-field-only layout size = %d, want at least sizeof(int): %#v", layout.Size, layout)
+	}
+}
+
+func TestGenerateTerminalBitFieldStructArrayObjectSize(t *testing.T) {
+	mod := compileModule(t, `
+struct S { int x; int b:1; };
+struct S a[2];
+int main(void) { return 0; }`)
+	var structLayout, arrayLayout *bytecode.ObjectLayout
+	for i := range mod.Layouts {
+		layout := &mod.Layouts[i]
+		if len(layout.Fields) == 1 && layout.Fields[0].Name == "x" && len(layout.Bit) == 1 && layout.Bit[0].Name == "b" {
+			structLayout = layout
+		}
+		if layout.ElemSize != 0 {
+			arrayLayout = layout
+		}
+	}
+	if structLayout == nil {
+		t.Fatalf("missing terminal bit-field struct layout: %#v", mod.Layouts)
+	}
+	if structLayout.Size < 8 {
+		t.Fatalf("terminal bit-field struct size = %d, want at least 8: %#v", structLayout.Size, structLayout)
+	}
+	if arrayLayout == nil {
+		t.Fatalf("missing terminal bit-field array layout: %#v", mod.Layouts)
+	}
+	if arrayLayout.ElemSize != structLayout.Size {
+		t.Fatalf("array elem size = %d, want struct size %d", arrayLayout.ElemSize, structLayout.Size)
+	}
+	if got := mod.Globals[0].Size; got != structLayout.Size*2 {
+		t.Fatalf("global array size = %d, want struct size * 2 = %d", got, structLayout.Size*2)
+	}
+}
+
 func TestGenerateStructMemberAccess(t *testing.T) {
 	mod := compileModule(t, `
 struct P { int x; int y; };

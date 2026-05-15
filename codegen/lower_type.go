@@ -66,6 +66,11 @@ func (g *generator) lowerLayout(t sema.Type) (bytecode.ObjectLayout, error) {
 	switch x := key.(type) {
 	case *sema.ArrayType:
 		layout.ElemSize = g.sizeof(x.Elem)
+		if isObjectType(x.Elem) {
+			if _, err := g.lowerLayout(x.Elem); err != nil {
+				return bytecode.ObjectLayout{}, err
+			}
+		}
 	case *sema.StructType:
 		layout.Fields, layout.Bit = g.lowerFields(x.Fields)
 	case *sema.UnionType:
@@ -160,7 +165,7 @@ func (g *generator) sizeof(t sema.Type) int64 {
 	case *sema.StructType:
 		var end int64
 		for _, f := range x.Fields {
-			if f == nil || f.IsBitField {
+			if f == nil {
 				continue
 			}
 			if n := f.Offset + g.sizeof(f.T); n > end {
@@ -171,7 +176,7 @@ func (g *generator) sizeof(t sema.Type) int64 {
 	case *sema.UnionType:
 		var max int64
 		for _, f := range x.Fields {
-			if f == nil || f.IsBitField {
+			if f == nil {
 				continue
 			}
 			if n := g.sizeof(f.T); n > max {
@@ -183,6 +188,15 @@ func (g *generator) sizeof(t sema.Type) int64 {
 		return g.sizeof(x.Underlying)
 	}
 	return 0
+}
+
+func isObjectType(t sema.Type) bool {
+	switch sema.Unqual(t).(type) {
+	case *sema.ArrayType, *sema.StructType, *sema.UnionType:
+		return true
+	default:
+		return false
+	}
 }
 
 func (g *generator) alignof(t sema.Type) int64 {
