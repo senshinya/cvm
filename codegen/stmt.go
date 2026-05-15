@@ -306,6 +306,7 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		if x.Target == nil {
 			return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", s), Op: "emitStmt", Reason: "goto target is unresolved"}
 		}
+		fg.emitDynamicObjectCleanups(fg.labelCleanupMark(x.Target))
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(fg.namedLabel(x.Target)))
 	case *sema.EmptyStmt:
 	case *sema.ExprStmt:
@@ -378,6 +379,69 @@ func (fg *funcGen) defaultLabel(s *sema.DefaultStmt) int {
 	label := fg.newLabel(true, nil)
 	fg.defaultLabels[s] = label
 	return label
+}
+
+func (fg *funcGen) labelCleanupMark(label *sema.LabeledStmt) int {
+	if mark, ok := fg.labelCleanupMarks[label]; ok {
+		return mark
+	}
+	return len(fg.activeDynamicObjects)
+}
+
+func labelCleanupMarks(root sema.Stmt) map[*sema.LabeledStmt]int {
+	marks := map[*sema.LabeledStmt]int{}
+	walkLabelCleanupMarks(root, 0, marks)
+	return marks
+}
+
+func walkLabelCleanupMarks(s sema.Stmt, depth int, marks map[*sema.LabeledStmt]int) int {
+	switch x := s.(type) {
+	case *sema.Block:
+		current := depth
+		for _, item := range x.Items {
+			current = walkLabelCleanupMarks(item, current, marks)
+		}
+		return depth
+	case *sema.DeclStmt:
+		current := depth
+		for _, d := range x.Decls {
+			vd, ok := d.(*sema.VarDecl)
+			if ok && vd.Storage != sema.StorageStatic && vd.Storage != sema.StorageExtern && isVLAType(vd.T) {
+				current++
+			}
+		}
+		return current
+	case *sema.IfStmt:
+		walkLabelCleanupMarks(x.Then, depth, marks)
+		if x.Else != nil {
+			walkLabelCleanupMarks(x.Else, depth, marks)
+		}
+		return depth
+	case *sema.WhileStmt:
+		walkLabelCleanupMarks(x.Body, depth, marks)
+		return depth
+	case *sema.ForStmt:
+		bodyDepth := depth
+		if x.Init != nil {
+			bodyDepth = walkLabelCleanupMarks(x.Init, depth, marks)
+		}
+		walkLabelCleanupMarks(x.Body, bodyDepth, marks)
+		return depth
+	case *sema.SwitchStmt:
+		walkLabelCleanupMarks(x.Body, depth, marks)
+		return depth
+	case *sema.CaseStmt:
+		walkLabelCleanupMarks(x.Body, depth, marks)
+		return depth
+	case *sema.DefaultStmt:
+		walkLabelCleanupMarks(x.Body, depth, marks)
+		return depth
+	case *sema.LabeledStmt:
+		marks[x] = depth
+		return walkLabelCleanupMarks(x.Body, depth, marks)
+	default:
+		return depth
+	}
 }
 
 func (fg *funcGen) pushNamedBreaks(names []string, label, cleanupMark int) func() {

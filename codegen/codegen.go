@@ -59,6 +59,7 @@ type funcGen struct {
 	pendingBreakNames     []string
 	pendingContinueNames  []string
 	labels                map[*sema.LabeledStmt]int
+	labelCleanupMarks     map[*sema.LabeledStmt]int
 	caseLabels            map[*sema.CaseStmt]int
 	defaultLabels         map[*sema.DefaultStmt]int
 }
@@ -235,6 +236,7 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		namedBreakCleanups:    map[string][]int{},
 		namedContinueCleanups: map[string][]int{},
 		labels:                map[*sema.LabeledStmt]int{},
+		labelCleanupMarks:     labelCleanupMarks(fn.Body),
 		caseLabels:            map[*sema.CaseStmt]int{},
 		defaultLabels:         map[*sema.DefaultStmt]int{},
 	}

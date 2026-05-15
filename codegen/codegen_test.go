@@ -556,6 +556,41 @@ func TestGenerateExplicitFloatCastToBoolUsesBoolCast(t *testing.T) {
 	}
 }
 
+func TestGenerateGotoOutOfVLAScopeFreesDynamicObject(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n) {
+	{
+		int a[n];
+		goto done;
+	}
+done:
+	return 0;
+}`)
+	fn := mod.Functions[0]
+	allocPC := instrPC(t, fn, func(i bytecode.Instr) bool { return i.Op == bytecode.OpAllocDynamicObject })
+	freePC := instrPC(t, fn, func(i bytecode.Instr) bool { return i.Op == bytecode.OpFreeDynamicObject })
+	jumpPC := instrPCAfter(t, fn, allocPC, func(i bytecode.Instr) bool { return i.Op == bytecode.OpJump })
+	if !(allocPC < freePC && freePC < jumpPC) {
+		t.Fatalf("goto out of VLA scope did not free before jump: alloc=%d free=%d jump=%d\n%s", allocPC, freePC, jumpPC, bytecode.PrintModule(mod))
+	}
+}
+
+func instrPC(t *testing.T, fn bytecode.Function, pred func(bytecode.Instr) bool) int {
+	t.Helper()
+	return instrPCAfter(t, fn, -1, pred)
+}
+
+func instrPCAfter(t *testing.T, fn bytecode.Function, after int, pred func(bytecode.Instr) bool) int {
+	t.Helper()
+	for pc := after + 1; pc < len(fn.Instrs); pc++ {
+		if pred(fn.Instrs[pc]) {
+			return pc
+		}
+	}
+	t.Fatalf("instruction not found after pc %d", after)
+	return -1
+}
+
 func compileModule(t *testing.T, source string) *bytecode.Module {
 	t.Helper()
 
