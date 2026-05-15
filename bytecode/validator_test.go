@@ -194,6 +194,78 @@ func TestValidateModuleAcceptsValidReferencesAndStackEffects(t *testing.T) {
 	}
 }
 
+func TestValidateModuleAcceptsAddrFuncUsingFuncField(t *testing.T) {
+	mod := moduleWithCallee()
+	mod.Functions[0].Instrs = []Instr{
+		{Op: OpAddrFunc, Func: 1, Global: 99, Type: TypePtr},
+		{Op: OpPop},
+		I32Const(0),
+		Return(TypeI32),
+	}
+
+	if err := ValidateModule(mod); err != nil {
+		t.Fatalf("ValidateModule rejected AddrFunc with valid Func field: %v", err)
+	}
+}
+
+func TestValidateModuleRejectsInvalidAddrFuncFunction(t *testing.T) {
+	mod := moduleWithCallee()
+	mod.Functions[0].Instrs = []Instr{
+		{Op: OpAddrFunc, Func: 99, Type: TypePtr},
+		{Op: OpPop},
+		I32Const(0),
+		Return(TypeI32),
+	}
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted AddrFunc with invalid Func field")
+	}
+}
+
+func TestValidateModuleAcceptsVariadicCallWithExtraArgs(t *testing.T) {
+	mod := moduleWithCallee()
+	mod.Sigs[1] = FuncSig{ID: 1, Ret: TypeI32, Params: []ValueType{TypeI32}, Variadic: true}
+	mod.Functions[0].Instrs = []Instr{
+		I32Const(1),
+		I64Const(2),
+		Call(1, 1, 2),
+		Return(TypeI32),
+	}
+
+	if err := ValidateModule(mod); err != nil {
+		t.Fatalf("ValidateModule rejected valid variadic call with extra args: %v", err)
+	}
+}
+
+func TestValidateModuleRejectsNonVariadicCallWithWrongArgc(t *testing.T) {
+	mod := moduleWithCallee()
+	mod.Sigs[1] = FuncSig{ID: 1, Ret: TypeI32, Params: []ValueType{TypeI32}}
+	mod.Functions[0].Instrs = []Instr{
+		I32Const(1),
+		I64Const(2),
+		Call(1, 1, 2),
+		Return(TypeI32),
+	}
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted non-variadic call with wrong argc")
+	}
+}
+
+func TestValidateModuleRejectsScalarReturnObject(t *testing.T) {
+	mod := minimalModule()
+	mod.Layouts = []ObjectLayout{{ID: 0, Name: "object", Size: 4, Align: 4}}
+	mod.Functions[0].Objects = []LocalObject{{ID: 0, Name: "obj", Size: 4, Align: 4, Layout: 0}}
+	mod.Functions[0].Instrs = []Instr{
+		AddrLocalObject(0),
+		{Op: OpReturnObject},
+	}
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted ReturnObject in scalar-returning function")
+	}
+}
+
 func TestValidateModuleRejectsReturnTypeMismatchWithSignature(t *testing.T) {
 	mod := minimalModule()
 	mod.Functions[0].Instrs = []Instr{
@@ -445,5 +517,41 @@ func minimalModule() *Module {
 				Return(TypeI32),
 			},
 		}},
+	}
+}
+
+func moduleWithCallee() *Module {
+	return &Module{
+		Target: DefaultTarget(),
+		Globals: []Global{
+			{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0},
+			{ID: 1, Name: "callee", Kind: GlobalFunc, Func: 1},
+		},
+		Sigs: []FuncSig{
+			{ID: 0, Ret: TypeI32},
+			{ID: 1, Ret: TypeI32},
+		},
+		Functions: []Function{
+			{
+				ID:       0,
+				GlobalID: 0,
+				Name:     "main",
+				Sig:      0,
+				Instrs: []Instr{
+					I32Const(0),
+					Return(TypeI32),
+				},
+			},
+			{
+				ID:       1,
+				GlobalID: 1,
+				Name:     "callee",
+				Sig:      1,
+				Instrs: []Instr{
+					I32Const(0),
+					Return(TypeI32),
+				},
+			},
+		},
 	}
 }

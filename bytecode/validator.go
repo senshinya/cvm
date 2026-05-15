@@ -157,6 +157,22 @@ func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, locals map[in
 		}
 		return nil
 	}
+	requireFunc := func(fn int) error {
+		if fn < 0 || fn >= len(m.Functions) {
+			return fmt.Errorf("%v references invalid function %d", ins.Op, fn)
+		}
+		global := m.Functions[fn].GlobalID
+		if global < 0 || global >= len(m.Globals) {
+			return fmt.Errorf("%v references function %d with invalid global %d", ins.Op, fn, global)
+		}
+		if m.Globals[global].Kind != GlobalFunc {
+			return fmt.Errorf("%v references function %d with non-function global %d", ins.Op, fn, global)
+		}
+		if m.Globals[global].Func != fn {
+			return fmt.Errorf("%v references function %d whose global %d points to function %d", ins.Op, fn, global, m.Globals[global].Func)
+		}
+		return nil
+	}
 	requireObject := func(object int) error {
 		if _, ok := objects[object]; !ok {
 			return fmt.Errorf("%v references invalid object %d", ins.Op, object)
@@ -202,12 +218,7 @@ func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, locals map[in
 	case OpAddrGlobal, OpLoadConst:
 		return requireGlobal(ins.Global)
 	case OpAddrFunc:
-		if err := requireGlobal(ins.Global); err != nil {
-			return err
-		}
-		if m.Globals[ins.Global].Kind != GlobalFunc && m.Globals[ins.Global].Kind != GlobalExtern {
-			return fmt.Errorf("%v references non-function global %d", ins.Op, ins.Global)
-		}
+		return requireFunc(ins.Func)
 	case OpLoadLocal, OpStoreLocal:
 		return requireLocal(ins.Slot, ins.Type)
 	case OpAddrLocalObject:
@@ -278,6 +289,17 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType) 
 			}
 		}
 		return TypeVoid, fmt.Errorf("%v wants one of %v, got %s", ins.Op, wants, got)
+	}
+	popAnyValue := func() error {
+		if len(stack) == 0 {
+			return fmt.Errorf("%v stack underflow", ins.Op)
+		}
+		got := stack[len(stack)-1]
+		if got == TypeVoid {
+			return fmt.Errorf("%v wants non-void value, got %s", ins.Op, got)
+		}
+		stack = stack[:len(stack)-1]
+		return nil
 	}
 	push := func(t ValueType) {
 		if t != TypeVoid {
@@ -417,6 +439,9 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType) 
 			return nil, fmt.Errorf("return void with non-empty stack")
 		}
 	case OpReturnObject:
+		if ret != TypeObjectAddr {
+			return nil, fmt.Errorf("return object in %s function", ret)
+		}
 		if err := pop(TypeObjectAddr); err != nil {
 			return nil, err
 		}
@@ -434,6 +459,11 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType) 
 		}
 		if sig.Variadic && ins.Argc < len(sig.Params) {
 			return nil, fmt.Errorf("%v argc %d is less than signature parameter count %d", ins.Op, ins.Argc, len(sig.Params))
+		}
+		for i := 0; i < ins.Argc-len(sig.Params); i++ {
+			if err := popAnyValue(); err != nil {
+				return nil, err
+			}
 		}
 		for i := len(sig.Params) - 1; i >= 0; i-- {
 			if err := pop(sig.Params[i]); err != nil {
