@@ -317,6 +317,10 @@ func unqual(t Type) Type {
 	return t
 }
 
+func Unqual(t Type) Type {
+	return unqual(t)
+}
+
 func unqualifiedBuiltin(t Type) (*BuiltinType, bool) {
 	switch x := unqual(t).(type) {
 	case *BuiltinType:
