@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"shinya.click/cvm/bytecode"
+	"shinya.click/cvm/codegen"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/entity"
 	"shinya.click/cvm/parser"
@@ -14,15 +16,16 @@ import (
 )
 
 type Compiler struct {
-	FileName string
-	Source   string
-	Lines    []string
-	Sources  *preprocessor.SourceManager
-	DumpIR   bool
-	Output   io.Writer
+	FileName     string
+	Source       string
+	Lines        []string
+	Sources      *preprocessor.SourceManager
+	DumpIR       bool
+	DumpBytecode bool
+	Output       io.Writer
 }
 
-func (c *Compiler) RunSource(source string) {
+func (c *Compiler) RunSource(source string) error {
 	if c.FileName == "" {
 		c.FileName = "main.c"
 	}
@@ -30,24 +33,33 @@ func (c *Compiler) RunSource(source string) {
 	c.Lines = strings.Split(source, "\n")
 	pp, err := preprocessor.PreprocessSource(c.FileName, source, preprocessor.Options{})
 	if err != nil {
-		c.handleError(err)
-		return
+		return err
 	}
 	c.Sources = pp.Sources
 	candidates, err := parser.NewParser(pp.Tokens).Parse()
 	if err != nil {
-		c.handleError(err)
-		return
+		return err
 	}
 	prog, err := sema.Analyze(candidates)
 	if err != nil {
-		c.handleError(err)
-		return
+		return err
+	}
+	if c.DumpIR && c.DumpBytecode {
+		return fmt.Errorf("--dump-ir and --dump-bytecode are mutually exclusive")
 	}
 	if c.DumpIR {
 		fmt.Fprint(c.output(), sema.PrintProgram(prog))
+		return nil
 	}
-	// 代码生成会在后续计划中接入。
+	if c.DumpBytecode {
+		mod, err := codegen.Generate(prog)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(c.output(), bytecode.PrintModule(mod))
+		return nil
+	}
+	return nil
 }
 
 func (c *Compiler) output() io.Writer {
@@ -57,14 +69,13 @@ func (c *Compiler) output() io.Writer {
 	return os.Stdout
 }
 
-func (c *Compiler) RunFile(fileName string) {
+func (c *Compiler) RunFile(fileName string) error {
 	c.FileName = fileName
 	source, err := os.ReadFile(fileName)
 	if err != nil {
-		c.handleError(err)
-		return
+		return err
 	}
-	c.RunSource(string(source))
+	return c.RunSource(string(source))
 }
 
 func (c *Compiler) handleError(err error) {
