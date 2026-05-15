@@ -1,6 +1,9 @@
 package bytecode
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidateModuleAcceptsMinimalReturningFunction(t *testing.T) {
 	mod := &Module{
@@ -152,6 +155,65 @@ func TestValidateModuleAcceptsPopAndSwapWithValidStack(t *testing.T) {
 
 	if err := ValidateModule(mod); err != nil {
 		t.Fatalf("ValidateModule rejected valid pop/swap stack use: %v", err)
+	}
+}
+
+func TestValidateModuleRejectsStrayGlobalFuncBackLink(t *testing.T) {
+	mod := minimalModule()
+	mod.Globals = append(mod.Globals, Global{ID: 1, Name: "main_alias", Kind: GlobalFunc, Func: 0})
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted a stray function global whose function points elsewhere")
+	}
+}
+
+func TestValidateModuleRejectsReturnWithLeftoverStack(t *testing.T) {
+	mod := minimalModule()
+	mod.Functions[0].Instrs = []Instr{
+		I64Const(1),
+		I32Const(0),
+		Return(TypeI32),
+	}
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted a non-void return with leftover stack values")
+	}
+}
+
+func TestValidateModuleRejectsUnhandledOpcode(t *testing.T) {
+	t.Run("known unsupported opcode", func(t *testing.T) {
+		mod := minimalModule()
+		mod.Functions[0].Instrs = []Instr{
+			Call(0, 0, 0),
+		}
+
+		if err := ValidateModule(mod); err == nil {
+			t.Fatal("ValidateModule accepted an unhandled call opcode")
+		}
+	})
+
+	t.Run("invalid opcode", func(t *testing.T) {
+		mod := minimalModule()
+		mod.Functions[0].Instrs = []Instr{
+			{Op: Opcode(999)},
+		}
+
+		if err := ValidateModule(mod); err == nil {
+			t.Fatal("ValidateModule accepted an invalid opcode")
+		}
+	})
+}
+
+func TestValidateModuleStackErrorIncludesReadableOpcodeName(t *testing.T) {
+	mod := minimalModule()
+	mod.Functions[0].Instrs = []Instr{{Op: OpPop}}
+
+	err := ValidateModule(mod)
+	if err == nil {
+		t.Fatal("ValidateModule accepted pop with an empty stack")
+	}
+	if !strings.Contains(err.Error(), "OpPop") {
+		t.Fatalf("ValidateModule error %q does not include readable opcode name", err)
 	}
 }
 

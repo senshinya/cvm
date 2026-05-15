@@ -17,8 +17,13 @@ func ValidateModule(m *Module) error {
 		if g.Name == "" {
 			return fmt.Errorf("global %d has empty name", i)
 		}
-		if g.Kind == GlobalFunc && (g.Func < 0 || g.Func >= funcCount) {
-			return fmt.Errorf("global %q references invalid function index %d", g.Name, g.Func)
+		if g.Kind == GlobalFunc {
+			if g.Func < 0 || g.Func >= funcCount {
+				return fmt.Errorf("global %q references invalid function index %d", g.Name, g.Func)
+			}
+			if m.Functions[g.Func].GlobalID != g.ID {
+				return fmt.Errorf("global %q points to function %d with global id %d", g.Name, g.Func, m.Functions[g.Func].GlobalID)
+			}
 		}
 	}
 	for i, sig := range m.Sigs {
@@ -118,6 +123,9 @@ func validateInstrStack(stack []ValueType, ins Instr, ret ValueType) ([]ValueTyp
 		if err := pop(ins.Type); err != nil {
 			return nil, err
 		}
+		if len(stack) != 0 {
+			return nil, fmt.Errorf("return with non-empty stack")
+		}
 	case OpReturnVoid:
 		if ret != TypeVoid {
 			return nil, fmt.Errorf("return void in %s function", ret)
@@ -130,6 +138,8 @@ func validateInstrStack(stack []ValueType, ins Instr, ret ValueType) ([]ValueTyp
 			return nil, fmt.Errorf("dup stack underflow")
 		}
 		push(stack[len(stack)-1])
+	default:
+		return nil, fmt.Errorf("unsupported opcode %v", ins.Op)
 	}
 	return stack, nil
 }
