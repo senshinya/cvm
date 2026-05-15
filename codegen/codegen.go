@@ -46,7 +46,7 @@ type funcGen struct {
 	objectMap             map[*sema.Symbol]int
 	dynamicObjectMap      map[*sema.Symbol]int
 	dynamicSizeSlotMap    map[*sema.Symbol]int
-	dynamicSizeTypeSlots  map[sema.Type]int
+	dynamicSizeTypeSlots  map[string]int
 	activeDynamicObjects  []int
 	nextSyntheticSlot     int
 	addressTaken          map[*sema.Symbol]bool
@@ -244,7 +244,7 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		objectMap:             objectMap,
 		dynamicObjectMap:      map[*sema.Symbol]int{},
 		dynamicSizeSlotMap:    map[*sema.Symbol]int{},
-		dynamicSizeTypeSlots:  map[sema.Type]int{},
+		dynamicSizeTypeSlots:  map[string]int{},
 		nextSyntheticSlot:     maxSlot + 1,
 		addressTaken:          addressTaken,
 		namedBreaks:           map[string][]int{},
@@ -255,6 +255,13 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		labelCleanupMarks:     labelCleanupMarks(fn.Body),
 		caseLabels:            map[*sema.CaseStmt]int{},
 		defaultLabels:         map[*sema.DefaultStmt]int{},
+	}
+	for _, p := range fn.Params {
+		if p != nil && p.T != nil && typeHasVariablyModifiedType(p.T) {
+			if err := fg.prepareDynamicSizeTypes(p.T, p.Sym.Name+"$size"); err != nil {
+				return err
+			}
+		}
 	}
 	for _, p := range fn.Params {
 		if !addressTaken[p.Sym] {

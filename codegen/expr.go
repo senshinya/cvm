@@ -185,7 +185,7 @@ func (fg *funcGen) emitSizeof(x *sema.SizeofExpr) error {
 			}
 		}
 	}
-	if slot, ok := fg.dynamicSizeTypeSlots[sema.Unqual(t)]; ok {
+	if slot, ok := fg.dynamicSizeTypeSlots[dynamicSizeKey(t)]; ok {
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeI64, slot))
 		fg.emitCast(bytecode.TypeI64, outType, sema.IntegralConversion)
 		return nil
@@ -457,7 +457,7 @@ func (fg *funcGen) dynamicElemSizeSlot(baseType sema.Type) (int, bool) {
 	if !typeHasVariableSize(elem) {
 		return 0, false
 	}
-	slot, ok := fg.dynamicSizeTypeSlots[sema.Unqual(elem)]
+	slot, ok := fg.dynamicSizeTypeSlots[dynamicSizeKey(elem)]
 	return slot, ok
 }
 

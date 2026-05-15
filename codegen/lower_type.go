@@ -238,6 +238,17 @@ func typeHasVariableSize(t sema.Type) bool {
 	}
 }
 
+func typeHasVariablyModifiedType(t sema.Type) bool {
+	switch x := sema.Unqual(t).(type) {
+	case *sema.ArrayType:
+		return x.SizeKind == sema.ArrayVLA || x.SizeKind == sema.ArrayStarSize || typeHasVariablyModifiedType(x.Elem)
+	case *sema.PointerType:
+		return typeHasVariablyModifiedType(x.Pointee)
+	default:
+		return false
+	}
+}
+
 func (g *generator) alignof(t sema.Type) int64 {
 	switch x := sema.Unqual(t).(type) {
 	case *sema.BuiltinType:

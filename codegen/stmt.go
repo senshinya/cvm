@@ -33,6 +33,11 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 				}
 				continue
 			}
+			if typeHasVariablyModifiedType(vd.T) {
+				if err := fg.prepareDynamicSizeTypes(vd.T, vd.Sym.Name+"$size"); err != nil {
+					return err
+				}
+			}
 			if vd.Init == nil {
 				continue
 			}
@@ -606,13 +611,47 @@ func (fg *funcGen) emitRuntimeSizeofSaved(t sema.Type, slot int, name string) er
 				slot = fg.allocSyntheticI64Slot(name)
 			}
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(bytecode.TypeI64, slot))
-			fg.dynamicSizeTypeSlots[sema.Unqual(t)] = slot
+			fg.dynamicSizeTypeSlots[dynamicSizeKey(t)] = slot
 		}
 		return nil
 	default:
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.I64Const(fg.g.sizeof(t)))
 		return nil
 	}
+}
+
+func (fg *funcGen) prepareDynamicSizeTypes(t sema.Type, name string) error {
+	return fg.prepareDynamicSizeTypesSeen(t, name, map[sema.Type]bool{})
+}
+
+func (fg *funcGen) prepareDynamicSizeTypesSeen(t sema.Type, name string, seen map[sema.Type]bool) error {
+	key := sema.Unqual(t)
+	if seen[key] {
+		return nil
+	}
+	seen[key] = true
+	switch x := key.(type) {
+	case *sema.PointerType:
+		return fg.prepareDynamicSizeTypesSeen(x.Pointee, name+"$pointee", seen)
+	case *sema.ArrayType:
+		if !typeHasVariableSize(x) {
+			return nil
+		}
+		if _, ok := fg.dynamicSizeTypeSlots[dynamicSizeKey(key)]; !ok {
+			slot := fg.allocSyntheticI64Slot(name)
+			if err := fg.emitRuntimeSizeofSaved(key, slot, name); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
+		}
+		return fg.prepareDynamicSizeTypesSeen(x.Elem, name+"$elem", seen)
+	default:
+		return nil
+	}
+}
+
+func dynamicSizeKey(t sema.Type) string {
+	return sema.Unqual(t).String()
 }
 
 func (fg *funcGen) allocSyntheticI64Slot(name string) int {

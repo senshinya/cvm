@@ -669,6 +669,40 @@ int f(int n, int m) {
 	}
 }
 
+func TestGenerateVLAParameterIndexUsesDynamicStride(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n, int m, int a[n][m]) {
+	return a[1][2] + sizeof(a[0]);
+}`)
+	out := bytecode.PrintModule(mod)
+	if strings.Contains(out, "PtrAdd elem_size=0") {
+		t.Fatalf("bytecode used zero stride for VLA parameter index:\n%s", out)
+	}
+	if !strings.Contains(out, "PtrAddDynamic") {
+		t.Fatalf("bytecode missing dynamic stride for VLA parameter index:\n%s", out)
+	}
+	boundLoads := strings.Count(out, "I32LoadLocal 0") + strings.Count(out, "I32LoadLocal 1")
+	if boundLoads != 1 {
+		t.Fatalf("VLA parameter size should evaluate its sema-provided bound once, saw %d loads:\n%s", boundLoads, out)
+	}
+}
+
+func TestGeneratePointerToVLALocalIndexUsesDynamicStride(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n, int m) {
+	int a[n][m];
+	int (*p)[m] = a;
+	return (p + 1)[0][0];
+}`)
+	out := bytecode.PrintModule(mod)
+	if strings.Contains(out, "PtrAdd elem_size=0") {
+		t.Fatalf("bytecode used zero stride for pointer-to-VLA local:\n%s", out)
+	}
+	if strings.Count(out, "PtrAddDynamic") < 2 {
+		t.Fatalf("bytecode missing dynamic strides for pointer-to-VLA local:\n%s", out)
+	}
+}
+
 func instrPC(t *testing.T, fn bytecode.Function, pred func(bytecode.Instr) bool) int {
 	t.Helper()
 	return instrPCAfter(t, fn, -1, pred)
