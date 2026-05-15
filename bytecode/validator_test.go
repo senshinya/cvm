@@ -37,6 +37,163 @@ func TestValidateModuleRejectsBadGlobalFunctionReference(t *testing.T) {
 	}
 }
 
+func TestValidateModuleRejectsReturnTypeMismatch(t *testing.T) {
+	mod := &Module{
+		Target:  DefaultTarget(),
+		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0}},
+		Sigs:    []FuncSig{{ID: 0, Ret: TypeI32}},
+		Functions: []Function{{
+			ID:       0,
+			GlobalID: 0,
+			Name:     "main",
+			Sig:      0,
+			Instrs: []Instr{
+				F64Const(1),
+				Return(TypeI32),
+			},
+		}},
+	}
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted return type mismatch")
+	}
+}
+
+func TestValidateModuleRejectsMissingJumpLabel(t *testing.T) {
+	mod := &Module{
+		Target:  DefaultTarget(),
+		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0}},
+		Sigs:    []FuncSig{{ID: 0, Ret: TypeVoid}},
+		Functions: []Function{{
+			ID:       0,
+			GlobalID: 0,
+			Name:     "main",
+			Sig:      0,
+			Instrs: []Instr{
+				Jump(7),
+				{Op: OpReturnVoid},
+			},
+		}},
+	}
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted jump to missing label")
+	}
+}
+
+func TestValidateModuleRejectsBadCallSignature(t *testing.T) {
+	mod := &Module{
+		Target:  DefaultTarget(),
+		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0}},
+		Sigs:    []FuncSig{{ID: 0, Ret: TypeI32, Params: []ValueType{TypeI32}}},
+		Functions: []Function{{
+			ID:       0,
+			GlobalID: 0,
+			Name:     "main",
+			Sig:      0,
+			Instrs: []Instr{
+				Call(0, 9, 1),
+				Return(TypeI32),
+			},
+		}},
+	}
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted call with invalid signature")
+	}
+}
+
+func TestValidateModuleAcceptsValidReferencesAndStackEffects(t *testing.T) {
+	mod := &Module{
+		Target: DefaultTarget(),
+		Globals: []Global{
+			{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0},
+			{ID: 1, Name: "callee", Kind: GlobalFunc, Func: 1},
+			{ID: 2, Name: "storage", Kind: GlobalVar, Size: 8, Align: 8},
+		},
+		Strings: []StringConst{{ID: 0, Value: "ok", Bytes: []byte("ok\x00")}},
+		Layouts: []ObjectLayout{{
+			ID:    0,
+			Name:  "pair",
+			Size:  8,
+			Align: 4,
+			Fields: []FieldLayout{{
+				ID:     0,
+				Name:   "first",
+				Offset: 0,
+				Type:   TypeI32,
+			}},
+			Bit: []BitFieldLayout{{
+				ID:         0,
+				Name:       "flag",
+				Container:  TypeU32,
+				ByteOffset: 0,
+				BitOffset:  0,
+				Width:      1,
+			}},
+		}},
+		Sigs: []FuncSig{
+			{ID: 0, Ret: TypeI32},
+			{ID: 1, Ret: TypeI32, Params: []ValueType{TypeI32}},
+		},
+		Functions: []Function{
+			{
+				ID:       0,
+				GlobalID: 0,
+				Name:     "main",
+				Sig:      0,
+				Locals:   []LocalSlot{{ID: 0, Name: "tmp", Type: TypeI32}},
+				Objects:  []LocalObject{{ID: 0, Name: "obj", Size: 8, Align: 4, Layout: 0}},
+				Labels:   []Label{{ID: 0, Name: "done", Statement: true}},
+				Instrs: []Instr{
+					AddrLocalObject(0),
+					Load(TypeI32, 4, false),
+					StoreLocal(TypeI32, 0),
+					AddrGlobal(2),
+					AddrString(0),
+					{Op: OpMemCopy, Size: 4, Align: 4},
+					AddrLocalObject(0),
+					{Op: OpOffset, Type: TypeObjectAddr, Int: 4},
+					{Op: OpPop},
+					AddrLocalObject(0),
+					I32Const(1),
+					{Op: OpPtrAdd, Size: 4},
+					{Op: OpPop},
+					AddrLocalObject(0),
+					{Op: OpFieldAddr, Layout: 0, Field: 0},
+					{Op: OpPop},
+					AddrLocalObject(0),
+					{Op: OpBitFieldLoad, Type: TypeI32, Layout: 0, Field: 0},
+					{Op: OpPop},
+					AddrLocalObject(0),
+					I32Const(1),
+					{Op: OpBitFieldStore, Type: TypeI32, Layout: 0, Field: 0},
+					I32Const(0),
+					JumpIfZero(TypeI32, 0),
+					I32Const(1),
+					Call(1, 1, 1),
+					Return(TypeI32),
+					LabelInstr(0),
+					I32Const(0),
+					Return(TypeI32),
+				},
+			},
+			{
+				ID:       1,
+				GlobalID: 1,
+				Name:     "callee",
+				Sig:      1,
+				Params:   []Param{{Name: "v", Type: TypeI32, Slot: 0}},
+				Instrs: []Instr{
+					LoadLocal(TypeI32, 0),
+					Return(TypeI32),
+				},
+			},
+		},
+	}
+
+	if err := ValidateModule(mod); err != nil {
+		t.Fatalf("ValidateModule rejected valid references and stack effects: %v", err)
+	}
+}
+
 func TestValidateModuleRejectsReturnTypeMismatchWithSignature(t *testing.T) {
 	mod := minimalModule()
 	mod.Functions[0].Instrs = []Instr{
