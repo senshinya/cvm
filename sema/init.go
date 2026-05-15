@@ -193,10 +193,10 @@ func (s *Sema) typeCollectedInitList(target Type, raw []rawInitElem, out *InitLi
 
 func (s *Sema) typeDesignatedInitElem(target Type, elem rawInitElem) (InitElem, int) {
 	span, ok := designatedSpan(target, elem.Designators)
-	if !ok {
+	if !ok || span.T == nil {
 		return s.makeInitElem(elem.Designators, elem.Value, elementType(target, elem.Designators)), 0
 	}
-	if !isObjectType(span.T) || s.useWholeInitializer(elem.Value, span.T) {
+	if !isAggregateInitType(span.T) || s.useWholeInitializer(elem.Value, span.T) {
 		return s.makeInitElem(elem.Designators, elem.Value, span.T), span.End
 	}
 	leaves := initLeaves(target, nil)
@@ -358,6 +358,15 @@ func initLeaves(t Type, prefix []Designator) []initLeaf {
 	}
 }
 
+func isAggregateInitType(t Type) bool {
+	switch unqual(t).(type) {
+	case *ArrayType, *StructType, *UnionType:
+		return true
+	default:
+		return false
+	}
+}
+
 func directInitSpans(t Type, prefix []Designator) []initSpan {
 	switch x := unqual(t).(type) {
 	case *ArrayType:
@@ -404,6 +413,7 @@ func directInitSpans(t Type, prefix []Designator) []initSpan {
 func designatedSpan(t Type, ds []Designator) (initSpan, bool) {
 	cur := t
 	prefix := make([]Designator, 0, len(ds))
+	var unionSpan *initSpan
 	for _, d := range ds {
 		switch d.Kind {
 		case DesigArrayIndex:
@@ -414,8 +424,15 @@ func designatedSpan(t Type, ds []Designator) (initSpan, bool) {
 			prefix = appendDesignator(prefix, d)
 			cur = at.Elem
 		case DesigFieldName:
-			if d.Field == nil {
+			if d.Field == nil || d.Field.T == nil {
 				return initSpan{}, false
+			}
+			if _, ok := unqual(cur).(*UnionType); ok && unionSpan == nil {
+				span, ok := spanForPrefix(t, prefix)
+				if !ok {
+					return initSpan{}, false
+				}
+				unionSpan = &span
 			}
 			prefix = appendDesignator(prefix, Designator{Kind: DesigFieldName, Field: d.Field})
 			cur = d.Field.T
@@ -423,6 +440,18 @@ func designatedSpan(t Type, ds []Designator) (initSpan, bool) {
 			return initSpan{}, false
 		}
 	}
+	if unionSpan != nil {
+		return initSpan{T: cur, Designators: copyDesignators(prefix), Start: unionSpan.Start, End: unionSpan.End}, true
+	}
+	span, ok := spanForPrefix(t, prefix)
+	if !ok {
+		return initSpan{}, false
+	}
+	span.T = cur
+	return span, true
+}
+
+func spanForPrefix(t Type, prefix []Designator) (initSpan, bool) {
 	leaves := initLeaves(t, nil)
 	start := -1
 	end := -1
@@ -441,7 +470,7 @@ func designatedSpan(t Type, ds []Designator) (initSpan, bool) {
 	if start < 0 {
 		return initSpan{}, false
 	}
-	return initSpan{T: cur, Designators: copyDesignators(prefix), Start: start, End: end}, true
+	return initSpan{T: t, Designators: copyDesignators(prefix), Start: start, End: end}, true
 }
 
 func spanContaining(spans []initSpan, cursor int) *initSpan {

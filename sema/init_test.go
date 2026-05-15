@@ -25,3 +25,20 @@ func TestInitializerDesignatedStruct(t *testing.T) {
 		t.Fatalf("designated init wrong: %T %+v", r.Program.Globals[0].(*VarDecl).Init, r.Program.Globals[0].(*VarDecl).Init)
 	}
 }
+
+func TestInitializerDesignatedUnionNonFirstMemberType(t *testing.T) {
+	r := analyzeSource(t, "union U { int i; double d; } u = { .d = 1.5 };")
+	if len(r.Errors) != 0 {
+		t.Fatalf("unexpected errors: %v", r.Errors)
+	}
+	il, ok := r.Program.Globals[0].(*VarDecl).Init.(*InitList)
+	if !ok || len(il.Elems) != 1 {
+		t.Fatalf("union init wrong: %T %+v", r.Program.Globals[0].(*VarDecl).Init, r.Program.Globals[0].(*VarDecl).Init)
+	}
+	if got := il.Elems[0].Designators[0].Field.Name; got != "d" {
+		t.Fatalf("union designator field = %q, want d", got)
+	}
+	if got := il.Elems[0].Value.GetType().String(); got != "double" {
+		t.Fatalf("union designator value type = %s, want double: elem=%#v", got, il.Elems[0])
+	}
+}

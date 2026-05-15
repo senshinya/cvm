@@ -856,6 +856,7 @@ func (g *generator) directInitSpans(typ sema.Type, prefix []sema.Designator) []i
 func (g *generator) designatedSpan(typ sema.Type, ds []sema.Designator) (initSpan, error) {
 	cur := typ
 	prefix := make([]sema.Designator, 0, len(ds))
+	var unionSpan *initSpan
 	for _, d := range ds {
 		switch d.Kind {
 		case sema.DesigArrayIndex:
@@ -873,12 +874,31 @@ func (g *generator) designatedSpan(typ sema.Type, ds []sema.Designator) (initSpa
 			if field == nil {
 				return initSpan{}, fmt.Errorf("field designator has no resolved field")
 			}
+			if _, ok := sema.Unqual(cur).(*sema.UnionType); ok && unionSpan == nil {
+				span, err := g.spanForPrefix(typ, prefix)
+				if err != nil {
+					return initSpan{}, err
+				}
+				unionSpan = &span
+			}
 			prefix = appendDesignator(prefix, sema.Designator{Kind: sema.DesigFieldName, Field: field})
 			cur = field.T
 		default:
 			return initSpan{}, fmt.Errorf("unsupported designator kind %d", d.Kind)
 		}
 	}
+	if unionSpan != nil {
+		return initSpan{typ: cur, designators: copyDesignators(prefix), start: unionSpan.start, end: unionSpan.end}, nil
+	}
+	span, err := g.spanForPrefix(typ, prefix)
+	if err != nil {
+		return initSpan{}, err
+	}
+	span.typ = cur
+	return span, nil
+}
+
+func (g *generator) spanForPrefix(typ sema.Type, prefix []sema.Designator) (initSpan, error) {
 	leaves := g.initLeaves(typ, nil)
 	start := -1
 	end := -1
@@ -897,7 +917,7 @@ func (g *generator) designatedSpan(typ sema.Type, ds []sema.Designator) (initSpa
 	if start < 0 {
 		return initSpan{}, fmt.Errorf("designator does not name an initializable subobject")
 	}
-	return initSpan{typ: cur, designators: copyDesignators(prefix), start: start, end: end}, nil
+	return initSpan{typ: typ, designators: copyDesignators(prefix), start: start, end: end}, nil
 }
 
 func spanContaining(spans []initSpan, cursor int) *initSpan {

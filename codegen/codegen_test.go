@@ -492,6 +492,33 @@ int main(void) {
 	}
 }
 
+func TestGenerateUnionDesignatorInitializer(t *testing.T) {
+	mod := compileModule(t, `
+union U { int i; double d; };
+union U u = { .d = 1.5 };
+struct S { union U u; int x; };
+struct S s = { .u.d = 1.5, 2 };
+int main(void) {
+	union U lu = { .d = 1.5 };
+	struct S ls = { .u.d = 1.5, 2 };
+	return s.x + ls.x + (lu.d > 0.0);
+}`)
+	if err := bytecode.ValidateModule(mod); err != nil {
+		t.Fatalf("validate bytecode: %v\n%s", err, bytecode.PrintModule(mod))
+	}
+	unionBytes := mod.Globals[0].Init.Bytes
+	if got := binary.LittleEndian.Uint64(unionBytes[:8]); got != 0x3ff8000000000000 {
+		t.Fatalf("union double bits = %#x, want 1.5; bytes=%x", got, unionBytes)
+	}
+	structBytes := mod.Globals[1].Init.Bytes
+	if got := binary.LittleEndian.Uint64(structBytes[:8]); got != 0x3ff8000000000000 {
+		t.Fatalf("struct union double bits = %#x, want 1.5; bytes=%x", got, structBytes)
+	}
+	if got := binary.LittleEndian.Uint32(structBytes[8:12]); got != 2 {
+		t.Fatalf("struct continuation word = %d, want 2; bytes=%x", got, structBytes)
+	}
+}
+
 func TestGenerateUnbracedNestedAggregateLocalInitializer(t *testing.T) {
 	mod := compileModule(t, `
 struct S { int a[2]; int b; };
