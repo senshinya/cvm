@@ -17,6 +17,9 @@ func ValidateModule(m *Module) error {
 		if g.Name == "" {
 			return fmt.Errorf("global %d has empty name", i)
 		}
+		if err := validateGlobalInit(m, g); err != nil {
+			return err
+		}
 		if g.Kind == GlobalFunc {
 			if g.Func < 0 || g.Func >= funcCount {
 				return fmt.Errorf("global %q references invalid function index %d", g.Name, g.Func)
@@ -40,6 +43,9 @@ func ValidateModule(m *Module) error {
 		if l.ID != i {
 			return fmt.Errorf("layout index %d has id %d", i, l.ID)
 		}
+		if err := validateLayout(m, l); err != nil {
+			return err
+		}
 	}
 	for i := range m.Functions {
 		if err := validateFunction(m, i, &m.Functions[i]); err != nil {
@@ -47,6 +53,97 @@ func ValidateModule(m *Module) error {
 		}
 	}
 	return nil
+}
+
+func validateGlobalInit(m *Module, g Global) error {
+	if g.Kind == GlobalFunc {
+		if len(g.Init.Bytes) != 0 || g.Init.ZeroFill != 0 || len(g.Init.Relocations) != 0 {
+			return fmt.Errorf("function global %q has data initializer", g.Name)
+		}
+		return nil
+	}
+	if g.Init.ZeroFill < 0 {
+		return fmt.Errorf("global %q has negative zero-fill %d", g.Name, g.Init.ZeroFill)
+	}
+	if g.Size < 0 {
+		return fmt.Errorf("global %q has negative size %d", g.Name, g.Size)
+	}
+	if int64(len(g.Init.Bytes))+g.Init.ZeroFill > g.Size {
+		return fmt.Errorf("global %q initializer size %d exceeds global size %d", g.Name, int64(len(g.Init.Bytes))+g.Init.ZeroFill, g.Size)
+	}
+	for _, r := range g.Init.Relocations {
+		if r.Offset < 0 || r.Offset+m.Target.PointerSize > g.Size {
+			return fmt.Errorf("global %q relocation offset %d does not fit in size %d", g.Name, r.Offset, g.Size)
+		}
+		switch r.Kind {
+		case RelocGlobal:
+			if r.Target < 0 || r.Target >= len(m.Globals) {
+				return fmt.Errorf("global %q relocation references invalid global %d", g.Name, r.Target)
+			}
+		case RelocFunc:
+			if r.Target < 0 || r.Target >= len(m.Globals) || m.Globals[r.Target].Kind != GlobalFunc {
+				return fmt.Errorf("global %q relocation references invalid function global %d", g.Name, r.Target)
+			}
+		case RelocString:
+			if r.Target < 0 || r.Target >= len(m.Strings) {
+				return fmt.Errorf("global %q relocation references invalid string %d", g.Name, r.Target)
+			}
+		default:
+			return fmt.Errorf("global %q relocation has invalid kind %d", g.Name, r.Kind)
+		}
+	}
+	return nil
+}
+
+func validateLayout(m *Module, l ObjectLayout) error {
+	if l.Size < 0 {
+		return fmt.Errorf("layout %d has negative size %d", l.ID, l.Size)
+	}
+	for _, f := range l.Fields {
+		if f.ID < 0 || f.ID >= len(l.Fields) || l.Fields[f.ID].ID != f.ID {
+			return fmt.Errorf("layout %d has invalid field id %d", l.ID, f.ID)
+		}
+		if f.Offset < 0 || f.Offset > l.Size {
+			return fmt.Errorf("layout %d field %d offset %d outside size %d", l.ID, f.ID, f.Offset, l.Size)
+		}
+	}
+	for _, bf := range l.Bit {
+		if bf.ID < 0 || bf.ID >= len(l.Bit) || l.Bit[bf.ID].ID != bf.ID {
+			return fmt.Errorf("layout %d has invalid bit-field id %d", l.ID, bf.ID)
+		}
+		containerBits := valueTypeSize(m.Target, bf.Container) * 8
+		if containerBits <= 0 {
+			return fmt.Errorf("layout %d bit-field %d has invalid container %s", l.ID, bf.ID, bf.Container)
+		}
+		if bf.BitOffset < 0 || bf.Width < 0 || int64(bf.BitOffset+bf.Width) > containerBits {
+			return fmt.Errorf("layout %d bit-field %d width %d at bit offset %d exceeds container %s", l.ID, bf.ID, bf.Width, bf.BitOffset, bf.Container)
+		}
+		if bf.ByteOffset < 0 || bf.ByteOffset+containerBits/8 > l.Size {
+			return fmt.Errorf("layout %d bit-field %d container at byte offset %d exceeds size %d", l.ID, bf.ID, bf.ByteOffset, l.Size)
+		}
+	}
+	return nil
+}
+
+func valueTypeSize(t TargetInfo, vt ValueType) int64 {
+	switch vt {
+	case TypeBool:
+		return t.BoolSize
+	case TypeI8, TypeU8:
+		return 1
+	case TypeI16, TypeU16:
+		return 2
+	case TypeI32, TypeU32, TypeF32:
+		return 4
+	case TypeI64, TypeU64, TypeF64:
+		return 8
+	case TypeFLong:
+		return 16
+	case TypePtr, TypeObjectAddr:
+		return t.PointerSize
+	default:
+		return 0
+	}
 }
 
 func validateFunction(m *Module, index int, f *Function) error {

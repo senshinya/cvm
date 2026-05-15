@@ -147,9 +147,9 @@ func TestPrintModuleFullStateExactOutput(t *testing.T) {
 	const want = "Module target=\"test-target\" endian=big ptr_size=4 ptr_align=4 bool_size=1 bool_align=1 bitfield_policy=\"test-policy\" layout_version=\"7\"\n" +
 		"Global #0 var name=\"data\" size=16 align=8 readonly=true init_zero=4 init_bytes=3 init_relocs=3\n" +
 		"  InitBytes hex=0102ff\n" +
-		"  Reloc #0 offset=0 kind=global target=global#0(\"data\") addend=1\n" +
-		"  Reloc #1 offset=1 kind=func target=func#0(\"main\") addend=2\n" +
-		"  Reloc #2 offset=2 kind=string target=string#0(\"hi\") addend=9\n" +
+		"  reloc offset=0 kind=global target=global#0(\"data\") addend=1\n" +
+		"  reloc offset=1 kind=func target=func#0(\"main\") addend=2\n" +
+		"  reloc offset=2 kind=string target=string#0(\"hi\") addend=9\n" +
 		"Global #1 func name=\"main\" func=0\n" +
 		"Global #2 extern name=\"puts\"\n" +
 		"String #0 value=\"hi\" bytes=3 hex=686900\n" +

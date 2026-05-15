@@ -118,7 +118,7 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		default:
 			return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "unary expression lowering is not implemented for this operator"}
 		}
-	case *sema.MemberExpr, *sema.IndexExpr, *sema.StringLit:
+	case *sema.MemberExpr, *sema.IndexExpr, *sema.StringLit, *sema.CompoundLit:
 		return fg.emitLValueValue(e, e.GetType())
 	default:
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "expression lowering is not implemented for this node"}
@@ -283,6 +283,17 @@ func (fg *funcGen) emitLValueValue(e sema.Expr, t sema.Type) error {
 	if vt == bytecode.TypeObjectAddr {
 		return fg.emitAddress(e)
 	}
+	if member, ok := e.(*sema.MemberExpr); ok && member.Field != nil && member.Field.IsBitField {
+		addr, err := fg.bitFieldAddress(member)
+		if err != nil {
+			return err
+		}
+		if err := addr.emit(); err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpBitFieldLoad, Type: vt, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile})
+		return nil
+	}
 	if err := fg.emitAddress(e); err != nil {
 		return err
 	}
@@ -291,6 +302,9 @@ func (fg *funcGen) emitLValueValue(e sema.Expr, t sema.Type) error {
 }
 
 func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
+	if member, ok := lhs.(*sema.MemberExpr); ok && member.Field != nil && member.Field.IsBitField {
+		return fg.emitBitFieldAssign(member, rhs)
+	}
 	if vr, ok := lhs.(*sema.VarRef); ok {
 		st, err := fg.storageForVar(vr.Sym, vr.T)
 		if err != nil {
@@ -327,6 +341,23 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpSwap})
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.g.alignof(lhs.GetType()), isVolatile(lhs.GetType())))
+	return nil
+}
+
+func (fg *funcGen) emitBitFieldAssign(lhs *sema.MemberExpr, rhs sema.Expr) error {
+	addr, err := fg.bitFieldAddress(lhs)
+	if err != nil {
+		return err
+	}
+	if err := fg.emitValue(rhs); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup})
+	if err := addr.emit(); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpSwap})
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpBitFieldStore, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile})
 	return nil
 }
 

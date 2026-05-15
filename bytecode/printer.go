@@ -62,8 +62,8 @@ func printGlobal(b *strings.Builder, m *Module, g Global) {
 		if len(g.Init.Bytes) > 0 {
 			fmt.Fprintf(b, "  InitBytes hex=%x\n", g.Init.Bytes)
 		}
-		for i, r := range g.Init.Relocations {
-			fmt.Fprintf(b, "  Reloc #%d offset=%d kind=%s target=%s addend=%d\n", i, r.Offset, relocationKindName(r.Kind), relocationTarget(m, r), r.Addend)
+		for _, r := range g.Init.Relocations {
+			fmt.Fprintf(b, "  reloc offset=%d kind=%s target=%s addend=%d\n", r.Offset, relocationKindName(r.Kind), relocationTarget(m, r), r.Addend)
 		}
 	}
 }

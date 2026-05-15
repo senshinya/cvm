@@ -77,6 +77,9 @@ func (fg *funcGen) emitAddress(e sema.Expr) error {
 			return fg.ensureObjectAddr(x.X.GetType())
 		}
 	case *sema.MemberExpr:
+		if x.Field != nil && x.Field.IsBitField {
+			return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitAddress", Reason: "bit-field is not addressable"}
+		}
 		layoutType := x.Base.GetType()
 		if x.Arrow {
 			if err := fg.emitValue(x.Base); err != nil {
@@ -115,12 +118,66 @@ func (fg *funcGen) emitAddress(e sema.Expr) error {
 	case *sema.StringLit:
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrString(fg.g.internString(x.Value)))
 		return nil
+	case *sema.CompoundLit:
+		object, err := fg.newLocalObject(".compound", x.T)
+		if err != nil {
+			return err
+		}
+		dst := address{emit: func() error {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+			return nil
+		}}
+		if err := fg.emitInitializer(dst, x.Init, x.T); err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+		return nil
 	case *sema.ImplicitCast:
 		if x.Kind == sema.ArrayDecay || x.Kind == sema.LValueToRValue {
 			return fg.emitAddress(x.X)
 		}
 	}
 	return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitAddress", Reason: "expression is not addressable"}
+}
+
+func (fg *funcGen) bitFieldAddress(x *sema.MemberExpr) (address, error) {
+	if x == nil || x.Field == nil || !x.Field.IsBitField {
+		return address{}, fmt.Errorf("member expression is not a bit-field")
+	}
+	layoutType := x.Base.GetType()
+	if x.Arrow {
+		if pt, ok := sema.Unqual(x.Base.GetType()).(*sema.PointerType); ok {
+			layoutType = pt.Pointee
+		}
+	}
+	layout, err := fg.g.lowerLayout(layoutType)
+	if err != nil {
+		return address{}, err
+	}
+	field, err := fg.g.bitFieldID(layout.ID, x.Field)
+	if err != nil {
+		return address{}, err
+	}
+	vt, err := fg.g.lowerValueType(x.T)
+	if err != nil {
+		return address{}, err
+	}
+	return address{
+		emit: func() error {
+			if x.Arrow {
+				if err := fg.emitValue(x.Base); err != nil {
+					return err
+				}
+				return fg.ensureObjectAddr(x.Base.GetType())
+			}
+			return fg.emitAddress(x.Base)
+		},
+		bit:       true,
+		layout:    layout.ID,
+		field:     field,
+		valueType: vt,
+		volatile:  layout.Bit[field].Volatile || isVolatile(x.T),
+	}, nil
 }
 
 func (fg *funcGen) ensureObjectAddr(t sema.Type) error {

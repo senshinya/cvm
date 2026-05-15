@@ -71,6 +71,9 @@ func (g *generator) emitModule() error {
 	if err := g.collectGlobals(); err != nil {
 		return err
 	}
+	if err := g.emitStaticInitializers(); err != nil {
+		return err
+	}
 	for _, fn := range g.prog.Funcs {
 		if err := g.emitFunction(fn); err != nil {
 			return err

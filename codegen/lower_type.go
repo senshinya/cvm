@@ -148,6 +148,21 @@ func (g *generator) fieldID(layoutID int, field *sema.Field) (int, error) {
 	return 0, fmt.Errorf("field %q not found in layout %d", field.Name, layoutID)
 }
 
+func (g *generator) bitFieldID(layoutID int, field *sema.Field) (int, error) {
+	if field == nil {
+		return 0, fmt.Errorf("nil bit-field")
+	}
+	if layoutID < 0 || layoutID >= len(g.mod.Layouts) {
+		return 0, fmt.Errorf("invalid layout %d", layoutID)
+	}
+	for _, f := range g.mod.Layouts[layoutID].Bit {
+		if f.Name == field.Name && f.ByteOffset == field.Offset {
+			return f.ID, nil
+		}
+	}
+	return 0, fmt.Errorf("bit-field %q not found in layout %d", field.Name, layoutID)
+}
+
 func (g *generator) elemSize(t sema.Type) int64 {
 	if pt, ok := sema.Unqual(t).(*sema.PointerType); ok {
 		return g.sizeof(pt.Pointee)

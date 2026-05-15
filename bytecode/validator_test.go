@@ -428,6 +428,47 @@ func TestValidateModuleRejectsStrayGlobalFuncBackLink(t *testing.T) {
 	}
 }
 
+func TestValidateModuleRejectsGlobalRelocationOutsideObject(t *testing.T) {
+	mod := minimalModule()
+	mod.Globals = append(mod.Globals, Global{
+		ID:    1,
+		Name:  "data",
+		Kind:  GlobalVar,
+		Size:  4,
+		Align: 4,
+		Init: InitData{
+			Bytes:       []byte{0, 0, 0, 0},
+			Relocations: []Relocation{{Offset: 1, Kind: RelocGlobal, Target: 1}},
+		},
+	})
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted a relocation that overruns the global")
+	}
+}
+
+func TestValidateModuleRejectsBitFieldWiderThanContainer(t *testing.T) {
+	mod := minimalModule()
+	mod.Layouts = []ObjectLayout{{
+		ID:    0,
+		Name:  "bad-bits",
+		Size:  4,
+		Align: 4,
+		Bit: []BitFieldLayout{{
+			ID:         0,
+			Name:       "wide",
+			Container:  TypeU32,
+			ByteOffset: 0,
+			BitOffset:  28,
+			Width:      5,
+		}},
+	}}
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted a bit-field that exceeds its container")
+	}
+}
+
 func TestValidateModuleRejectsReturnWithLeftoverStack(t *testing.T) {
 	mod := minimalModule()
 	mod.Functions[0].Instrs = []Instr{

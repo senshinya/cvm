@@ -785,21 +785,28 @@ func (fg *funcGen) emitInitStore(vd *sema.VarDecl) error {
 		return err
 	}
 	if vt == bytecode.TypeObjectAddr {
-		if err := fg.emitAddress(lhs); err != nil {
-			return err
+		if _, ok := vd.Init.(*sema.InitList); ok {
+			object, err := fg.newLocalObject(vd.Sym.Name+"$init", vd.T)
+			if err != nil {
+				return err
+			}
+			tmp := address{emit: func() error {
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+				return nil
+			}}
+			if err := fg.emitInitializer(tmp, vd.Init, vd.T); err != nil {
+				return err
+			}
+			if err := fg.emitAddress(lhs); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(vd.T), Align: fg.g.alignof(vd.T), Volatile: isVolatile(vd.T)})
+			return nil
 		}
-		if err := fg.emitAddress(vd.Init); err != nil {
-			return err
-		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(vd.T), Align: fg.g.alignof(vd.T), Volatile: isVolatile(vd.T)})
-		return nil
 	}
-	if err := fg.emitAddress(lhs); err != nil {
-		return err
-	}
-	if err := fg.emitValue(vd.Init); err != nil {
-		return err
-	}
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.g.alignof(vd.T), isVolatile(vd.T)))
-	return nil
+	dst := address{emit: func() error {
+		return fg.emitAddress(lhs)
+	}}
+	return fg.emitInitializer(dst, vd.Init, vd.T)
 }

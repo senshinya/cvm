@@ -364,6 +364,37 @@ int main(void) {
 	}
 }
 
+func TestGenerateStaticInitializersStringsAndRelocations(t *testing.T) {
+	mod := compileModule(t, `
+int g = 3;
+int *gp = &g;
+char *s = "hi";
+int main(void) { return g; }`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{"Global #0 var name=\"g\"", "reloc", "String #0 value=\"hi", "readonly"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGenerateAggregateAndBitFieldLowering(t *testing.T) {
+	mod := compileModule(t, `
+struct B { unsigned x:3; unsigned y:5; };
+struct P { int a[2]; struct B b; };
+int main(void) {
+	struct P p = {{1, 2}, {3, 4}};
+	p.b.x = 5;
+	return p.a[1] + p.b.x;
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{"BitFieldStore", "BitFieldLoad", "MemCopy", "Layout #"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestGenerateBitFieldOnlyStructObjectSize(t *testing.T) {
 	mod := compileModule(t, `
 struct S { int b:1; };
