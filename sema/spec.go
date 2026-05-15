@@ -250,14 +250,14 @@ func (s *Sema) buildStructUnion(node *entity.AstNode) Type {
 		t := s.newAnonStructUnion(isUnion)
 		fields := s.parseStructDeclList(node.Children[2])
 		s.validateFlexibleArrayMembers(fields, isUnion, node.SourceStart)
-		s.completeStructUnion(t, fields)
+		s.completeStructUnion(t, fields, node.SourceStart)
 		return t
 	case node.ReducedBy(parser.StructOrUnionSpecifier, 2):
 		name := node.Children[1].Terminal.Lexeme
 		t := s.lookupOrCreateCurrentTag(name, isUnion, node.SourceStart)
 		fields := s.parseStructDeclList(node.Children[3])
 		s.validateFlexibleArrayMembers(fields, isUnion, node.SourceStart)
-		s.completeStructUnion(t, fields)
+		s.completeStructUnion(t, fields, node.SourceStart)
 		return t
 	case node.ReducedBy(parser.StructOrUnionSpecifier, 3):
 		return s.lookupOrCreateTag(node.Children[1].Terminal.Lexeme, isUnion, node.SourceStart)
@@ -314,15 +314,15 @@ func (s *Sema) createTag(name string, isUnion bool, pos entity.SourcePos) Type {
 	} else {
 		t = s.Types.Struct(tag)
 	}
-	if err := s.scope.InsertTagChecked(name, &TagInfo{Tag: tag, T: t}, pos); err != nil {
+	if err := s.scope.InsertTagChecked(name, &TagInfo{Tag: tag, T: t, Pos: pos}, pos); err != nil {
 		s.report(err.(*common.CvmError))
 	}
 	return t
 }
 
-func (s *Sema) completeStructUnion(t Type, fields []*Field) {
+func (s *Sema) completeStructUnion(t Type, fields []*Field, pos entity.SourcePos) {
 	if len(fields) == 0 {
-		s.report(InvalidTypeSpec(entity.SourcePos{}, "struct/union must have at least one member"))
+		s.report(InvalidTypeSpec(pos, "struct/union must have at least one member"))
 	}
 	s.validateDuplicateFields(fields)
 	var offset int64
@@ -354,7 +354,7 @@ func (s *Sema) validateDuplicateFields(fields []*Field) {
 			continue
 		}
 		if seen[f.Name] {
-			s.report(InvalidTypeSpec(entity.SourcePos{}, "duplicate member name"))
+			s.report(InvalidTypeSpec(f.Pos, "duplicate member name"))
 			continue
 		}
 		seen[f.Name] = true
@@ -450,20 +450,20 @@ func (s *Sema) parseStructDeclarator(node *entity.AstNode, base Type) *Field {
 		s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 		t, name := s.applyDeclarator(node.Children[0], base)
 		s.validateRestrictType(t, node.SourceStart)
-		return &Field{Name: name, T: t}
+		return &Field{Name: name, T: t, Pos: node.SourceStart}
 	case node.ReducedBy(parser.StructDeclarator, 2):
 		width := s.evalBitWidth(node.Children[1])
 		s.validateBitFieldWidth(base, width, node.SourceStart)
-		return &Field{T: base, BitWidth: width, IsBitField: true}
+		return &Field{T: base, BitWidth: width, IsBitField: true, Pos: node.SourceStart}
 	case node.ReducedBy(parser.StructDeclarator, 3):
 		s.validateDeclaratorArrayQualifiers(node.Children[0], false)
 		t, name := s.applyDeclarator(node.Children[0], base)
 		s.validateRestrictType(t, node.SourceStart)
 		width := s.evalBitWidth(node.Children[2])
 		s.validateBitFieldWidth(t, width, node.SourceStart)
-		return &Field{Name: name, T: t, BitWidth: width, IsBitField: true}
+		return &Field{Name: name, T: t, BitWidth: width, IsBitField: true, Pos: node.SourceStart}
 	}
-	return &Field{T: ErrorTypeSingleton}
+	return &Field{T: ErrorTypeSingleton, Pos: node.SourceStart}
 }
 
 func (s *Sema) validateBitFieldWidth(t Type, width int, pos entity.SourcePos) {
@@ -498,7 +498,7 @@ func (s *Sema) buildEnum(node *entity.AstNode) Type {
 		// GCC 的 C99 warning-only 用例会接受 enum 前向声明；当前没有 warning 通道，因此按可继续分析处理。
 		tag := s.Types.NewTagID()
 		et := s.Types.Enum(tag)
-		_ = s.scope.InsertTagChecked(name, &TagInfo{Tag: tag, T: et}, node.SourceStart)
+		_ = s.scope.InsertTagChecked(name, &TagInfo{Tag: tag, T: et, Pos: node.SourceStart}, node.SourceStart)
 		return et
 	case node.ReducedBy(parser.EnumSpecifier, 1), node.ReducedBy(parser.EnumSpecifier, 3):
 		tag := s.Types.NewTagID()
@@ -516,7 +516,7 @@ func (s *Sema) buildEnum(node *entity.AstNode) Type {
 		if et == nil {
 			tag := s.Types.NewTagID()
 			et = s.Types.Enum(tag)
-			_ = s.scope.InsertTagChecked(name, &TagInfo{Tag: tag, T: et}, node.SourceStart)
+			_ = s.scope.InsertTagChecked(name, &TagInfo{Tag: tag, T: et, Pos: node.SourceStart}, node.SourceStart)
 		}
 		enums := s.parseEnumeratorList(node.Children[3], intT)
 		s.Types.CompleteEnum(et, intT, enums)
@@ -553,12 +553,12 @@ func (s *Sema) parseEnumerator(node *entity.AstNode, defaultVal int64, base Type
 			s.report(InvalidTypeSpec(node.SourceStart, "enum value must be integer constant expression"))
 		}
 	}
-	return &Enumerator{Name: name, Value: val}
+	return &Enumerator{Name: name, Value: val, Pos: node.SourceStart}
 }
 
 func (s *Sema) registerEnumerators(enums []*Enumerator, base Type, et *EnumType) {
 	for _, e := range enums {
-		sym := &Symbol{Name: e.Name, Kind: SymEnumerator, T: et, Pos: entity.SourcePos{}}
+		sym := &Symbol{Name: e.Name, Kind: SymEnumerator, T: et, Pos: e.Pos}
 		if err := s.scope.InsertChecked(e.Name, sym); err != nil {
 			s.report(err.(*common.CvmError))
 		}

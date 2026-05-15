@@ -79,14 +79,14 @@ func (pp *preprocessor) handleInclude(tokens []PPToken, directive PPToken) error
 		return ppError(directive.Location, "include depth exceeds %d", maxIncludeDepth)
 	}
 	operand := dropNewlines(tokens)
-	header, angled, err := pp.parseIncludeOperand(operand)
+	header, angled, err := pp.parseIncludeOperand(operand, directive.Location)
 	if err != nil {
 		// include 操作数可以由宏展开得到，例如 #define H "x.h" 后的 #include H。
 		expanded, expandErr := pp.expand(operand)
 		if expandErr != nil {
 			return expandErr
 		}
-		header, angled, err = pp.parseIncludeOperand(expanded)
+		header, angled, err = pp.parseIncludeOperand(expanded, directive.Location)
 		if err != nil {
 			return err
 		}
@@ -121,7 +121,7 @@ func (pp *preprocessor) handleInclude(tokens []PPToken, directive PPToken) error
 	return err
 }
 
-func (pp *preprocessor) parseIncludeOperand(tokens []PPToken) (string, bool, error) {
+func (pp *preprocessor) parseIncludeOperand(tokens []PPToken, fallback entity.SourcePos) (string, bool, error) {
 	tokens = dropNewlines(tokens)
 	if len(tokens) == 1 && tokens[0].Kind == PPString {
 		name, err := strconv.Unquote(tokens[0].Lexeme)
@@ -142,7 +142,7 @@ func (pp *preprocessor) parseIncludeOperand(tokens []PPToken) (string, bool, err
 	if len(tokens) > 0 {
 		return "", false, ppError(tokens[0].Location, "invalid include operand")
 	}
-	return "", false, ppError(entity.SourcePos{}, "missing include operand")
+	return "", false, ppError(fallback, "missing include operand")
 }
 
 func (pp *preprocessor) fileForLocation(pos entity.SourcePos) string {

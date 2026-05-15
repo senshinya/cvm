@@ -73,7 +73,16 @@ func (sm *SourceManager) AddFile(name, content string) int {
 
 func (sm *SourceManager) Location(fileID, offset int) entity.SourcePos {
 	sm.locations = append(sm.locations, sourceLocation{fileID: fileID, offset: offset})
-	return entity.SourcePos{LocationID: len(sm.locations) - 1}
+	line, column := 0, 0
+	if fileID > 0 && fileID < len(sm.files) {
+		starts := sm.files[fileID].lineStart
+		idx := sort.Search(len(starts), func(i int) bool { return starts[i] > offset }) - 1
+		if idx >= 0 {
+			line = idx + 1
+			column = offset - starts[idx] + 1
+		}
+	}
+	return entity.SourcePos{LocationID: len(sm.locations) - 1, Line: line, Column: column}
 }
 
 func (sm *SourceManager) SetPresumedLine(fileID, offset int, file string, line int) {

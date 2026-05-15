@@ -59,6 +59,7 @@ type TagInfo struct {
 	T        Type
 	Decl     Decl
 	Complete bool
+	Pos      entity.SourcePos
 }
 
 type ScopeKind int
@@ -154,9 +155,12 @@ func NewSymbolTable() *SymbolTable {
 }
 
 func (s *Scope) InsertTagChecked(name string, info *TagInfo, pos entity.SourcePos) error {
+	if info != nil && info.Pos == (entity.SourcePos{}) {
+		info.Pos = pos
+	}
 	if existing, ok := s.Tags[name]; ok {
 		if existing.Tag != info.Tag || !sameTagTypeKind(existing.T, info.T) {
-			return RedefinitionSymbol(pos, entity.SourcePos{}, name)
+			return RedefinitionSymbol(pos, existing.Pos, name)
 		}
 		return nil
 	}

@@ -1,5 +1,7 @@
 package sema
 
+import "shinya.click/cvm/entity"
+
 type Type interface {
 	isType()
 	String() string
@@ -191,6 +193,7 @@ type Field struct {
 	BitWidth   int
 	IsBitField bool
 	Offset     int64
+	Pos        entity.SourcePos
 }
 
 type StructType struct {
@@ -226,6 +229,7 @@ func (u *UnionType) String() string {
 type Enumerator struct {
 	Name  string
 	Value int64
+	Pos   entity.SourcePos
 }
 
 type EnumType struct {

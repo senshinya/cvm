@@ -1,8 +1,11 @@
 package preprocessor
 
 import (
+	"errors"
 	"fmt"
 	"testing"
+
+	"shinya.click/cvm/common"
 )
 
 type mapFS map[string]string
@@ -67,4 +70,19 @@ func TestIncludeStackTraceForHeaderToken(t *testing.T) {
 		}
 	}
 	t.Fatalf("from_header token missing: %#v", res.Tokens)
+}
+
+func TestMissingIncludeOperandReportsDirectiveLocation(t *testing.T) {
+	_, err := PreprocessSource("main.c", "int x;\n#include\n", Options{})
+	if err == nil {
+		t.Fatal("expected missing include operand error")
+	}
+	var cvmErr *common.CvmError
+	if !errors.As(err, &cvmErr) || len(cvmErr.Messages) == 0 {
+		t.Fatalf("expected CvmError, got %T %v", err, err)
+	}
+	pos := cvmErr.Messages[0].SourcePos
+	if pos.Line != 2 || pos.Column != 2 {
+		t.Fatalf("missing include operand pos = %d:%d, want 2:2", pos.Line, pos.Column)
+	}
 }
