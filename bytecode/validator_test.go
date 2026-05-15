@@ -217,6 +217,62 @@ func TestValidateModuleStackErrorIncludesReadableOpcodeName(t *testing.T) {
 	}
 }
 
+func TestValidateModuleRejectsNonVoidFunctionWithNoInstructions(t *testing.T) {
+	mod := minimalModule()
+	mod.Functions[0].Instrs = nil
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted a non-void function with no instructions")
+	}
+}
+
+func TestValidateModuleRejectsNonVoidFunctionEndingWithoutReturn(t *testing.T) {
+	mod := minimalModule()
+	mod.Functions[0].Instrs = []Instr{I32Const(1)}
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted a non-void function ending without a return")
+	}
+}
+
+func TestValidateModuleRejectsVoidFunctionEndingWithLeftoverStack(t *testing.T) {
+	mod := minimalModule()
+	mod.Sigs[0].Ret = TypeVoid
+	mod.Functions[0].Instrs = []Instr{I32Const(1)}
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted a void function ending with leftover stack values")
+	}
+}
+
+func TestValidateModuleDupSwapErrorsIncludeReadableOpcodeName(t *testing.T) {
+	t.Run("dup", func(t *testing.T) {
+		mod := minimalModule()
+		mod.Functions[0].Instrs = []Instr{{Op: OpDup}}
+
+		err := ValidateModule(mod)
+		if err == nil {
+			t.Fatal("ValidateModule accepted dup with an empty stack")
+		}
+		if !strings.Contains(err.Error(), "OpDup") {
+			t.Fatalf("ValidateModule error %q does not include readable opcode name", err)
+		}
+	})
+
+	t.Run("swap", func(t *testing.T) {
+		mod := minimalModule()
+		mod.Functions[0].Instrs = []Instr{I32Const(1), {Op: OpSwap}}
+
+		err := ValidateModule(mod)
+		if err == nil {
+			t.Fatal("ValidateModule accepted swap with fewer than two stack values")
+		}
+		if !strings.Contains(err.Error(), "OpSwap") {
+			t.Fatalf("ValidateModule error %q does not include readable opcode name", err)
+		}
+	})
+}
+
 func minimalModule() *Module {
 	return &Module{
 		Target:  DefaultTarget(),

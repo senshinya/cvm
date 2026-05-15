@@ -58,12 +58,20 @@ func validateFunction(m *Module, index int, f *Function) error {
 	}
 	ret := m.Sigs[f.Sig].Ret
 	stack := []ValueType{}
+	terminalReturn := false
 	for pc, ins := range f.Instrs {
 		next, err := validateInstrStack(stack, ins, ret)
 		if err != nil {
 			return fmt.Errorf("function %q pc %d: %w", f.Name, pc, err)
 		}
 		stack = next
+		terminalReturn = ins.Op == OpReturn || ins.Op == OpReturnVoid
+	}
+	if !terminalReturn {
+		if len(stack) != 0 {
+			return fmt.Errorf("function %q ends without terminal return and has non-empty stack", f.Name)
+		}
+		return fmt.Errorf("function %q missing terminal return", f.Name)
 	}
 	return nil
 }
@@ -98,7 +106,7 @@ func validateInstrStack(stack []ValueType, ins Instr, ret ValueType) ([]ValueTyp
 		}
 	case OpSwap:
 		if len(stack) < 2 {
-			return nil, fmt.Errorf("swap stack underflow")
+			return nil, fmt.Errorf("%v stack underflow", ins.Op)
 		}
 		stack[len(stack)-1], stack[len(stack)-2] = stack[len(stack)-2], stack[len(stack)-1]
 	case OpBinary:
@@ -135,7 +143,7 @@ func validateInstrStack(stack []ValueType, ins Instr, ret ValueType) ([]ValueTyp
 		}
 	case OpDup:
 		if len(stack) == 0 {
-			return nil, fmt.Errorf("dup stack underflow")
+			return nil, fmt.Errorf("%v stack underflow", ins.Op)
 		}
 		push(stack[len(stack)-1])
 	default:
