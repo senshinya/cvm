@@ -703,6 +703,25 @@ int f(int n, int m) {
 	}
 }
 
+func TestGenerateDistinctVLASizeSlotsDoNotAlias(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n, int m, int k) {
+	int a[n][m];
+	int b[n][k];
+	return sizeof(a[0]) + sizeof(b[0]) + a[1][0] + b[1][0];
+}`)
+	out := bytecode.PrintModule(mod)
+	if strings.Contains(out, "PtrAdd elem_size=0") {
+		t.Fatalf("bytecode used zero stride for distinct VLA sizes:\n%s", out)
+	}
+	if strings.Count(out, "I32LoadLocal 1") != 1 || strings.Count(out, "I32LoadLocal 2") != 1 {
+		t.Fatalf("distinct VLA bounds should each be evaluated once:\n%s", out)
+	}
+	if !strings.Contains(out, `name="a$size$elem" type=i64`) || !strings.Contains(out, `name="b$size$elem" type=i64`) {
+		t.Fatalf("bytecode missing separate VLA size slots:\n%s", out)
+	}
+}
+
 func instrPC(t *testing.T, fn bytecode.Function, pred func(bytecode.Instr) bool) int {
 	t.Helper()
 	return instrPCAfter(t, fn, -1, pred)

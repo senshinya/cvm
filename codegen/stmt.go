@@ -651,7 +651,53 @@ func (fg *funcGen) prepareDynamicSizeTypesSeen(t sema.Type, name string, seen ma
 }
 
 func dynamicSizeKey(t sema.Type) string {
-	return sema.Unqual(t).String()
+	switch x := sema.Unqual(t).(type) {
+	case *sema.PointerType:
+		return "*" + dynamicSizeKey(x.Pointee)
+	case *sema.ArrayType:
+		var size string
+		switch x.SizeKind {
+		case sema.ArrayConstantSize:
+			size = fmt.Sprintf("%d", x.Size)
+		case sema.ArrayUnsized:
+			size = ""
+		case sema.ArrayVLA:
+			size = exprKey(x.SizeExpr)
+		case sema.ArrayStarSize:
+			size = "*"
+		default:
+			size = "?"
+		}
+		return dynamicSizeKey(x.Elem) + "[" + size + "]"
+	default:
+		return sema.Unqual(t).String()
+	}
+}
+
+func exprKey(e sema.Expr) string {
+	switch x := e.(type) {
+	case nil:
+		return "<nil>"
+	case *sema.IntLit:
+		return fmt.Sprintf("int:%d", x.Value)
+	case *sema.CharLit:
+		return fmt.Sprintf("char:%d", x.Value)
+	case *sema.VarRef:
+		if x.Sym != nil {
+			return fmt.Sprintf("var:%s:%d:%d", x.Sym.Name, x.Sym.GlobalID, x.Sym.SlotID)
+		}
+		return "var:<nil>"
+	case *sema.ImplicitCast:
+		return fmt.Sprintf("icast:%d:%s", x.Kind, exprKey(x.X))
+	case *sema.ExplicitCast:
+		return fmt.Sprintf("ecast:%s:%s", x.To, exprKey(x.X))
+	case *sema.BinOp:
+		return fmt.Sprintf("bin:%d:%s:%s", x.Op, exprKey(x.L), exprKey(x.R))
+	case *sema.UnOp:
+		return fmt.Sprintf("un:%d:%s", x.Op, exprKey(x.X))
+	default:
+		return fmt.Sprintf("%T:%v", e, e.Pos().SourceStart)
+	}
 }
 
 func (fg *funcGen) allocSyntheticI64Slot(name string) int {
