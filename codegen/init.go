@@ -18,6 +18,18 @@ type address struct {
 	volatile  bool
 }
 
+type initLeaf struct {
+	typ         sema.Type
+	designators []sema.Designator
+}
+
+type initSpan struct {
+	typ         sema.Type
+	designators []sema.Designator
+	start       int
+	end         int
+}
+
 func (g *generator) internString(value string) int {
 	if id, ok := g.stringMap[value]; ok {
 		return id
@@ -110,75 +122,83 @@ func (g *generator) writeStaticArrayInitializer(buf []byte, relocs *[]bytecode.R
 	if sl, ok := stringLiteralInitializer(init); ok {
 		return g.writeStaticStringArray(buf, offset, sl, typ)
 	}
-	il, ok := init.(*sema.InitList)
-	if !ok {
+	if _, ok := init.(*sema.InitList); !ok {
 		return g.writeStaticScalarInitializer(buf, relocs, offset, init, typ)
 	}
-	elemSize := g.sizeof(typ.Elem)
-	next := int64(0)
-	for _, elem := range il.Elems {
-		if len(elem.Designators) > 0 {
-			index := nextDesignatorIndex(elem.Designators, next)
-			if err := g.writeStaticDesignatedInitializer(buf, relocs, offset, typ, elem.Designators, elem.Value); err != nil {
-				return err
-			}
-			next = index + 1
-			continue
-		}
-		if typ.SizeKind == sema.ArrayConstantSize && next >= typ.Size {
-			continue
-		}
-		if err := g.writeStaticInitializer(buf, relocs, offset+next*elemSize, elem.Value, typ.Elem); err != nil {
-			return err
-		}
-		next++
-	}
-	return nil
+	return g.writeStaticAggregateInitializer(buf, relocs, offset, init, typ)
 }
 
 func (g *generator) writeStaticStructInitializer(buf []byte, relocs *[]bytecode.Relocation, offset int64, init sema.Expr, typ *sema.StructType) error {
+	if _, ok := init.(*sema.InitList); !ok {
+		return g.writeStaticScalarInitializer(buf, relocs, offset, init, typ)
+	}
+	return g.writeStaticAggregateInitializer(buf, relocs, offset, init, typ)
+}
+
+func (g *generator) writeStaticUnionInitializer(buf []byte, relocs *[]bytecode.Relocation, offset int64, init sema.Expr, typ *sema.UnionType) error {
+	if _, ok := init.(*sema.InitList); !ok {
+		return g.writeStaticScalarInitializer(buf, relocs, offset, init, typ)
+	}
+	return g.writeStaticAggregateInitializer(buf, relocs, offset, init, typ)
+}
+
+func (g *generator) writeStaticAggregateInitializer(buf []byte, relocs *[]bytecode.Relocation, offset int64, init sema.Expr, typ sema.Type) error {
 	il, ok := init.(*sema.InitList)
 	if !ok {
 		return g.writeStaticScalarInitializer(buf, relocs, offset, init, typ)
 	}
-	next := 0
+	leaves := g.initLeaves(typ, nil)
+	spans := g.directInitSpans(typ, nil)
+	cursor := 0
 	for _, elem := range il.Elems {
 		if len(elem.Designators) > 0 {
-			if err := g.writeStaticDesignatedInitializer(buf, relocs, offset, typ, elem.Designators, elem.Value); err != nil {
+			next, err := g.writeStaticDesignatedElem(buf, relocs, offset, typ, elem.Designators, elem.Value)
+			if err != nil {
 				return err
 			}
-			if f := firstDesignatorField(elem.Designators); f != nil {
-				next = fieldIndex(typ.Fields, f) + 1
+			cursor = next
+			continue
+		}
+		if cursor >= len(leaves) {
+			continue
+		}
+		span := spanContaining(spans, cursor)
+		if span != nil && cursor == span.start && useWholeInitializer(elem.Value, span.typ) {
+			if err := g.writeStaticDesignatedInitializer(buf, relocs, offset, typ, span.designators, elem.Value); err != nil {
+				return err
 			}
+			cursor = span.end
 			continue
 		}
-		if next < 0 || next >= len(typ.Fields) {
-			continue
-		}
-		field := typ.Fields[next]
-		if err := g.writeStaticFieldInitializer(buf, relocs, offset, typ, field, elem.Value); err != nil {
+		leaf := leaves[cursor]
+		if err := g.writeStaticDesignatedInitializer(buf, relocs, offset, typ, leaf.designators, elem.Value); err != nil {
 			return err
 		}
-		next++
+		cursor++
 	}
 	return nil
 }
 
-func (g *generator) writeStaticUnionInitializer(buf []byte, relocs *[]bytecode.Relocation, offset int64, init sema.Expr, typ *sema.UnionType) error {
-	il, ok := init.(*sema.InitList)
-	if !ok {
-		return g.writeStaticScalarInitializer(buf, relocs, offset, init, typ)
+func (g *generator) writeStaticDesignatedElem(buf []byte, relocs *[]bytecode.Relocation, offset int64, typ sema.Type, ds []sema.Designator, init sema.Expr) (int, error) {
+	span, err := g.designatedSpan(typ, ds)
+	if err != nil {
+		return 0, err
 	}
-	for _, elem := range il.Elems {
-		if len(elem.Designators) > 0 {
-			return g.writeStaticDesignatedInitializer(buf, relocs, offset, typ, elem.Designators, elem.Value)
+	if !isObjectType(span.typ) || useWholeInitializer(init, span.typ) {
+		if err := g.writeStaticDesignatedInitializer(buf, relocs, offset, typ, ds, init); err != nil {
+			return 0, err
 		}
-		if len(typ.Fields) == 0 {
-			return nil
-		}
-		return g.writeStaticFieldInitializer(buf, relocs, offset, typ, typ.Fields[0], elem.Value)
+		return span.end, nil
 	}
-	return nil
+	leaves := g.initLeaves(typ, nil)
+	if span.start < 0 || span.start >= len(leaves) {
+		return 0, fmt.Errorf("designator does not name an initializable subobject")
+	}
+	leaf := leaves[span.start]
+	if err := g.writeStaticDesignatedInitializer(buf, relocs, offset, typ, leaf.designators, init); err != nil {
+		return 0, err
+	}
+	return span.start + 1, nil
 }
 
 func (g *generator) writeStaticDesignatedInitializer(buf []byte, relocs *[]bytecode.Relocation, offset int64, typ sema.Type, ds []sema.Designator, init sema.Expr) error {
@@ -399,93 +419,92 @@ func (fg *funcGen) emitArrayInitializer(dst address, init sema.Expr, typ *sema.A
 	if sl, ok := stringLiteralInitializer(init); ok {
 		return fg.emitStringArrayInitializer(dst, sl, typ)
 	}
-	il, ok := init.(*sema.InitList)
-	if !ok {
+	if _, ok := init.(*sema.InitList); !ok {
 		return fg.emitObjectCopyInitializer(dst, init, typ)
 	}
 	if err := fg.emitZeroInitializer(dst, typ); err != nil {
 		return err
 	}
-	elemSize := fg.g.sizeof(typ.Elem)
-	next := int64(0)
-	for _, elem := range il.Elems {
-		if len(elem.Designators) > 0 {
-			index := nextDesignatorIndex(elem.Designators, next)
-			if err := fg.emitDesignatedInitializer(dst, typ, elem.Designators, elem.Value); err != nil {
-				return err
-			}
-			next = index + 1
-			continue
-		}
-		if typ.SizeKind == sema.ArrayConstantSize && next >= typ.Size {
-			continue
-		}
-		elemAddr := fg.offsetAddress(dst, next*elemSize)
-		if err := fg.emitInitializer(elemAddr, elem.Value, typ.Elem); err != nil {
-			return err
-		}
-		next++
-	}
-	return nil
+	return fg.emitAggregateInitializer(dst, init, typ)
 }
 
 func (fg *funcGen) emitStructInitializer(dst address, init sema.Expr, typ *sema.StructType) error {
-	il, ok := init.(*sema.InitList)
-	if !ok {
+	if _, ok := init.(*sema.InitList); !ok {
 		return fg.emitObjectCopyInitializer(dst, init, typ)
 	}
 	if err := fg.emitZeroInitializer(dst, typ); err != nil {
 		return err
 	}
-	next := 0
+	return fg.emitAggregateInitializer(dst, init, typ)
+}
+
+func (fg *funcGen) emitUnionInitializer(dst address, init sema.Expr, typ *sema.UnionType) error {
+	if _, ok := init.(*sema.InitList); !ok {
+		return fg.emitObjectCopyInitializer(dst, init, typ)
+	}
+	if err := fg.emitZeroInitializer(dst, typ); err != nil {
+		return err
+	}
+	return fg.emitAggregateInitializer(dst, init, typ)
+}
+
+func (fg *funcGen) emitAggregateInitializer(dst address, init sema.Expr, typ sema.Type) error {
+	il, ok := init.(*sema.InitList)
+	if !ok {
+		return fg.emitObjectCopyInitializer(dst, init, typ)
+	}
+	leaves := fg.g.initLeaves(typ, nil)
+	spans := fg.g.directInitSpans(typ, nil)
+	cursor := 0
 	for _, elem := range il.Elems {
 		if len(elem.Designators) > 0 {
-			if err := fg.emitDesignatedInitializer(dst, typ, elem.Designators, elem.Value); err != nil {
+			next, err := fg.emitDesignatedElem(dst, typ, elem.Designators, elem.Value)
+			if err != nil {
 				return err
 			}
-			if f := firstDesignatorField(elem.Designators); f != nil {
-				next = fieldIndex(typ.Fields, f) + 1
+			cursor = next
+			continue
+		}
+		if cursor >= len(leaves) {
+			continue
+		}
+		span := spanContaining(spans, cursor)
+		if span != nil && cursor == span.start && useWholeInitializer(elem.Value, span.typ) {
+			if err := fg.emitDesignatedInitializer(dst, typ, span.designators, elem.Value); err != nil {
+				return err
 			}
+			cursor = span.end
 			continue
 		}
-		if next < 0 || next >= len(typ.Fields) {
-			continue
-		}
-		field := typ.Fields[next]
-		fieldAddr, err := fg.fieldAddress(dst, typ, field)
-		if err != nil {
+		leaf := leaves[cursor]
+		if err := fg.emitDesignatedInitializer(dst, typ, leaf.designators, elem.Value); err != nil {
 			return err
 		}
-		if err := fg.emitInitializer(fieldAddr, elem.Value, field.T); err != nil {
-			return err
-		}
-		next++
+		cursor++
 	}
 	return nil
 }
 
-func (fg *funcGen) emitUnionInitializer(dst address, init sema.Expr, typ *sema.UnionType) error {
-	il, ok := init.(*sema.InitList)
-	if !ok {
-		return fg.emitObjectCopyInitializer(dst, init, typ)
+func (fg *funcGen) emitDesignatedElem(dst address, typ sema.Type, ds []sema.Designator, init sema.Expr) (int, error) {
+	span, err := fg.g.designatedSpan(typ, ds)
+	if err != nil {
+		return 0, err
 	}
-	if err := fg.emitZeroInitializer(dst, typ); err != nil {
-		return err
+	if !isObjectType(span.typ) || useWholeInitializer(init, span.typ) {
+		if err := fg.emitDesignatedInitializer(dst, typ, ds, init); err != nil {
+			return 0, err
+		}
+		return span.end, nil
 	}
-	for _, elem := range il.Elems {
-		if len(elem.Designators) > 0 {
-			return fg.emitDesignatedInitializer(dst, typ, elem.Designators, elem.Value)
-		}
-		if len(typ.Fields) == 0 {
-			return nil
-		}
-		fieldAddr, err := fg.fieldAddress(dst, typ, typ.Fields[0])
-		if err != nil {
-			return err
-		}
-		return fg.emitInitializer(fieldAddr, elem.Value, typ.Fields[0].T)
+	leaves := fg.g.initLeaves(typ, nil)
+	if span.start < 0 || span.start >= len(leaves) {
+		return 0, fmt.Errorf("designator does not name an initializable subobject")
 	}
-	return nil
+	leaf := leaves[span.start]
+	if err := fg.emitDesignatedInitializer(dst, typ, leaf.designators, init); err != nil {
+		return 0, err
+	}
+	return span.start + 1, nil
 }
 
 func (fg *funcGen) emitDesignatedInitializer(dst address, typ sema.Type, ds []sema.Designator, init sema.Expr) error {
@@ -737,33 +756,6 @@ func staticIntegerValue(init sema.Expr) (int64, bool) {
 	}
 }
 
-func nextDesignatorIndex(ds []sema.Designator, fallback int64) int64 {
-	for _, d := range ds {
-		if d.Kind == sema.DesigArrayIndex {
-			return d.Index
-		}
-	}
-	return fallback
-}
-
-func firstDesignatorField(ds []sema.Designator) *sema.Field {
-	for _, d := range ds {
-		if d.Kind == sema.DesigFieldName {
-			return d.Field
-		}
-	}
-	return nil
-}
-
-func fieldIndex(fields []*sema.Field, target *sema.Field) int {
-	for i, f := range fields {
-		if f == target {
-			return i
-		}
-	}
-	return -1
-}
-
 func lookupField(typ sema.Type, name string) *sema.Field {
 	switch x := sema.Unqual(typ).(type) {
 	case *sema.StructType:
@@ -780,6 +772,190 @@ func lookupField(typ sema.Type, name string) *sema.Field {
 		}
 	}
 	return nil
+}
+
+func (g *generator) initLeaves(typ sema.Type, prefix []sema.Designator) []initLeaf {
+	switch x := sema.Unqual(typ).(type) {
+	case *sema.ArrayType:
+		if x.SizeKind != sema.ArrayConstantSize {
+			return nil
+		}
+		var out []initLeaf
+		for i := int64(0); i < x.Size; i++ {
+			ds := appendDesignator(prefix, sema.Designator{Kind: sema.DesigArrayIndex, Index: i})
+			out = append(out, g.initLeaves(x.Elem, ds)...)
+		}
+		return out
+	case *sema.StructType:
+		var out []initLeaf
+		for _, f := range x.Fields {
+			if f == nil || (f.IsBitField && f.Name == "") {
+				continue
+			}
+			ds := appendDesignator(prefix, sema.Designator{Kind: sema.DesigFieldName, Field: f})
+			out = append(out, g.initLeaves(f.T, ds)...)
+		}
+		return out
+	case *sema.UnionType:
+		for _, f := range x.Fields {
+			if f == nil || (f.IsBitField && f.Name == "") {
+				continue
+			}
+			ds := appendDesignator(prefix, sema.Designator{Kind: sema.DesigFieldName, Field: f})
+			return g.initLeaves(f.T, ds)
+		}
+		return nil
+	default:
+		return []initLeaf{{typ: typ, designators: copyDesignators(prefix)}}
+	}
+}
+
+func (g *generator) directInitSpans(typ sema.Type, prefix []sema.Designator) []initSpan {
+	switch x := sema.Unqual(typ).(type) {
+	case *sema.ArrayType:
+		if x.SizeKind != sema.ArrayConstantSize {
+			return nil
+		}
+		out := make([]initSpan, 0, x.Size)
+		cursor := 0
+		for i := int64(0); i < x.Size; i++ {
+			ds := appendDesignator(prefix, sema.Designator{Kind: sema.DesigArrayIndex, Index: i})
+			n := len(g.initLeaves(x.Elem, ds))
+			out = append(out, initSpan{typ: x.Elem, designators: ds, start: cursor, end: cursor + n})
+			cursor += n
+		}
+		return out
+	case *sema.StructType:
+		out := make([]initSpan, 0, len(x.Fields))
+		cursor := 0
+		for _, f := range x.Fields {
+			if f == nil || (f.IsBitField && f.Name == "") {
+				continue
+			}
+			ds := appendDesignator(prefix, sema.Designator{Kind: sema.DesigFieldName, Field: f})
+			n := len(g.initLeaves(f.T, ds))
+			out = append(out, initSpan{typ: f.T, designators: ds, start: cursor, end: cursor + n})
+			cursor += n
+		}
+		return out
+	case *sema.UnionType:
+		for _, f := range x.Fields {
+			if f == nil || (f.IsBitField && f.Name == "") {
+				continue
+			}
+			ds := appendDesignator(prefix, sema.Designator{Kind: sema.DesigFieldName, Field: f})
+			n := len(g.initLeaves(f.T, ds))
+			return []initSpan{{typ: f.T, designators: ds, start: 0, end: n}}
+		}
+		return nil
+	default:
+		return []initSpan{{typ: typ, designators: copyDesignators(prefix), start: 0, end: 1}}
+	}
+}
+
+func (g *generator) designatedSpan(typ sema.Type, ds []sema.Designator) (initSpan, error) {
+	cur := typ
+	prefix := make([]sema.Designator, 0, len(ds))
+	for _, d := range ds {
+		switch d.Kind {
+		case sema.DesigArrayIndex:
+			at, ok := sema.Unqual(cur).(*sema.ArrayType)
+			if !ok {
+				return initSpan{}, fmt.Errorf("array designator applied to %s", cur)
+			}
+			prefix = appendDesignator(prefix, d)
+			cur = at.Elem
+		case sema.DesigFieldName:
+			field := d.Field
+			if field == nil {
+				field = lookupField(cur, "")
+			}
+			if field == nil {
+				return initSpan{}, fmt.Errorf("field designator has no resolved field")
+			}
+			prefix = appendDesignator(prefix, sema.Designator{Kind: sema.DesigFieldName, Field: field})
+			cur = field.T
+		default:
+			return initSpan{}, fmt.Errorf("unsupported designator kind %d", d.Kind)
+		}
+	}
+	leaves := g.initLeaves(typ, nil)
+	start := -1
+	end := -1
+	for i, leaf := range leaves {
+		if designatorHasPrefix(leaf.designators, prefix) {
+			if start < 0 {
+				start = i
+			}
+			end = i + 1
+			continue
+		}
+		if start >= 0 {
+			break
+		}
+	}
+	if start < 0 {
+		return initSpan{}, fmt.Errorf("designator does not name an initializable subobject")
+	}
+	return initSpan{typ: cur, designators: copyDesignators(prefix), start: start, end: end}, nil
+}
+
+func spanContaining(spans []initSpan, cursor int) *initSpan {
+	for i := range spans {
+		if cursor >= spans[i].start && cursor < spans[i].end {
+			return &spans[i]
+		}
+	}
+	return nil
+}
+
+func useWholeInitializer(init sema.Expr, typ sema.Type) bool {
+	if _, ok := init.(*sema.InitList); ok {
+		return true
+	}
+	if _, ok := stringLiteralInitializer(init); ok {
+		if _, isArray := sema.Unqual(typ).(*sema.ArrayType); isArray {
+			return true
+		}
+	}
+	return isObjectType(typ) && init != nil && isObjectType(init.GetType())
+}
+
+func appendDesignator(ds []sema.Designator, d sema.Designator) []sema.Designator {
+	out := copyDesignators(ds)
+	out = append(out, d)
+	return out
+}
+
+func copyDesignators(ds []sema.Designator) []sema.Designator {
+	if len(ds) == 0 {
+		return nil
+	}
+	out := make([]sema.Designator, len(ds))
+	copy(out, ds)
+	return out
+}
+
+func designatorHasPrefix(ds, prefix []sema.Designator) bool {
+	if len(prefix) > len(ds) {
+		return false
+	}
+	for i := range prefix {
+		if ds[i].Kind != prefix[i].Kind {
+			return false
+		}
+		switch prefix[i].Kind {
+		case sema.DesigArrayIndex:
+			if ds[i].Index != prefix[i].Index {
+				return false
+			}
+		case sema.DesigFieldName:
+			if ds[i].Field != prefix[i].Field {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func bitMask(width int) uint64 {

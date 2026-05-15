@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strings"
 	"testing"
@@ -421,6 +422,72 @@ int main(void) { return 0; }`)
 	}
 	if layout.Size < 4 {
 		t.Fatalf("bit-field-only layout size = %d, want at least sizeof(int): %#v", layout.Size, layout)
+	}
+}
+
+func TestGenerateUnbracedNestedAggregateStaticInitializer(t *testing.T) {
+	mod := compileModule(t, `
+struct S { int a[2]; int b; };
+struct S s = {1, 2, 3};
+int main(void) { return s.a[1] + s.b; }`)
+	if got, want := len(mod.Globals[0].Init.Bytes), 12; got != want {
+		t.Fatalf("initializer bytes length = %d, want %d: %#v", got, want, mod.Globals[0])
+	}
+	for i, want := range []uint32{1, 2, 3} {
+		if got := binary.LittleEndian.Uint32(mod.Globals[0].Init.Bytes[i*4 : i*4+4]); got != want {
+			t.Fatalf("word %d = %d, want %d; bytes=%x", i, got, want, mod.Globals[0].Init.Bytes)
+		}
+	}
+}
+
+func TestGenerateDesignatorContinuationStaticInitializer(t *testing.T) {
+	mod := compileModule(t, `
+struct T { int x; int y; };
+struct T a[2] = { [0].x = 1, 2 };
+struct U { int a[3]; int b; };
+struct U u = { .a[1] = 5, 6 };
+int main(void) { return a[0].y + u.a[2]; }`)
+	arrayBytes := mod.Globals[0].Init.Bytes
+	for i, want := range []uint32{1, 2, 0, 0} {
+		if got := binary.LittleEndian.Uint32(arrayBytes[i*4 : i*4+4]); got != want {
+			t.Fatalf("array word %d = %d, want %d; bytes=%x", i, got, want, arrayBytes)
+		}
+	}
+	structBytes := mod.Globals[1].Init.Bytes
+	for i, want := range []uint32{0, 5, 6, 0} {
+		if got := binary.LittleEndian.Uint32(structBytes[i*4 : i*4+4]); got != want {
+			t.Fatalf("struct word %d = %d, want %d; bytes=%x", i, got, want, structBytes)
+		}
+	}
+}
+
+func TestGenerateUnbracedNestedAggregateLocalInitializer(t *testing.T) {
+	mod := compileModule(t, `
+struct S { int a[2]; int b; };
+int main(void) {
+	struct S s = {1, 2, 3};
+	return s.a[1] + s.b;
+}`)
+	if err := bytecode.ValidateModule(mod); err != nil {
+		t.Fatalf("validate bytecode: %v\n%s", err, bytecode.PrintModule(mod))
+	}
+	out := bytecode.PrintModule(mod)
+	if strings.Contains(out, "$init") {
+		t.Fatalf("local unbraced aggregate initializer unexpectedly lowered through temporary object:\n%s", out)
+	}
+}
+
+func TestGenerateDesignatorContinuationLocalInitializer(t *testing.T) {
+	mod := compileModule(t, `
+struct T { int x; int y; };
+struct U { int a[3]; int b; };
+int main(void) {
+	struct T ts[2] = { [0].x = 1, 2 };
+	struct U u = { .a[1] = 5, 6 };
+	return ts[0].y + u.a[2];
+}`)
+	if err := bytecode.ValidateModule(mod); err != nil {
+		t.Fatalf("validate bytecode: %v\n%s", err, bytecode.PrintModule(mod))
 	}
 }
 
