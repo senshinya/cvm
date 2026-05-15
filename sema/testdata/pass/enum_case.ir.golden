@@ -1,10 +1,9 @@
 Program
   TagDecl tag= type=enum{...}
-  FuncDef name="main" type=int ()
-    Param name="" type=void
+  FuncDef name="main" type=int () global=0
     Block
       DeclStmt
-        VarDecl name="c" type=int storage=1
+        VarDecl name="c" type=int storage=1 slot=0
           init:
             ImplicitCast kind=5 from=enum{...} to=int
               EnumRef name="GREEN" value=1 type=enum{...}

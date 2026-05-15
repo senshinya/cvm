@@ -6,9 +6,15 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Println("Usage: cvm [file]")
+	dumpIR := false
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "--dump-ir" {
+		dumpIR = true
+		args = args[1:]
+	}
+	if len(args) != 1 {
+		fmt.Println("Usage: cvm [--dump-ir] [file]")
 		return
 	}
-	(&Compiler{}).RunFile(os.Args[1])
+	(&Compiler{DumpIR: dumpIR}).RunFile(args[0])
 }

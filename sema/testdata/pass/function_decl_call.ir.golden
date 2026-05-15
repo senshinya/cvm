@@ -1,10 +1,9 @@
 Program
-  FuncDecl name="add" type=int (int, int) storage=0
-  FuncDef name="main" type=int ()
-    Param name="" type=void
+  FuncDecl name="add" type=int (int, int) storage=0 global=0
+  FuncDef name="main" type=int () global=1
     Block
       DeclStmt
-        VarDecl name="sum" type=int storage=1
+        VarDecl name="sum" type=int storage=1 slot=0
           init:
             CallExpr type=int
               callee:

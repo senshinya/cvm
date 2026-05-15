@@ -1,9 +1,8 @@
 Program
-  FuncDef name="main" type=int ()
-    Param name="" type=void
+  FuncDef name="main" type=int () global=0
     Block
       DeclStmt
-        VarDecl name="x" type=int storage=1
+        VarDecl name="x" type=int storage=1 slot=0
       IfStmt
         cond:
           ImplicitCast kind=14 from=int to=_Bool
@@ -30,7 +29,7 @@ Program
       ForStmt
         init:
           DeclStmt
-            VarDecl name="i" type=int storage=1
+            VarDecl name="i" type=int storage=1 slot=1
               init:
                 IntLit value=0 type=int
         cond:

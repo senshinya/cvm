@@ -1,16 +1,15 @@
 Program
-  VarDecl name="a" type=int[3] storage=0
-  FuncDef name="main" type=int ()
-    Param name="" type=void
+  VarDecl name="a" type=int[3] storage=0 global=0
+  FuncDef name="main" type=int () global=1
     Block
       DeclStmt
-        VarDecl name="p" type=int* storage=1
+        VarDecl name="p" type=int* storage=1 slot=0
           init:
             ImplicitCast kind=1 from=int[3] to=int*
               ImplicitCast kind=0 from=int[3] to=int[3]
                 VarRef name="a" type=int[3]
       DeclStmt
-        VarDecl name="v" type=int storage=1
+        VarDecl name="v" type=int storage=1 slot=1
           init:
             ImplicitCast kind=0 from=int to=int
               UnOp op=5 type=int category=1

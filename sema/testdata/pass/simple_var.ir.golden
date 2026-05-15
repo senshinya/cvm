@@ -1,4 +1,4 @@
 Program
-  VarDecl name="x" type=int storage=0
+  VarDecl name="x" type=int storage=0 global=0
     init:
       IntLit value=42 type=int

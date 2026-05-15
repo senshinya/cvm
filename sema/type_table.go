@@ -81,7 +81,7 @@ func (tt *TypeTable) ArrayStar(elem Type) *ArrayType {
 	return a
 }
 
-func (tt *TypeTable) ArrayVLA(elem Type, sizeExpr any) *ArrayType {
+func (tt *TypeTable) ArrayVLA(elem Type, sizeExpr Expr) *ArrayType {
 	// VLA 类型按 C99 的 variably-modified-type 语义不做驻留。
 	return &ArrayType{Elem: elem, SizeExpr: sizeExpr, SizeKind: ArrayVLA}
 }

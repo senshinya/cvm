@@ -54,6 +54,7 @@ func (s *Sema) analyzeOne(root *entity.AstNode) *SemaResult {
 	s.foldStaticInitializers(prog)
 	s.markStaticFunctionUsesInGlobals(prog)
 	s.validateStaticFunctionDefinitions(prog)
+	FinalizeProgramLayout(prog)
 	return &SemaResult{Program: prog, Errors: s.errors, Source: root}
 }
 
@@ -910,8 +911,8 @@ func (s *Sema) markStaticFunctionUsesInTypeSeen(t Type, seen map[Type]bool, thro
 	switch x := t.(type) {
 	case *ArrayType:
 		if x.SizeKind == ArrayVLA || x.SizeKind == ArrayStarSize {
-			if expr, ok := x.SizeExpr.(Expr); ok {
-				s.markStaticFunctionUsesInExpr(expr)
+			if x.SizeExpr != nil {
+				s.markStaticFunctionUsesInExpr(x.SizeExpr)
 			}
 		}
 		s.markStaticFunctionUsesInTypeSeen(x.Elem, seen, throughPointer)

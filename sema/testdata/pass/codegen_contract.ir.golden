@@ -1,0 +1,54 @@
+Program
+  VarDecl name="g" type=int storage=0 global=0
+  FuncDef name="sum" type=int (int) global=1
+    Param name="n" type=int slot=0
+    Block
+      DeclStmt
+        VarDecl name="a" type=int[<vla>] storage=1 slot=1
+          vla-bound:
+            VarRef name="n" type=int
+      DeclStmt
+        VarDecl name="total" type=int storage=1 slot=2
+          init:
+            IntLit value=0 type=int
+      ForStmt
+        init:
+          DeclStmt
+            VarDecl name="i" type=int storage=1 slot=3
+              init:
+                IntLit value=0 type=int
+        cond:
+          ImplicitCast kind=14 from=int to=_Bool
+            BinOp op=14 type=int
+              ImplicitCast kind=0 from=int to=int
+                VarRef name="i" type=int
+              ImplicitCast kind=0 from=int to=int
+                VarRef name="n" type=int
+        post:
+          AssignExpr type=int
+            VarRef name="i" type=int
+            BinOp op=0 type=int
+              ImplicitCast kind=0 from=int to=int
+                VarRef name="i" type=int
+              IntLit value=1 type=int
+        body:
+          Block
+            ExprStmt
+              AssignExpr type=int
+                VarRef name="total" type=int
+                BinOp op=0 type=int
+                  ImplicitCast kind=0 from=int to=int
+                    VarRef name="total" type=int
+                  ImplicitCast kind=0 from=int to=int
+                    IndexExpr type=int
+                      ImplicitCast kind=1 from=int[<vla>] to=int*
+                        ImplicitCast kind=0 from=int[<vla>] to=int[<vla>]
+                          VarRef name="a" type=int[<vla>]
+                      ImplicitCast kind=0 from=int to=int
+                        VarRef name="i" type=int
+      ReturnStmt
+        BinOp op=0 type=int
+          ImplicitCast kind=0 from=int to=int
+            VarRef name="total" type=int
+          ImplicitCast kind=0 from=int to=int
+            VarRef name="g" type=int

@@ -1092,9 +1092,8 @@ func markTypedefVMBounds(t Type) {
 	}
 }
 
-func isNonRuntimeSizeofBound(sizeExpr any) bool {
-	expr, ok := sizeExpr.(Expr)
-	if !ok {
+func isNonRuntimeSizeofBound(expr Expr) bool {
+	if expr == nil {
 		return false
 	}
 	x, ok := expr.(*SizeofExpr)
@@ -1117,7 +1116,7 @@ func typeHasForbiddenAddressConstantVMSize(t Type) bool {
 	switch x := unqual(t).(type) {
 	case *ArrayType:
 		if x.SizeKind == ArrayVLA && !x.VMFromTypedef {
-			if expr, ok := x.SizeExpr.(Expr); ok && exprHasForbiddenAddressConstantVMSize(expr) {
+			if x.SizeExpr != nil && exprHasForbiddenAddressConstantVMSize(x.SizeExpr) {
 				return true
 			}
 		}

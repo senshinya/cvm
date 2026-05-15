@@ -474,6 +474,9 @@ func (s *Sema) paramDeclsFromList(node *entity.AstNode) []*VarDecl {
 	case node.ReducedBy(parser.ParameterTypeList, 1), node.ReducedBy(parser.ParameterTypeList, 2):
 		walk(node.Children[0])
 	}
+	if len(out) == 1 && out[0] != nil && out[0].Sym != nil && out[0].Sym.Name == "" && isPlainVoidType(out[0].T) {
+		return nil
+	}
 	return out
 }
 

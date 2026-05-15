@@ -83,7 +83,7 @@ const (
 type ArrayType struct {
 	Elem          Type
 	Size          int64
-	SizeExpr      any
+	SizeExpr      Expr
 	SizeKind      ArraySizeKind
 	VMFromTypedef bool
 	ParamConst    bool

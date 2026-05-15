@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"shinya.click/cvm/common"
 	"shinya.click/cvm/entity"
@@ -17,6 +18,8 @@ type Compiler struct {
 	Source   string
 	Lines    []string
 	Sources  *preprocessor.SourceManager
+	DumpIR   bool
+	Output   io.Writer
 }
 
 func (c *Compiler) RunSource(source string) {
@@ -41,8 +44,17 @@ func (c *Compiler) RunSource(source string) {
 		c.handleError(err)
 		return
 	}
-	_ = prog
+	if c.DumpIR {
+		fmt.Fprint(c.output(), sema.PrintProgram(prog))
+	}
 	// 代码生成会在后续计划中接入。
+}
+
+func (c *Compiler) output() io.Writer {
+	if c.Output != nil {
+		return c.Output
+	}
+	return os.Stdout
 }
 
 func (c *Compiler) RunFile(fileName string) {

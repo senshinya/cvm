@@ -38,14 +38,15 @@ func printDecl(b *strings.Builder, depth int, d Decl) {
 	printIndent(b, depth)
 	switch x := d.(type) {
 	case *VarDecl:
-		fmt.Fprintf(b, "VarDecl name=%q type=%s storage=%v\n", symbolName(x.Sym), x.T, x.Storage)
+		fmt.Fprintf(b, "VarDecl name=%q type=%s storage=%v%s\n", symbolName(x.Sym), x.T, x.Storage, varLayout(x))
+		printTypeMetadata(b, depth+1, x.T)
 		if x.Init != nil {
 			printIndent(b, depth+1)
 			b.WriteString("init:\n")
 			printExpr(b, depth+2, x.Init)
 		}
 	case *FuncDecl:
-		fmt.Fprintf(b, "FuncDecl name=%q type=%s storage=%v\n", symbolName(x.Sym), x.T, x.Storage)
+		fmt.Fprintf(b, "FuncDecl name=%q type=%s storage=%v%s\n", symbolName(x.Sym), x.T, x.Storage, globalLayout(x.Sym))
 	case *TypedefDecl:
 		fmt.Fprintf(b, "TypedefDecl name=%q type=%s\n", symbolName(x.Sym), x.T)
 	case *TagDecl:
@@ -64,13 +65,54 @@ func tagName(tag *TagID) string {
 
 func printFuncDef(b *strings.Builder, depth int, f *FuncDef) {
 	printIndent(b, depth)
-	fmt.Fprintf(b, "FuncDef name=%q type=%s\n", symbolName(f.Sym), f.T)
+	fmt.Fprintf(b, "FuncDef name=%q type=%s%s\n", symbolName(f.Sym), f.T, globalLayout(f.Sym))
 	for _, p := range f.Params {
 		printIndent(b, depth+1)
-		fmt.Fprintf(b, "Param name=%q type=%s\n", symbolName(p.Sym), p.T)
+		fmt.Fprintf(b, "Param name=%q type=%s%s\n", symbolName(p.Sym), p.T, slotLayout(p.Sym))
 	}
 	if f.Body != nil {
 		printStmt(b, depth+1, f.Body)
+	}
+}
+
+func varLayout(vd *VarDecl) string {
+	if vd == nil || vd.Sym == nil {
+		return ""
+	}
+	if vd.IsParam || vd.Storage == StorageAuto || vd.Storage == StorageRegister {
+		return slotLayout(vd.Sym)
+	}
+	if vd.Storage == StorageExtern {
+		return ""
+	}
+	return globalLayout(vd.Sym)
+}
+
+func globalLayout(sym *Symbol) string {
+	if sym == nil {
+		return ""
+	}
+	return fmt.Sprintf(" global=%d", sym.GlobalID)
+}
+
+func slotLayout(sym *Symbol) string {
+	if sym == nil {
+		return ""
+	}
+	return fmt.Sprintf(" slot=%d", sym.SlotID)
+}
+
+func printTypeMetadata(b *strings.Builder, depth int, t Type) {
+	switch x := unqual(t).(type) {
+	case *ArrayType:
+		if x.SizeKind == ArrayVLA {
+			printIndent(b, depth)
+			b.WriteString("vla-bound:\n")
+			printExpr(b, depth+1, x.SizeExpr)
+		}
+		printTypeMetadata(b, depth, x.Elem)
+	case *PointerType:
+		printTypeMetadata(b, depth, x.Pointee)
 	}
 }
 
