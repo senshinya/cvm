@@ -14,7 +14,7 @@ func PrintModule(m *Module) string {
 	fmt.Fprintf(&b, "Module target=%q endian=%s ptr_size=%d ptr_align=%d bool_size=%d bool_align=%d bitfield_policy=%q layout_version=%q\n",
 		t.Name, t.Endian, t.PointerSize, t.PointerAlign, t.BoolSize, t.BoolAlign, t.BitFieldPolicy, t.LayoutVersion)
 	for _, g := range m.Globals {
-		printGlobal(&b, g)
+		printGlobal(&b, m, g)
 	}
 	for _, s := range m.Strings {
 		fmt.Fprintf(&b, "String #%d value=%q bytes=%d hex=%x\n", s.ID, s.Value, len(s.Bytes), s.Bytes)
@@ -46,7 +46,7 @@ func PrintModule(m *Module) string {
 	return b.String()
 }
 
-func printGlobal(b *strings.Builder, g Global) {
+func printGlobal(b *strings.Builder, m *Module, g Global) {
 	switch g.Kind {
 	case GlobalFunc:
 		fmt.Fprintf(b, "Global #%d func name=%q func=%d\n", g.ID, g.Name, g.Func)
@@ -59,7 +59,7 @@ func printGlobal(b *strings.Builder, g Global) {
 			fmt.Fprintf(b, "  InitBytes hex=%x\n", g.Init.Bytes)
 		}
 		for i, r := range g.Init.Relocations {
-			fmt.Fprintf(b, "  Reloc #%d offset=%d kind=%s target=%d addend=%d\n", i, r.Offset, relocationKindName(r.Kind), r.Target, r.Addend)
+			fmt.Fprintf(b, "  Reloc #%d offset=%d kind=%s target=%s addend=%d\n", i, r.Offset, relocationKindName(r.Kind), relocationTarget(m, r), r.Addend)
 		}
 	}
 }
@@ -138,9 +138,9 @@ func FormatInstr(i Instr) string {
 	case OpBitFieldStore:
 		return fmt.Sprintf("%sBitFieldStore layout=%d field=%d volatile=%v", instrTypePrefix(i.Type), i.Layout, i.Field, i.Volatile)
 	case OpPtrAdd:
-		return fmt.Sprintf("%sPtrAdd elem_size=%d", instrTypePrefix(i.Type), i.Size)
+		return fmt.Sprintf("PtrAdd elem_size=%d", i.Size)
 	case OpPtrDiff:
-		return fmt.Sprintf("%sPtrDiff elem_size=%d", instrTypePrefix(i.Type), i.Size)
+		return fmt.Sprintf("PtrDiff elem_size=%d", i.Size)
 	case OpBinary:
 		return fmt.Sprintf("%s%s", instrTypePrefix(i.Type), binaryName(i.Binary))
 	case OpUnary:
@@ -333,6 +333,31 @@ func relocationKindName(k RelocationKind) string {
 		return "string"
 	default:
 		return fmt.Sprintf("reloc(%d)", int(k))
+	}
+}
+
+func relocationTarget(m *Module, r Relocation) string {
+	switch r.Kind {
+	case RelocGlobal:
+		if r.Target >= 0 && r.Target < len(m.Globals) {
+			g := m.Globals[r.Target]
+			return fmt.Sprintf("global#%d(%q)", g.ID, g.Name)
+		}
+		return fmt.Sprintf("global#%d(<invalid>)", r.Target)
+	case RelocFunc:
+		if r.Target >= 0 && r.Target < len(m.Functions) {
+			f := m.Functions[r.Target]
+			return fmt.Sprintf("func#%d(%q)", f.ID, f.Name)
+		}
+		return fmt.Sprintf("func#%d(<invalid>)", r.Target)
+	case RelocString:
+		if r.Target >= 0 && r.Target < len(m.Strings) {
+			s := m.Strings[r.Target]
+			return fmt.Sprintf("string#%d(%q)", s.ID, s.Value)
+		}
+		return fmt.Sprintf("string#%d(<invalid>)", r.Target)
+	default:
+		return fmt.Sprintf("target#%d(<unknown-kind>)", r.Target)
 	}
 }
 

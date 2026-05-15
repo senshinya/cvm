@@ -60,12 +60,11 @@ func TestPrintModuleFullStateExactOutput(t *testing.T) {
 				Init: InitData{
 					ZeroFill: 4,
 					Bytes:    []byte{0x01, 0x02, 0xff},
-					Relocations: []Relocation{{
-						Offset: 2,
-						Kind:   RelocString,
-						Target: 0,
-						Addend: 9,
-					}},
+					Relocations: []Relocation{
+						{Offset: 0, Kind: RelocGlobal, Target: 0, Addend: 1},
+						{Offset: 1, Kind: RelocFunc, Target: 0, Addend: 2},
+						{Offset: 2, Kind: RelocString, Target: 0, Addend: 9},
+					},
 				},
 			},
 			{ID: 1, Name: "main", Kind: GlobalFunc, Func: 0},
@@ -146,9 +145,11 @@ func TestPrintModuleFullStateExactOutput(t *testing.T) {
 	}
 
 	const want = "Module target=\"test-target\" endian=big ptr_size=4 ptr_align=4 bool_size=1 bool_align=1 bitfield_policy=\"test-policy\" layout_version=\"7\"\n" +
-		"Global #0 var name=\"data\" size=16 align=8 readonly=true init_zero=4 init_bytes=3 init_relocs=1\n" +
+		"Global #0 var name=\"data\" size=16 align=8 readonly=true init_zero=4 init_bytes=3 init_relocs=3\n" +
 		"  InitBytes hex=0102ff\n" +
-		"  Reloc #0 offset=2 kind=string target=0 addend=9\n" +
+		"  Reloc #0 offset=0 kind=global target=global#0(\"data\") addend=1\n" +
+		"  Reloc #1 offset=1 kind=func target=func#0(\"main\") addend=2\n" +
+		"  Reloc #2 offset=2 kind=string target=string#0(\"hi\") addend=9\n" +
 		"Global #1 func name=\"main\" func=0\n" +
 		"Global #2 extern name=\"puts\"\n" +
 		"String #0 value=\"hi\" bytes=3 hex=686900\n" +
@@ -203,8 +204,8 @@ func TestFormatInstrCoversCurrentOpcodeEnum(t *testing.T) {
 		{"field-addr", Instr{Op: OpFieldAddr, Layout: 1, Field: 2}, "FieldAddr layout=1 field=2"},
 		{"bitfield-load", Instr{Op: OpBitFieldLoad, Type: TypeI32, Layout: 1, Field: 2, Volatile: true}, "I32BitFieldLoad layout=1 field=2 volatile=true"},
 		{"bitfield-store", Instr{Op: OpBitFieldStore, Type: TypeI32, Layout: 1, Field: 2, Volatile: true}, "I32BitFieldStore layout=1 field=2 volatile=true"},
-		{"ptr-add", Instr{Op: OpPtrAdd, Type: TypePtr, Size: 4}, "PtrPtrAdd elem_size=4"},
-		{"ptr-diff", Instr{Op: OpPtrDiff, Type: TypePtr, Size: 4}, "PtrPtrDiff elem_size=4"},
+		{"ptr-add", Instr{Op: OpPtrAdd, Size: 4}, "PtrAdd elem_size=4"},
+		{"ptr-diff", Instr{Op: OpPtrDiff, Size: 4}, "PtrDiff elem_size=4"},
 		{"binary", Binary(TypeI32, BinShrS), "I32ShrS"},
 		{"unary", Instr{Op: OpUnary, Type: TypeI32, Unary: UnaryNeg}, "I32Neg"},
 		{"cast", Cast(TypeI32, TypeI64, CastSExt), "Cast i32->i64 SExt"},
