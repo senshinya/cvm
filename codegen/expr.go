@@ -42,11 +42,22 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		if err != nil {
 			return err
 		}
-		if st.kind != storageLocalSlot {
-			return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "address storage expressions are not lowered in this task"}
+		if st.kind == storageLocalSlot {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(st.typ, st.slot))
+			return nil
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(st.typ, st.slot))
+		return fg.emitLValueValue(x, x.T)
 	case *sema.ImplicitCast:
+		switch x.Kind {
+		case sema.LValueToRValue:
+			return fg.emitLValueValue(x.X, x.From)
+		case sema.ArrayDecay:
+			if err := fg.emitAddress(x.X); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(bytecode.TypeObjectAddr, bytecode.TypePtr, bytecode.CastBit))
+			return nil
+		}
 		if err := fg.emitValue(x.X); err != nil {
 			return err
 		}
@@ -75,24 +86,89 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 	case *sema.BinOp:
 		return fg.emitBinOp(x)
 	case *sema.AssignExpr:
-		lhs, ok := x.L.(*sema.VarRef)
-		if !ok {
-			return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "only local variable assignment is lowered in this task"}
+		return fg.emitAssign(x.L, x.R)
+	case *sema.UnOp:
+		switch x.Op {
+		case sema.UnAddr:
+			if err := fg.emitAddress(x.X); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(bytecode.TypeObjectAddr, bytecode.TypePtr, bytecode.CastBit))
+		case sema.UnDeref:
+			return fg.emitLValueValue(x, x.T)
+		default:
+			return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "unary expression lowering is not implemented for this operator"}
 		}
-		st, err := fg.storageForVar(lhs.Sym, lhs.T)
-		if err != nil {
-			return err
-		}
-		if st.kind != storageLocalSlot {
-			return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "only local slot assignment is lowered in this task"}
-		}
-		if err := fg.emitValue(x.R); err != nil {
-			return err
-		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(st.typ, st.slot))
+	case *sema.MemberExpr, *sema.IndexExpr, *sema.StringLit:
+		return fg.emitLValueValue(e, e.GetType())
 	default:
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "expression lowering is not implemented for this node"}
 	}
+	return nil
+}
+
+func (fg *funcGen) emitLValueValue(e sema.Expr, t sema.Type) error {
+	vt, err := fg.g.lowerValueType(t)
+	if err != nil {
+		return err
+	}
+	if vr, ok := e.(*sema.VarRef); ok {
+		st, err := fg.storageForVar(vr.Sym, vr.T)
+		if err != nil {
+			return err
+		}
+		if st.kind == storageLocalSlot {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(st.typ, st.slot))
+			return nil
+		}
+	}
+	if vt == bytecode.TypeObjectAddr {
+		return fg.emitAddress(e)
+	}
+	if err := fg.emitAddress(e); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(vt, fg.g.alignof(t), isVolatile(t)))
+	return nil
+}
+
+func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
+	if vr, ok := lhs.(*sema.VarRef); ok {
+		st, err := fg.storageForVar(vr.Sym, vr.T)
+		if err != nil {
+			return err
+		}
+		if st.kind == storageLocalSlot {
+			if err := fg.emitValue(rhs); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(st.typ, st.slot))
+			return nil
+		}
+	}
+	vt, err := fg.g.lowerValueType(lhs.GetType())
+	if err != nil {
+		return err
+	}
+	if vt == bytecode.TypeObjectAddr {
+		if err := fg.emitAddress(lhs); err != nil {
+			return err
+		}
+		if err := fg.emitAddress(rhs); err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(lhs.GetType()), Align: fg.g.alignof(lhs.GetType()), Volatile: isVolatile(lhs.GetType())})
+		return fg.emitAddress(lhs)
+	}
+	if err := fg.emitValue(rhs); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup})
+	if err := fg.emitAddress(lhs); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpSwap})
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.g.alignof(lhs.GetType()), isVolatile(lhs.GetType())))
 	return nil
 }
 

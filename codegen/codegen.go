@@ -17,6 +17,7 @@ func Generate(prog *sema.Program) (*bytecode.Module, error) {
 		globalMap: map[*sema.Symbol]int{},
 		sigMap:    map[string]int{},
 		layoutMap: map[sema.Type]int{},
+		stringMap: map[string]int{},
 	}
 	if err := g.emitModule(); err != nil {
 		return nil, err
@@ -33,6 +34,7 @@ type generator struct {
 	globalMap map[*sema.Symbol]int
 	sigMap    map[string]int
 	layoutMap map[sema.Type]int
+	stringMap map[string]int
 	fn        *funcGen
 }
 
@@ -41,6 +43,7 @@ type funcGen struct {
 	fn        *sema.FuncDef
 	out       *bytecode.Function
 	nextLabel int
+	objectMap map[*sema.Symbol]int
 }
 
 func (g *generator) emitModule() error {
@@ -59,37 +62,56 @@ func (g *generator) collectGlobals() error {
 	for _, d := range g.prog.Globals {
 		switch x := d.(type) {
 		case *sema.VarDecl:
-			g.addGlobal(x.Sym, bytecode.GlobalVar, -1)
+			if _, err := g.addGlobal(x.Sym, bytecode.GlobalVar, -1); err != nil {
+				return err
+			}
 		case *sema.FuncDecl:
-			g.addGlobal(x.Sym, bytecode.GlobalExtern, -1)
+			if _, err := g.addGlobal(x.Sym, bytecode.GlobalExtern, -1); err != nil {
+				return err
+			}
 		}
 	}
 	for i, fn := range g.prog.Funcs {
-		g.addGlobal(fn.Sym, bytecode.GlobalFunc, i)
+		if _, err := g.addGlobal(fn.Sym, bytecode.GlobalFunc, i); err != nil {
+			return err
+		}
 		for _, local := range fn.Locals {
 			if local != nil && local.Storage == sema.StorageStatic {
-				g.addGlobal(local.Sym, bytecode.GlobalVar, -1)
+				if _, err := g.addGlobal(local.Sym, bytecode.GlobalVar, -1); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func (g *generator) addGlobal(sym *sema.Symbol, kind bytecode.GlobalKind, fnIndex int) int {
+func (g *generator) addGlobal(sym *sema.Symbol, kind bytecode.GlobalKind, fnIndex int) (int, error) {
 	if id, ok := g.globalMap[sym]; ok {
 		if kind == bytecode.GlobalFunc {
 			g.mod.Globals[id].Kind = kind
 			g.mod.Globals[id].Func = fnIndex
 		}
-		return id
+		return id, nil
 	}
 	id := sym.GlobalID
 	for len(g.mod.Globals) <= id {
 		g.mod.Globals = append(g.mod.Globals, bytecode.Global{ID: len(g.mod.Globals), Func: -1})
 	}
-	g.mod.Globals[id] = bytecode.Global{ID: id, Name: sym.Name, Kind: kind, Func: fnIndex}
+	global := bytecode.Global{ID: id, Name: sym.Name, Kind: kind, Func: fnIndex}
+	if kind == bytecode.GlobalVar {
+		global.Size = g.sizeof(sym.T)
+		global.Align = g.alignof(sym.T)
+		global.Init.ZeroFill = global.Size
+	}
+	g.mod.Globals[id] = global
 	g.globalMap[sym] = id
-	return id
+	if kind == bytecode.GlobalVar {
+		if _, err := g.lowerLayout(sym.T); err != nil {
+			return id, err
+		}
+	}
+	return id, nil
 }
 
 func (g *generator) internSig(ret bytecode.ValueType, params []bytecode.ValueType, variadic bool) int {
@@ -131,6 +153,7 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		f.Params = append(f.Params, bytecode.Param{Name: p.Sym.Name, Type: pt, Slot: p.Sym.SlotID})
 	}
 	seenSlots := map[int]bool{}
+	objectMap := map[*sema.Symbol]int{}
 	for _, p := range f.Params {
 		seenSlots[p.Slot] = true
 	}
@@ -150,10 +173,15 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 			f.Locals = append(f.Locals, bytecode.LocalSlot{ID: local.Sym.SlotID, Name: local.Sym.Name, Type: vt})
 			continue
 		}
-		layout := g.placeholderLayout(local.T)
-		f.Objects = append(f.Objects, bytecode.LocalObject{ID: len(f.Objects), Name: local.Sym.Name, Size: layout.Size, Align: layout.Align, Layout: layout.ID})
+		layout, err := g.lowerLayout(local.T)
+		if err != nil {
+			return err
+		}
+		objectID := len(f.Objects)
+		objectMap[local.Sym] = objectID
+		f.Objects = append(f.Objects, bytecode.LocalObject{ID: objectID, Name: local.Sym.Name, Size: layout.Size, Align: layout.Align, Layout: layout.ID})
 	}
-	fg := &funcGen{g: g, fn: fn, out: &f}
+	fg := &funcGen{g: g, fn: fn, out: &f, objectMap: objectMap}
 	if err := fg.emitStmt(fn.Body); err != nil {
 		return err
 	}
@@ -206,90 +234,6 @@ func castOpFor(kind sema.CastKind, from, to bytecode.ValueType) bytecode.CastOp 
 	default:
 		return bytecode.CastBit
 	}
-}
-
-func (g *generator) placeholderLayout(t sema.Type) bytecode.ObjectLayout {
-	id, ok := g.layoutMap[t]
-	if ok {
-		return g.mod.Layouts[id]
-	}
-	id = len(g.mod.Layouts)
-	layout := bytecode.ObjectLayout{ID: id, Name: t.String(), Size: sizeofType(t), Align: alignofType(t)}
-	g.layoutMap[t] = id
-	g.mod.Layouts = append(g.mod.Layouts, layout)
-	return layout
-}
-
-func sizeofType(t sema.Type) int64 {
-	switch x := sema.Unqual(t).(type) {
-	case *sema.BuiltinType:
-		switch x.Kind {
-		case sema.Void:
-			return 1
-		case sema.Bool, sema.Char, sema.SChar, sema.UChar:
-			return 1
-		case sema.Short, sema.UShort:
-			return 2
-		case sema.Int, sema.UInt, sema.Float:
-			return 4
-		case sema.Long, sema.ULong, sema.LongLong, sema.ULongLong, sema.Double:
-			return 8
-		case sema.LongDouble:
-			return 16
-		}
-	case *sema.PointerType, *sema.FunctionType:
-		return 8
-	case *sema.ArrayType:
-		if x.SizeKind == sema.ArrayConstantSize {
-			return x.Size * sizeofType(x.Elem)
-		}
-	case *sema.StructType:
-		var end int64
-		for _, f := range x.Fields {
-			if n := f.Offset + sizeofType(f.T); n > end {
-				end = n
-			}
-		}
-		return end
-	case *sema.UnionType:
-		var max int64
-		for _, f := range x.Fields {
-			if n := sizeofType(f.T); n > max {
-				max = n
-			}
-		}
-		return max
-	case *sema.EnumType:
-		return sizeofType(x.Underlying)
-	}
-	return 0
-}
-
-func alignofType(t sema.Type) int64 {
-	switch x := sema.Unqual(t).(type) {
-	case *sema.BuiltinType:
-		switch x.Kind {
-		case sema.Void, sema.Bool, sema.Char, sema.SChar, sema.UChar:
-			return 1
-		case sema.Short, sema.UShort:
-			return 2
-		case sema.Int, sema.UInt, sema.Float:
-			return 4
-		case sema.Long, sema.ULong, sema.LongLong, sema.ULongLong, sema.Double:
-			return 8
-		case sema.LongDouble:
-			return 16
-		}
-	case *sema.PointerType, *sema.FunctionType:
-		return 8
-	case *sema.ArrayType:
-		return alignofType(x.Elem)
-	case *sema.StructType, *sema.UnionType:
-		return 1
-	case *sema.EnumType:
-		return alignofType(x.Underlying)
-	}
-	return 1
 }
 
 func integerCastOp(from, to bytecode.ValueType) bytecode.CastOp {

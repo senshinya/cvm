@@ -106,6 +106,54 @@ func TestGenerateAssignmentExpressionStatementResult(t *testing.T) {
 	compileModule(t, `int main(void) { int x; x = 1; return x; }`)
 }
 
+func TestGenerateGlobalsPointersAndArrayIndex(t *testing.T) {
+	mod := compileModule(t, `
+int g;
+int a[3];
+int main(void) {
+	int *p = &g;
+	*p = 4;
+	return a[1] + g;
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{
+		`Global #0 var name="g"`,
+		`Global #1 var name="a"`,
+		"AddrGlobal 0",
+		"I32Store",
+		"I32Load",
+		"PtrAdd",
+		"I32Return",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGenerateStructMemberAccess(t *testing.T) {
+	mod := compileModule(t, `
+struct P { int x; int y; };
+int main(void) {
+	struct P p;
+	p.x = 1;
+	p.y = 2;
+	return p.x + p.y;
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{
+		"Layout #",
+		"FieldAddr",
+		"I32Store",
+		"I32Load",
+		"I32Add",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestCollectGlobalsIncludesStaticLocals(t *testing.T) {
 	prog := analyzeProgram(t, `
 int g;
@@ -120,6 +168,7 @@ int main(void) {
 		globalMap: map[*sema.Symbol]int{},
 		sigMap:    map[string]int{},
 		layoutMap: map[sema.Type]int{},
+		stringMap: map[string]int{},
 	}
 	if err := g.collectGlobals(); err != nil {
 		t.Fatal(err)
