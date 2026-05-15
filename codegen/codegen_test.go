@@ -461,6 +461,37 @@ int main(void) { return a[0].y + u.a[2]; }`)
 	}
 }
 
+func TestGenerateMixedTypeAggregateInitializerConversions(t *testing.T) {
+	mod := compileModule(t, `
+struct S { int a[2]; double b; };
+struct S s = {1.5, 2.5, 3.5};
+struct U { int a[3]; double b; };
+struct U u = { .a[1] = 5, 6.5 };
+int main(void) {
+	struct S ls = {1.5, 2.5, 3.5};
+	struct U lu = { .a[1] = 5, 6.5 };
+	return s.a[0] + u.a[1] + ls.a[0] + lu.a[1];
+}`)
+	if err := bytecode.ValidateModule(mod); err != nil {
+		t.Fatalf("validate bytecode: %v\n%s", err, bytecode.PrintModule(mod))
+	}
+	staticS := mod.Globals[0].Init.Bytes
+	for i, want := range []uint32{1, 2} {
+		if got := binary.LittleEndian.Uint32(staticS[i*4 : i*4+4]); got != want {
+			t.Fatalf("struct S int word %d = %d, want %d; bytes=%x", i, got, want, staticS)
+		}
+	}
+	if got := binary.LittleEndian.Uint64(staticS[8:16]); got != 0x400c000000000000 {
+		t.Fatalf("struct S double bits = %#x, want 3.5; bytes=%x", got, staticS)
+	}
+	staticU := mod.Globals[1].Init.Bytes
+	for i, want := range []uint32{0, 5, 6} {
+		if got := binary.LittleEndian.Uint32(staticU[i*4 : i*4+4]); got != want {
+			t.Fatalf("struct U int word %d = %d, want %d; bytes=%x", i, got, want, staticU)
+		}
+	}
+}
+
 func TestGenerateUnbracedNestedAggregateLocalInitializer(t *testing.T) {
 	mod := compileModule(t, `
 struct S { int a[2]; int b; };

@@ -5,6 +5,23 @@ import (
 	"shinya.click/cvm/parser"
 )
 
+type rawInitElem struct {
+	Designators []Designator
+	Value       *entity.AstNode
+}
+
+type initLeaf struct {
+	T           Type
+	Designators []Designator
+}
+
+type initSpan struct {
+	T           Type
+	Designators []Designator
+	Start       int
+	End         int
+}
+
 func (s *Sema) typeInitializer(node *entity.AstNode, target Type) Expr {
 	if expr := s.tryStringArrayInitializer(node, target); expr != nil {
 		return expr
@@ -124,27 +141,70 @@ func (s *Sema) typeInitListForType(node *entity.AstNode, t Type) *InitList {
 			return il
 		}
 	}
-	s.collectInitList(node, t, il)
+	var raw []rawInitElem
+	s.collectRawInitList(node, t, &raw)
+	s.typeCollectedInitList(t, raw, il)
 	return il
 }
 
-func (s *Sema) collectInitList(node *entity.AstNode, target Type, out *InitList) {
+func (s *Sema) collectRawInitList(node *entity.AstNode, target Type, out *[]rawInitElem) {
 	switch {
 	case node.ReducedBy(parser.InitializerList, 1):
-		elemT := sequentialElementType(target, len(out.Elems))
-		out.Elems = append(out.Elems, s.makeInitElem(nil, node.Children[0], elemT))
+		*out = append(*out, rawInitElem{Value: node.Children[0]})
 	case node.ReducedBy(parser.InitializerList, 2):
 		ds := s.parseDesignators(node.Children[0], target)
-		out.Elems = append(out.Elems, s.makeInitElem(ds, node.Children[1], elementType(target, ds)))
+		*out = append(*out, rawInitElem{Designators: ds, Value: node.Children[1]})
 	case node.ReducedBy(parser.InitializerList, 3):
-		s.collectInitList(node.Children[0], target, out)
-		elemT := sequentialElementType(target, len(out.Elems))
-		out.Elems = append(out.Elems, s.makeInitElem(nil, node.Children[2], elemT))
+		s.collectRawInitList(node.Children[0], target, out)
+		*out = append(*out, rawInitElem{Value: node.Children[2]})
 	case node.ReducedBy(parser.InitializerList, 4):
-		s.collectInitList(node.Children[0], target, out)
+		s.collectRawInitList(node.Children[0], target, out)
 		ds := s.parseDesignators(node.Children[2], target)
-		out.Elems = append(out.Elems, s.makeInitElem(ds, node.Children[3], elementType(target, ds)))
+		*out = append(*out, rawInitElem{Designators: ds, Value: node.Children[3]})
 	}
+}
+
+func (s *Sema) typeCollectedInitList(target Type, raw []rawInitElem, out *InitList) {
+	leaves := initLeaves(target, nil)
+	spans := directInitSpans(target, nil)
+	cursor := 0
+	for _, elem := range raw {
+		if len(elem.Designators) > 0 {
+			typed, next := s.typeDesignatedInitElem(target, elem)
+			out.Elems = append(out.Elems, typed)
+			cursor = next
+			continue
+		}
+		if cursor >= len(leaves) {
+			out.Elems = append(out.Elems, s.makeInitElem(nil, elem.Value, sequentialElementType(target, len(out.Elems))))
+			continue
+		}
+		span := spanContaining(spans, cursor)
+		if span != nil && cursor == span.Start && s.useWholeInitializer(elem.Value, span.T) {
+			out.Elems = append(out.Elems, s.makeInitElem(span.Designators, elem.Value, span.T))
+			cursor = span.End
+			continue
+		}
+		leaf := leaves[cursor]
+		out.Elems = append(out.Elems, s.makeInitElem(leaf.Designators, elem.Value, leaf.T))
+		cursor++
+	}
+}
+
+func (s *Sema) typeDesignatedInitElem(target Type, elem rawInitElem) (InitElem, int) {
+	span, ok := designatedSpan(target, elem.Designators)
+	if !ok {
+		return s.makeInitElem(elem.Designators, elem.Value, elementType(target, elem.Designators)), 0
+	}
+	if !isObjectType(span.T) || s.useWholeInitializer(elem.Value, span.T) {
+		return s.makeInitElem(elem.Designators, elem.Value, span.T), span.End
+	}
+	leaves := initLeaves(target, nil)
+	if span.Start < 0 || span.Start >= len(leaves) {
+		return s.makeInitElem(elem.Designators, elem.Value, span.T), span.End
+	}
+	leaf := leaves[span.Start]
+	return s.makeInitElem(leaf.Designators, elem.Value, leaf.T), span.Start + 1
 }
 
 func (s *Sema) makeInitElem(ds []Designator, value *entity.AstNode, elemType Type) InitElem {
@@ -260,6 +320,181 @@ func elementType(t Type, ds []Designator) Type {
 		}
 	}
 	return cur
+}
+
+func initLeaves(t Type, prefix []Designator) []initLeaf {
+	switch x := unqual(t).(type) {
+	case *ArrayType:
+		if x.SizeKind != ArrayConstantSize {
+			return nil
+		}
+		var out []initLeaf
+		for i := int64(0); i < x.Size; i++ {
+			ds := appendDesignator(prefix, Designator{Kind: DesigArrayIndex, Index: i})
+			out = append(out, initLeaves(x.Elem, ds)...)
+		}
+		return out
+	case *StructType:
+		var out []initLeaf
+		for _, f := range x.Fields {
+			if f == nil || (f.IsBitField && f.Name == "") {
+				continue
+			}
+			ds := appendDesignator(prefix, Designator{Kind: DesigFieldName, Field: f})
+			out = append(out, initLeaves(f.T, ds)...)
+		}
+		return out
+	case *UnionType:
+		for _, f := range x.Fields {
+			if f == nil || (f.IsBitField && f.Name == "") {
+				continue
+			}
+			ds := appendDesignator(prefix, Designator{Kind: DesigFieldName, Field: f})
+			return initLeaves(f.T, ds)
+		}
+		return nil
+	default:
+		return []initLeaf{{T: t, Designators: copyDesignators(prefix)}}
+	}
+}
+
+func directInitSpans(t Type, prefix []Designator) []initSpan {
+	switch x := unqual(t).(type) {
+	case *ArrayType:
+		if x.SizeKind != ArrayConstantSize {
+			return nil
+		}
+		out := make([]initSpan, 0, x.Size)
+		cursor := 0
+		for i := int64(0); i < x.Size; i++ {
+			ds := appendDesignator(prefix, Designator{Kind: DesigArrayIndex, Index: i})
+			n := len(initLeaves(x.Elem, ds))
+			out = append(out, initSpan{T: x.Elem, Designators: ds, Start: cursor, End: cursor + n})
+			cursor += n
+		}
+		return out
+	case *StructType:
+		out := make([]initSpan, 0, len(x.Fields))
+		cursor := 0
+		for _, f := range x.Fields {
+			if f == nil || (f.IsBitField && f.Name == "") {
+				continue
+			}
+			ds := appendDesignator(prefix, Designator{Kind: DesigFieldName, Field: f})
+			n := len(initLeaves(f.T, ds))
+			out = append(out, initSpan{T: f.T, Designators: ds, Start: cursor, End: cursor + n})
+			cursor += n
+		}
+		return out
+	case *UnionType:
+		for _, f := range x.Fields {
+			if f == nil || (f.IsBitField && f.Name == "") {
+				continue
+			}
+			ds := appendDesignator(prefix, Designator{Kind: DesigFieldName, Field: f})
+			n := len(initLeaves(f.T, ds))
+			return []initSpan{{T: f.T, Designators: ds, Start: 0, End: n}}
+		}
+		return nil
+	default:
+		return []initSpan{{T: t, Designators: copyDesignators(prefix), Start: 0, End: 1}}
+	}
+}
+
+func designatedSpan(t Type, ds []Designator) (initSpan, bool) {
+	cur := t
+	prefix := make([]Designator, 0, len(ds))
+	for _, d := range ds {
+		switch d.Kind {
+		case DesigArrayIndex:
+			at, ok := unqual(cur).(*ArrayType)
+			if !ok {
+				return initSpan{}, false
+			}
+			prefix = appendDesignator(prefix, d)
+			cur = at.Elem
+		case DesigFieldName:
+			if d.Field == nil {
+				return initSpan{}, false
+			}
+			prefix = appendDesignator(prefix, Designator{Kind: DesigFieldName, Field: d.Field})
+			cur = d.Field.T
+		default:
+			return initSpan{}, false
+		}
+	}
+	leaves := initLeaves(t, nil)
+	start := -1
+	end := -1
+	for i, leaf := range leaves {
+		if designatorHasPrefix(leaf.Designators, prefix) {
+			if start < 0 {
+				start = i
+			}
+			end = i + 1
+			continue
+		}
+		if start >= 0 {
+			break
+		}
+	}
+	if start < 0 {
+		return initSpan{}, false
+	}
+	return initSpan{T: cur, Designators: copyDesignators(prefix), Start: start, End: end}, true
+}
+
+func spanContaining(spans []initSpan, cursor int) *initSpan {
+	for i := range spans {
+		if cursor >= spans[i].Start && cursor < spans[i].End {
+			return &spans[i]
+		}
+	}
+	return nil
+}
+
+func (s *Sema) useWholeInitializer(node *entity.AstNode, t Type) bool {
+	if node.ReducedBy(parser.Initializer, 2) || node.ReducedBy(parser.Initializer, 3) || node.ReducedBy(parser.Initializer, 4) {
+		return true
+	}
+	return s.tryStringArrayInitializer(node, t) != nil
+}
+
+func appendDesignator(ds []Designator, d Designator) []Designator {
+	out := copyDesignators(ds)
+	out = append(out, d)
+	return out
+}
+
+func copyDesignators(ds []Designator) []Designator {
+	if len(ds) == 0 {
+		return nil
+	}
+	out := make([]Designator, len(ds))
+	copy(out, ds)
+	return out
+}
+
+func designatorHasPrefix(ds, prefix []Designator) bool {
+	if len(prefix) > len(ds) {
+		return false
+	}
+	for i := range prefix {
+		if ds[i].Kind != prefix[i].Kind {
+			return false
+		}
+		switch prefix[i].Kind {
+		case DesigArrayIndex:
+			if ds[i].Index != prefix[i].Index {
+				return false
+			}
+		case DesigFieldName:
+			if ds[i].Field != prefix[i].Field {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (s *Sema) resolveDesignators(t Type, ds []Designator, pos entity.SourcePos) {
