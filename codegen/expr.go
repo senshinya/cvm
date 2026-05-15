@@ -58,9 +58,7 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		if err != nil {
 			return err
 		}
-		if from != to {
-			fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(from, to, castOpFor(x.Kind, from, to)))
-		}
+		fg.emitCast(from, to, x.Kind)
 	case *sema.ExplicitCast:
 		if err := fg.emitValue(x.X); err != nil {
 			return err
@@ -73,21 +71,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		if err != nil {
 			return err
 		}
-		if from != to {
-			fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(from, to, castOpFor(sema.IntegralConversion, from, to)))
-		}
+		fg.emitCast(from, to, sema.IntegralConversion)
 	case *sema.BinOp:
-		if err := fg.emitValue(x.L); err != nil {
-			return err
-		}
-		if err := fg.emitValue(x.R); err != nil {
-			return err
-		}
-		t, err := fg.g.lowerValueType(x.L.GetType())
-		if err != nil {
-			return err
-		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(t, binaryOp(x.Op, t)))
+		return fg.emitBinOp(x)
 	case *sema.AssignExpr:
 		lhs, ok := x.L.(*sema.VarRef)
 		if !ok {
@@ -110,6 +96,74 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 	return nil
 }
 
+func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
+	resultType, err := fg.g.lowerValueType(x.T)
+	if err != nil {
+		return err
+	}
+	if x.Op == sema.OpLAnd || x.Op == sema.OpLOr {
+		if err := fg.emitBoolValue(x.L); err != nil {
+			return err
+		}
+		if err := fg.emitBoolValue(x.R); err != nil {
+			return err
+		}
+		op := bytecode.BinAnd
+		if x.Op == sema.OpLOr {
+			op = bytecode.BinOr
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(bytecode.TypeBool, op))
+		fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
+		return nil
+	}
+
+	leftType, err := fg.g.lowerValueType(x.L.GetType())
+	if err != nil {
+		return err
+	}
+	if err := fg.emitValue(x.L); err != nil {
+		return err
+	}
+	if err := fg.emitValue(x.R); err != nil {
+		return err
+	}
+	rightType, err := fg.g.lowerValueType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	if x.Op == sema.OpShl || x.Op == sema.OpShr {
+		fg.emitCast(rightType, leftType, sema.IntegralConversion)
+	}
+	op, err := binaryOp(x.Op, leftType)
+	if err != nil {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(leftType, op))
+	if isCompareOp(x.Op) {
+		fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
+	}
+	return nil
+}
+
+func (fg *funcGen) emitBoolValue(e sema.Expr) error {
+	if err := fg.emitValue(e); err != nil {
+		return err
+	}
+	from, err := fg.g.lowerValueType(e.GetType())
+	if err != nil {
+		return err
+	}
+	fg.emitCast(from, bytecode.TypeBool, sema.BoolConversion)
+	return nil
+}
+
+func (fg *funcGen) emitCast(from, to bytecode.ValueType, kind sema.CastKind) {
+	if from == to {
+		return
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(from, to, castOpFor(kind, from, to)))
+}
+
 func exprLeavesValue(e sema.Expr) bool {
 	if e == nil {
 		return false
@@ -120,73 +174,82 @@ func exprLeavesValue(e sema.Expr) bool {
 	return true
 }
 
-func binaryOp(op sema.BinaryOp, t bytecode.ValueType) bytecode.BinaryOp {
+func binaryOp(op sema.BinaryOp, t bytecode.ValueType) (bytecode.BinaryOp, error) {
 	switch op {
 	case sema.OpAdd:
-		return bytecode.BinAdd
+		return bytecode.BinAdd, nil
 	case sema.OpSub:
-		return bytecode.BinSub
+		return bytecode.BinSub, nil
 	case sema.OpMul:
-		return bytecode.BinMul
+		return bytecode.BinMul, nil
 	case sema.OpDiv:
 		if isUnsignedType(t) {
-			return bytecode.BinDivU
+			return bytecode.BinDivU, nil
 		}
-		return bytecode.BinDivS
+		return bytecode.BinDivS, nil
 	case sema.OpMod:
 		if isUnsignedType(t) {
-			return bytecode.BinRemU
+			return bytecode.BinRemU, nil
 		}
-		return bytecode.BinRemS
+		return bytecode.BinRemS, nil
 	case sema.OpAnd:
-		return bytecode.BinAnd
+		return bytecode.BinAnd, nil
 	case sema.OpOr:
-		return bytecode.BinOr
+		return bytecode.BinOr, nil
 	case sema.OpXor:
-		return bytecode.BinXor
+		return bytecode.BinXor, nil
 	case sema.OpShl:
-		return bytecode.BinShl
+		return bytecode.BinShl, nil
 	case sema.OpShr:
 		if isUnsignedType(t) {
-			return bytecode.BinShrU
+			return bytecode.BinShrU, nil
 		}
-		return bytecode.BinShrS
+		return bytecode.BinShrS, nil
 	case sema.OpEq:
-		return bytecode.BinEq
+		return bytecode.BinEq, nil
 	case sema.OpNe:
-		return bytecode.BinNe
+		return bytecode.BinNe, nil
 	case sema.OpLt:
 		if isFloatType(t) {
-			return bytecode.BinLtF
+			return bytecode.BinLtF, nil
 		}
 		if isUnsignedType(t) {
-			return bytecode.BinLtU
+			return bytecode.BinLtU, nil
 		}
-		return bytecode.BinLtS
+		return bytecode.BinLtS, nil
 	case sema.OpLe:
 		if isFloatType(t) {
-			return bytecode.BinLeF
+			return bytecode.BinLeF, nil
 		}
 		if isUnsignedType(t) {
-			return bytecode.BinLeU
+			return bytecode.BinLeU, nil
 		}
-		return bytecode.BinLeS
+		return bytecode.BinLeS, nil
 	case sema.OpGt:
 		if isFloatType(t) {
-			return bytecode.BinGtF
+			return bytecode.BinGtF, nil
 		}
 		if isUnsignedType(t) {
-			return bytecode.BinGtU
+			return bytecode.BinGtU, nil
 		}
-		return bytecode.BinGtS
+		return bytecode.BinGtS, nil
 	case sema.OpGe:
 		if isFloatType(t) {
-			return bytecode.BinGeF
+			return bytecode.BinGeF, nil
 		}
 		if isUnsignedType(t) {
-			return bytecode.BinGeU
+			return bytecode.BinGeU, nil
 		}
-		return bytecode.BinGeS
+		return bytecode.BinGeS, nil
 	}
-	return bytecode.BinAdd
+	return 0, fmt.Errorf("unsupported binary operator %d", op)
+}
+
+func isCompareOp(op sema.BinaryOp) bool {
+	switch op {
+	case sema.OpEq, sema.OpNe, sema.OpLt, sema.OpLe, sema.OpGt, sema.OpGe:
+		return true
+	default:
+		return false
+	}
 }

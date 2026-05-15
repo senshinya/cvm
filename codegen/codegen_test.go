@@ -73,6 +73,39 @@ int main(void) {
 	}
 }
 
+func TestGenerateScalarComparisonResultTypes(t *testing.T) {
+	tests := []string{
+		`int main(void) { return 1 < 2; }`,
+		`int main(void) { int x; x = 1 < 2; return x; }`,
+		`_Bool main(void) { return 1 < 2; }`,
+	}
+	for _, source := range tests {
+		t.Run(source, func(t *testing.T) {
+			compileModule(t, source)
+		})
+	}
+}
+
+func TestGenerateScalarShiftNormalizesRHS(t *testing.T) {
+	compileModule(t, `long main(void) { long x = 1; return x << 1; }`)
+}
+
+func TestGenerateScalarLogicalOps(t *testing.T) {
+	tests := []string{
+		`int main(void) { return 1 && 0; }`,
+		`int main(void) { return 0 || 2; }`,
+	}
+	for _, source := range tests {
+		t.Run(source, func(t *testing.T) {
+			compileModule(t, source)
+		})
+	}
+}
+
+func TestGenerateAssignmentExpressionStatementResult(t *testing.T) {
+	compileModule(t, `int main(void) { int x; x = 1; return x; }`)
+}
+
 func TestCollectGlobalsIncludesStaticLocals(t *testing.T) {
 	prog := analyzeProgram(t, `
 int g;
