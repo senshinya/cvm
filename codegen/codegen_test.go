@@ -108,8 +108,8 @@ func TestGenerateAssignmentExpressionStatementResult(t *testing.T) {
 
 func TestGenerateFileScopeExternVariableMetadata(t *testing.T) {
 	mod := compileModule(t, `extern int g; int main(void) { return g; }`)
-	if got := mod.Globals[0]; got.Kind != bytecode.GlobalExtern {
-		t.Fatalf("global g kind = %v, want GlobalExtern: %#v", got.Kind, got)
+	if got := mod.Globals[0]; got.Kind != bytecode.GlobalExtern || got.Size != 4 || got.Align <= 0 || got.Init.ZeroFill != 0 {
+		t.Fatalf("global g metadata = %#v, want extern size 4 positive align and no zero-fill", got)
 	}
 	out := bytecode.PrintModule(mod)
 	if !strings.Contains(out, `Global #0 extern name="g"`) {

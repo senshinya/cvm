@@ -113,14 +113,16 @@ func (g *generator) addGlobal(sym *sema.Symbol, kind bytecode.GlobalKind, fnInde
 		g.mod.Globals = append(g.mod.Globals, bytecode.Global{ID: len(g.mod.Globals), Func: -1})
 	}
 	global := bytecode.Global{ID: id, Name: sym.Name, Kind: kind, Func: fnIndex}
-	if kind == bytecode.GlobalVar {
+	if kind == bytecode.GlobalVar || (kind == bytecode.GlobalExtern && sym.Kind == sema.SymVar) {
 		global.Size = g.sizeof(sym.T)
 		global.Align = g.alignof(sym.T)
+	}
+	if kind == bytecode.GlobalVar {
 		global.Init.ZeroFill = global.Size
 	}
 	g.mod.Globals[id] = global
 	g.globalMap[sym] = id
-	if kind == bytecode.GlobalVar {
+	if kind == bytecode.GlobalVar || (kind == bytecode.GlobalExtern && sym.Kind == sema.SymVar) {
 		if _, err := g.lowerLayout(sym.T); err != nil {
 			return id, err
 		}
