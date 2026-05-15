@@ -73,6 +73,19 @@ func validateFunction(m *Module, index int, f *Function) error {
 		}
 		labels[l.ID] = l
 	}
+	labelPCs := map[int]int{}
+	for pc, ins := range f.Instrs {
+		if ins.Op != OpLabel {
+			continue
+		}
+		if _, ok := labels[ins.Label]; !ok {
+			return fmt.Errorf("function %q pc %d: label instruction references missing label L%d", f.Name, pc, ins.Label)
+		}
+		if prev, exists := labelPCs[ins.Label]; exists {
+			return fmt.Errorf("function %q pc %d: duplicate label instruction L%d previously at pc %d", f.Name, pc, ins.Label, prev)
+		}
+		labelPCs[ins.Label] = pc
+	}
 	locals := map[int]ValueType{}
 	for _, p := range f.Params {
 		locals[p.Slot] = p.Type
@@ -107,16 +120,22 @@ func validateFunction(m *Module, index int, f *Function) error {
 	stack := []ValueType{}
 	terminalReturn := false
 	for pc, ins := range f.Instrs {
-		if err := validateInstrRefs(m, ins, labels, locals, objects, dynamicObjects); err != nil {
+		if err := validateInstrRefs(m, ins, labels, labelPCs, locals, objects, dynamicObjects); err != nil {
 			return fmt.Errorf("function %q pc %d: %w", f.Name, pc, err)
 		}
 		if ins.Op == OpLabel {
-			if label, ok := labels[ins.Label]; ok && label.Statement && len(stack) != 0 {
+			label := labels[ins.Label]
+			if terminalReturn {
+				stack = append([]ValueType(nil), label.Stack...)
+			} else if !sameStack(stack, label.Stack) {
+				return fmt.Errorf("function %q pc %d: label L%d stack %v does not match declared %v", f.Name, pc, ins.Label, stack, label.Stack)
+			}
+			if label.Statement && len(stack) != 0 {
 				return fmt.Errorf("function %q pc %d: label L%d requires empty stack, got %d values", f.Name, pc, ins.Label, len(stack))
 			}
 			terminalReturn = false
 		}
-		next, err := validateInstrStack(m, stack, ins, ret)
+		next, err := validateInstrStack(m, stack, ins, ret, labels)
 		if err != nil {
 			return fmt.Errorf("function %q pc %d: %w", f.Name, pc, err)
 		}
@@ -132,10 +151,13 @@ func validateFunction(m *Module, index int, f *Function) error {
 	return nil
 }
 
-func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, locals map[int]ValueType, objects map[int]LocalObject, dynamicObjects map[int]DynamicObject) error {
+func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, labelPCs map[int]int, locals map[int]ValueType, objects map[int]LocalObject, dynamicObjects map[int]DynamicObject) error {
 	requireLabel := func(label int) error {
 		if _, ok := labels[label]; !ok {
 			return fmt.Errorf("%v references missing label L%d", ins.Op, label)
+		}
+		if _, ok := labelPCs[label]; !ok {
+			return fmt.Errorf("%v references unmarked label L%d", ins.Op, label)
 		}
 		return nil
 	}
@@ -265,7 +287,7 @@ func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, locals map[in
 	return nil
 }
 
-func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType) ([]ValueType, error) {
+func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, labels map[int]Label) ([]ValueType, error) {
 	pop := func(want ValueType) error {
 		if len(stack) == 0 {
 			return fmt.Errorf("%v stack underflow", ins.Op)
@@ -305,6 +327,19 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType) 
 		if t != TypeVoid {
 			stack = append(stack, t)
 		}
+	}
+	checkTargetStack := func(labelID int) error {
+		label, ok := labels[labelID]
+		if !ok {
+			return fmt.Errorf("%v references missing label L%d", ins.Op, labelID)
+		}
+		if label.Statement && len(stack) != 0 {
+			return fmt.Errorf("%v to statement label L%d with non-empty stack %v", ins.Op, labelID, stack)
+		}
+		if !sameStack(stack, label.Stack) {
+			return fmt.Errorf("%v target L%d stack %v does not match declared %v", ins.Op, labelID, stack, label.Stack)
+		}
+		return nil
 	}
 	switch ins.Op {
 	case OpConst, OpAddrString, OpAddrGlobal, OpAddrFunc, OpLoadConst, OpLoadLocal, OpAddrLocalObject, OpDynamicObjectAddr:
@@ -407,16 +442,27 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType) 
 		push(ins.Type2)
 	case OpLabel:
 	case OpJump:
-		if len(stack) != 0 {
-			return nil, fmt.Errorf("jump with non-empty stack")
+		if err := checkTargetStack(ins.Label); err != nil {
+			return nil, err
 		}
 	case OpJumpIfZero, OpJumpIfNonZero:
 		if err := pop(ins.Type); err != nil {
 			return nil, err
 		}
+		if err := checkTargetStack(ins.Label); err != nil {
+			return nil, err
+		}
 	case OpSwitch:
 		if err := pop(ins.Type); err != nil {
 			return nil, err
+		}
+		if err := checkTargetStack(ins.Label); err != nil {
+			return nil, err
+		}
+		for _, c := range ins.Labels {
+			if err := checkTargetStack(c.Label); err != nil {
+				return nil, err
+			}
 		}
 	case OpReturn:
 		if ret == TypeVoid {
@@ -487,4 +533,16 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType) 
 		return nil, fmt.Errorf("unsupported opcode %v", ins.Op)
 	}
 	return stack, nil
+}
+
+func sameStack(a, b []ValueType) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

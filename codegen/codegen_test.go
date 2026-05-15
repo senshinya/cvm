@@ -102,6 +102,56 @@ func TestGenerateScalarLogicalOps(t *testing.T) {
 	}
 }
 
+func TestGenerateStructuredControlFlow(t *testing.T) {
+	mod := compileModule(t, `
+int main(void) {
+	int x = 0;
+	for (int i = 0; i < 3; i = i + 1) {
+		if (i == 2) break;
+		x = x + i;
+	}
+	return x;
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{
+		"L0:",
+		"JumpIfZero",
+		"Jump L",
+		"I32LtS",
+		"I32Eq",
+		"I32Return",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestGenerateSwitchGotoAndLabels(t *testing.T) {
+	mod := compileModule(t, `
+int route(int x) {
+	int y = 0;
+	switch (x) {
+	case 1: y = 10; break;
+	default: y = 20;
+	}
+	goto done;
+done:
+	return y;
+}`)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{
+		"Switch",
+		"Jump L",
+		"L",
+		"I32Return",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestGenerateAssignmentExpressionStatementResult(t *testing.T) {
 	compileModule(t, `int main(void) { int x; x = 1; return x; }`)
 }

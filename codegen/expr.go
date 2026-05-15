@@ -181,19 +181,7 @@ func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
 		return fg.emitPointerArithmetic(x)
 	}
 	if x.Op == sema.OpLAnd || x.Op == sema.OpLOr {
-		if err := fg.emitBoolValue(x.L); err != nil {
-			return err
-		}
-		if err := fg.emitBoolValue(x.R); err != nil {
-			return err
-		}
-		op := bytecode.BinAnd
-		if x.Op == sema.OpLOr {
-			op = bytecode.BinOr
-		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(bytecode.TypeBool, op))
-		fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
-		return nil
+		return fg.emitLogical(x, resultType)
 	}
 
 	leftType, err := fg.g.lowerValueType(x.L.GetType())
@@ -221,6 +209,32 @@ func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
 	if isCompareOp(x.Op) {
 		fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
 	}
+	return nil
+}
+
+func (fg *funcGen) emitLogical(x *sema.BinOp, resultType bytecode.ValueType) error {
+	shortLabel := fg.newLabel(true, nil)
+	endLabel := fg.newLabel(false, []bytecode.ValueType{bytecode.TypeBool})
+	if err := fg.emitBoolValue(x.L); err != nil {
+		return err
+	}
+	if x.Op == sema.OpLAnd {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.JumpIfZero(bytecode.TypeBool, shortLabel))
+	} else {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.JumpIfNonZero(bytecode.TypeBool, shortLabel))
+	}
+	if err := fg.emitBoolValue(x.R); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(endLabel))
+	fg.mark(shortLabel)
+	if x.Op == sema.OpLAnd {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(bytecode.TypeBool, 0))
+	} else {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(bytecode.TypeBool, 1))
+	}
+	fg.mark(endLabel)
+	fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
 	return nil
 }
 
