@@ -46,7 +46,9 @@ type funcGen struct {
 	objectMap             map[*sema.Symbol]int
 	dynamicObjectMap      map[*sema.Symbol]int
 	dynamicSizeSlotMap    map[*sema.Symbol]int
+	dynamicSizeTypeSlots  map[sema.Type]int
 	activeDynamicObjects  []int
+	nextSyntheticSlot     int
 	addressTaken          map[*sema.Symbol]bool
 	breaks                []int
 	continues             []int
@@ -183,9 +185,18 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		paramDeclsBySlot[p.Sym.SlotID] = p
 	}
 	seenSlots := map[int]bool{}
+	maxSlot := -1
+	for _, p := range fn.Params {
+		if p.Sym != nil && p.Sym.SlotID > maxSlot {
+			maxSlot = p.Sym.SlotID
+		}
+	}
 	objectMap := map[*sema.Symbol]int{}
 	for _, p := range f.Params {
 		seenSlots[p.Slot] = true
+		if p.Slot > maxSlot {
+			maxSlot = p.Slot
+		}
 		if pd := paramDeclsBySlot[p.Slot]; pd != nil && addressTaken[pd.Sym] {
 			layout, err := g.lowerLayout(pd.T)
 			if err != nil {
@@ -199,6 +210,9 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 	for _, local := range fn.Locals {
 		if local == nil || local.Sym == nil || local.Storage == sema.StorageStatic || local.Storage == sema.StorageExtern {
 			continue
+		}
+		if local.Sym.SlotID > maxSlot {
+			maxSlot = local.Sym.SlotID
 		}
 		if isVLAType(local.T) {
 			continue
@@ -230,6 +244,8 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		objectMap:             objectMap,
 		dynamicObjectMap:      map[*sema.Symbol]int{},
 		dynamicSizeSlotMap:    map[*sema.Symbol]int{},
+		dynamicSizeTypeSlots:  map[sema.Type]int{},
+		nextSyntheticSlot:     maxSlot + 1,
 		addressTaken:          addressTaken,
 		namedBreaks:           map[string][]int{},
 		namedContinues:        map[string][]int{},

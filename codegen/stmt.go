@@ -140,13 +140,14 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		}
 		condLabel := fg.newLabel(true, nil)
 		postLabel := fg.newLabel(true, nil)
-		endLabel := fg.newLabel(true, nil)
-		fg.breaks = append(fg.breaks, endLabel)
+		cleanupLabel := fg.newLabel(true, nil)
+		afterLabel := fg.newLabel(true, nil)
+		fg.breaks = append(fg.breaks, afterLabel)
 		fg.continues = append(fg.continues, postLabel)
 		fg.breakCleanupMarks = append(fg.breakCleanupMarks, loopCleanupMark)
 		continueCleanupMark := len(fg.activeDynamicObjects)
 		fg.continueCleanupMarks = append(fg.continueCleanupMarks, continueCleanupMark)
-		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel, loopCleanupMark)
+		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, afterLabel, loopCleanupMark)
 		popNamedContinues := fg.pushNamedContinues(pendingContinueNames, postLabel, continueCleanupMark)
 		fg.mark(condLabel)
 		if x.Cond != nil {
@@ -155,7 +156,7 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 				popNamedBreaks()
 				return err
 			}
-			fg.out.Instrs = append(fg.out.Instrs, bytecode.JumpIfZero(bytecode.TypeBool, endLabel))
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.JumpIfZero(bytecode.TypeBool, cleanupLabel))
 		}
 		if err := fg.emitStmt(x.Body); err != nil {
 			popNamedContinues()
@@ -174,10 +175,11 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 			}
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(condLabel))
-		fg.mark(endLabel)
+		fg.mark(cleanupLabel)
 		if !fg.lastInstrTerminal() {
 			fg.popDynamicObjectScope(loopCleanupMark)
 		}
+		fg.mark(afterLabel)
 		popNamedContinues()
 		popNamedBreaks()
 		fg.breaks = fg.breaks[:len(fg.breaks)-1]
@@ -560,16 +562,64 @@ func (fg *funcGen) emitVLADecl(vd *sema.VarDecl) error {
 	fg.out.DynamicObjects = append(fg.out.DynamicObjects, bytecode.DynamicObject{ID: objectID, Name: vd.Sym.Name, Align: layout.Align, Layout: layout.ID})
 	fg.dynamicObjectMap[vd.Sym] = objectID
 	fg.dynamicSizeSlotMap[vd.Sym] = slot
-	if err := fg.emitRuntimeSizeof(vd.T); err != nil {
+	if err := fg.emitRuntimeSizeofSaved(vd.T, slot, vd.Sym.Name+"$size"); err != nil {
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs,
-		bytecode.Instr{Op: bytecode.OpDup},
-		bytecode.StoreLocal(bytecode.TypeI64, slot),
 		bytecode.Instr{Op: bytecode.OpAllocDynamicObject, Object: objectID, Type: bytecode.TypeI64, Align: layout.Align, Layout: layout.ID},
 	)
 	fg.activeDynamicObjects = append(fg.activeDynamicObjects, objectID)
 	return nil
+}
+
+func (fg *funcGen) emitRuntimeSizeofSaved(t sema.Type, slot int, name string) error {
+	switch x := sema.Unqual(t).(type) {
+	case *sema.ArrayType:
+		if x.SizeKind == sema.ArrayStarSize {
+			return fmt.Errorf("cannot lower runtime sizeof for star-sized array")
+		}
+		if x.SizeKind == sema.ArrayVLA {
+			if x.SizeExpr == nil {
+				return fmt.Errorf("VLA type has no bound expression")
+			}
+			if err := fg.emitValue(x.SizeExpr); err != nil {
+				return err
+			}
+			from, err := fg.g.lowerValueType(x.SizeExpr.GetType())
+			if err != nil {
+				return err
+			}
+			fg.emitCast(from, bytecode.TypeI64, sema.IntegralConversion)
+		} else {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.I64Const(x.Size))
+		}
+		elemSlot := -1
+		if typeHasVariableSize(x.Elem) {
+			elemSlot = fg.allocSyntheticI64Slot(name + "$elem")
+		}
+		if err := fg.emitRuntimeSizeofSaved(x.Elem, elemSlot, name+"$elem"); err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(bytecode.TypeI64, bytecode.BinMul))
+		if typeHasVariableSize(x) {
+			if slot < 0 {
+				slot = fg.allocSyntheticI64Slot(name)
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(bytecode.TypeI64, slot))
+			fg.dynamicSizeTypeSlots[sema.Unqual(t)] = slot
+		}
+		return nil
+	default:
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.I64Const(fg.g.sizeof(t)))
+		return nil
+	}
+}
+
+func (fg *funcGen) allocSyntheticI64Slot(name string) int {
+	slot := fg.nextSyntheticSlot
+	fg.nextSyntheticSlot++
+	fg.out.Locals = append(fg.out.Locals, bytecode.LocalSlot{ID: slot, Name: name, Type: bytecode.TypeI64})
+	return slot
 }
 
 func (fg *funcGen) hasLocalSlot(slot int) bool {

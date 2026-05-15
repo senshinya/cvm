@@ -185,6 +185,11 @@ func (fg *funcGen) emitSizeof(x *sema.SizeofExpr) error {
 			}
 		}
 	}
+	if slot, ok := fg.dynamicSizeTypeSlots[sema.Unqual(t)]; ok {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeI64, slot))
+		fg.emitCast(bytecode.TypeI64, outType, sema.IntegralConversion)
+		return nil
+	}
 	if err := fg.emitRuntimeSizeof(t); err != nil {
 		return err
 	}

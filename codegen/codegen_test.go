@@ -602,7 +602,8 @@ int f(int n) {
 	breakJumpPC := instrPCAfter(t, fn, breakFreePC, func(i bytecode.Instr) bool { return i.Op == bytecode.OpJump })
 	endFreePC := instrPCAfter(t, fn, breakJumpPC, func(i bytecode.Instr) bool { return i.Op == bytecode.OpFreeDynamicObject })
 	returnPC := instrPCAfter(t, fn, endFreePC, func(i bytecode.Instr) bool { return i.Op == bytecode.OpReturn })
-	if !(allocPC < breakFreePC && breakFreePC < breakJumpPC && breakJumpPC < endFreePC && endFreePC < returnPC) {
+	breakTargetPC := labelPC(t, fn, fn.Instrs[breakJumpPC].Label)
+	if !(allocPC < breakFreePC && breakFreePC < breakJumpPC && breakJumpPC < endFreePC && endFreePC < breakTargetPC && breakTargetPC < returnPC) {
 		t.Fatalf("for-init VLA cleanup is not emitted on break and normal loop exit: alloc=%d breakFree=%d breakJump=%d endFree=%d return=%d\n%s",
 			allocPC, breakFreePC, breakJumpPC, endFreePC, returnPC, bytecode.PrintModule(mod))
 	}
@@ -630,6 +631,28 @@ int f(int n) {
 	}
 }
 
+func TestGenerateSizeofSubVLADoesNotReevaluateBound(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n, int m) {
+	int a[n][m];
+	return sizeof(a[0]);
+}`)
+	fn := mod.Functions[0]
+	loadsOfM := 0
+	for _, ins := range fn.Instrs {
+		if ins.Op == bytecode.OpLoadLocal && ins.Slot == 1 {
+			loadsOfM++
+		}
+	}
+	if loadsOfM != 1 {
+		t.Fatalf("sizeof sub-VLA reevaluated m; saw %d loads of slot 1\n%s", loadsOfM, bytecode.PrintModule(mod))
+	}
+	out := bytecode.PrintModule(mod)
+	if !strings.Contains(out, `Local #3 name="a$size$elem" type=i64`) {
+		t.Fatalf("bytecode missing saved sub-VLA size slot:\n%s", out)
+	}
+}
+
 func instrPC(t *testing.T, fn bytecode.Function, pred func(bytecode.Instr) bool) int {
 	t.Helper()
 	return instrPCAfter(t, fn, -1, pred)
@@ -643,6 +666,17 @@ func instrPCAfter(t *testing.T, fn bytecode.Function, after int, pred func(bytec
 		}
 	}
 	t.Fatalf("instruction not found after pc %d", after)
+	return -1
+}
+
+func labelPC(t *testing.T, fn bytecode.Function, label int) int {
+	t.Helper()
+	for pc, ins := range fn.Instrs {
+		if ins.Op == bytecode.OpLabel && ins.Label == label {
+			return pc
+		}
+	}
+	t.Fatalf("label L%d not found", label)
 	return -1
 }
 
