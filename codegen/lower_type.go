@@ -167,7 +167,7 @@ func (g *generator) sizeof(t sema.Type) int64 {
 				end = n
 			}
 		}
-		return alignUp(end, g.alignof(x))
+		return end
 	case *sema.UnionType:
 		var max int64
 		for _, f := range x.Fields {
@@ -178,7 +178,7 @@ func (g *generator) sizeof(t sema.Type) int64 {
 				max = n
 			}
 		}
-		return alignUp(max, g.alignof(x))
+		return max
 	case *sema.EnumType:
 		return g.sizeof(x.Underlying)
 	}
@@ -204,26 +204,8 @@ func (g *generator) alignof(t sema.Type) int64 {
 		return g.mod.Target.PointerAlign
 	case *sema.ArrayType:
 		return g.alignof(x.Elem)
-	case *sema.StructType:
-		var max int64 = 1
-		for _, f := range x.Fields {
-			if f != nil {
-				if a := g.alignof(f.T); a > max {
-					max = a
-				}
-			}
-		}
-		return max
-	case *sema.UnionType:
-		var max int64 = 1
-		for _, f := range x.Fields {
-			if f != nil {
-				if a := g.alignof(f.T); a > max {
-					max = a
-				}
-			}
-		}
-		return max
+	case *sema.StructType, *sema.UnionType:
+		return 1
 	case *sema.EnumType:
 		return g.alignof(x.Underlying)
 	}
@@ -248,15 +230,4 @@ func isVolatile(t sema.Type) bool {
 		return q.Volatile
 	}
 	return false
-}
-
-func alignUp(n, align int64) int64 {
-	if align <= 1 {
-		return n
-	}
-	rem := n % align
-	if rem == 0 {
-		return n
-	}
-	return n + align - rem
 }

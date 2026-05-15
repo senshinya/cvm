@@ -63,7 +63,11 @@ func (g *generator) collectGlobals() error {
 	for _, d := range g.prog.Globals {
 		switch x := d.(type) {
 		case *sema.VarDecl:
-			if _, err := g.addGlobal(x.Sym, bytecode.GlobalVar, -1); err != nil {
+			kind := bytecode.GlobalVar
+			if x.Storage == sema.StorageExtern {
+				kind = bytecode.GlobalExtern
+			}
+			if _, err := g.addGlobal(x.Sym, kind, -1); err != nil {
 				return err
 			}
 		case *sema.FuncDecl:
@@ -92,6 +96,15 @@ func (g *generator) addGlobal(sym *sema.Symbol, kind bytecode.GlobalKind, fnInde
 		if kind == bytecode.GlobalFunc {
 			g.mod.Globals[id].Kind = kind
 			g.mod.Globals[id].Func = fnIndex
+		}
+		if kind == bytecode.GlobalVar && g.mod.Globals[id].Kind == bytecode.GlobalExtern {
+			g.mod.Globals[id].Kind = kind
+			g.mod.Globals[id].Size = g.sizeof(sym.T)
+			g.mod.Globals[id].Align = g.alignof(sym.T)
+			g.mod.Globals[id].Init.ZeroFill = g.mod.Globals[id].Size
+			if _, err := g.lowerLayout(sym.T); err != nil {
+				return id, err
+			}
 		}
 		return id, nil
 	}

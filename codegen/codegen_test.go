@@ -106,6 +106,20 @@ func TestGenerateAssignmentExpressionStatementResult(t *testing.T) {
 	compileModule(t, `int main(void) { int x; x = 1; return x; }`)
 }
 
+func TestGenerateFileScopeExternVariableMetadata(t *testing.T) {
+	mod := compileModule(t, `extern int g; int main(void) { return g; }`)
+	if got := mod.Globals[0]; got.Kind != bytecode.GlobalExtern {
+		t.Fatalf("global g kind = %v, want GlobalExtern: %#v", got.Kind, got)
+	}
+	out := bytecode.PrintModule(mod)
+	if !strings.Contains(out, `Global #0 extern name="g"`) {
+		t.Fatalf("bytecode missing extern global:\n%s", out)
+	}
+	if strings.Contains(out, `Global #0 var name="g"`) || strings.Contains(out, "init_zero=") {
+		t.Fatalf("extern global printed as storage-owning var:\n%s", out)
+	}
+}
+
 func TestGenerateGlobalsPointersAndArrayIndex(t *testing.T) {
 	mod := compileModule(t, `
 int g;
@@ -187,6 +201,46 @@ int main(void) {
 		if !strings.Contains(out, want) {
 			t.Fatalf("bytecode missing %q:\n%s", want, out)
 		}
+	}
+}
+
+func TestGeneratePackedStructArrayLayoutMetadata(t *testing.T) {
+	mod := compileModule(t, `
+struct S { char c; int i; };
+struct S a[2];
+int main(void) {
+	return a[1].i;
+}`)
+	var structLayout, arrayLayout *bytecode.ObjectLayout
+	for i := range mod.Layouts {
+		layout := &mod.Layouts[i]
+		if len(layout.Fields) == 2 && layout.Fields[0].Name == "c" && layout.Fields[1].Name == "i" {
+			structLayout = layout
+		}
+		if layout.ElemSize != 0 {
+			arrayLayout = layout
+		}
+	}
+	if structLayout == nil {
+		t.Fatalf("missing struct layout: %#v", mod.Layouts)
+	}
+	if got := structLayout.Fields[1].Offset; got != 1 {
+		t.Fatalf("field i offset = %d, want sema offset 1: %#v", got, structLayout)
+	}
+	if structLayout.Size != 5 || structLayout.Align != 1 {
+		t.Fatalf("struct layout size/align = %d/%d, want sema-compatible 5/1: %#v", structLayout.Size, structLayout.Align, structLayout)
+	}
+	if arrayLayout == nil {
+		t.Fatalf("missing array layout: %#v", mod.Layouts)
+	}
+	if arrayLayout.ElemSize != 5 || arrayLayout.Align != 1 {
+		t.Fatalf("array layout elem size/align = %d/%d, want sema-compatible 5/1: %#v", arrayLayout.ElemSize, arrayLayout.Align, arrayLayout)
+	}
+	if got := mod.Globals[0].Size; got != arrayLayout.ElemSize*2 {
+		t.Fatalf("global array size = %d, want elem size * 2 = %d", got, arrayLayout.ElemSize*2)
+	}
+	if err := bytecode.ValidateModule(mod); err != nil {
+		t.Fatalf("validate bytecode: %v\n%s", err, bytecode.PrintModule(mod))
 	}
 }
 
