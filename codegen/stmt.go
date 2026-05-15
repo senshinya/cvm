@@ -132,6 +132,7 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 			fg.pendingBreakNames = pendingBreakNames
 			fg.pendingContinueNames = pendingContinueNames
 		}()
+		loopCleanupMark := len(fg.activeDynamicObjects)
 		if x.Init != nil {
 			if err := fg.emitStmt(x.Init); err != nil {
 				return err
@@ -142,7 +143,6 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		endLabel := fg.newLabel(true, nil)
 		fg.breaks = append(fg.breaks, endLabel)
 		fg.continues = append(fg.continues, postLabel)
-		loopCleanupMark := len(fg.activeDynamicObjects)
 		fg.breakCleanupMarks = append(fg.breakCleanupMarks, loopCleanupMark)
 		fg.continueCleanupMarks = append(fg.continueCleanupMarks, loopCleanupMark)
 		popNamedBreaks := fg.pushNamedBreaks(pendingBreakNames, endLabel, loopCleanupMark)
@@ -174,6 +174,9 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(condLabel))
 		fg.mark(endLabel)
+		if !fg.lastInstrTerminal() {
+			fg.popDynamicObjectScope(loopCleanupMark)
+		}
 		popNamedContinues()
 		popNamedBreaks()
 		fg.breaks = fg.breaks[:len(fg.breaks)-1]

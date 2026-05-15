@@ -575,6 +575,26 @@ done:
 	}
 }
 
+func TestGenerateForInitVLAFreesAtLoopExit(t *testing.T) {
+	mod := compileModule(t, `
+int f(int n) {
+	for (int a[n]; n; n = n - 1) {
+		break;
+	}
+	return 0;
+}`)
+	fn := mod.Functions[0]
+	allocPC := instrPC(t, fn, func(i bytecode.Instr) bool { return i.Op == bytecode.OpAllocDynamicObject })
+	breakFreePC := instrPCAfter(t, fn, allocPC, func(i bytecode.Instr) bool { return i.Op == bytecode.OpFreeDynamicObject })
+	breakJumpPC := instrPCAfter(t, fn, breakFreePC, func(i bytecode.Instr) bool { return i.Op == bytecode.OpJump })
+	endFreePC := instrPCAfter(t, fn, breakJumpPC, func(i bytecode.Instr) bool { return i.Op == bytecode.OpFreeDynamicObject })
+	returnPC := instrPCAfter(t, fn, endFreePC, func(i bytecode.Instr) bool { return i.Op == bytecode.OpReturn })
+	if !(allocPC < breakFreePC && breakFreePC < breakJumpPC && breakJumpPC < endFreePC && endFreePC < returnPC) {
+		t.Fatalf("for-init VLA cleanup is not emitted on break and normal loop exit: alloc=%d breakFree=%d breakJump=%d endFree=%d return=%d\n%s",
+			allocPC, breakFreePC, breakJumpPC, endFreePC, returnPC, bytecode.PrintModule(mod))
+	}
+}
+
 func instrPC(t *testing.T, fn bytecode.Function, pred func(bytecode.Instr) bool) int {
 	t.Helper()
 	return instrPCAfter(t, fn, -1, pred)
