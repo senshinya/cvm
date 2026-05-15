@@ -1,0 +1,4 @@
+Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Global #0 var name="x" size=4 align=4 readonly=false init_zero=0 init_bytes=4 init_relocs=0
+  InitBytes hex=2a000000
+Layout #0 name="int" size=4 align=4 elem_size=0

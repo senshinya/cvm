@@ -1,0 +1,13 @@
+Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Global #0 extern name="add"
+Global #1 func name="main" func=0
+Sig #0 ret=i32 params=(i32, i32)
+Sig #1 ret=i32 params=()
+Func #0 global=1 name="main" sig=1 max_stack=0
+  Local #0 name="sum" type=i32
+  0000: I32Const 1
+  0001: I32Const 2
+  0002: Call global=0 sig=0 argc=2
+  0003: I32StoreLocal 0
+  0004: I32LoadLocal 0
+  0005: I32Return

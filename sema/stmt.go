@@ -556,21 +556,23 @@ func (s *Sema) typeJump(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
 		}
 		return &ReturnStmt{Value: expr, Range: node.SourceRange}
 	case node.ReducedBy(parser.JumpStatement, 6):
+		name := node.Children[1].Terminal.Lexeme
 		if ctx.loopDepth == 0 {
 			s.report(InvalidTypeSpec(node.SourceStart, "continue outside loop"))
 		}
-		if !namedTargetActive(ctx.namedContinue, node.Children[1].Terminal.Lexeme) {
+		if !namedTargetActive(ctx.namedContinue, name) {
 			s.report(InvalidTypeSpec(node.SourceStart, "continue target is not an enclosing named loop"))
 		}
-		return &ContinueStmt{Range: node.SourceRange}
+		return &ContinueStmt{Name: name, Range: node.SourceRange}
 	case node.ReducedBy(parser.JumpStatement, 7):
+		name := node.Children[1].Terminal.Lexeme
 		if ctx.loopDepth == 0 && len(ctx.switchStack) == 0 {
 			s.report(InvalidTypeSpec(node.SourceStart, "break outside loop or switch"))
 		}
-		if !namedTargetActive(ctx.namedBreak, node.Children[1].Terminal.Lexeme) {
+		if !namedTargetActive(ctx.namedBreak, name) {
 			s.report(InvalidTypeSpec(node.SourceStart, "break target is not an enclosing named loop or switch"))
 		}
-		return &BreakStmt{Range: node.SourceRange}
+		return &BreakStmt{Name: name, Range: node.SourceRange}
 	}
 	return &EmptyStmt{Range: node.SourceRange}
 }
