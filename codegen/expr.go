@@ -450,11 +450,11 @@ func (fg *funcGen) emitCall(x *sema.CallExpr) error {
 	if err != nil {
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
 	}
-	sig, err := fg.g.lowerFuncSig(ft)
+	sig, err := fg.lowerCallSig(ft, x.Args)
 	if err != nil {
 		return err
 	}
-	if global, ok := fg.g.directCallGlobal(x.Callee, ft); ok {
+	if global, ok := fg.g.directCallGlobal(x.Callee, sig); ok {
 		for _, arg := range x.Args {
 			if err := fg.emitValue(arg); err != nil {
 				return err
@@ -473,6 +473,25 @@ func (fg *funcGen) emitCall(x *sema.CallExpr) error {
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpCallIndirect, Sig: sig, Argc: len(x.Args)})
 	return nil
+}
+
+func (fg *funcGen) lowerCallSig(ft *sema.FunctionType, args []sema.Expr) (int, error) {
+	if ft.HasProto {
+		return fg.g.lowerFuncSig(ft)
+	}
+	ret, err := fg.g.lowerValueType(ft.Ret)
+	if err != nil {
+		return 0, err
+	}
+	params := make([]bytecode.ValueType, 0, len(args))
+	for _, arg := range args {
+		pt, err := fg.g.lowerValueType(arg.GetType())
+		if err != nil {
+			return 0, err
+		}
+		params = append(params, pt)
+	}
+	return fg.g.internSig(ret, params, false), nil
 }
 
 func (fg *funcGen) emitTgmathCall(x *sema.CallExpr, pseudo string) error {
@@ -1025,25 +1044,14 @@ func functionTypeFromCallee(t sema.Type) (*sema.FunctionType, error) {
 	return nil, fmt.Errorf("callee type %s is not a function pointer", t)
 }
 
-func (g *generator) directCallGlobal(e sema.Expr, ft *sema.FunctionType) (int, bool) {
+func (g *generator) directCallGlobal(e sema.Expr, sig int) (int, bool) {
 	if vr := functionVarRef(e); vr != nil && vr.Sym != nil {
 		if global, ok := g.globalMap[vr.Sym]; ok {
 			return global, true
 		}
-		if vr.Sym.Kind == sema.SymFunc && vr.Sym.Storage == sema.StorageExtern && ft != nil {
-			ret, err := g.lowerValueType(ft.Ret)
-			if err != nil {
-				return -1, false
-			}
-			params := make([]bytecode.ValueType, 0, len(ft.Params))
-			for _, p := range ft.Params {
-				pt, err := g.lowerValueType(p)
-				if err != nil {
-					return -1, false
-				}
-				params = append(params, pt)
-			}
-			return g.syntheticExtern(vr.Sym.Name, ret, params, ft.Variadic), true
+		if vr.Sym.Kind == sema.SymFunc && vr.Sym.Storage == sema.StorageExtern && sig >= 0 && sig < len(g.mod.Sigs) {
+			callSig := g.mod.Sigs[sig]
+			return g.syntheticExtern(vr.Sym.Name, callSig.Ret, callSig.Params, callSig.Variadic), true
 		}
 	}
 	return -1, false
