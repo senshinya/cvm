@@ -35,12 +35,14 @@ func FloatValue(t bytecode.ValueType, v float64) Value {
 
 func (v Value) ExitCode() (int, error) {
 	switch v.Type {
-	case bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeI32, bytecode.TypeI64:
-		signed := int64(v.Int)
-		if int64(int(signed)) != signed {
-			return 0, fmt.Errorf("exit code %d exceeds int range", signed)
-		}
-		return int(signed), nil
+	case bytecode.TypeI8:
+		return signedExitCode(int64(int8(v.Int)))
+	case bytecode.TypeI16:
+		return signedExitCode(int64(int16(v.Int)))
+	case bytecode.TypeI32:
+		return signedExitCode(int64(int32(v.Int)))
+	case bytecode.TypeI64:
+		return signedExitCode(int64(v.Int))
 	case bytecode.TypeBool, bytecode.TypeU8, bytecode.TypeU16, bytecode.TypeU32, bytecode.TypeU64:
 		if v.Int > uint64(math.MaxInt) {
 			return 0, fmt.Errorf("exit code %d exceeds int range", v.Int)
@@ -49,6 +51,13 @@ func (v Value) ExitCode() (int, error) {
 	default:
 		return 0, fmt.Errorf("cannot use %s as exit code", v.Type)
 	}
+}
+
+func signedExitCode(signed int64) (int, error) {
+	if int64(int(signed)) != signed {
+		return 0, fmt.Errorf("exit code %d exceeds int range", signed)
+	}
+	return int(signed), nil
 }
 
 func (v Value) IsZero() bool {
