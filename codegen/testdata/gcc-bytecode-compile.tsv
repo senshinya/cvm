@@ -103,6 +103,7 @@ sema/testdata/gcc-c99-extra/accept/gnu99-named-loops-1.c	current GCC accept fixt
 sema/testdata/gcc-c99-extra/accept/gnu99-if-decls-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/gnu99-if-decls-2.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/init-bad-7.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/init-desig-obs-2.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/init-empty-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/init-empty-2.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/inline-10.c	current GCC accept fixture compiles to validated bytecode
