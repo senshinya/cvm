@@ -105,13 +105,9 @@ func (r *ExternRegistry) Lookup(name string) (ExternFunc, bool) {
 func (r *ExternRegistry) LookupVariable(name string, mem *Memory) (uint64, bool) {
 	switch name {
 	case "stdout":
-		addr := mem.Alloc("extern:"+name, 8, 8, true, blockHostHandle)
-		r.hostWriters[addr] = r.stdout
-		return addr, true
+		return r.allocHostWriter(name, mem, r.stdout), true
 	case "stderr":
-		addr := mem.Alloc("extern:"+name, 8, 8, true, blockHostHandle)
-		r.hostWriters[addr] = r.stderr
-		return addr, true
+		return r.allocHostWriter(name, mem, r.stderr), true
 	default:
 		return 0, false
 	}
@@ -131,4 +127,16 @@ func (r *ExternRegistry) externStdout(ec *ExternContext) io.Writer {
 func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {
 	w, ok := r.hostWriters[addr]
 	return w, ok
+}
+
+func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer) uint64 {
+	addr := mem.Alloc("extern:"+name, mem.target.PointerSize, mem.target.PointerAlign, false, blockHostHandle)
+	if err := mem.WritePointer(addr, addr); err != nil {
+		panic(err)
+	}
+	if b, _, err := mem.rangeAccess(addr, mem.target.PointerSize, false); err == nil {
+		b.readonly = true
+	}
+	r.hostWriters[addr] = w
+	return addr
 }

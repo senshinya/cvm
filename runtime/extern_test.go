@@ -56,6 +56,34 @@ func TestFputsWritesCStringToStderrHostHandle(t *testing.T) {
 	}
 }
 
+func TestFputsWritesCStringToLoadedStderrHostHandle(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	reg := DefaultExternRegistry(&out, &errOut)
+	target := bytecode.DefaultTarget()
+	mem := NewMemory(target)
+	addr := mem.AllocBytes("string:0", []byte("hello\x00"), true, blockString)
+	stderrAddr, ok := reg.LookupVariable("stderr", mem)
+	if !ok {
+		t.Fatal("missing stderr extern variable")
+	}
+	loaded, err := mem.Load(stderrAddr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("Load(stderr): %v", err)
+	}
+	fn, _ := reg.Lookup("fputs")
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(addr), loaded})
+	if err != nil || exit != nil {
+		t.Fatalf("fputs ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if out.String() != "" {
+		t.Fatalf("stdout output = %q, want empty", out.String())
+	}
+	if errOut.String() != "hello" {
+		t.Fatalf("stderr output = %q", errOut.String())
+	}
+}
+
 func TestFputsUnknownStreamHandleReturnsError(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
