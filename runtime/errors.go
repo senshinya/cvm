@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"fmt"
+	"strings"
 
 	"shinya.click/cvm/bytecode"
 )
@@ -43,13 +44,21 @@ func (e *TrapError) Error() string {
 		return "<nil>"
 	}
 	loc := ""
-	if e.Function != "" {
-		loc = fmt.Sprintf(" in %s#%d pc=%d opcode=%s", e.Function, e.FunctionID, e.PC, e.Opcode)
+	if e.Function != "" || e.FunctionID != 0 || e.PC != 0 || e.Opcode != 0 {
+		function := e.Function
+		if function == "" {
+			function = "fn"
+		}
+		loc = fmt.Sprintf(" in %s#%d pc=%d opcode=%s", function, e.FunctionID, e.PC, e.Opcode)
+	}
+	stack := ""
+	if len(e.Stack) != 0 {
+		stack = fmt.Sprintf(" stack=[%s]", strings.Join(e.Stack, " > "))
 	}
 	if e.Cause != nil {
-		return fmt.Sprintf("runtime trap: %s%s: %v", e.Reason, loc, e.Cause)
+		return fmt.Sprintf("runtime trap: %s%s%s: %v", e.Reason, loc, stack, e.Cause)
 	}
-	return fmt.Sprintf("runtime trap: %s%s", e.Reason, loc)
+	return fmt.Sprintf("runtime trap: %s%s%s", e.Reason, loc, stack)
 }
 
 func (e *TrapError) Unwrap() error {
