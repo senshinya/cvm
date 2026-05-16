@@ -72,6 +72,27 @@ func (p *Program) StringAddr(id int) uint64 { return p.stringAddr[id] }
 
 func (p *Program) FuncAddr(id int) uint64 { return p.funcAddr[id] }
 
+func (p *Program) TryGlobalAddr(id int) (uint64, error) {
+	if id < 0 || id >= len(p.globalAddr) {
+		return 0, fmt.Errorf("invalid global id %d", id)
+	}
+	return p.globalAddr[id], nil
+}
+
+func (p *Program) TryStringAddr(id int) (uint64, error) {
+	if id < 0 || id >= len(p.stringAddr) {
+		return 0, fmt.Errorf("invalid string id %d", id)
+	}
+	return p.stringAddr[id], nil
+}
+
+func (p *Program) TryFuncAddr(id int) (uint64, error) {
+	if id < 0 || id >= len(p.funcAddr) {
+		return 0, fmt.Errorf("invalid function address id %d", id)
+	}
+	return p.funcAddr[id], nil
+}
+
 func (p *Program) allocateGlobals(reg *ExternRegistry) error {
 	for i, g := range p.module.Globals {
 		switch g.Kind {

@@ -166,11 +166,37 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		}
 		fr.locals[ins.Slot] = v
 	case bytecode.OpAddrGlobal:
-		vm.stack = append(vm.stack, ObjectAddrValue(vm.program.GlobalAddr(ins.Global)))
+		addr, err := vm.program.TryGlobalAddr(ins.Global)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("invalid global address", err)
+		}
+		vm.stack = append(vm.stack, ObjectAddrValue(addr))
 	case bytecode.OpAddrString:
-		vm.stack = append(vm.stack, ObjectAddrValue(vm.program.StringAddr(int(ins.Int))))
+		addr, err := vm.program.TryStringAddr(int(ins.Int))
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("invalid string address", err)
+		}
+		vm.stack = append(vm.stack, ObjectAddrValue(addr))
 	case bytecode.OpAddrFunc:
-		vm.stack = append(vm.stack, PtrValue(vm.program.FuncAddr(ins.Global)))
+		addr, err := vm.program.TryFuncAddr(ins.Global)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("invalid function address", err)
+		}
+		vm.stack = append(vm.stack, PtrValue(addr))
+	case bytecode.OpLoadConst:
+		base, err := vm.program.TryGlobalAddr(ins.Global)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("invalid global address", err)
+		}
+		addr, err := addSignedOffset(base, ins.Int)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("load const offset overflow", err)
+		}
+		v, err := vm.program.Memory().Load(addr, ins.Type, ins.Align)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("load const failed", err)
+		}
+		vm.stack = append(vm.stack, v)
 	case bytecode.OpLoad:
 		addr, err := vm.pop(bytecode.TypeObjectAddr)
 		if err != nil {
@@ -239,6 +265,24 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		out, err := addPointerIndex(base.Int, index, ins.Size)
 		if err != nil {
 			return ExitStatus{}, true, vm.trapWithCause("pointer add failed", err)
+		}
+		vm.stack = append(vm.stack, UIntValue(base.Type, out))
+	case bytecode.OpPtrAddDynamic:
+		stride, err := vm.pop(bytecode.TypeI64)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		index, err := vm.popInteger()
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		base, err := vm.popPointer()
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		out, err := addPointerIndex(base.Int, index, signedInt(stride))
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("dynamic pointer add failed", err)
 		}
 		vm.stack = append(vm.stack, UIntValue(base.Type, out))
 	case bytecode.OpPtrDiff:
@@ -782,16 +826,18 @@ func pointerDiff(left, right uint64, elemSize int64) (int64, error) {
 	elem := uint64(elemSize)
 	if left >= right {
 		delta := left - right
-		if delta > math.MaxInt64 {
-			return 0, fmt.Errorf("pointer difference %d exceeds i64 range", delta)
+		quotient := delta / elem
+		if quotient > math.MaxInt64 {
+			return 0, fmt.Errorf("pointer difference %d exceeds i64 range", quotient)
 		}
-		return int64(delta / elem), nil
+		return int64(quotient), nil
 	}
 	delta := right - left
-	if delta > math.MaxInt64 {
-		return 0, fmt.Errorf("pointer difference -%d exceeds i64 range", delta)
+	quotient := delta / elem
+	if quotient > math.MaxInt64 {
+		return 0, fmt.Errorf("pointer difference -%d exceeds i64 range", quotient)
 	}
-	return -int64(delta / elem), nil
+	return -int64(quotient), nil
 }
 
 func absInt64(v int64) uint64 {

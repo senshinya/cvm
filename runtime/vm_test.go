@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"math"
 	"strings"
 	"testing"
 
@@ -124,6 +125,174 @@ func TestRunOffsetFollowsObjectAddrStackContract(t *testing.T) {
 	}
 	if st.Code != 23 {
 		t.Fatalf("exit code = %d, want 23", st.Code)
+	}
+}
+
+func TestRunPtrAddDynamic(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrGlobal(1),
+		bytecode.I32Const(2),
+		bytecode.I64Const(4),
+		bytecode.Instr{Op: bytecode.OpPtrAddDynamic},
+		bytecode.I32Const(31),
+		bytecode.Store(bytecode.TypeI32, 4, false),
+		bytecode.AddrGlobal(1),
+		bytecode.I32Const(2),
+		bytecode.I64Const(4),
+		bytecode.Instr{Op: bytecode.OpPtrAddDynamic},
+		bytecode.Load(bytecode.TypeI32, 4, false),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "g", Kind: bytecode.GlobalVar, Size: 12, Align: 4})
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 31 {
+		t.Fatalf("exit code = %d, want 31", st.Code)
+	}
+}
+
+func TestRunPtrAddDynamicRejectsZeroStride(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrGlobal(1),
+		bytecode.I32Const(1),
+		bytecode.I64Const(0),
+		bytecode.Instr{Op: bytecode.OpPtrAddDynamic},
+		bytecode.Instr{Op: bytecode.OpPop},
+		bytecode.I32Const(0),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "g", Kind: bytecode.GlobalVar, Size: 4, Align: 4})
+	_, err := runModule(t, mod)
+	if err == nil || !strings.Contains(err.Error(), "invalid element size") {
+		t.Fatalf("Run error = %v, want invalid element size", err)
+	}
+}
+
+func TestRunLoadConst(t *testing.T) {
+	mod := testMainModule(
+		bytecode.Instr{Op: bytecode.OpLoadConst, Type: bytecode.TypeI32, Global: 1, Int: 4},
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Globals = append(mod.Globals, bytecode.Global{
+		ID:    1,
+		Name:  "c",
+		Kind:  bytecode.GlobalVar,
+		Size:  8,
+		Align: 4,
+		Init:  bytecode.InitData{Bytes: []byte{0, 0, 0, 0, 41, 0, 0, 0}},
+	})
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 41 {
+		t.Fatalf("exit code = %d, want 41", st.Code)
+	}
+}
+
+func TestRunAddressAccessorsTrapOnInvalidIDsWithoutPanic(t *testing.T) {
+	tests := []struct {
+		name string
+		ins  bytecode.Instr
+		want string
+	}{
+		{"global", bytecode.AddrGlobal(9), "invalid global id"},
+		{"string", bytecode.AddrString(9), "invalid string id"},
+		{"func", bytecode.AddrFunc(9), "invalid function address id"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("Run panicked: %v", r)
+				}
+			}()
+			_, err := runProgram(t, context.Background(), testMainModule(tt.ins), RunOptions{})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Run error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunReadonlyGlobalWriteTraps(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrGlobal(1),
+		bytecode.I32Const(99),
+		bytecode.Store(bytecode.TypeI32, 4, false),
+		bytecode.I32Const(0),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "ro", Kind: bytecode.GlobalVar, Size: 4, Align: 4, Readonly: true})
+	_, err := runModule(t, mod)
+	if err == nil || !strings.Contains(err.Error(), "readonly") {
+		t.Fatalf("Run error = %v, want readonly", err)
+	}
+}
+
+func TestRunStringWriteTraps(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrString(0),
+		bytecode.I32Const(99),
+		bytecode.Store(bytecode.TypeI32, 4, false),
+		bytecode.I32Const(0),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Strings = []bytecode.StringConst{{ID: 0, Value: "test", Bytes: []byte("test\x00")}}
+	_, err := runModule(t, mod)
+	if err == nil || !strings.Contains(err.Error(), "readonly") {
+		t.Fatalf("Run error = %v, want readonly", err)
+	}
+}
+
+func TestRunPtrAddNegativeIndex(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrGlobal(1),
+		bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: 8},
+		bytecode.I32Const(-1),
+		bytecode.Instr{Op: bytecode.OpPtrAdd, Size: 4},
+		bytecode.I32Const(37),
+		bytecode.Store(bytecode.TypeI32, 4, false),
+		bytecode.AddrGlobal(1),
+		bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: 4},
+		bytecode.Load(bytecode.TypeI32, 4, false),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "g", Kind: bytecode.GlobalVar, Size: 12, Align: 4})
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 37 {
+		t.Fatalf("exit code = %d, want 37", st.Code)
+	}
+}
+
+func TestRunPtrAddRejectsInvalidElementSize(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrGlobal(1),
+		bytecode.I32Const(1),
+		bytecode.Instr{Op: bytecode.OpPtrAdd, Size: 0},
+		bytecode.Instr{Op: bytecode.OpPop},
+		bytecode.I32Const(0),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "g", Kind: bytecode.GlobalVar, Size: 4, Align: 4})
+	_, err := runModule(t, mod)
+	if err == nil || !strings.Contains(err.Error(), "invalid element size") {
+		t.Fatalf("Run error = %v, want invalid element size", err)
+	}
+}
+
+func TestVMPointerDiffChecksScaledQuotient(t *testing.T) {
+	got, err := pointerDiff(math.MaxUint64, 0, 2)
+	if err != nil {
+		t.Fatalf("pointerDiff: %v", err)
+	}
+	if got != math.MaxInt64 {
+		t.Fatalf("pointerDiff = %d, want %d", got, int64(math.MaxInt64))
 	}
 }
 
