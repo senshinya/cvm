@@ -356,6 +356,10 @@ func (g *generator) writeStaticScalarInitializer(buf []byte, relocs *[]bytecode.
 		}
 	case *sema.CompoundLit:
 		return g.writeStaticInitializer(buf, relocs, offset, x.Init, typ)
+	case *sema.CallExpr:
+		if ok, err := g.writeStaticBuiltinComplex(buf, offset, x, typ); ok || err != nil {
+			return err
+		}
 	case *sema.IntLit:
 		return g.writeStaticInteger(buf, offset, typ, x.Value)
 	case *sema.CharLit:
@@ -375,6 +379,33 @@ func (g *generator) writeStaticScalarInitializer(buf []byte, relocs *[]bytecode.
 		}
 	}
 	return fmt.Errorf("static initializer lowering is not implemented for %T into %s", init, typ)
+}
+
+func (g *generator) writeStaticBuiltinComplex(buf []byte, offset int64, call *sema.CallExpr, typ sema.Type) (bool, error) {
+	if call == nil || !isComplexType(typ) {
+		return false, nil
+	}
+	vr := functionVarRef(call.Callee)
+	if vr == nil || vr.Sym == nil || vr.Sym.Name != "__builtin_complex" {
+		return false, nil
+	}
+	if len(call.Args) != 2 {
+		return true, fmt.Errorf("__builtin_complex initializer has %d args, want 2", len(call.Args))
+	}
+	realType, err := complexRealType(typ)
+	if err != nil {
+		return true, err
+	}
+	for i, arg := range call.Args {
+		value, ok := staticFloatingValue(arg)
+		if !ok {
+			return true, fmt.Errorf("__builtin_complex argument %d is not a static arithmetic constant", i)
+		}
+		if err := g.writeStaticFloat(buf, offset+int64(i)*g.sizeof(realType), realType, value); err != nil {
+			return true, err
+		}
+	}
+	return true, nil
 }
 
 func staticCompoundLiteralAddressOperand(e sema.Expr) *sema.CompoundLit {
@@ -1029,6 +1060,33 @@ func staticIntegerValue(init sema.Expr) (int64, bool) {
 			return 0, true
 		}
 		return x.Enumerator.Value, true
+	default:
+		return 0, false
+	}
+}
+
+func staticFloatingValue(init sema.Expr) (float64, bool) {
+	switch x := init.(type) {
+	case *sema.InitList:
+		if len(x.Elems) == 0 {
+			return 0, true
+		}
+		return staticFloatingValue(x.Elems[0].Value)
+	case *sema.ImplicitCast:
+		return staticFloatingValue(x.X)
+	case *sema.ExplicitCast:
+		return staticFloatingValue(x.X)
+	case *sema.FloatLit:
+		return x.Value, true
+	case *sema.IntLit:
+		return float64(x.Value), true
+	case *sema.CharLit:
+		return float64(x.Value), true
+	case *sema.EnumRef:
+		if x.Enumerator == nil {
+			return 0, true
+		}
+		return float64(x.Enumerator.Value), true
 	default:
 		return 0, false
 	}
