@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"fmt"
+	"path"
 	"strconv"
 	"strings"
 	"testing"
@@ -25,11 +27,28 @@ func TestGCCExecutionManifestParses(t *testing.T) {
 	}
 }
 
+func TestGCCExecutionManifestRejectsEscapingPath(t *testing.T) {
+	content := "path\texit\tcategory\treason\n" +
+		"sema/testdata/gcc-c99/accept/../reject/foo.c\t0\tarithmetic\tescapes accept root\n"
+	_, err := parseGCCExecManifestContent(content)
+	if err == nil {
+		t.Fatal("expected traversal path to be rejected")
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
+	cases, err := parseGCCExecManifestContent(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cases
+}
+
+func parseGCCExecManifestContent(content string) ([]gccExecCase, error) {
 	lines := strings.Split(content, "\n")
 	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "path\texit\tcategory\treason" {
-		t.Fatalf("manifest header is missing or malformed: %q", firstManifestLine(content))
+		return nil, fmt.Errorf("manifest header is missing or malformed: %q", firstManifestLine(content))
 	}
 	var cases []gccExecCase
 	seen := map[string]bool{}
@@ -39,32 +58,38 @@ func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 		}
 		fields := strings.Split(line, "\t")
 		if len(fields) != 4 {
-			t.Fatalf("manifest line %d malformed: %q", lineNo+2, line)
+			return nil, fmt.Errorf("manifest line %d malformed: %q", lineNo+2, line)
 		}
 		if seen[fields[0]] {
-			t.Fatalf("manifest line %d duplicates path %s", lineNo+2, fields[0])
+			return nil, fmt.Errorf("manifest line %d duplicates path %s", lineNo+2, fields[0])
 		}
 		seen[fields[0]] = true
 		if !isAllowedGCCExecPath(fields[0]) {
-			t.Fatalf("manifest line %d path is outside supported GCC accept fixture roots: %s", lineNo+2, fields[0])
+			return nil, fmt.Errorf("manifest line %d path is outside supported GCC accept fixture roots: %s", lineNo+2, fields[0])
 		}
 		exitCode, err := strconv.Atoi(fields[1])
 		if err != nil {
-			t.Fatalf("manifest line %d has invalid exit code %q: %v", lineNo+2, fields[1], err)
+			return nil, fmt.Errorf("manifest line %d has invalid exit code %q: %v", lineNo+2, fields[1], err)
 		}
 		if strings.TrimSpace(fields[2]) == "" {
-			t.Fatalf("manifest line %d has empty category", lineNo+2)
+			return nil, fmt.Errorf("manifest line %d has empty category", lineNo+2)
 		}
 		if strings.TrimSpace(fields[3]) == "" {
-			t.Fatalf("manifest line %d has empty reason", lineNo+2)
+			return nil, fmt.Errorf("manifest line %d has empty reason", lineNo+2)
 		}
 		cases = append(cases, gccExecCase{path: fields[0], exitCode: exitCode, category: fields[2], reason: fields[3]})
 	}
-	return cases
+	return cases, nil
 }
 
-func isAllowedGCCExecPath(path string) bool {
-	if !strings.HasSuffix(path, ".c") {
+func isAllowedGCCExecPath(manifestPath string) bool {
+	if path.IsAbs(manifestPath) {
+		return false
+	}
+	if cleaned := path.Clean(manifestPath); cleaned != manifestPath {
+		return false
+	}
+	if !strings.HasSuffix(manifestPath, ".c") {
 		return false
 	}
 	roots := []string{
@@ -73,7 +98,7 @@ func isAllowedGCCExecPath(path string) bool {
 		"sema/testdata/gcc-c90-as-c99/accept/",
 	}
 	for _, root := range roots {
-		if strings.HasPrefix(path, root) {
+		if strings.HasPrefix(manifestPath, root) {
 			return true
 		}
 	}
