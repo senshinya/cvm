@@ -33,6 +33,45 @@ func TestPutsWritesCString(t *testing.T) {
 	}
 }
 
+func TestFputsWritesCStringToStderrHostHandle(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	reg := DefaultExternRegistry(&out, &errOut)
+	mem := NewMemory(bytecode.DefaultTarget())
+	addr := mem.AllocBytes("string:0", []byte("hello\x00"), true, blockString)
+	stderr, ok := reg.LookupVariable("stderr", mem)
+	if !ok {
+		t.Fatal("missing stderr extern variable")
+	}
+	fn, _ := reg.Lookup("fputs")
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(addr), PtrValue(stderr)})
+	if err != nil || exit != nil {
+		t.Fatalf("fputs ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if out.String() != "" {
+		t.Fatalf("stdout output = %q, want empty", out.String())
+	}
+	if errOut.String() != "hello" {
+		t.Fatalf("stderr output = %q", errOut.String())
+	}
+}
+
+func TestFputsUnknownStreamHandleReturnsError(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	reg := DefaultExternRegistry(&out, &errOut)
+	mem := NewMemory(bytecode.DefaultTarget())
+	addr := mem.AllocBytes("string:0", []byte("hello\x00"), true, blockString)
+	fn, _ := reg.Lookup("fputs")
+	_, _, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(addr), PtrValue(0xdeadbeef)})
+	if err == nil || !strings.Contains(err.Error(), "unknown stream handle") {
+		t.Fatalf("fputs err = %v, want unknown stream handle", err)
+	}
+	if out.String() != "" || errOut.String() != "" {
+		t.Fatalf("stdout=%q stderr=%q, want no output", out.String(), errOut.String())
+	}
+}
+
 func TestAbortReturnsTrap(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	fn, _ := reg.Lookup("abort")

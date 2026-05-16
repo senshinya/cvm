@@ -18,9 +18,10 @@ type ExternContext struct {
 }
 
 type ExternRegistry struct {
-	funcs  map[string]ExternFunc
-	stdout io.Writer
-	stderr io.Writer
+	funcs       map[string]ExternFunc
+	stdout      io.Writer
+	stderr      io.Writer
+	hostWriters map[uint64]io.Writer
 }
 
 func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
@@ -30,7 +31,12 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	if stderr == nil {
 		stderr = os.Stderr
 	}
-	return &ExternRegistry{funcs: make(map[string]ExternFunc), stdout: stdout, stderr: stderr}
+	return &ExternRegistry{
+		funcs:       make(map[string]ExternFunc),
+		stdout:      stdout,
+		stderr:      stderr,
+		hostWriters: make(map[uint64]io.Writer),
+	}
 }
 
 func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
@@ -75,7 +81,11 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		if _, err := fmt.Fprint(r.externStdout(ec), s); err != nil {
+		w, ok := r.lookupHostWriter(args[1].Int)
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
+		}
+		if _, err := fmt.Fprint(w, s); err != nil {
 			return Value{}, nil, err
 		}
 		return IntValue(bytecode.TypeI32, int64(len(s))), nil, nil
@@ -94,8 +104,14 @@ func (r *ExternRegistry) Lookup(name string) (ExternFunc, bool) {
 
 func (r *ExternRegistry) LookupVariable(name string, mem *Memory) (uint64, bool) {
 	switch name {
-	case "stdout", "stderr":
-		return mem.Alloc("extern:"+name, 8, 8, true, blockHostHandle), true
+	case "stdout":
+		addr := mem.Alloc("extern:"+name, 8, 8, true, blockHostHandle)
+		r.hostWriters[addr] = r.stdout
+		return addr, true
+	case "stderr":
+		addr := mem.Alloc("extern:"+name, 8, 8, true, blockHostHandle)
+		r.hostWriters[addr] = r.stderr
+		return addr, true
 	default:
 		return 0, false
 	}
@@ -110,4 +126,9 @@ func (r *ExternRegistry) externStdout(ec *ExternContext) io.Writer {
 		return ec.Stdout
 	}
 	return r.stdout
+}
+
+func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {
+	w, ok := r.hostWriters[addr]
+	return w, ok
 }
