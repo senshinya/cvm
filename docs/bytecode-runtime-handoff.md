@@ -6,26 +6,22 @@ This document records the current state of the bytecode/runtime work so the bran
 
 ## Repository State
 
-- Workspace: `/Users/shinya/Downloads/cvm/.worktrees/bytecode-runtime-phase-1`
+- Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation commit before this handoff document: `3cb8bc9 support complex scalar initialization`
+- Latest implementation/coverage commit before this handoff document: `34612f9 test(codegen): cover C99 float preprocess fixture`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: none configured for this branch
+- Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
-To make this work available on another device, push this branch first:
-
-```bash
-git push -u origin codex/bytecode-runtime-phase-1
-```
-
-Then on the other device:
+To update this work on another device:
 
 ```bash
 git fetch origin
 git switch -c codex/bytecode-runtime-phase-1 origin/codex/bytecode-runtime-phase-1
 ```
+
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-1` instead.
 
 ## Verification Commands
 
@@ -88,13 +84,15 @@ Recent related commits:
 
 ### Bytecode GCC Compile Coverage
 
-`codegen/testdata/gcc-bytecode-compile.tsv` currently has 174 lines including the header, so 173 fixture entries.
+`codegen/testdata/gcc-bytecode-compile.tsv` currently has 232 lines including the header, so 231 fixture entries.
 
-The bytecode compile suite now covers a large subset of imported GCC accept fixtures from:
+The bytecode compile suite now covers every imported `.c` GCC accept fixture from:
 
 - `sema/testdata/gcc-c99/accept`
 - `sema/testdata/gcc-c99-extra/accept`
 - `sema/testdata/gcc-c90-as-c99/accept`
+
+The coverage check currently returns no uncovered `.c` fixtures for those roots.
 
 Notable recent coverage additions:
 
@@ -110,30 +108,25 @@ Notable recent coverage additions:
 
 Recent commits at the tip of this branch:
 
-- `3cb8bc9 support complex scalar initialization`
-  - Supports real scalar to complex object initialization by zeroing the object and writing the real component.
-  - Supports complex-to-complex copy with per-component cast.
-  - Allows `ObjectAddr` local slots, such as complex parameters, to be used as addresses.
-  - Adds complex/GNU fixture coverage.
+- `34612f9 test(codegen): cover C99 float preprocess fixture`
+  - Adds the final imported C99 accept `.c` fixture that was still outside the bytecode compile manifest.
 
-- `d2d7291 support GNU statement expression bytecode`
-  - Adds `StmtExpr` lowering in codegen.
-  - Preserves the last expression value of GNU statement expressions.
-  - Fixes sema so statement-expression locals are registered in the current function layout context.
-  - Makes address-taken analysis recurse into statement expressions.
+- `e3838e1 fix(codegen): pass static chain captures to nested functions`
+  - Adds minimal static-chain support for GNU nested functions that capture enclosing automatic objects.
+  - Adds capture discovery and passes static-chain environment objects through direct nested calls.
+  - Covers `pr59011.c`.
 
-- `5e9d890 expand c99 bytecode fixture coverage`
-  - Adds 12 C99 fixture entries that already compiled with current implementation.
+- `0bb5caa test(codegen): cover pragma-only GCC fixtures`
+  - Covers imported accept fixtures whose parser output is intentionally empty after preprocessing.
 
-- `c2eee6d support rvalue struct member array decay`
-  - Fixes C99 non-lvalue struct/union member array decay for bytecode generation.
+- `e95a579 test(codegen): cover GCC vector shuffle fixture`
+  - Adds compile validation for vector shuffle coverage already supported by codegen.
 
-- `e93e9b9 support complex tgmath bytecode lowering`
-  - Adds generic tgmath pseudo-call lowering for selected functions.
-  - Handles complex `tgmath` extern dispatch such as `__cvm_tgmath_cexp` and `__cvm_tgmath_cpowf`.
+- `cd7e7bb fix(sema): analyze nested function bodies in scope`
+  - Analyzes GNU nested function bodies while the enclosing function scope is still active.
 
-- `d11b734 fix(sema): isolate C99 statement tag scopes`
-  - Fixes C99 tag scope isolation needed by `c99-scope-1.c`.
+- `c308b7f fix(codegen): lower conditional aggregate initializers`
+  - Lowers conditional aggregate initializer cases needed by imported GCC fixtures.
 
 ## Current Design Notes
 
@@ -164,6 +157,16 @@ The current codegen support includes:
 
 Runtime execution of complex arithmetic is still incomplete. Current work primarily ensures the compiler can produce validated bytecode for more GCC fixtures.
 
+### GNU Nested Functions
+
+Sema now analyzes GNU nested function bodies in their lexical function scope, and codegen has initial static-chain capture support for direct nested function calls that reference enclosing automatic objects.
+
+Current limits:
+
+- escaping nested function addresses and GCC-style trampolines are not implemented
+- indirect calls through nested function pointers with captured state are not implemented
+- the current support is intentionally scoped to compile validated bytecode for known imported GCC accept fixtures
+
 ### Tgmath
 
 `<tgmath.h>` is represented through pseudo functions such as:
@@ -185,24 +188,21 @@ Runtime support exists for real math externs; complex extern runtime behavior re
 - Bytecode design is intended to be complete enough for the compiler artifact, but execution support is still catching up.
 - Complex runtime execution is not complete.
 - Long double runtime memory/operations are still limited in places.
-- Some GCC accept fixtures are still outside the bytecode compile suite.
-- The branch has no upstream; push it before moving to another device.
+- The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation, but runtime execution coverage is still much smaller.
+- Static-chain support is deliberately narrow and does not yet model escaping nested functions or trampolines.
 
 ## Suggested Next Work
 
-Continue expanding GCC fixture coverage in small batches. Good next candidates from the current uncovered set:
+The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots. Suggested next directions:
 
-- `sema/testdata/gcc-c99-extra/accept/Wconversion-integer.c`
-- `sema/testdata/gcc-c99-extra/accept/Wconversion-integer-no-sign.c`
-- `sema/testdata/gcc-c99-extra/accept/Wsign-conversion.c`
-- `sema/testdata/gcc-c99-extra/accept/vla-2.c`
-- `sema/testdata/gcc-c99-extra/accept/vla-26.c`
-- `sema/testdata/gcc-c99-extra/accept/gnu99-named-loops-1.c`
-- `sema/testdata/gcc-c99-extra/accept/const-elim-1.c`
+- Review and harden static-chain capture support, especially diagnostics or explicit failures for escaping nested function addresses.
+- Expand runtime execution coverage fixture-by-fixture, starting with cases that already compile cleanly and exercise existing runtime opcodes.
+- Continue complex and long double runtime work where execution still lags behind bytecode generation.
+- Add a small coverage check script or test to prevent future imported GCC accept `.c` fixtures from silently missing `codegen/testdata/gcc-bytecode-compile.tsv`.
 
 Recommended workflow:
 
-1. Add one or a small related group of GCC accept fixtures to `codegen/testdata/gcc-bytecode-compile.tsv`.
+1. Add one small runtime fixture group or one focused compiler coverage fixture group.
 2. Run a focused test:
 
    ```bash
@@ -229,11 +229,11 @@ git status --short --branch
 git log --oneline --decorate -12
 ```
 
-List still-uncovered GCC accept fixtures:
+List still-uncovered imported GCC accept `.c` fixtures:
 
 ```bash
 comm -23 \
-  <(rg --files sema/testdata/gcc-c99/accept sema/testdata/gcc-c99-extra/accept sema/testdata/gcc-c90-as-c99/accept | sort) \
+  <(find sema/testdata/gcc-c99/accept sema/testdata/gcc-c99-extra/accept sema/testdata/gcc-c90-as-c99/accept -maxdepth 1 -type f -name '*.c' | sort) \
   <(tail -n +2 codegen/testdata/gcc-bytecode-compile.tsv | cut -f1 | sort)
 ```
 
