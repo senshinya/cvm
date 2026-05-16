@@ -91,8 +91,19 @@ func (fg *funcGen) emitAddress(e sema.Expr) error {
 			if pt, ok := sema.Unqual(x.Base.GetType()).(*sema.PointerType); ok {
 				layoutType = pt.Pointee
 			}
-		} else if err := fg.emitAddress(x.Base); err != nil {
-			return err
+		} else {
+			if x.Base.GetCategory() == sema.LValue {
+				if err := fg.emitAddress(x.Base); err != nil {
+					return err
+				}
+			} else {
+				if err := fg.emitValue(x.Base); err != nil {
+					return err
+				}
+				if err := fg.ensureObjectAddr(x.Base.GetType()); err != nil {
+					return err
+				}
+			}
 		}
 		layout, err := fg.g.lowerLayout(layoutType)
 		if err != nil {

@@ -1,6 +1,10 @@
 path	reason
+sema/testdata/gcc-c99/accept/c99-array-lval-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99/accept/c99-array-lval-2.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99/accept/c99-array-lval-3.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99/accept/c99-array-lval-4.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99/accept/c99-array-lval-6.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99/accept/c99-array-lval-7.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99/accept/c99-bool-4.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99/accept/c99-compare-incomplete-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99/accept/c99-condexpr-1.c	current GCC accept fixture compiles to validated bytecode
