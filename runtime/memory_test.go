@@ -42,3 +42,21 @@ func TestMemoryReadCString(t *testing.T) {
 		t.Fatalf("ReadCString = %q, want hello", got)
 	}
 }
+
+func TestMemoryReadWritePointer32BitTarget(t *testing.T) {
+	target := bytecode.DefaultTarget()
+	target.PointerSize = 4
+	target.PointerAlign = 4
+	mem := NewMemory(target)
+	addr := mem.Alloc("global:p", 4, 4, false, blockGlobal)
+	if err := mem.Store(addr, bytecode.TypePtr, 4, PtrValue(0x11223344)); err != nil {
+		t.Fatalf("Store: %v", err)
+	}
+	got, err := mem.Load(addr, bytecode.TypePtr, 4)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.Int != 0x11223344 {
+		t.Fatalf("loaded %#x, want 0x11223344", got.Int)
+	}
+}

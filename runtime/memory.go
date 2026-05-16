@@ -72,8 +72,10 @@ func (m *Memory) Load(addr uint64, t bytecode.ValueType, align int64) (Value, er
 		return UIntValue(t, uint64(m.order().Uint16(raw))), nil
 	case bytecode.TypeI32, bytecode.TypeU32:
 		return UIntValue(t, uint64(m.order().Uint32(raw))), nil
-	case bytecode.TypeI64, bytecode.TypeU64, bytecode.TypePtr, bytecode.TypeObjectAddr:
+	case bytecode.TypeI64, bytecode.TypeU64:
 		return UIntValue(t, m.order().Uint64(raw)), nil
+	case bytecode.TypePtr, bytecode.TypeObjectAddr:
+		return m.loadPointer(raw, t)
 	default:
 		return Value{}, fmt.Errorf("unsupported load type %s", t)
 	}
@@ -92,8 +94,10 @@ func (m *Memory) Store(addr uint64, t bytecode.ValueType, align int64, v Value) 
 		m.order().PutUint16(raw, uint16(v.Int))
 	case bytecode.TypeI32, bytecode.TypeU32:
 		m.order().PutUint32(raw, uint32(v.Int))
-	case bytecode.TypeI64, bytecode.TypeU64, bytecode.TypePtr, bytecode.TypeObjectAddr:
+	case bytecode.TypeI64, bytecode.TypeU64:
 		m.order().PutUint64(raw, v.Int)
+	case bytecode.TypePtr, bytecode.TypeObjectAddr:
+		return m.storePointer(raw, v.Int)
 	default:
 		return fmt.Errorf("unsupported store type %s", t)
 	}
@@ -190,6 +194,29 @@ func (m *Memory) order() binary.ByteOrder {
 	return binary.BigEndian
 }
 
+func (m *Memory) loadPointer(raw []byte, t bytecode.ValueType) (Value, error) {
+	switch m.target.PointerSize {
+	case 4:
+		return UIntValue(t, uint64(m.order().Uint32(raw))), nil
+	case 8:
+		return UIntValue(t, m.order().Uint64(raw)), nil
+	default:
+		return Value{}, fmt.Errorf("unsupported pointer size %d", m.target.PointerSize)
+	}
+}
+
+func (m *Memory) storePointer(raw []byte, ptr uint64) error {
+	switch m.target.PointerSize {
+	case 4:
+		m.order().PutUint32(raw, uint32(ptr))
+	case 8:
+		m.order().PutUint64(raw, ptr)
+	default:
+		return fmt.Errorf("unsupported pointer size %d", m.target.PointerSize)
+	}
+	return nil
+}
+
 func valueSize(target bytecode.TargetInfo, t bytecode.ValueType) int64 {
 	switch t {
 	case bytecode.TypeBool:
@@ -200,8 +227,10 @@ func valueSize(target bytecode.TargetInfo, t bytecode.ValueType) int64 {
 		return 2
 	case bytecode.TypeI32, bytecode.TypeU32, bytecode.TypeF32:
 		return 4
-	case bytecode.TypeI64, bytecode.TypeU64, bytecode.TypeF64, bytecode.TypePtr, bytecode.TypeObjectAddr:
+	case bytecode.TypeI64, bytecode.TypeU64, bytecode.TypeF64:
 		return 8
+	case bytecode.TypePtr, bytecode.TypeObjectAddr:
+		return target.PointerSize
 	default:
 		return 0
 	}
