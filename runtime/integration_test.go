@@ -90,6 +90,116 @@ func TestCompileAndRunLocalArrayAddressing(t *testing.T) {
 	}
 }
 
+func TestCompileAndRunCommaExpressionSequencesAndReturnsRightValue(t *testing.T) {
+	st, err := compileAndRun(t, `int main(void) { int x = 1; return (x = x + 2, x * 3); }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 9 {
+		t.Fatalf("exit code = %d, want 9", st.Code)
+	}
+}
+
+func TestCompileAndRunPostDecrementReturnsOldValueAndUpdatesObject(t *testing.T) {
+	st, err := compileAndRun(t, `int main(void) { int x = 2; int old = x--; return old * 10 + x; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 21 {
+		t.Fatalf("exit code = %d, want 21", st.Code)
+	}
+}
+
+func TestCompileAndRunBitwiseNotUsesPromotedIntegerWidth(t *testing.T) {
+	st, err := compileAndRun(t, `int main(void) { _Bool u = 0; if (~u != -1) return 1; u = 1; if (~u != -2) return 2; return 7; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+}
+
+func TestCompileAndRunConditionalExpressionSelectsOnlyChosenBranch(t *testing.T) {
+	st, err := compileAndRun(t, `int main(void) { int x = 0; int y = 1 ? (x = 4) : (x = 9); return y * 10 + x; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 44 {
+		t.Fatalf("exit code = %d, want 44", st.Code)
+	}
+}
+
+func TestCompileAndRunCompoundAssignUsesArithmeticThenAssignmentConversion(t *testing.T) {
+	st, err := compileAndRun(t, `int main(void) { _Bool u = 1; if ((u /= 2) != 0) return 1; int j = 1; j += 4; return j; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 5 {
+		t.Fatalf("exit code = %d, want 5", st.Code)
+	}
+}
+
+func TestCompileAndRunBoolArraySubscriptPromotesIndexForPointerAdd(t *testing.T) {
+	st, err := compileAndRun(t, `int main(void) { const char *t = "_B"; _Bool u = 1; return t[u] == 'B' && u[t] == 'B' ? 7 : 1; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+}
+
+func TestCompileAndRunBoolDecrementStoresBoolConvertedValue(t *testing.T) {
+	st, err := compileAndRun(t, `int main(void) { _Bool u = 0; if (u-- != 0) return 1; if (u != 1) return 2; if (--u != 0) return 3; return 7; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+}
+
+func TestCompileAndRunBoolBitFieldStoresAndLoadsConvertedValue(t *testing.T) {
+	st, err := compileAndRun(t, `struct S { _Bool b : 1; }; int main(void) { struct S s; s.b = 2; if (s.b != 1) return 1; s.b = 0; if (s.b != 0) return 2; s.b = 0.2; if (s.b != 1) return 3; s.b = &s; if (s.b != 1) return 4; return 7; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+}
+
+func TestCompileAndRunStaticCompoundLiteralPointerInitializers(t *testing.T) {
+	st, err := compileAndRun(t, `int *p = &(int){3}; int *q = (int[]){4, 5}; int main(void) { if (*p != 3 || q[1] != 5) return 1; *p = 7; q[0] = 8; return *p + q[0]; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 15 {
+		t.Fatalf("exit code = %d, want 15", st.Code)
+	}
+}
+
+func TestCompileAndRunIncDecAddressableMemberAndIndex(t *testing.T) {
+	st, err := compileAndRun(t, `struct S { int a; int b; }; int main(void) { struct S s = {1, 4}; int a[2] = {3, 9}; if (s.a++ != 1) return 1; if (--s.b != 3) return 2; if (a[0]++ != 3) return 3; return s.a + s.b + a[0]; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 9 {
+		t.Fatalf("exit code = %d, want 9", st.Code)
+	}
+}
+
+func TestCompileAndRunCompoundAssignAddressableIndex(t *testing.T) {
+	st, err := compileAndRun(t, `int main(void) { int a[4] = {0, 2, 5, 1}; if ((a[1] *= a[2]) != 10) return 1; if ((a[2] -= a[3]) != 4) return 2; if ((a[3] += 7) != 8) return 3; return a[1] + a[2] + a[3]; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 22 {
+		t.Fatalf("exit code = %d, want 22", st.Code)
+	}
+}
+
 func TestCompileAndRunVoidCastDiscardsValue(t *testing.T) {
 	st, err := compileAndRun(t, `int main(void) { if (1) { (void)0; } return 7; }`, nil)
 	if err != nil {

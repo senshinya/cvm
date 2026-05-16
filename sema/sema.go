@@ -331,6 +331,11 @@ func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *P
 	}
 	if node.ReducedBy(parser.InitDeclarator, 2) {
 		vd.Init = s.typeInitializer(node.Children[2], t)
+		vd.T = s.completeUnsizedArrayInitializerType(vd.T, vd.Init)
+		sym.T = vd.T
+		if il, ok := vd.Init.(*InitList); ok {
+			il.T = vd.T
+		}
 	}
 	prog.Globals = append(prog.Globals, vd)
 }

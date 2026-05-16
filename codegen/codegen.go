@@ -12,12 +12,13 @@ func Generate(prog *sema.Program) (*bytecode.Module, error) {
 		return nil, err
 	}
 	g := &generator{
-		prog:      prog,
-		mod:       bytecode.NewModule(),
-		globalMap: map[*sema.Symbol]int{},
-		sigMap:    map[string]int{},
-		layoutMap: map[sema.Type]int{},
-		stringMap: map[string]int{},
+		prog:                     prog,
+		mod:                      bytecode.NewModule(),
+		globalMap:                map[*sema.Symbol]int{},
+		sigMap:                   map[string]int{},
+		layoutMap:                map[sema.Type]int{},
+		stringMap:                map[string]int{},
+		staticCompoundLiteralMap: map[*sema.CompoundLit]int{},
 	}
 	if err := g.emitModule(); err != nil {
 		return nil, err
@@ -29,13 +30,14 @@ func Generate(prog *sema.Program) (*bytecode.Module, error) {
 }
 
 type generator struct {
-	prog      *sema.Program
-	mod       *bytecode.Module
-	globalMap map[*sema.Symbol]int
-	sigMap    map[string]int
-	layoutMap map[sema.Type]int
-	stringMap map[string]int
-	fn        *funcGen
+	prog                     *sema.Program
+	mod                      *bytecode.Module
+	globalMap                map[*sema.Symbol]int
+	sigMap                   map[string]int
+	layoutMap                map[sema.Type]int
+	stringMap                map[string]int
+	staticCompoundLiteralMap map[*sema.CompoundLit]int
+	fn                       *funcGen
 }
 
 type funcGen struct {
@@ -345,6 +347,9 @@ func isTerminalInstr(ins bytecode.Instr) bool {
 }
 
 func castOpFor(kind sema.CastKind, from, to bytecode.ValueType) bytecode.CastOp {
+	if to == bytecode.TypeBool && (isIntegerType(from) || isFloatType(from) || isPointerType(from)) {
+		return bytecode.CastBool
+	}
 	switch kind {
 	case sema.BoolConversion:
 		return bytecode.CastBool

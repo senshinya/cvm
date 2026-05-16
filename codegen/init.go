@@ -31,14 +31,54 @@ type initSpan struct {
 }
 
 func (g *generator) internString(value string) int {
-	if id, ok := g.stringMap[value]; ok {
+	bytes := append([]byte(value), 0)
+	return g.internStringBytes(value, bytes)
+}
+
+func (g *generator) internStringLit(lit *sema.StringLit) int {
+	if lit == nil {
+		return g.internString("")
+	}
+	bytes := append([]byte(nil), []byte(lit.Value)...)
+	bytes = append(bytes, 0)
+	if at, ok := sema.Unqual(lit.T).(*sema.ArrayType); ok {
+		elemSize := g.sizeof(at.Elem)
+		if elemSize > 1 {
+			bytes = make([]byte, int64(len(lit.Value)+1)*elemSize)
+			for i := 0; i < len(lit.Value); i++ {
+				writeStringElement(bytes, int64(i)*elemSize, elemSize, int64(lit.Value[i]))
+			}
+		}
+	}
+	return g.internStringBytes(lit.Value, bytes)
+}
+
+func (g *generator) internStringBytes(value string, bytes []byte) int {
+	key := fmt.Sprintf("%s/%x", value, bytes)
+	if id, ok := g.stringMap[key]; ok {
 		return id
 	}
 	id := len(g.mod.Strings)
-	bytes := append([]byte(value), 0)
 	g.mod.Strings = append(g.mod.Strings, bytecode.StringConst{ID: id, Value: value, Bytes: bytes})
-	g.stringMap[value] = id
+	g.stringMap[key] = id
 	return id
+}
+
+func writeStringElement(buf []byte, offset int64, size int64, value int64) {
+	switch size {
+	case 1:
+		buf[offset] = byte(value)
+	case 2:
+		binary.LittleEndian.PutUint16(buf[offset:offset+2], uint16(value))
+	case 4:
+		binary.LittleEndian.PutUint32(buf[offset:offset+4], uint32(value))
+	case 8:
+		binary.LittleEndian.PutUint64(buf[offset:offset+8], uint64(value))
+	default:
+		for i := int64(0); i < size; i++ {
+			buf[offset+i] = byte(uint64(value) >> uint(8*i))
+		}
+	}
 }
 
 func (g *generator) emitStaticInitializers() error {
@@ -68,17 +108,17 @@ func (g *generator) emitStaticVarInitializer(vd *sema.VarDecl) error {
 	if vd.Sym.GlobalID < 0 || vd.Sym.GlobalID >= len(g.mod.Globals) {
 		return fmt.Errorf("static initializer for %q references invalid global %d", vd.Sym.Name, vd.Sym.GlobalID)
 	}
-	global := &g.mod.Globals[vd.Sym.GlobalID]
-	global.Readonly = isConst(vd.T)
+	globalID := vd.Sym.GlobalID
+	g.mod.Globals[globalID].Readonly = isConst(vd.T)
 	if vd.Init == nil {
-		global.Init = bytecode.InitData{ZeroFill: global.Size}
+		g.mod.Globals[globalID].Init = bytecode.InitData{ZeroFill: g.mod.Globals[globalID].Size}
 		return nil
 	}
 	init, err := g.emitStaticInitializer(vd.Init, vd.T)
 	if err != nil {
 		return err
 	}
-	global.Init = init
+	g.mod.Globals[globalID].Init = init
 	return nil
 }
 
@@ -185,6 +225,9 @@ func (g *generator) writeStaticDesignatedElem(buf []byte, relocs *[]bytecode.Rel
 		return 0, err
 	}
 	if !isObjectType(span.typ) || useWholeInitializer(init, span.typ) {
+		if err := g.zeroStaticDesignatedObject(buf, offset, typ, ds); err != nil {
+			return 0, err
+		}
 		if err := g.writeStaticDesignatedInitializer(buf, relocs, offset, typ, ds, init); err != nil {
 			return 0, err
 		}
@@ -199,6 +242,45 @@ func (g *generator) writeStaticDesignatedElem(buf []byte, relocs *[]bytecode.Rel
 		return 0, err
 	}
 	return span.start + 1, nil
+}
+
+func (g *generator) zeroStaticDesignatedObject(buf []byte, offset int64, typ sema.Type, ds []sema.Designator) error {
+	cur := typ
+	base := offset
+	for _, d := range ds {
+		switch d.Kind {
+		case sema.DesigArrayIndex:
+			at, ok := sema.Unqual(cur).(*sema.ArrayType)
+			if !ok {
+				return fmt.Errorf("array designator applied to %s", cur)
+			}
+			base += d.Index * g.sizeof(at.Elem)
+			cur = at.Elem
+		case sema.DesigFieldName:
+			field := d.Field
+			if field == nil {
+				field = lookupField(cur, "")
+			}
+			if field == nil {
+				return fmt.Errorf("field designator has no resolved field")
+			}
+			if field.IsBitField {
+				return nil
+			}
+			base += field.Offset
+			cur = field.T
+		default:
+			return fmt.Errorf("unsupported designator kind %d", d.Kind)
+		}
+	}
+	size := g.sizeof(cur)
+	if err := checkStaticRange(buf, base, size); err != nil {
+		return err
+	}
+	for i := int64(0); i < size; i++ {
+		buf[base+i] = 0
+	}
+	return nil
 }
 
 func (g *generator) writeStaticDesignatedInitializer(buf []byte, relocs *[]bytecode.Relocation, offset int64, typ sema.Type, ds []sema.Designator, init sema.Expr) error {
@@ -259,10 +341,21 @@ func (g *generator) writeStaticScalarInitializer(buf []byte, relocs *[]bytecode.
 			if sl, ok := stringLiteralInitializer(x.X); ok {
 				return g.writeStaticStringPointer(relocs, offset, sl)
 			}
+			if cl := staticCompoundLiteralAddressOperand(x.X); cl != nil {
+				return g.writeStaticCompoundLiteralPointer(relocs, offset, cl)
+			}
 		}
 		return g.writeStaticScalarInitializer(buf, relocs, offset, x.X, typ)
 	case *sema.ExplicitCast:
 		return g.writeStaticScalarInitializer(buf, relocs, offset, x.X, typ)
+	case *sema.UnOp:
+		if x.Op == sema.UnAddr {
+			if cl, ok := x.X.(*sema.CompoundLit); ok {
+				return g.writeStaticCompoundLiteralPointer(relocs, offset, cl)
+			}
+		}
+	case *sema.CompoundLit:
+		return g.writeStaticInitializer(buf, relocs, offset, x.Init, typ)
 	case *sema.IntLit:
 		return g.writeStaticInteger(buf, offset, typ, x.Value)
 	case *sema.CharLit:
@@ -282,6 +375,58 @@ func (g *generator) writeStaticScalarInitializer(buf []byte, relocs *[]bytecode.
 		}
 	}
 	return fmt.Errorf("static initializer lowering is not implemented for %T into %s", init, typ)
+}
+
+func staticCompoundLiteralAddressOperand(e sema.Expr) *sema.CompoundLit {
+	for {
+		ic, ok := e.(*sema.ImplicitCast)
+		if !ok || ic.Kind != sema.LValueToRValue {
+			break
+		}
+		e = ic.X
+	}
+	if cl, ok := e.(*sema.CompoundLit); ok {
+		return cl
+	}
+	return nil
+}
+
+func (g *generator) writeStaticCompoundLiteralPointer(relocs *[]bytecode.Relocation, offset int64, cl *sema.CompoundLit) error {
+	id, err := g.ensureStaticCompoundLiteral(cl)
+	if err != nil {
+		return err
+	}
+	*relocs = append(*relocs, bytecode.Relocation{Offset: offset, Kind: bytecode.RelocGlobal, Target: id})
+	return nil
+}
+
+func (g *generator) ensureStaticCompoundLiteral(cl *sema.CompoundLit) (int, error) {
+	if id, ok := g.staticCompoundLiteralMap[cl]; ok {
+		return id, nil
+	}
+	id := len(g.mod.Globals)
+	g.staticCompoundLiteralMap[cl] = id
+	global := bytecode.Global{
+		ID:       id,
+		Name:     fmt.Sprintf(".compound.%d", id),
+		Kind:     bytecode.GlobalVar,
+		Func:     -1,
+		Sig:      bytecode.NoFuncSig,
+		Size:     g.sizeof(cl.T),
+		Align:    g.alignof(cl.T),
+		Readonly: isConst(cl.T),
+	}
+	global.Init = bytecode.InitData{ZeroFill: global.Size}
+	g.mod.Globals = append(g.mod.Globals, global)
+	if _, err := g.lowerLayout(cl.T); err != nil {
+		return 0, err
+	}
+	init, err := g.emitStaticInitializer(cl.Init, cl.T)
+	if err != nil {
+		return 0, err
+	}
+	g.mod.Globals[id].Init = init
+	return id, nil
 }
 
 func (g *generator) writeStaticStringArray(buf []byte, offset int64, lit *sema.StringLit, typ sema.Type) error {
@@ -304,7 +449,7 @@ func (g *generator) writeStaticStringArray(buf []byte, offset int64, lit *sema.S
 }
 
 func (g *generator) writeStaticStringPointer(relocs *[]bytecode.Relocation, offset int64, lit *sema.StringLit) error {
-	*relocs = append(*relocs, bytecode.Relocation{Offset: offset, Kind: bytecode.RelocString, Target: g.internString(lit.Value)})
+	*relocs = append(*relocs, bytecode.Relocation{Offset: offset, Kind: bytecode.RelocString, Target: g.internStringLit(lit)})
 	return nil
 }
 

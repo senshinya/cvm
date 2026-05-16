@@ -111,12 +111,12 @@ func (fg *funcGen) emitAddress(e sema.Expr) error {
 		if err := fg.ensureObjectAddr(x.Base.GetType()); err != nil {
 			return err
 		}
-		if err := fg.emitValue(x.Index); err != nil {
+		if _, err := fg.emitPtrIndexValue(x.Index); err != nil {
 			return err
 		}
 		return fg.emitPtrAddForExpr(x.Base, x.Base.GetType())
 	case *sema.StringLit:
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrString(fg.g.internString(x.Value)))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrString(fg.g.internStringLit(x)))
 		return nil
 	case *sema.CompoundLit:
 		object, err := fg.newLocalObject(".compound", x.T)

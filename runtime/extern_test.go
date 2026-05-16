@@ -11,7 +11,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "abort", "puts", "fputs", "strcmp"} {
+	for _, name := range []string{"exit", "abort", "puts", "fputs", "strcmp", "memcmp"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -143,6 +143,41 @@ func TestStrcmpRequiresMemory(t *testing.T) {
 	_, _, err := fn(context.Background(), nil, []Value{PtrValue(0), PtrValue(0)})
 	if err == nil || !strings.Contains(err.Error(), "strcmp requires memory") {
 		t.Fatalf("strcmp err = %v, want memory error", err)
+	}
+}
+
+func TestMemcmpComparesBytes(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("memcmp")
+	if !ok {
+		t.Fatal("missing memcmp extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	left := mustAllocBytes(t, mem, "memcmp:left", []byte{0, 1, 2, 3}, true, blockString)
+	same := mustAllocBytes(t, mem, "memcmp:same", []byte{0, 1, 2, 9}, true, blockString)
+	diff := mustAllocBytes(t, mem, "memcmp:diff", []byte{0, 1, 4, 3}, true, blockString)
+	less := mustAllocBytes(t, mem, "memcmp:less", []byte{0, 1, 0, 3}, true, blockString)
+	tests := []struct {
+		name  string
+		right uint64
+		n     int64
+		want  int64
+	}{
+		{name: "zero length", right: diff, n: 0, want: 0},
+		{name: "equal prefix", right: same, n: 3, want: 0},
+		{name: "left less", right: diff, n: 4, want: -1},
+		{name: "left greater", right: less, n: 4, want: 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(left), ObjectAddrValue(tt.right), UIntValue(bytecode.TypeU64, uint64(tt.n))})
+			if err != nil || exit != nil {
+				t.Fatalf("memcmp ret=%#v exit=%#v err=%v", ret, exit, err)
+			}
+			if ret.Type != bytecode.TypeI32 || int64(int32(ret.Int)) != tt.want {
+				t.Fatalf("memcmp = %#v, want i32 %d", ret, tt.want)
+			}
+		})
 	}
 }
 

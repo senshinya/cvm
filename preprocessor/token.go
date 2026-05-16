@@ -87,12 +87,16 @@ func concatenateStringTokens(tokens []PPToken, start int) (PPToken, int) {
 }
 
 func mergeStringLexemes(a, b string) string {
+	prefix := ""
+	if strings.HasPrefix(a, "L") || strings.HasPrefix(b, "L") {
+		prefix = "L"
+	}
 	ap := strings.TrimPrefix(a, "L")
 	bp := strings.TrimPrefix(b, "L")
 	if len(ap) < 2 || len(bp) < 2 {
 		return a + b
 	}
-	return `"` + ap[1:len(ap)-1] + bp[1:len(bp)-1] + `"`
+	return prefix + `"` + ap[1:len(ap)-1] + bp[1:len(bp)-1] + `"`
 }
 
 func convertOneToken(tok PPToken) (entity.Token, error) {
@@ -112,7 +116,7 @@ func convertOneToken(tok PPToken) (entity.Token, error) {
 		return entity.Token{}, ppError(tok.Location, "unknown punctuator %q", tok.Lexeme)
 	case PPNumber, PPString, PPCharacter:
 		lexeme := tok.Lexeme
-		if (tok.Kind == PPString || tok.Kind == PPCharacter) && strings.HasPrefix(lexeme, "L") {
+		if tok.Kind == PPCharacter && strings.HasPrefix(lexeme, "L") {
 			lexeme = strings.TrimPrefix(lexeme, "L")
 		}
 		scanned, err := lexer.NewLexer(lexeme).ScanTokens()

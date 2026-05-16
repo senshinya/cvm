@@ -9,11 +9,11 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 
 | stage | count |
 | --- | ---: |
-| ok | 7 |
+| ok | 14 |
 | preprocess | 0 |
 | parse | 0 |
 | sema | 0 |
-| codegen | 7 |
+| codegen | 0 |
 | encode-load | 3 |
 | runtime | 0 |
 | exit-mismatch | 0 |
@@ -23,27 +23,22 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 
 | path | observed exit |
 | --- | ---: |
+| `sema/testdata/gcc-c99/accept/c99-bool-1.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-bool-3.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-bool-4.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-complit-1.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-digraph-1.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-fordecl-1.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-func-1.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-func-3.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-hexfloat-2.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-init-1.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-main-1.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-mixdecl-1.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-scope-1.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-scope-2.c` | 0 |
 
 ## Failures By Stage
-
-### codegen
-
-| path | error |
-| --- | --- |
-| `sema/testdata/gcc-c99/accept/c99-bool-1.c` | `76:7: codegen *sema.UnOp emitValue: unary expression lowering is not implemented for this operator` |
-| `sema/testdata/gcc-c99/accept/c99-bool-3.c` | `18:40: codegen *sema.UnOp emitValue: unary expression lowering is not implemented for this operator` |
-| `sema/testdata/gcc-c99/accept/c99-complit-1.c` | `static initializer lowering is not implemented for *sema.UnOp into int*` |
-| `sema/testdata/gcc-c99/accept/c99-fordecl-1.c` | `15:5: codegen *sema.CompoundAssign emitValue: expression lowering is not implemented for this node` |
-| `sema/testdata/gcc-c99/accept/c99-init-1.c` | `designator does not name an initializable subobject` |
-| `sema/testdata/gcc-c99/accept/c99-mixdecl-1.c` | `15:3: codegen *sema.UnOp emitValue: unary expression lowering is not implemented for this operator` |
-| `sema/testdata/gcc-c99/accept/c99-scope-2.c` | `19:7: codegen *sema.CommaExpr emitValue: expression lowering is not implemented for this node` |
 
 ### encode-load
 
@@ -55,5 +50,4 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 
 ## Next Blockers
 
-- `codegen`: 7 fixtures
 - `encode-load`: 3 fixtures

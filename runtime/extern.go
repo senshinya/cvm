@@ -107,10 +107,54 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		}
 		return IntValue(bytecode.TypeI32, int64(strcmpResult(left, right))), nil, nil
 	})
+	r.Register("memcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("memcmp expects 3 arguments")
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("memcmp requires memory")
+		}
+		n := unsignedInt(args[2])
+		if n == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		if n > uint64(maxInt()) {
+			return Value{}, nil, fmt.Errorf("memcmp size %d exceeds int range", n)
+		}
+		leftBlock, leftOff, err := ec.Memory.rangeAccess(args[0].Int, int64(n), false)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		rightBlock, rightOff, err := ec.Memory.rangeAccess(args[1].Int, int64(n), false)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		left := leftBlock.data[leftOff : leftOff+int(n)]
+		right := rightBlock.data[rightOff : rightOff+int(n)]
+		return IntValue(bytecode.TypeI32, int64(memcmpResult(left, right))), nil, nil
+	})
 	return r
 }
 
 func strcmpResult(left, right string) int {
+	for i := 0; i < len(left) && i < len(right); i++ {
+		if left[i] < right[i] {
+			return -1
+		}
+		if left[i] > right[i] {
+			return 1
+		}
+	}
+	if len(left) < len(right) {
+		return -1
+	}
+	if len(left) > len(right) {
+		return 1
+	}
+	return 0
+}
+
+func memcmpResult(left, right []byte) int {
 	for i := 0; i < len(left) && i < len(right); i++ {
 		if left[i] < right[i] {
 			return -1

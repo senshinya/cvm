@@ -1192,8 +1192,6 @@ func TestRunUnsupportedOpcodeTrap(t *testing.T) {
 		want string
 	}{
 		{name: "return object", ins: bytecode.Instr{Op: bytecode.OpReturnObject}, want: "unsupported opcode OpReturnObject"},
-		{name: "bitfield load", ins: bytecode.Instr{Op: bytecode.OpBitFieldLoad, Type: bytecode.TypeI32}, want: "unsupported opcode OpBitFieldLoad"},
-		{name: "bitfield store", ins: bytecode.Instr{Op: bytecode.OpBitFieldStore, Type: bytecode.TypeI32}, want: "unsupported opcode OpBitFieldStore"},
 		{name: "va start", ins: bytecode.Instr{Op: bytecode.OpVaStart, Slot: 0}, want: "unsupported opcode OpVaStart"},
 		{name: "va arg", ins: bytecode.Instr{Op: bytecode.OpVaArg, Type: bytecode.TypeI32}, want: "unsupported opcode OpVaArg"},
 		{name: "va end", ins: bytecode.Instr{Op: bytecode.OpVaEnd, Slot: 0}, want: "unsupported opcode OpVaEnd"},

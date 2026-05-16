@@ -103,8 +103,20 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		return fg.emitBinOp(x)
 	case *sema.AssignExpr:
 		return fg.emitAssign(x.L, x.R)
+	case *sema.CompoundAssign:
+		return fg.emitCompoundAssign(x)
 	case *sema.CallExpr:
 		return fg.emitCall(x)
+	case *sema.CommaExpr:
+		if err := fg.emitValue(x.L); err != nil {
+			return err
+		}
+		if exprLeavesValue(x.L) {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
+		}
+		return fg.emitValue(x.R)
+	case *sema.CondExpr:
+		return fg.emitCondExpr(x)
 	case *sema.SizeofExpr:
 		return fg.emitSizeof(x)
 	case *sema.UnOp:
@@ -130,6 +142,15 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 				return err
 			}
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: t, Unary: bytecode.UnaryNeg})
+		case sema.UnBitNot:
+			if err := fg.emitValue(x.X); err != nil {
+				return err
+			}
+			t, err := fg.g.lowerValueType(x.T)
+			if err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(t, -1), bytecode.Binary(t, bytecode.BinXor))
 		case sema.UnLogNot:
 			if err := fg.emitBoolValue(x.X); err != nil {
 				return err
@@ -143,6 +164,8 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 				bytecode.Binary(bytecode.TypeBool, bytecode.BinEq),
 			)
 			fg.emitCast(bytecode.TypeBool, t, sema.IntegralConversion)
+		case sema.UnIncPre, sema.UnIncPost, sema.UnDecPre, sema.UnDecPost:
+			return fg.emitIncDec(x)
 		default:
 			return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "unary expression lowering is not implemented for this operator"}
 		}
@@ -152,6 +175,233 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "expression lowering is not implemented for this node"}
 	}
 	return nil
+}
+
+func (fg *funcGen) emitCompoundAssign(x *sema.CompoundAssign) error {
+	vr, ok := x.L.(*sema.VarRef)
+	if !ok {
+		return fg.emitAddressableCompoundAssign(x)
+	}
+	st, err := fg.storageForVar(vr.Sym, vr.T)
+	if err != nil {
+		return err
+	}
+	if st.kind != storageLocalSlot {
+		return fg.emitAddressableCompoundAssign(x)
+	}
+	if !isIntegerType(st.typ) {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("compound assignment lowering is not implemented for %s", st.typ)}
+	}
+
+	computeType := compoundIntegerType(st.typ)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(st.typ, st.slot))
+	fg.emitCast(st.typ, computeType, sema.IntegralConversion)
+	if err := fg.emitValue(x.R); err != nil {
+		return err
+	}
+	rt, err := fg.g.lowerValueType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	fg.emitCast(rt, computeType, sema.IntegralConversion)
+	op, err := binaryOp(x.Op, computeType)
+	if err != nil {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
+	fg.emitCast(computeType, st.typ, sema.IntegralConversion)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(st.typ, st.slot))
+	return nil
+}
+
+func (fg *funcGen) emitAddressableCompoundAssign(x *sema.CompoundAssign) error {
+	vt, err := fg.g.lowerValueType(x.L.GetType())
+	if err != nil {
+		return err
+	}
+	if !isIntegerType(vt) {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("compound assignment lowering is not implemented for %s", vt)}
+	}
+	computeType := compoundIntegerType(vt)
+	addrSlot := fg.allocSyntheticSlot(".compound.assign.addr", bytecode.TypeObjectAddr)
+	valueSlot := fg.allocSyntheticSlot(".compound.assign.value", vt)
+	if err := fg.emitAddress(x.L); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Load(vt, fg.loadStoreAlign(x.L, x.L.GetType()), isVolatile(x.L.GetType())),
+	)
+	fg.emitCast(vt, computeType, sema.IntegralConversion)
+	if err := fg.emitValue(x.R); err != nil {
+		return err
+	}
+	rt, err := fg.g.lowerValueType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	fg.emitCast(rt, computeType, sema.IntegralConversion)
+	op, err := binaryOp(x.Op, computeType)
+	if err != nil {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
+	fg.emitCast(computeType, vt, sema.IntegralConversion)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.Instr{Op: bytecode.OpDup},
+		bytecode.StoreLocal(vt, valueSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Store(vt, fg.loadStoreAlign(x.L, x.L.GetType()), isVolatile(x.L.GetType())),
+		bytecode.LoadLocal(vt, valueSlot),
+	)
+	return nil
+}
+
+func compoundIntegerType(t bytecode.ValueType) bytecode.ValueType {
+	switch t {
+	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeU8, bytecode.TypeU16:
+		return bytecode.TypeI32
+	default:
+		return t
+	}
+}
+
+func (fg *funcGen) emitCondExpr(x *sema.CondExpr) error {
+	var stack []bytecode.ValueType
+	if exprLeavesValue(x) {
+		t, err := fg.g.lowerValueType(x.T)
+		if err != nil {
+			return err
+		}
+		stack = []bytecode.ValueType{t}
+	}
+	elseLabel := fg.newLabel(true, nil)
+	endLabel := fg.newLabel(false, stack)
+	if err := fg.emitBoolValue(x.Cond); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.JumpIfZero(bytecode.TypeBool, elseLabel))
+	if err := fg.emitValue(x.Then); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(endLabel))
+	fg.mark(elseLabel)
+	if err := fg.emitValue(x.Else); err != nil {
+		return err
+	}
+	fg.mark(endLabel)
+	return nil
+}
+
+func (fg *funcGen) emitIncDec(x *sema.UnOp) error {
+	if vr, ok := x.X.(*sema.VarRef); ok {
+		st, err := fg.storageForVar(vr.Sym, vr.T)
+		if err != nil {
+			return err
+		}
+		if st.kind == storageLocalSlot {
+			return fg.emitLocalSlotIncDec(x, st)
+		}
+	}
+	return fg.emitAddressableIncDec(x)
+}
+
+func (fg *funcGen) emitLocalSlotIncDec(x *sema.UnOp, st storage) error {
+	post := x.Op == sema.UnIncPost || x.Op == sema.UnDecPost
+	dec := x.Op == sema.UnDecPre || x.Op == sema.UnDecPost
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(st.typ, st.slot))
+	if post {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup})
+	}
+	if isPointerType(st.typ) {
+		step := int64(1)
+		if dec {
+			step = -1
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(bytecode.TypeI32, step))
+		if err := fg.emitPtrAddForExpr(x.X, x.X.GetType()); err != nil {
+			return err
+		}
+	} else if isIntegerType(st.typ) {
+		computeType := compoundIntegerType(st.typ)
+		fg.emitCast(st.typ, computeType, sema.IntegralConversion)
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(computeType, 1))
+		op := bytecode.BinAdd
+		if dec {
+			op = bytecode.BinSub
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
+		fg.emitCast(computeType, st.typ, sema.IntegralConversion)
+	} else {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("++/-- lowering is not implemented for %s", st.typ)}
+	}
+	if !post {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup})
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(st.typ, st.slot))
+	return nil
+}
+
+func (fg *funcGen) emitAddressableIncDec(x *sema.UnOp) error {
+	vt, err := fg.g.lowerValueType(x.X.GetType())
+	if err != nil {
+		return err
+	}
+	if !isIntegerType(vt) && !isPointerType(vt) {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("++/-- lowering is not implemented for %s", vt)}
+	}
+	addrSlot := fg.allocSyntheticSlot(".incdec.addr", bytecode.TypeObjectAddr)
+	valueSlot := fg.allocSyntheticSlot(".incdec.value", vt)
+	if err := fg.emitAddress(x.X); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot))
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Load(vt, fg.loadStoreAlign(x.X, x.X.GetType()), isVolatile(x.X.GetType())),
+		bytecode.StoreLocal(vt, valueSlot),
+		bytecode.LoadLocal(vt, valueSlot),
+	)
+	if err := fg.emitIncDecOperation(x, vt); err != nil {
+		return err
+	}
+	if x.Op == sema.UnIncPre || x.Op == sema.UnDecPre {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(vt, valueSlot))
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Store(vt, fg.loadStoreAlign(x.X, x.X.GetType()), isVolatile(x.X.GetType())),
+		bytecode.LoadLocal(vt, valueSlot),
+	)
+	return nil
+}
+
+func (fg *funcGen) emitIncDecOperation(x *sema.UnOp, typ bytecode.ValueType) error {
+	dec := x.Op == sema.UnDecPre || x.Op == sema.UnDecPost
+	if isPointerType(typ) {
+		step := int64(1)
+		if dec {
+			step = -1
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(bytecode.TypeI32, step))
+		return fg.emitPtrAddForExpr(x.X, x.X.GetType())
+	}
+	if isIntegerType(typ) {
+		computeType := compoundIntegerType(typ)
+		fg.emitCast(typ, computeType, sema.IntegralConversion)
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(computeType, 1))
+		op := bytecode.BinAdd
+		if dec {
+			op = bytecode.BinSub
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
+		fg.emitCast(computeType, typ, sema.IntegralConversion)
+		return nil
+	}
+	return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("++/-- lowering is not implemented for %s", typ)}
 }
 
 func (fg *funcGen) emitCall(x *sema.CallExpr) error {
@@ -325,7 +575,7 @@ func (fg *funcGen) emitLValueValue(e sema.Expr, t sema.Type) error {
 	if err := fg.emitAddress(e); err != nil {
 		return err
 	}
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(vt, fg.g.alignof(t), isVolatile(t)))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(vt, fg.loadStoreAlign(e, t), isVolatile(t)))
 	return nil
 }
 
@@ -368,8 +618,15 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpSwap})
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.g.alignof(lhs.GetType()), isVolatile(lhs.GetType())))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.loadStoreAlign(lhs, lhs.GetType()), isVolatile(lhs.GetType())))
 	return nil
+}
+
+func (fg *funcGen) loadStoreAlign(e sema.Expr, t sema.Type) int64 {
+	if _, ok := e.(*sema.MemberExpr); ok {
+		return 1
+	}
+	return fg.g.alignof(t)
 }
 
 func (fg *funcGen) emitBitFieldAssign(lhs *sema.MemberExpr, rhs sema.Expr) error {
@@ -469,7 +726,7 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		if err := fg.emitValue(x.L); err != nil {
 			return err
 		}
-		if err := fg.emitValue(x.R); err != nil {
+		if _, err := fg.emitPtrIndexValue(x.R); err != nil {
 			return err
 		}
 		return fg.emitPtrAddForExpr(x.L, x.L.GetType())
@@ -477,7 +734,7 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		if err := fg.emitValue(x.R); err != nil {
 			return err
 		}
-		if err := fg.emitValue(x.L); err != nil {
+		if _, err := fg.emitPtrIndexValue(x.L); err != nil {
 			return err
 		}
 		return fg.emitPtrAddForExpr(x.R, x.R.GetType())
@@ -485,10 +742,11 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		if err := fg.emitValue(x.L); err != nil {
 			return err
 		}
-		if err := fg.emitValue(x.R); err != nil {
+		idxType, err := fg.emitPtrIndexValue(x.R)
+		if err != nil {
 			return err
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: rightType, Unary: bytecode.UnaryNeg})
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: idxType, Unary: bytecode.UnaryNeg})
 		return fg.emitPtrAddForExpr(x.L, x.L.GetType())
 	case x.Op == sema.OpSub && isPointerType(leftType) && isPointerType(rightType):
 		if err := fg.emitValue(x.L); err != nil {
@@ -513,6 +771,28 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		return nil
 	default:
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "unsupported pointer arithmetic"}
+	}
+}
+
+func (fg *funcGen) emitPtrIndexValue(e sema.Expr) (bytecode.ValueType, error) {
+	if err := fg.emitValue(e); err != nil {
+		return bytecode.TypeVoid, err
+	}
+	from, err := fg.g.lowerValueType(e.GetType())
+	if err != nil {
+		return bytecode.TypeVoid, err
+	}
+	to := ptrIndexValueType(from)
+	fg.emitCast(from, to, sema.IntegralConversion)
+	return to, nil
+}
+
+func ptrIndexValueType(t bytecode.ValueType) bytecode.ValueType {
+	switch t {
+	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeU8, bytecode.TypeU16:
+		return bytecode.TypeI32
+	default:
+		return t
 	}
 }
 

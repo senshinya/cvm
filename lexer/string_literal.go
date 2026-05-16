@@ -16,7 +16,23 @@ var stringLiteralStateTable = stateTable{
 	"C":  []Edge{},
 }
 
+var wideStringLiteralStateTable = stateTable{
+	"A":  []Edge{{"wide_prefix", "W"}},
+	"W":  []Edge{{"double_quotation", "B"}},
+	"B":  []Edge{{"double_quotation", "C"}, {"string_ascii", "B"}, {"back_slash", "D"}},
+	"D":  []Edge{{"escape_suffix", "B"}, {"x", "E"}, {"oct", "GB"}},
+	"E":  []Edge{{"hex", "FB"}},
+	"GB": []Edge{{"oct", "HB"}, {"double_quotation", "C"}, {"string_ascii", "B"}, {"back_slash", "D"}},
+	"FB": []Edge{{"hex", "FB"}, {"double_quotation", "C"}, {"string_ascii", "B"}, {"back_slash", "D"}},
+	"HB": []Edge{{"oct", "IB"}, {"double_quotation", "C"}, {"string_ascii", "B"}, {"back_slash", "D"}},
+	"IB": []Edge{{"double_quotation", "C"}, {"string_ascii", "B"}, {"back_slash", "D"}},
+	"C":  []Edge{},
+}
+
 var stringLiteralConditionTable = conditionTable{
+	"wide_prefix": func(b byte) bool {
+		return b == 'L'
+	},
 	"double_quotation": func(b byte) bool {
 		return b == '"'
 	},
@@ -60,7 +76,10 @@ func stringLiteralTransferInterceptor(before, next state, char byte, store inter
 		cs.result += string(b)
 	}
 
-	if char == '"' && (before == "A" || next == "B") {
+	if char == 'L' && before == "A" && next == "W" {
+		return nil
+	}
+	if char == '"' && (before == "A" || before == "W" || next == "B") {
 		return nil
 	}
 	cs.currentBytes += string(char)
@@ -68,9 +87,11 @@ func stringLiteralTransferInterceptor(before, next state, char byte, store inter
 }
 
 var stringLiteralScanner *Scanner
+var wideStringLiteralScanner *Scanner
 
 func init() {
 	stringLiteralScanner = newStringLiteralScanner()
+	wideStringLiteralScanner = newWideStringLiteralScanner()
 }
 
 func StringLiteralScanner() *Scanner {
@@ -78,9 +99,28 @@ func StringLiteralScanner() *Scanner {
 	return stringLiteralScanner
 }
 
+func WideStringLiteralScanner() *Scanner {
+	wideStringLiteralScanner.Store(&stringLiteralStore{})
+	return wideStringLiteralScanner
+}
+
 func newStringLiteralScanner() *Scanner {
 	return NewScannerBuilder("String Literal").
 		StateTable(stringLiteralStateTable).
+		ConditionTable(stringLiteralConditionTable).
+		TokenConstructor(func(s string, l, sc, ec int, _ state, store interface{}) (entity.Token, error) {
+			cs := store.(*stringLiteralStore)
+			return entity.NewToken(entity.STRING, s, cs.result, l, sc, ec), nil
+		}).
+		StartState("A").
+		EndState([]state{"C"}).
+		transferInterceptor(stringLiteralTransferInterceptor).
+		Build()
+}
+
+func newWideStringLiteralScanner() *Scanner {
+	return NewScannerBuilder("Wide String Literal").
+		StateTable(wideStringLiteralStateTable).
 		ConditionTable(stringLiteralConditionTable).
 		TokenConstructor(func(s string, l, sc, ec int, _ state, store interface{}) (entity.Token, error) {
 			cs := store.(*stringLiteralStore)

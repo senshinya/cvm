@@ -737,9 +737,13 @@ func exprKey(e sema.Expr) string {
 }
 
 func (fg *funcGen) allocSyntheticI64Slot(name string) int {
+	return fg.allocSyntheticSlot(name, bytecode.TypeI64)
+}
+
+func (fg *funcGen) allocSyntheticSlot(name string, typ bytecode.ValueType) int {
 	slot := fg.nextSyntheticSlot
 	fg.nextSyntheticSlot++
-	fg.out.Locals = append(fg.out.Locals, bytecode.LocalSlot{ID: slot, Name: name, Type: bytecode.TypeI64})
+	fg.out.Locals = append(fg.out.Locals, bytecode.LocalSlot{ID: slot, Name: name, Type: typ})
 	return slot
 }
 

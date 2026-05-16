@@ -353,6 +353,36 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 			return ExitStatus{}, true, vm.trapWithCause("field offset overflow", err)
 		}
 		vm.stack = append(vm.stack, ObjectAddrValue(out))
+	case bytecode.OpBitFieldLoad:
+		addr, err := vm.pop(bytecode.TypeObjectAddr)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		bf, err := vm.bitFieldLayout(ins)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("invalid bit-field", err)
+		}
+		value, err := vm.loadBitField(addr.Int, bf, ins.Type)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("bit-field load failed", err)
+		}
+		vm.stack = append(vm.stack, value)
+	case bytecode.OpBitFieldStore:
+		value, err := vm.pop(ins.Type)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		addr, err := vm.pop(bytecode.TypeObjectAddr)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		bf, err := vm.bitFieldLayout(ins)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("invalid bit-field", err)
+		}
+		if err := vm.storeBitField(addr.Int, bf, value); err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("bit-field store failed", err)
+		}
 	case bytecode.OpPtrAdd:
 		index, err := vm.popInteger()
 		if err != nil {
@@ -509,7 +539,7 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		return ExitStatus{}, true, vm.trap(fmt.Sprintf("unsupported opcode %s", ins.Op))
 	case bytecode.OpUnreachable:
 		return ExitStatus{}, true, vm.trap("unreachable")
-	case bytecode.OpBitFieldLoad, bytecode.OpBitFieldStore, bytecode.OpVaStart, bytecode.OpVaArg, bytecode.OpVaEnd:
+	case bytecode.OpVaStart, bytecode.OpVaArg, bytecode.OpVaEnd:
 		return ExitStatus{}, true, vm.trap(fmt.Sprintf("unsupported opcode %s", ins.Op))
 	case bytecode.OpLabel:
 		// Labels are markers for control-flow instructions; execution falls through.
@@ -885,6 +915,60 @@ func constValue(ins bytecode.Instr) Value {
 	default:
 		return UIntValue(ins.Type, uint64(ins.Int))
 	}
+}
+
+func (vm *VM) bitFieldLayout(ins bytecode.Instr) (bytecode.BitFieldLayout, error) {
+	if ins.Layout < 0 || ins.Layout >= len(vm.program.module.Layouts) {
+		return bytecode.BitFieldLayout{}, fmt.Errorf("invalid layout %d", ins.Layout)
+	}
+	layout := vm.program.module.Layouts[ins.Layout]
+	if ins.Field < 0 || ins.Field >= len(layout.Bit) {
+		return bytecode.BitFieldLayout{}, fmt.Errorf("invalid bit-field %d in layout %d", ins.Field, ins.Layout)
+	}
+	return layout.Bit[ins.Field], nil
+}
+
+func (vm *VM) loadBitField(base uint64, bf bytecode.BitFieldLayout, outType bytecode.ValueType) (Value, error) {
+	addr, err := addSignedOffset(base, bf.ByteOffset)
+	if err != nil {
+		return Value{}, err
+	}
+	raw, err := vm.program.Memory().Load(addr, bf.Container, 1)
+	if err != nil {
+		return Value{}, err
+	}
+	value := (unsignedInt(raw) >> uint(bf.BitOffset)) & bitFieldMask(bf.Width)
+	if bf.Signed && bf.Width > 0 {
+		sign := uint64(1) << uint(bf.Width-1)
+		if value&sign != 0 {
+			value |= ^bitFieldMask(bf.Width)
+		}
+	}
+	return normalizeInt(UIntValue(outType, value)), nil
+}
+
+func (vm *VM) storeBitField(base uint64, bf bytecode.BitFieldLayout, value Value) error {
+	addr, err := addSignedOffset(base, bf.ByteOffset)
+	if err != nil {
+		return err
+	}
+	raw, err := vm.program.Memory().Load(addr, bf.Container, 1)
+	if err != nil {
+		return err
+	}
+	mask := bitFieldMask(bf.Width) << uint(bf.BitOffset)
+	next := (unsignedInt(raw) &^ mask) | ((unsignedInt(value) << uint(bf.BitOffset)) & mask)
+	return vm.program.Memory().Store(addr, bf.Container, 1, UIntValue(bf.Container, next))
+}
+
+func bitFieldMask(width int) uint64 {
+	if width <= 0 {
+		return 0
+	}
+	if width >= 64 {
+		return ^uint64(0)
+	}
+	return (uint64(1) << uint(width)) - 1
 }
 
 func zeroValue(t bytecode.ValueType) Value {

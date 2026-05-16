@@ -169,7 +169,11 @@ func (s *Sema) makeCharLit(node *entity.AstNode) Expr {
 
 func (s *Sema) makeStringLit(node *entity.AstNode) Expr {
 	v := parseStringLiteral(node.Terminal.Lexeme)
-	return &StringLit{Value: v, T: s.Types.ArrayConstant(s.Types.Builtin(Char), int64(len(v)+1)), Range: node.SourceRange}
+	elem := s.Types.Builtin(Char)
+	if strings.HasPrefix(node.Terminal.Lexeme, "L\"") {
+		elem = s.Types.Builtin(Int)
+	}
+	return &StringLit{Value: v, T: s.Types.ArrayConstant(elem, int64(len(v)+1)), Range: node.SourceRange}
 }
 
 func parseIntLiteral(lexeme string) int64 {
@@ -320,7 +324,43 @@ func parseStringLiteral(lexeme string) string {
 	if len(lexeme) < 2 {
 		return ""
 	}
-	return strings.ReplaceAll(lexeme[1:len(lexeme)-1], `\n`, "\n")
+	start := 1
+	if strings.HasPrefix(lexeme, "L\"") {
+		start = 2
+	}
+	s := lexeme[start : len(lexeme)-1]
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] != '\\' || i+1 >= len(s) {
+			b.WriteByte(s[i])
+			continue
+		}
+		i++
+		switch s[i] {
+		case 'n':
+			b.WriteByte('\n')
+		case 't':
+			b.WriteByte('\t')
+		case 'r':
+			b.WriteByte('\r')
+		case '\\':
+			b.WriteByte('\\')
+		case '\'':
+			b.WriteByte('\'')
+		case '"':
+			b.WriteByte('"')
+		case '0', '1', '2', '3', '4', '5', '6', '7':
+			v := int(s[i] - '0')
+			for n := 0; n < 2 && i+1 < len(s) && s[i+1] >= '0' && s[i+1] <= '7'; n++ {
+				i++
+				v = v*8 + int(s[i]-'0')
+			}
+			b.WriteByte(byte(v))
+		default:
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
 }
 
 func (s *Sema) typePrimary(node *entity.AstNode, scope *Scope) Expr {
@@ -946,13 +986,20 @@ func (s *Sema) typePostfix(node *entity.AstNode, scope *Scope) Expr {
 		return s.buildIncDec(node, x, UnDecPost)
 	case node.ReducedBy(parser.PostfixExpression, 9), node.ReducedBy(parser.PostfixExpression, 10):
 		t := s.parseTypeName(node.Children[1])
-		return &CompoundLit{T: t, Init: s.typeInitListForType(node.Children[4], t), Range: node.SourceRange}
+		init := s.typeInitListForType(node.Children[4], t)
+		t = s.completeCompoundLiteralType(t, init)
+		init.T = t
+		return &CompoundLit{T: t, Init: init, Range: node.SourceRange}
 	case node.ReducedBy(parser.PostfixExpression, 11):
 		s.reportEmptyInitializerExtension(node.SourceStart)
 		t := s.parseTypeName(node.Children[1])
 		return &CompoundLit{T: t, Init: &InitList{T: t, Range: node.SourceRange}, Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
+}
+
+func (s *Sema) completeCompoundLiteralType(t Type, init *InitList) Type {
+	return s.completeUnsizedArrayInitializerType(t, init)
 }
 
 func indexExprCategory(base Expr) ValueCategory {
