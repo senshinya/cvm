@@ -171,6 +171,7 @@ sema/testdata/gcc-c99-extra/accept/vla-5.c	current GCC accept fixture compiles t
 sema/testdata/gcc-c99-extra/accept/vla-7.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/vla-9.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/wtr-int-type-1.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c90-as-c99/accept/Wdeclaration-after-statement-4.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/Wvla-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/Wvla-3.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/Wvla-5.c	current GCC accept fixture compiles to validated bytecode
@@ -191,6 +192,7 @@ sema/testdata/gcc-c90-as-c99/accept/c90-dupqual-1.c	current GCC accept fixture c
 sema/testdata/gcc-c90-as-c99/accept/c90-enum-comma-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/c90-flex-array-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/c90-flex-array-2.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c90-as-c99/accept/c90-fordecl-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/c90-func-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/c90-idem-qual-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/c90-idem-qual-2.c	current GCC accept fixture compiles to validated bytecode
