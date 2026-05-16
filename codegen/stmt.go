@@ -27,7 +27,7 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 			if !ok || vd.Storage == sema.StorageStatic || vd.Storage == sema.StorageExtern {
 				continue
 			}
-			if isVLAType(vd.T) {
+			if typeHasVariableSize(vd.T) {
 				if err := fg.emitVLADecl(vd); err != nil {
 					return err
 				}
@@ -417,7 +417,7 @@ func walkLabelCleanupMarks(s sema.Stmt, depth int, marks map[*sema.LabeledStmt]i
 		current := depth
 		for _, d := range x.Decls {
 			vd, ok := d.(*sema.VarDecl)
-			if ok && vd.Storage != sema.StorageStatic && vd.Storage != sema.StorageExtern && isVLAType(vd.T) {
+			if ok && vd.Storage != sema.StorageStatic && vd.Storage != sema.StorageExtern && typeHasVariableSize(vd.T) {
 				current++
 			}
 		}
@@ -620,10 +620,63 @@ func (fg *funcGen) emitRuntimeSizeofSavedForSymbol(sym *sema.Symbol, t sema.Type
 			}
 		}
 		return nil
+	case *sema.StructType:
+		return fg.emitRuntimeSizeofRecordSavedForSymbol(sym, t, x.Fields, false, slot, name)
+	case *sema.UnionType:
+		return fg.emitRuntimeSizeofRecordSavedForSymbol(sym, t, x.Fields, true, slot, name)
 	default:
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.I64Const(fg.g.sizeof(t)))
 		return nil
 	}
+}
+
+func (fg *funcGen) emitRuntimeSizeofRecordSavedForSymbol(sym *sema.Symbol, t sema.Type, fields []*sema.Field, union bool, slot int, name string) error {
+	var variableFields []*sema.Field
+	var staticEnd int64
+	for _, f := range fields {
+		if f == nil {
+			continue
+		}
+		if typeHasVariableSize(f.T) {
+			variableFields = append(variableFields, f)
+			continue
+		}
+		end := fg.g.sizeof(f.T)
+		if !union {
+			end += f.Offset
+		}
+		if end > staticEnd {
+			staticEnd = end
+		}
+	}
+	if len(variableFields) == 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.I64Const(fg.g.sizeof(t)))
+		return nil
+	}
+	if len(variableFields) != 1 {
+		return fmt.Errorf("cannot lower runtime sizeof for aggregate with multiple variable-size fields")
+	}
+	field := variableFields[0]
+	fieldName := field.Name
+	if fieldName == "" {
+		fieldName = "field"
+	}
+	if staticEnd > 0 && (union || staticEnd > field.Offset) {
+		return fmt.Errorf("cannot lower runtime sizeof for aggregate mixing static and variable-size fields")
+	}
+	if err := fg.emitRuntimeSizeofSavedForSymbol(sym, field.T, -1, name+"$"+fieldName); err != nil {
+		return err
+	}
+	if !union && field.Offset != 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.I64Const(field.Offset), bytecode.Binary(bytecode.TypeI64, bytecode.BinAdd))
+	}
+	if slot >= 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(bytecode.TypeI64, slot))
+		if sym != nil {
+			fg.bindDynamicSizeSlot(sym, t, slot)
+		}
+	}
+	return nil
 }
 
 func (fg *funcGen) prepareDynamicSizeTypesForSymbol(sym *sema.Symbol, t sema.Type, name string) error {

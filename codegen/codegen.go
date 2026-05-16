@@ -260,7 +260,7 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		if local.Sym.SlotID > maxSlot {
 			maxSlot = local.Sym.SlotID
 		}
-		if isVLAType(local.T) {
+		if typeHasVariableSize(local.T) {
 			continue
 		}
 		vt, err := g.lowerValueType(local.T)

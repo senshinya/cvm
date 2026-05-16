@@ -260,11 +260,24 @@ func typeHasVariableSize(t sema.Type) bool {
 	switch x := sema.Unqual(t).(type) {
 	case *sema.ArrayType:
 		return x.SizeKind == sema.ArrayVLA || x.SizeKind == sema.ArrayStarSize || typeHasVariableSize(x.Elem)
+	case *sema.StructType:
+		for _, f := range x.Fields {
+			if f != nil && typeHasVariableSize(f.T) {
+				return true
+			}
+		}
+	case *sema.UnionType:
+		for _, f := range x.Fields {
+			if f != nil && typeHasVariableSize(f.T) {
+				return true
+			}
+		}
 	case *sema.PointerType:
 		return false
 	default:
 		return false
 	}
+	return false
 }
 
 func isComplexType(t sema.Type) bool {

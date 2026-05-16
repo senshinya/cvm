@@ -1083,6 +1083,8 @@ func dynamicObjectSymbol(e sema.Expr) *sema.Symbol {
 		if x.Kind == sema.LValueToRValue || x.Kind == sema.ArrayDecay {
 			return dynamicObjectSymbol(x.X)
 		}
+	case *sema.MemberExpr:
+		return dynamicObjectSymbol(x.Base)
 	case *sema.IndexExpr:
 		return dynamicObjectSymbol(x.Base)
 	}
