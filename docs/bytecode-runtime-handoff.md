@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `f857cb2 fix(codegen): forward transitive nested captures`
+- Latest implementation/coverage commit before this handoff document: `113cc36 fix(codegen): lower builtin complex local initializers`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -108,6 +108,13 @@ Notable recent coverage additions:
 
 Recent commits at the tip of this branch:
 
+- `113cc36 fix(codegen): lower builtin complex local initializers`
+  - Lowers local `_Complex` initializers from `__builtin_complex(real, imag)` by writing real and imaginary components directly.
+
+- `f5012ad feat(runtime): support builtin complex absolute value`
+  - Registers `__builtin_cabs`, `__builtin_cabsf`, and `__builtin_cabsl` runtime externs.
+  - Adds execution coverage for `__builtin_cabs` reading a static complex object.
+
 - `f857cb2 fix(codegen): forward transitive nested captures`
   - Propagates capture requirements through direct nested-function call chains.
   - Covers a three-level nested runtime case where the middle function forwards an outer capture to the inner function.
@@ -170,10 +177,11 @@ The current codegen support includes:
 
 - complex locals and parameters represented by object storage or `ObjectAddr` slots
 - real scalar to complex initialization
+- `__builtin_complex(real, imag)` local/static initialization
 - complex to complex assignment/copy with real/imag component casts
 - complex tgmath extern dispatch
 
-Runtime execution of complex arithmetic is still incomplete. Current work primarily ensures the compiler can produce validated bytecode for more GCC fixtures.
+Runtime execution of complex arithmetic is still incomplete. Current runtime support includes `__builtin_cabs*` externs for object-address complex arguments.
 
 ### GNU Nested Functions
 
