@@ -1,5 +1,5 @@
-Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
-Global #0 func name="route" func=0
+Module version="1" entry=none target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Global #0 func name="route" func=0 sig=0
 Sig #0 ret=i32 params=(i32)
 Func #0 global=0 name="route" sig=0 max_stack=0
   Param slot=0 name="x" type=i32

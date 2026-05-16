@@ -7,8 +7,10 @@ import (
 
 func TestValidateModuleAcceptsMinimalReturningFunction(t *testing.T) {
 	mod := &Module{
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: 0, Name: "main"},
 		Target:  DefaultTarget(),
-		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0}},
+		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0, Sig: 0}},
 		Sigs:    []FuncSig{{ID: 0, Ret: TypeI32}},
 		Functions: []Function{{
 			ID:       0,
@@ -26,10 +28,73 @@ func TestValidateModuleAcceptsMinimalReturningFunction(t *testing.T) {
 	}
 }
 
+func TestValidateModuleRejectsMissingModuleVersion(t *testing.T) {
+	mod := minimalModule()
+	mod.Version = ""
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted a module without a bytecode version")
+	}
+}
+
+func TestValidateModuleRejectsMissingEntryMetadata(t *testing.T) {
+	mod := minimalModule()
+	mod.Entry = nil
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted a module without entry metadata")
+	}
+}
+
+func TestValidateModuleRejectsInvalidEntryGlobal(t *testing.T) {
+	mod := minimalModule()
+	mod.Entry = &EntryPoint{Global: 99, Name: "main"}
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted an invalid entry global")
+	}
+}
+
+func TestValidateModuleRejectsExternWithoutBindingName(t *testing.T) {
+	mod := minimalModule()
+	mod.Globals = append(mod.Globals, Global{
+		ID:     1,
+		Name:   "puts",
+		Kind:   GlobalExtern,
+		Sig:    0,
+		Extern: ExternRef{ABI: DefaultExternABI},
+	})
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted an extern without an import name")
+	}
+}
+
+func TestValidateModuleRejectsFunctionGlobalWithoutSignature(t *testing.T) {
+	mod := minimalModule()
+	mod.Globals[0].Sig = NoFuncSig
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted a function global without a signature")
+	}
+}
+
+func TestValidateModuleRejectsExternFunctionWithoutSignature(t *testing.T) {
+	mod := minimalModule()
+	mod.Globals = append(mod.Globals, Global{
+		ID:     1,
+		Name:   "puts",
+		Kind:   GlobalExtern,
+		Func:   -1,
+		Sig:    NoFuncSig,
+		Extern: ExternRef{Name: "puts", ABI: DefaultExternABI},
+	})
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted an extern function without a signature")
+	}
+}
+
 func TestValidateModuleRejectsBadGlobalFunctionReference(t *testing.T) {
 	mod := &Module{
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: 0, Name: "main"},
 		Target:  DefaultTarget(),
-		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 99}},
+		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 99, Sig: 0}},
 		Sigs:    []FuncSig{{ID: 0, Ret: TypeI32}},
 	}
 	if err := ValidateModule(mod); err == nil {
@@ -39,8 +104,10 @@ func TestValidateModuleRejectsBadGlobalFunctionReference(t *testing.T) {
 
 func TestValidateModuleRejectsReturnTypeMismatch(t *testing.T) {
 	mod := &Module{
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: 0, Name: "main"},
 		Target:  DefaultTarget(),
-		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0}},
+		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0, Sig: 0}},
 		Sigs:    []FuncSig{{ID: 0, Ret: TypeI32}},
 		Functions: []Function{{
 			ID:       0,
@@ -60,8 +127,10 @@ func TestValidateModuleRejectsReturnTypeMismatch(t *testing.T) {
 
 func TestValidateModuleRejectsMissingJumpLabel(t *testing.T) {
 	mod := &Module{
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: 0, Name: "main"},
 		Target:  DefaultTarget(),
-		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0}},
+		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0, Sig: 0}},
 		Sigs:    []FuncSig{{ID: 0, Ret: TypeVoid}},
 		Functions: []Function{{
 			ID:       0,
@@ -81,8 +150,10 @@ func TestValidateModuleRejectsMissingJumpLabel(t *testing.T) {
 
 func TestValidateModuleRejectsBadCallSignature(t *testing.T) {
 	mod := &Module{
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: 0, Name: "main"},
 		Target:  DefaultTarget(),
-		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0}},
+		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0, Sig: 0}},
 		Sigs:    []FuncSig{{ID: 0, Ret: TypeI32, Params: []ValueType{TypeI32}}},
 		Functions: []Function{{
 			ID:       0,
@@ -102,10 +173,12 @@ func TestValidateModuleRejectsBadCallSignature(t *testing.T) {
 
 func TestValidateModuleAcceptsValidReferencesAndStackEffects(t *testing.T) {
 	mod := &Module{
-		Target: DefaultTarget(),
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: 0, Name: "main"},
+		Target:  DefaultTarget(),
 		Globals: []Global{
-			{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0},
-			{ID: 1, Name: "callee", Kind: GlobalFunc, Func: 1},
+			{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0, Sig: 0},
+			{ID: 1, Name: "callee", Kind: GlobalFunc, Func: 1, Sig: 1},
 			{ID: 2, Name: "storage", Kind: GlobalVar, Size: 8, Align: 8},
 		},
 		Strings: []StringConst{{ID: 0, Value: "ok", Bytes: []byte("ok\x00")}},
@@ -224,7 +297,15 @@ func TestValidateModuleRejectsInvalidAddrFuncGlobal(t *testing.T) {
 
 func TestValidateModuleRejectsAddrFuncExternVariable(t *testing.T) {
 	mod := minimalModule()
-	mod.Globals = append(mod.Globals, Global{ID: 1, Name: "extern_var", Kind: GlobalExtern, Size: 4, Align: 4})
+	mod.Globals = append(mod.Globals, Global{
+		ID:     1,
+		Name:   "extern_var",
+		Kind:   GlobalExtern,
+		Sig:    NoFuncSig,
+		Extern: ExternRef{Name: "extern_var", ABI: DefaultExternABI},
+		Size:   4,
+		Align:  4,
+	})
 	mod.Functions[0].Instrs = []Instr{
 		AddrFunc(1),
 		{Op: OpPop},
@@ -345,7 +426,7 @@ func TestValidateModuleRejectsFunctionIDNotMatchingIndex(t *testing.T) {
 			Return(TypeI32),
 		},
 	})
-	mod.Globals = append(mod.Globals, Global{ID: 1, Name: "other", Kind: GlobalFunc, Func: 1})
+	mod.Globals = append(mod.Globals, Global{ID: 1, Name: "other", Kind: GlobalFunc, Func: 1, Sig: 0})
 
 	if err := ValidateModule(mod); err == nil {
 		t.Fatal("ValidateModule accepted a function id that does not match its slice index")
@@ -421,7 +502,7 @@ func TestValidateModuleAcceptsPopAndSwapWithValidStack(t *testing.T) {
 
 func TestValidateModuleRejectsStrayGlobalFuncBackLink(t *testing.T) {
 	mod := minimalModule()
-	mod.Globals = append(mod.Globals, Global{ID: 1, Name: "main_alias", Kind: GlobalFunc, Func: 0})
+	mod.Globals = append(mod.Globals, Global{ID: 1, Name: "main_alias", Kind: GlobalFunc, Func: 0, Sig: 0})
 
 	if err := ValidateModule(mod); err == nil {
 		t.Fatal("ValidateModule accepted a stray function global whose function points elsewhere")
@@ -577,8 +658,10 @@ func TestValidateModuleDupSwapErrorsIncludeReadableOpcodeName(t *testing.T) {
 
 func minimalModule() *Module {
 	return &Module{
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: 0, Name: "main"},
 		Target:  DefaultTarget(),
-		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0}},
+		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0, Sig: 0}},
 		Sigs:    []FuncSig{{ID: 0, Ret: TypeI32}},
 		Functions: []Function{{
 			ID:       0,
@@ -595,10 +678,12 @@ func minimalModule() *Module {
 
 func moduleWithCallee() *Module {
 	return &Module{
-		Target: DefaultTarget(),
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: 0, Name: "main"},
+		Target:  DefaultTarget(),
 		Globals: []Global{
-			{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0},
-			{ID: 1, Name: "callee", Kind: GlobalFunc, Func: 1},
+			{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0, Sig: 0},
+			{ID: 1, Name: "callee", Kind: GlobalFunc, Func: 1, Sig: 1},
 		},
 		Sigs: []FuncSig{
 			{ID: 0, Ret: TypeI32},

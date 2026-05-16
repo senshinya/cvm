@@ -338,6 +338,39 @@ func TestGenerateFileScopeExternVariableMetadata(t *testing.T) {
 	}
 }
 
+func TestGenerateModuleCompletenessMetadata(t *testing.T) {
+	mod := compileModule(t, `
+int puts(char *);
+int main(void) {
+	return puts("ok");
+}`)
+	if mod.Version != bytecode.CurrentModuleVersion {
+		t.Fatalf("module version = %q, want %q", mod.Version, bytecode.CurrentModuleVersion)
+	}
+	if mod.Entry == nil || mod.Entry.Global < 0 || mod.Globals[mod.Entry.Global].Name != "main" {
+		t.Fatalf("entry metadata = %#v, globals = %#v", mod.Entry, mod.Globals)
+	}
+	var puts *bytecode.Global
+	for i := range mod.Globals {
+		if mod.Globals[i].Name == "puts" {
+			puts = &mod.Globals[i]
+			break
+		}
+	}
+	if puts == nil {
+		t.Fatalf("puts global not found: %#v", mod.Globals)
+	}
+	if puts.Kind != bytecode.GlobalExtern || puts.Extern.Name != "puts" || puts.Extern.ABI != bytecode.DefaultExternABI {
+		t.Fatalf("puts extern metadata = %#v, want import name puts and ABI %q", *puts, bytecode.DefaultExternABI)
+	}
+	if puts.Sig < 0 || puts.Sig >= len(mod.Sigs) {
+		t.Fatalf("puts signature id = %d, signatures = %#v", puts.Sig, mod.Sigs)
+	}
+	if sig := mod.Sigs[puts.Sig]; sig.Ret != bytecode.TypeI32 || len(sig.Params) != 1 || sig.Params[0] != bytecode.TypePtr {
+		t.Fatalf("puts signature = %#v, want int(ptr)", sig)
+	}
+}
+
 func TestGenerateGlobalsPointersAndArrayIndex(t *testing.T) {
 	mod := compileModule(t, `
 int g;
@@ -731,7 +764,7 @@ int main(void) {
 `)
 	g := &generator{
 		prog:      prog,
-		mod:       &bytecode.Module{Target: bytecode.DefaultTarget()},
+		mod:       bytecode.NewModule(),
 		globalMap: map[*sema.Symbol]int{},
 		sigMap:    map[string]int{},
 		layoutMap: map[sema.Type]int{},

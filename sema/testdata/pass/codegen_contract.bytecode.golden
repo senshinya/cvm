@@ -1,6 +1,6 @@
-Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Module version="1" entry=none target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
 Global #0 var name="g" size=4 align=4 readonly=false init_zero=4 init_bytes=0 init_relocs=0
-Global #1 func name="sum" func=0
+Global #1 func name="sum" func=0 sig=0
 Layout #0 name="int" size=4 align=4 elem_size=0
 Layout #1 name="int[<vla>]" size=0 align=4 elem_size=4
 Sig #0 ret=i32 params=(i32)

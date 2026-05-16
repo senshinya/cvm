@@ -26,7 +26,7 @@ func TestCompilerDumpBytecodeWritesModule(t *testing.T) {
 		t.Fatalf("RunSource returned error: %v", err)
 	}
 	got := out.String()
-	for _, want := range []string{"Module target=", "Func #0", "I32Return"} {
+	for _, want := range []string{"Module version=", "entry=global#0(\"main\")", "Func #0", "I32Return"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("dump bytecode missing %q:\n%s", want, got)
 		}

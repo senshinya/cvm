@@ -1,8 +1,12 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"shinya.click/cvm/bytecode"
 )
 
 func TestError(t *testing.T) {
@@ -96,5 +100,55 @@ func TestCompilerRejectsBothDumpModesBeforeCompilation(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "mutually exclusive") {
 		t.Fatalf("RunSource error = %v, want mutually exclusive", err)
+	}
+}
+
+func TestCompilerEmitBytecodeWritesLoadableBinaryModule(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "main.cvmbc")
+	c := &Compiler{EmitBytecode: path}
+	if err := c.RunSource(`int main(void) { return 0; }`); err != nil {
+		t.Fatalf("RunSource returned error: %v", err)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("open emitted bytecode: %v", err)
+	}
+	defer f.Close()
+	mod, err := bytecode.DecodeModule(f)
+	if err != nil {
+		t.Fatalf("DecodeModule: %v", err)
+	}
+	if mod.Entry == nil || mod.Entry.Global != 0 || mod.Entry.Name != "main" {
+		t.Fatalf("entry = %#v, want main at global 0", mod.Entry)
+	}
+	if len(mod.Functions) != 1 || mod.Functions[0].Name != "main" {
+		t.Fatalf("functions = %#v, want one main function", mod.Functions)
+	}
+}
+
+func TestMainEmitBytecodeFlagWritesLoadableBinaryModule(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "main.c")
+	out := filepath.Join(dir, "main.cvmbc")
+	if err := os.WriteFile(src, []byte(`int main(void) { return 0; }`), 0644); err != nil {
+		t.Fatalf("write source: %v", err)
+	}
+	oldArgs := os.Args
+	os.Args = []string{"cvm", "--emit-bytecode", out, src}
+	defer func() { os.Args = oldArgs }()
+
+	main()
+
+	f, err := os.Open(out)
+	if err != nil {
+		t.Fatalf("open emitted bytecode: %v", err)
+	}
+	defer f.Close()
+	mod, err := bytecode.DecodeModule(f)
+	if err != nil {
+		t.Fatalf("DecodeModule: %v", err)
+	}
+	if mod.Entry == nil || mod.Entry.Name != "main" {
+		t.Fatalf("entry = %#v, want main", mod.Entry)
 	}
 }

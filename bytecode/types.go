@@ -70,6 +70,13 @@ type TargetInfo struct {
 	LayoutVersion  string
 }
 
+const (
+	CurrentModuleVersion = "1"
+	DefaultExternABI     = "c"
+	NoEntryGlobal        = -1
+	NoFuncSig            = -1
+)
+
 func DefaultTarget() TargetInfo {
 	return TargetInfo{
 		Name:           "cvm-default",
@@ -83,13 +90,28 @@ func DefaultTarget() TargetInfo {
 	}
 }
 
+func NewModule() *Module {
+	return &Module{
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: NoEntryGlobal},
+		Target:  DefaultTarget(),
+	}
+}
+
 type Module struct {
+	Version   string
+	Entry     *EntryPoint
 	Target    TargetInfo
 	Globals   []Global
 	Functions []Function
 	Strings   []StringConst
 	Layouts   []ObjectLayout
 	Sigs      []FuncSig
+}
+
+type EntryPoint struct {
+	Global int
+	Name   string
 }
 
 type FuncSig struct {
@@ -112,10 +134,18 @@ type Global struct {
 	Name     string
 	Kind     GlobalKind
 	Func     int
+	Sig      int
+	Extern   ExternRef
 	Size     int64
 	Align    int64
 	Readonly bool
 	Init     InitData
+}
+
+type ExternRef struct {
+	Module string
+	Name   string
+	ABI    string
 }
 
 type InitData struct {

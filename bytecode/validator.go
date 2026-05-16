@@ -6,6 +6,12 @@ func ValidateModule(m *Module) error {
 	if m == nil {
 		return fmt.Errorf("module is nil")
 	}
+	if m.Version == "" {
+		return fmt.Errorf("module version is empty")
+	}
+	if m.Entry == nil {
+		return fmt.Errorf("module entry metadata is missing")
+	}
 	if m.Target.Name == "" {
 		return fmt.Errorf("target name is empty")
 	}
@@ -17,6 +23,9 @@ func ValidateModule(m *Module) error {
 		if g.Name == "" {
 			return fmt.Errorf("global %d has empty name", i)
 		}
+		if err := validateGlobalBinding(g); err != nil {
+			return err
+		}
 		if err := validateGlobalInit(m, g); err != nil {
 			return err
 		}
@@ -24,10 +33,24 @@ func ValidateModule(m *Module) error {
 			if g.Func < 0 || g.Func >= funcCount {
 				return fmt.Errorf("global %q references invalid function index %d", g.Name, g.Func)
 			}
+			if err := validateFunctionLikeGlobalSig(m, g); err != nil {
+				return err
+			}
+			if m.Functions[g.Func].Sig != g.Sig {
+				return fmt.Errorf("global %q signature %d does not match function signature %d", g.Name, g.Sig, m.Functions[g.Func].Sig)
+			}
 			if m.Functions[g.Func].GlobalID != g.ID {
 				return fmt.Errorf("global %q points to function %d with global id %d", g.Name, g.Func, m.Functions[g.Func].GlobalID)
 			}
 		}
+		if g.Kind == GlobalExtern && isExternFunctionGlobal(g) {
+			if err := validateFunctionLikeGlobalSig(m, g); err != nil {
+				return err
+			}
+		}
+	}
+	if err := validateEntryPoint(m); err != nil {
+		return err
 	}
 	for i, sig := range m.Sigs {
 		if sig.ID != i {
@@ -51,6 +74,55 @@ func ValidateModule(m *Module) error {
 		if err := validateFunction(m, i, &m.Functions[i]); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func validateFunctionLikeGlobalSig(m *Module, g Global) error {
+	if g.Sig < 0 || g.Sig >= len(m.Sigs) {
+		return fmt.Errorf("function global %q references invalid signature %d", g.Name, g.Sig)
+	}
+	return nil
+}
+
+func validateEntryPoint(m *Module) error {
+	if m.Entry.Global == NoEntryGlobal {
+		if m.Entry.Name != "" {
+			return fmt.Errorf("module entry name %q is set for no-entry module", m.Entry.Name)
+		}
+		return nil
+	}
+	if m.Entry.Global < 0 || m.Entry.Global >= len(m.Globals) {
+		return fmt.Errorf("module entry references invalid global %d", m.Entry.Global)
+	}
+	g := m.Globals[m.Entry.Global]
+	if g.Kind != GlobalFunc {
+		return fmt.Errorf("module entry global %d is %q, not a defined function", m.Entry.Global, g.Name)
+	}
+	if m.Entry.Name == "" {
+		return fmt.Errorf("module entry global %d has empty entry name", m.Entry.Global)
+	}
+	if m.Entry.Name != g.Name {
+		return fmt.Errorf("module entry name %q does not match global %q", m.Entry.Name, g.Name)
+	}
+	return nil
+}
+
+func validateGlobalBinding(g Global) error {
+	switch g.Kind {
+	case GlobalExtern:
+		if g.Extern.Name == "" {
+			return fmt.Errorf("extern global %q has empty import name", g.Name)
+		}
+		if g.Extern.ABI == "" {
+			return fmt.Errorf("extern global %q has empty ABI", g.Name)
+		}
+	case GlobalFunc, GlobalVar:
+		if g.Extern != (ExternRef{}) {
+			return fmt.Errorf("non-extern global %q has extern binding metadata", g.Name)
+		}
+	default:
+		return fmt.Errorf("global %q has invalid kind %d", g.Name, g.Kind)
 	}
 	return nil
 }
@@ -96,7 +168,11 @@ func validateGlobalInit(m *Module, g Global) error {
 }
 
 func isFunctionGlobal(g Global) bool {
-	return g.Kind == GlobalFunc || (g.Kind == GlobalExtern && g.Size == 0 && g.Align == 0)
+	return g.Kind == GlobalFunc || isExternFunctionGlobal(g)
+}
+
+func isExternFunctionGlobal(g Global) bool {
+	return g.Kind == GlobalExtern && g.Size == 0 && g.Align == 0
 }
 
 func validateLayout(m *Module, l ObjectLayout) error {

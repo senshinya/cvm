@@ -1,4 +1,4 @@
-Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Module version="1" entry=none target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
 Global #0 var name="p" size=8 align=1 readonly=false init_zero=8 init_bytes=0 init_relocs=0
 Layout #0 name="struct{...}" size=8 align=1 elem_size=0
   Field #0 name="x" offset=0 type=i32

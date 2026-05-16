@@ -8,8 +8,10 @@ import (
 
 func TestPrintModuleStableMinimalFunction(t *testing.T) {
 	mod := &Module{
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: 0, Name: "main"},
 		Target:  DefaultTarget(),
-		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0}},
+		Globals: []Global{{ID: 0, Name: "main", Kind: GlobalFunc, Func: 0, Sig: 0}},
 		Sigs:    []FuncSig{{ID: 0, Ret: TypeI32}},
 		Functions: []Function{{
 			ID:       0,
@@ -24,8 +26,8 @@ func TestPrintModuleStableMinimalFunction(t *testing.T) {
 	}
 	got := PrintModule(mod)
 	for _, want := range []string{
-		"Module target=\"cvm-default\"",
-		"Global #0 func name=\"main\" func=0",
+		"Module version=\"1\" entry=global#0(\"main\") target=\"cvm-default\"",
+		"Global #0 func name=\"main\" func=0 sig=0",
 		"Sig #0 ret=i32 params=()",
 		"Func #0 global=0 name=\"main\" sig=0",
 		"0000: I32Const 0",
@@ -39,6 +41,8 @@ func TestPrintModuleStableMinimalFunction(t *testing.T) {
 
 func TestPrintModuleFullStateExactOutput(t *testing.T) {
 	mod := &Module{
+		Version: CurrentModuleVersion,
+		Entry:   &EntryPoint{Global: 1, Name: "main"},
 		Target: TargetInfo{
 			Name:           "test-target",
 			Endian:         "big",
@@ -67,8 +71,8 @@ func TestPrintModuleFullStateExactOutput(t *testing.T) {
 					},
 				},
 			},
-			{ID: 1, Name: "main", Kind: GlobalFunc, Func: 0},
-			{ID: 2, Name: "puts", Kind: GlobalExtern},
+			{ID: 1, Name: "main", Kind: GlobalFunc, Func: 0, Sig: 0},
+			{ID: 2, Name: "puts", Kind: GlobalExtern, Sig: 0, Extern: ExternRef{Name: "puts", ABI: DefaultExternABI}},
 		},
 		Strings: []StringConst{{ID: 0, Value: "hi", Bytes: []byte{'h', 'i', 0}}},
 		Layouts: []ObjectLayout{{
@@ -144,14 +148,14 @@ func TestPrintModuleFullStateExactOutput(t *testing.T) {
 		}},
 	}
 
-	const want = "Module target=\"test-target\" endian=big ptr_size=4 ptr_align=4 bool_size=1 bool_align=1 bitfield_policy=\"test-policy\" layout_version=\"7\"\n" +
+	const want = "Module version=\"1\" entry=global#1(\"main\") target=\"test-target\" endian=big ptr_size=4 ptr_align=4 bool_size=1 bool_align=1 bitfield_policy=\"test-policy\" layout_version=\"7\"\n" +
 		"Global #0 var name=\"data\" size=16 align=8 readonly=true init_zero=4 init_bytes=3 init_relocs=3\n" +
 		"  InitBytes hex=0102ff\n" +
 		"  reloc offset=0 kind=global target=global#0(\"data\") addend=1\n" +
 		"  reloc offset=1 kind=func target=func#0(\"main\") addend=2\n" +
 		"  reloc offset=2 kind=string target=string#0(\"hi\") addend=9\n" +
-		"Global #1 func name=\"main\" func=0\n" +
-		"Global #2 extern name=\"puts\"\n" +
+		"Global #1 func name=\"main\" func=0 sig=0\n" +
+		"Global #2 extern name=\"puts\" size=0 align=0 sig=0 import_module=\"\" import_name=\"puts\" abi=\"c\"\n" +
 		"String #0 value=\"hi\" bytes=3 hex=686900\n" +
 		"Layout #0 name=\"Pair\" size=12 align=4 elem_size=6\n" +
 		"  Field #0 name=\"x\" offset=0 type=i32\n" +

@@ -1,6 +1,6 @@
-Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Module version="1" entry=global#1("main") target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
 Global #0 var name="a" size=12 align=4 readonly=false init_zero=12 init_bytes=0 init_relocs=0
-Global #1 func name="main" func=0
+Global #1 func name="main" func=0 sig=0
 Layout #0 name="int[3]" size=12 align=4 elem_size=4
 Sig #0 ret=i32 params=()
 Func #0 global=1 name="main" sig=0 max_stack=0

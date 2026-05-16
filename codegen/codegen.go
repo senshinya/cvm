@@ -13,7 +13,7 @@ func Generate(prog *sema.Program) (*bytecode.Module, error) {
 	}
 	g := &generator{
 		prog:      prog,
-		mod:       &bytecode.Module{Target: bytecode.DefaultTarget()},
+		mod:       bytecode.NewModule(),
 		globalMap: map[*sema.Symbol]int{},
 		sigMap:    map[string]int{},
 		layoutMap: map[sema.Type]int{},
@@ -94,17 +94,24 @@ func (g *generator) collectGlobals() error {
 				return err
 			}
 		case *sema.FuncDecl:
-			if _, err := g.addGlobal(x.Sym, bytecode.GlobalExtern, -1); err != nil {
+			globalID, err := g.addGlobal(x.Sym, bytecode.GlobalExtern, -1)
+			if err != nil {
 				return err
 			}
-			if _, err := g.lowerFuncSig(x.T); err != nil {
+			sig, err := g.lowerFuncSig(x.T)
+			if err != nil {
 				return err
 			}
+			g.mod.Globals[globalID].Sig = sig
 		}
 	}
 	for i, fn := range g.prog.Funcs {
-		if _, err := g.addGlobal(fn.Sym, bytecode.GlobalFunc, i); err != nil {
+		globalID, err := g.addGlobal(fn.Sym, bytecode.GlobalFunc, i)
+		if err != nil {
 			return err
+		}
+		if fn.Sym.Name == "main" {
+			g.mod.Entry = &bytecode.EntryPoint{Global: globalID, Name: fn.Sym.Name}
 		}
 		for _, local := range fn.Locals {
 			if local != nil && local.Storage == sema.StorageStatic {
@@ -122,9 +129,11 @@ func (g *generator) addGlobal(sym *sema.Symbol, kind bytecode.GlobalKind, fnInde
 		if kind == bytecode.GlobalFunc {
 			g.mod.Globals[id].Kind = kind
 			g.mod.Globals[id].Func = fnIndex
+			g.mod.Globals[id].Extern = bytecode.ExternRef{}
 		}
 		if kind == bytecode.GlobalVar && g.mod.Globals[id].Kind == bytecode.GlobalExtern {
 			g.mod.Globals[id].Kind = kind
+			g.mod.Globals[id].Extern = bytecode.ExternRef{}
 			g.mod.Globals[id].Size = g.sizeof(sym.T)
 			g.mod.Globals[id].Align = g.alignof(sym.T)
 			g.mod.Globals[id].Init.ZeroFill = g.mod.Globals[id].Size
@@ -136,9 +145,12 @@ func (g *generator) addGlobal(sym *sema.Symbol, kind bytecode.GlobalKind, fnInde
 	}
 	id := sym.GlobalID
 	for len(g.mod.Globals) <= id {
-		g.mod.Globals = append(g.mod.Globals, bytecode.Global{ID: len(g.mod.Globals), Func: -1})
+		g.mod.Globals = append(g.mod.Globals, bytecode.Global{ID: len(g.mod.Globals), Func: -1, Sig: bytecode.NoFuncSig})
 	}
-	global := bytecode.Global{ID: id, Name: sym.Name, Kind: kind, Func: fnIndex}
+	global := bytecode.Global{ID: id, Name: sym.Name, Kind: kind, Func: fnIndex, Sig: bytecode.NoFuncSig}
+	if kind == bytecode.GlobalExtern {
+		global.Extern = externRefForSymbol(sym)
+	}
 	if kind == bytecode.GlobalVar || (kind == bytecode.GlobalExtern && sym.Kind == sema.SymVar) {
 		global.Size = g.sizeof(sym.T)
 		global.Align = g.alignof(sym.T)
@@ -154,6 +166,13 @@ func (g *generator) addGlobal(sym *sema.Symbol, kind bytecode.GlobalKind, fnInde
 		}
 	}
 	return id, nil
+}
+
+func externRefForSymbol(sym *sema.Symbol) bytecode.ExternRef {
+	return bytecode.ExternRef{
+		Name: sym.Name,
+		ABI:  bytecode.DefaultExternABI,
+	}
 }
 
 func (g *generator) internSig(ret bytecode.ValueType, params []bytecode.ValueType, variadic bool) int {
@@ -293,6 +312,8 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 	if fn.Sym.GlobalID >= 0 && fn.Sym.GlobalID < len(g.mod.Globals) {
 		g.mod.Globals[fn.Sym.GlobalID].Func = f.ID
 		g.mod.Globals[fn.Sym.GlobalID].Kind = bytecode.GlobalFunc
+		g.mod.Globals[fn.Sym.GlobalID].Sig = sig
+		g.mod.Globals[fn.Sym.GlobalID].Extern = bytecode.ExternRef{}
 	}
 	return nil
 }

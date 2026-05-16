@@ -1,6 +1,6 @@
-Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
-Global #0 extern name="add"
-Global #1 func name="main" func=0
+Module version="1" entry=global#1("main") target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Global #0 extern name="add" size=0 align=0 sig=0 import_module="" import_name="add" abi="c"
+Global #1 func name="main" func=0 sig=1
 Sig #0 ret=i32 params=(i32, i32)
 Sig #1 ret=i32 params=()
 Func #0 global=1 name="main" sig=1 max_stack=0

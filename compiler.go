@@ -22,6 +22,7 @@ type Compiler struct {
 	Sources      *preprocessor.SourceManager
 	DumpIR       bool
 	DumpBytecode bool
+	EmitBytecode string
 	Output       io.Writer
 }
 
@@ -59,6 +60,21 @@ func (c *Compiler) RunSource(source string) error {
 		fmt.Fprint(c.output(), bytecode.PrintModule(mod))
 		return nil
 	}
+	if c.EmitBytecode != "" {
+		mod, err := codegen.Generate(prog)
+		if err != nil {
+			return err
+		}
+		f, err := os.Create(c.EmitBytecode)
+		if err != nil {
+			return err
+		}
+		if err := bytecode.EncodeModule(f, mod); err != nil {
+			_ = f.Close()
+			return err
+		}
+		return f.Close()
+	}
 	return nil
 }
 
@@ -70,8 +86,14 @@ func (c *Compiler) output() io.Writer {
 }
 
 func (c *Compiler) validateDumpModes() error {
-	if c.DumpIR && c.DumpBytecode {
-		return fmt.Errorf("--dump-ir and --dump-bytecode are mutually exclusive")
+	selected := 0
+	for _, enabled := range []bool{c.DumpIR, c.DumpBytecode, c.EmitBytecode != ""} {
+		if enabled {
+			selected++
+		}
+	}
+	if selected > 1 {
+		return fmt.Errorf("--dump-ir, --dump-bytecode, and --emit-bytecode are mutually exclusive")
 	}
 	return nil
 }

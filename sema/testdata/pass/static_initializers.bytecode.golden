@@ -1,4 +1,4 @@
-Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Module version="1" entry=none target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
 Global #0 var name="g" size=4 align=4 readonly=false init_zero=0 init_bytes=4 init_relocs=0
   InitBytes hex=07000000
 Global #1 var name="arr" size=12 align=4 readonly=false init_zero=0 init_bytes=12 init_relocs=0
@@ -6,7 +6,7 @@ Global #1 var name="arr" size=12 align=4 readonly=false init_zero=0 init_bytes=1
 Global #2 var name="gp" size=8 align=8 readonly=false init_zero=0 init_bytes=8 init_relocs=1
   InitBytes hex=0000000000000000
   reloc offset=0 kind=global target=global#0("g") addend=0
-Global #3 func name="read_globals" func=0
+Global #3 func name="read_globals" func=0 sig=0
 Layout #0 name="int" size=4 align=4 elem_size=0
 Layout #1 name="int[3]" size=12 align=4 elem_size=4
 Layout #2 name="int*" size=8 align=8 elem_size=0

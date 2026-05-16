@@ -11,8 +11,8 @@ func PrintModule(m *Module) string {
 	}
 	var b strings.Builder
 	t := m.Target
-	fmt.Fprintf(&b, "Module target=%q endian=%s ptr_size=%d ptr_align=%d bool_size=%d bool_align=%d bitfield_policy=%q layout_version=%q\n",
-		t.Name, t.Endian, t.PointerSize, t.PointerAlign, t.BoolSize, t.BoolAlign, t.BitFieldPolicy, t.LayoutVersion)
+	fmt.Fprintf(&b, "Module version=%q entry=%s target=%q endian=%s ptr_size=%d ptr_align=%d bool_size=%d bool_align=%d bitfield_policy=%q layout_version=%q\n",
+		m.Version, entryTarget(m), t.Name, t.Endian, t.PointerSize, t.PointerAlign, t.BoolSize, t.BoolAlign, t.BitFieldPolicy, t.LayoutVersion)
 	for _, g := range m.Globals {
 		printGlobal(&b, m, g)
 	}
@@ -53,9 +53,10 @@ func PrintModule(m *Module) string {
 func printGlobal(b *strings.Builder, m *Module, g Global) {
 	switch g.Kind {
 	case GlobalFunc:
-		fmt.Fprintf(b, "Global #%d func name=%q func=%d\n", g.ID, g.Name, g.Func)
+		fmt.Fprintf(b, "Global #%d func name=%q func=%d sig=%d\n", g.ID, g.Name, g.Func, g.Sig)
 	case GlobalExtern:
-		fmt.Fprintf(b, "Global #%d extern name=%q\n", g.ID, g.Name)
+		fmt.Fprintf(b, "Global #%d extern name=%q size=%d align=%d sig=%d import_module=%q import_name=%q abi=%q\n",
+			g.ID, g.Name, g.Size, g.Align, g.Sig, g.Extern.Module, g.Extern.Name, g.Extern.ABI)
 	default:
 		fmt.Fprintf(b, "Global #%d var name=%q size=%d align=%d readonly=%v init_zero=%d init_bytes=%d init_relocs=%d\n",
 			g.ID, g.Name, g.Size, g.Align, g.Readonly, g.Init.ZeroFill, len(g.Init.Bytes), len(g.Init.Relocations))
@@ -66,6 +67,20 @@ func printGlobal(b *strings.Builder, m *Module, g Global) {
 			fmt.Fprintf(b, "  reloc offset=%d kind=%s target=%s addend=%d\n", r.Offset, relocationKindName(r.Kind), relocationTarget(m, r), r.Addend)
 		}
 	}
+}
+
+func entryTarget(m *Module) string {
+	if m.Entry == nil {
+		return "<missing>"
+	}
+	if m.Entry.Global == NoEntryGlobal {
+		return "none"
+	}
+	if m.Entry.Global >= 0 && m.Entry.Global < len(m.Globals) {
+		g := m.Globals[m.Entry.Global]
+		return fmt.Sprintf("global#%d(%q)", g.ID, g.Name)
+	}
+	return fmt.Sprintf("global#%d(<invalid>)", m.Entry.Global)
 }
 
 func printFunction(b *strings.Builder, f Function) {
