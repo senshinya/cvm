@@ -949,6 +949,9 @@ func (fg *funcGen) emitComplexSourceAddress(src sema.Expr) error {
 		if builtinComplexCall(x) != nil {
 			return fg.emitComplexRValueAddress(src)
 		}
+		if isComplexType(x.GetType()) {
+			return fg.emitValue(src)
+		}
 		return fg.emitAddress(src)
 	default:
 		return fg.emitAddress(src)

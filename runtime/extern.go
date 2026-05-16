@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/cmplx"
 	"os"
 
 	"shinya.click/cvm/bytecode"
@@ -175,6 +176,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealExterns(r, "__cvm_tgmath_sin", math.Sin)
 	registerTgmathRealExterns(r, "__cvm_tgmath_exp", math.Exp)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_pow", math.Pow)
+	registerTgmathComplexExterns(r, "__cvm_tgmath_cexp", cmplx.Exp)
 	r.Register("__builtin_cabsf", complexAbsExtern("__builtin_cabsf", bytecode.TypeF32, 4))
 	r.Register("__builtin_cabs", complexAbsExtern("__builtin_cabs", bytecode.TypeF64, 8))
 	r.Register("__builtin_cabsl", complexAbsExtern("__builtin_cabsl", bytecode.TypeFLong, 16))
@@ -191,25 +193,76 @@ func complexAbsExtern(name string, realType bytecode.ValueType, realSize uint64)
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
 		}
-		if args[0].Type != bytecode.TypeObjectAddr {
-			return Value{}, nil, fmt.Errorf("%s expects complex object address", name)
-		}
-		if ec == nil || ec.Memory == nil {
-			return Value{}, nil, fmt.Errorf("%s requires memory", name)
-		}
-		if args[0].Int > math.MaxUint64-realSize {
-			return Value{}, nil, fmt.Errorf("%s complex imaginary component address overflows", name)
-		}
-		real, err := ec.Memory.Load(args[0].Int, realType, int64(realSize))
+		z, err := loadComplexArg(name, ec, args[0], realType, realSize)
 		if err != nil {
 			return Value{}, nil, err
 		}
-		imag, err := ec.Memory.Load(args[0].Int+realSize, realType, int64(realSize))
-		if err != nil {
-			return Value{}, nil, err
-		}
-		return FloatValue(realType, math.Hypot(cvmFloat(real), cvmFloat(imag))), nil, nil
+		return FloatValue(realType, math.Hypot(real(z), imag(z))), nil, nil
 	}
+}
+
+func registerTgmathComplexExterns(r *ExternRegistry, base string, fn func(complex128) complex128) {
+	r.Register(base+"f", complexUnaryExtern(base+"f", bytecode.TypeF32, 4, fn))
+	r.Register(base, complexUnaryExtern(base, bytecode.TypeF64, 8, fn))
+	r.Register(base+"l", complexUnaryExtern(base+"l", bytecode.TypeFLong, 16, fn))
+}
+
+func complexUnaryExtern(name string, realType bytecode.ValueType, realSize uint64, fn func(complex128) complex128) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		z, err := loadComplexArg(name, ec, args[0], realType, realSize)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		addr, err := storeComplexResult(name, ec, realType, realSize, fn(z))
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return ObjectAddrValue(addr), nil, nil
+	}
+}
+
+func loadComplexArg(name string, ec *ExternContext, arg Value, realType bytecode.ValueType, realSize uint64) (complex128, error) {
+	if arg.Type != bytecode.TypeObjectAddr {
+		return 0, fmt.Errorf("%s expects complex object address", name)
+	}
+	if ec == nil || ec.Memory == nil {
+		return 0, fmt.Errorf("%s requires memory", name)
+	}
+	if arg.Int > math.MaxUint64-realSize {
+		return 0, fmt.Errorf("%s complex imaginary component address overflows", name)
+	}
+	realPart, err := ec.Memory.Load(arg.Int, realType, int64(realSize))
+	if err != nil {
+		return 0, err
+	}
+	imagPart, err := ec.Memory.Load(arg.Int+realSize, realType, int64(realSize))
+	if err != nil {
+		return 0, err
+	}
+	return complex(cvmFloat(realPart), cvmFloat(imagPart)), nil
+}
+
+func storeComplexResult(name string, ec *ExternContext, realType bytecode.ValueType, realSize uint64, z complex128) (uint64, error) {
+	if ec == nil || ec.Memory == nil {
+		return 0, fmt.Errorf("%s requires memory", name)
+	}
+	if realSize > math.MaxInt64/2 {
+		return 0, fmt.Errorf("%s complex result size overflows", name)
+	}
+	addr, err := ec.Memory.TryAlloc("extern:"+name+":result", int64(realSize*2), int64(realSize), false, blockGlobal)
+	if err != nil {
+		return 0, err
+	}
+	if err := ec.Memory.Store(addr, realType, int64(realSize), FloatValue(realType, real(z))); err != nil {
+		return 0, err
+	}
+	if err := ec.Memory.Store(addr+realSize, realType, int64(realSize), FloatValue(realType, imag(z))); err != nil {
+		return 0, err
+	}
+	return addr, nil
 }
 
 func registerTgmathRealExterns(r *ExternRegistry, base string, fn func(float64) float64) {
