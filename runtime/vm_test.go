@@ -146,6 +146,27 @@ func TestRunUnsignedSwitchDoesNotMatchNegativeCase(t *testing.T) {
 	}
 }
 
+func TestRunU64SwitchMaxValueDoesNotMatchNegativeCase(t *testing.T) {
+	mod := testMainModule(
+		bytecode.U64Const(^uint64(0)),
+		bytecode.Instr{Op: bytecode.OpSwitch, Type: bytecode.TypeU64, Label: 9, Labels: []bytecode.SwitchCase{{Value: -1, Label: 2}}},
+		bytecode.LabelInstr(9),
+		bytecode.I32Const(11),
+		bytecode.Return(bytecode.TypeI32),
+		bytecode.LabelInstr(2),
+		bytecode.I32Const(22),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Functions[0].Labels = []bytecode.Label{{ID: 9, Name: "default"}, {ID: 2, Name: "negative"}}
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 11 {
+		t.Fatalf("exit code = %d, want 11", st.Code)
+	}
+}
+
 func TestRunShiftTrapsOnNegativeCount(t *testing.T) {
 	_, err := runProgram(t, context.Background(), testMainModule(
 		bytecode.I32Const(1),
@@ -218,6 +239,17 @@ func TestRunIntegerCasts(t *testing.T) {
 			t.Fatalf("exit code = %d, want -1", st.Code)
 		}
 	})
+}
+
+func TestRunBoolCastRejectsNonBoolResultType(t *testing.T) {
+	_, err := runModule(t, testMainModule(
+		bytecode.I32Const(7),
+		bytecode.Cast(bytecode.TypeI32, bytecode.TypeI32, bytecode.CastBool),
+		bytecode.Return(bytecode.TypeI32),
+	))
+	if err == nil || !strings.Contains(err.Error(), "bool cast result type") {
+		t.Fatalf("Run error = %v, want bool cast result type", err)
+	}
 }
 
 func TestRunBoolCastFromIntAndPointer(t *testing.T) {

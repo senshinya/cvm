@@ -412,6 +412,13 @@ func (vm *VM) cast(ins bytecode.Instr) error {
 	if err != nil {
 		return err
 	}
+	if ins.Cast == bytecode.CastBool {
+		if ins.Type2 != bytecode.TypeBool {
+			return vm.trap(fmt.Sprintf("bool cast result type is %s, want %s", ins.Type2, bytecode.TypeBool))
+		}
+		vm.stack = append(vm.stack, UIntValue(bytecode.TypeBool, uint64(boolInt(!v.IsZero()))))
+		return nil
+	}
 	if ins.Type == ins.Type2 {
 		vm.stack = append(vm.stack, v)
 		return nil
@@ -425,8 +432,6 @@ func (vm *VM) cast(ins bytecode.Instr) error {
 	}
 
 	switch ins.Cast {
-	case bytecode.CastBool:
-		vm.stack = append(vm.stack, UIntValue(bytecode.TypeBool, uint64(boolInt(!v.IsZero()))))
 	case bytecode.CastTrunc, bytecode.CastZExt:
 		if !isIntegerLike(ins.Type) || !isIntegerLike(ins.Type2) {
 			return vm.trap(fmt.Sprintf("unsupported integer cast %s->%s", ins.Type, ins.Type2))
