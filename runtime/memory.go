@@ -39,14 +39,6 @@ func NewMemory(target bytecode.TargetInfo) *Memory {
 	return &Memory{target: target, next: 0x1000}
 }
 
-func (m *Memory) Alloc(name string, size, align int64, readonly bool, kind blockKind) uint64 {
-	addr, err := m.TryAlloc(name, size, align, readonly, kind)
-	if err != nil {
-		panic(err)
-	}
-	return addr
-}
-
 func (m *Memory) TryAlloc(name string, size, align int64, readonly bool, kind blockKind) (uint64, error) {
 	if align <= 0 {
 		align = 1
@@ -76,12 +68,6 @@ func (m *Memory) TryAlloc(name string, size, align int64, readonly bool, kind bl
 	m.blocks = append(m.blocks, b)
 	m.next = end + 0x10
 	return base, nil
-}
-
-func (m *Memory) AllocBytes(name string, data []byte, readonly bool, kind blockKind) uint64 {
-	addr := m.Alloc(name, int64(len(data)), 1, readonly, kind)
-	copy(m.blocks[len(m.blocks)-1].data, data)
-	return addr
 }
 
 func (m *Memory) Load(addr uint64, t bytecode.ValueType, align int64) (Value, error) {

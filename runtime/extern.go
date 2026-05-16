@@ -94,12 +94,16 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 }
 
 func (r *ExternRegistry) Register(name string, fn ExternFunc) {
+	if fn == nil {
+		delete(r.funcs, name)
+		return
+	}
 	r.funcs[name] = fn
 }
 
 func (r *ExternRegistry) Lookup(name string) (ExternFunc, bool) {
 	fn, ok := r.funcs[name]
-	return fn, ok
+	return fn, ok && fn != nil
 }
 
 func (r *ExternRegistry) LookupVariable(name string, mem *Memory) (uint64, bool) {

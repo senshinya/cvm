@@ -75,3 +75,25 @@ func TestLoadReturnsErrorForStdoutExternVariableWithUnsupportedPointerSize(t *te
 		t.Fatalf("Load error = %v, want stdout or pointer size", err)
 	}
 }
+
+func TestLoadRejectsNilExternFunction(t *testing.T) {
+	mod := testMainModule(bytecode.I32Const(0), bytecode.Return(bytecode.TypeI32))
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeVoid})
+	mod.Globals = append(mod.Globals, bytecode.Global{
+		ID:     1,
+		Name:   "nil_ext",
+		Kind:   bytecode.GlobalExtern,
+		Sig:    1,
+		Extern: bytecode.ExternRef{Name: "nil_ext", ABI: bytecode.DefaultExternABI},
+	})
+	var buf bytes.Buffer
+	if err := bytecode.EncodeModule(&buf, mod); err != nil {
+		t.Fatalf("EncodeModule: %v", err)
+	}
+	reg := NewExternRegistry(nil, nil)
+	reg.Register("nil_ext", nil)
+	_, err := Load(bytes.NewReader(buf.Bytes()), LoadOptions{Externs: reg})
+	if err == nil || !strings.Contains(err.Error(), "unresolved extern nil_ext") {
+		t.Fatalf("Load error = %v, want unresolved nil extern", err)
+	}
+}

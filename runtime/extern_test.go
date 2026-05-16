@@ -22,7 +22,7 @@ func TestPutsWritesCString(t *testing.T) {
 	var out bytes.Buffer
 	reg := DefaultExternRegistry(&out, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
-	addr := mem.AllocBytes("string:0", []byte("hello\x00"), true, blockString)
+	addr := mustAllocBytes(t, mem, "string:0", []byte("hello\x00"), true, blockString)
 	fn, _ := reg.Lookup("puts")
 	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(addr)})
 	if err != nil || exit != nil {
@@ -38,7 +38,7 @@ func TestFputsWritesCStringToStderrHostHandle(t *testing.T) {
 	var errOut bytes.Buffer
 	reg := DefaultExternRegistry(&out, &errOut)
 	mem := NewMemory(bytecode.DefaultTarget())
-	addr := mem.AllocBytes("string:0", []byte("hello\x00"), true, blockString)
+	addr := mustAllocBytes(t, mem, "string:0", []byte("hello\x00"), true, blockString)
 	stderr, ok := reg.LookupVariable("stderr", mem)
 	if !ok {
 		t.Fatal("missing stderr extern variable")
@@ -62,7 +62,7 @@ func TestFputsWritesCStringToLoadedStderrHostHandle(t *testing.T) {
 	reg := DefaultExternRegistry(&out, &errOut)
 	target := bytecode.DefaultTarget()
 	mem := NewMemory(target)
-	addr := mem.AllocBytes("string:0", []byte("hello\x00"), true, blockString)
+	addr := mustAllocBytes(t, mem, "string:0", []byte("hello\x00"), true, blockString)
 	stderrAddr, ok := reg.LookupVariable("stderr", mem)
 	if !ok {
 		t.Fatal("missing stderr extern variable")
@@ -89,7 +89,7 @@ func TestFputsUnknownStreamHandleReturnsError(t *testing.T) {
 	var errOut bytes.Buffer
 	reg := DefaultExternRegistry(&out, &errOut)
 	mem := NewMemory(bytecode.DefaultTarget())
-	addr := mem.AllocBytes("string:0", []byte("hello\x00"), true, blockString)
+	addr := mustAllocBytes(t, mem, "string:0", []byte("hello\x00"), true, blockString)
 	fn, _ := reg.Lookup("fputs")
 	_, _, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(addr), PtrValue(0xdeadbeef)})
 	if err == nil || !strings.Contains(err.Error(), "unknown stream handle") {

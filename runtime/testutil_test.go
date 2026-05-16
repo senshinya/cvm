@@ -1,6 +1,10 @@
 package runtime
 
-import "shinya.click/cvm/bytecode"
+import (
+	"testing"
+
+	"shinya.click/cvm/bytecode"
+)
 
 func testMainModule(instrs ...bytecode.Instr) *bytecode.Module {
 	mod := bytecode.NewModule()
@@ -13,4 +17,20 @@ func testMainModule(instrs ...bytecode.Instr) *bytecode.Module {
 	}}
 	mod.Entry = &bytecode.EntryPoint{Global: 0, Name: "main"}
 	return mod
+}
+
+func mustAlloc(t testing.TB, mem *Memory, name string, size, align int64, readonly bool, kind blockKind) uint64 {
+	t.Helper()
+	addr, err := mem.TryAlloc(name, size, align, readonly, kind)
+	if err != nil {
+		t.Fatalf("TryAlloc(%q): %v", name, err)
+	}
+	return addr
+}
+
+func mustAllocBytes(t testing.TB, mem *Memory, name string, data []byte, readonly bool, kind blockKind) uint64 {
+	t.Helper()
+	addr := mustAlloc(t, mem, name, int64(len(data)), 1, readonly, kind)
+	copy(mem.blocks[len(mem.blocks)-1].data, data)
+	return addr
 }

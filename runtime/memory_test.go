@@ -10,7 +10,7 @@ import (
 
 func TestMemoryReadWriteScalar(t *testing.T) {
 	mem := NewMemory(bytecode.DefaultTarget())
-	addr := mem.Alloc("global:g", 8, 4, false, blockGlobal)
+	addr := mustAlloc(t, mem, "global:g", 8, 4, false, blockGlobal)
 	if err := mem.Store(addr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0x11223344)); err != nil {
 		t.Fatalf("Store: %v", err)
 	}
@@ -25,7 +25,7 @@ func TestMemoryReadWriteScalar(t *testing.T) {
 
 func TestMemoryRejectsReadonlyWrite(t *testing.T) {
 	mem := NewMemory(bytecode.DefaultTarget())
-	addr := mem.Alloc("string:0", 4, 1, true, blockString)
+	addr := mustAlloc(t, mem, "string:0", 4, 1, true, blockString)
 	err := mem.Store(addr, bytecode.TypeI8, 1, IntValue(bytecode.TypeI8, 1))
 	if err == nil || !strings.Contains(err.Error(), "readonly") {
 		t.Fatalf("Store error = %v, want readonly", err)
@@ -34,7 +34,7 @@ func TestMemoryRejectsReadonlyWrite(t *testing.T) {
 
 func TestMemoryReadCString(t *testing.T) {
 	mem := NewMemory(bytecode.DefaultTarget())
-	addr := mem.AllocBytes("string:0", []byte("hello\x00extra"), true, blockString)
+	addr := mustAllocBytes(t, mem, "string:0", []byte("hello\x00extra"), true, blockString)
 	got, err := mem.ReadCString(addr)
 	if err != nil {
 		t.Fatalf("ReadCString: %v", err)
@@ -49,7 +49,7 @@ func TestMemoryReadWritePointer32BitTarget(t *testing.T) {
 	target.PointerSize = 4
 	target.PointerAlign = 4
 	mem := NewMemory(target)
-	addr := mem.Alloc("global:p", 4, 4, false, blockGlobal)
+	addr := mustAlloc(t, mem, "global:p", 4, 4, false, blockGlobal)
 	if err := mem.Store(addr, bytecode.TypePtr, 4, PtrValue(0x11223344)); err != nil {
 		t.Fatalf("Store: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestMemoryRejectsPointerOverflow32BitTarget(t *testing.T) {
 	target.PointerSize = 4
 	target.PointerAlign = 4
 	mem := NewMemory(target)
-	addr := mem.Alloc("global:p", 4, 4, false, blockGlobal)
+	addr := mustAlloc(t, mem, "global:p", 4, 4, false, blockGlobal)
 	err := mem.Store(addr, bytecode.TypePtr, 4, PtrValue(math.MaxUint32+1))
 	if err == nil || !strings.Contains(err.Error(), "exceeds 32-bit pointer") {
 		t.Fatalf("Store error = %v, want pointer overflow", err)
@@ -76,7 +76,7 @@ func TestMemoryRejectsPointerOverflow32BitTarget(t *testing.T) {
 
 func TestMemoryReadWriteFloat64(t *testing.T) {
 	mem := NewMemory(bytecode.DefaultTarget())
-	addr := mem.Alloc("global:f", 8, 8, false, blockGlobal)
+	addr := mustAlloc(t, mem, "global:f", 8, 8, false, blockGlobal)
 	if err := mem.Store(addr, bytecode.TypeF64, 8, FloatValue(bytecode.TypeF64, 3.25)); err != nil {
 		t.Fatalf("Store: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestMemoryReadWriteFloat64(t *testing.T) {
 
 func TestMemoryReadWriteFloat32(t *testing.T) {
 	mem := NewMemory(bytecode.DefaultTarget())
-	addr := mem.Alloc("global:f32", 4, 4, false, blockGlobal)
+	addr := mustAlloc(t, mem, "global:f32", 4, 4, false, blockGlobal)
 	if err := mem.Store(addr, bytecode.TypeF32, 4, FloatValue(bytecode.TypeF32, 1.5)); err != nil {
 		t.Fatalf("Store: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestMemoryReadWriteFloat32(t *testing.T) {
 
 func TestMemoryRejectsLongDoubleLoadStore(t *testing.T) {
 	mem := NewMemory(bytecode.DefaultTarget())
-	addr := mem.Alloc("global:flong", 16, 8, false, blockGlobal)
+	addr := mustAlloc(t, mem, "global:flong", 16, 8, false, blockGlobal)
 	if _, err := mem.Load(addr, bytecode.TypeFLong, 8); err == nil || !strings.Contains(err.Error(), "unsupported long double memory load") {
 		t.Fatalf("Load error = %v, want unsupported long double memory load", err)
 	}
@@ -120,7 +120,7 @@ func TestMemoryRejectsUnknownEndian(t *testing.T) {
 	target := bytecode.DefaultTarget()
 	target.Endian = "middle"
 	mem := NewMemory(target)
-	addr := mem.Alloc("global:g", 2, 2, false, blockGlobal)
+	addr := mustAlloc(t, mem, "global:g", 2, 2, false, blockGlobal)
 	err := mem.Store(addr, bytecode.TypeI16, 2, IntValue(bytecode.TypeI16, 1))
 	if err == nil || !strings.Contains(err.Error(), "unsupported endian") {
 		t.Fatalf("Store error = %v, want unsupported endian", err)
@@ -129,7 +129,7 @@ func TestMemoryRejectsUnknownEndian(t *testing.T) {
 
 func TestMemoryBoundsAlignmentCopySetAndCStringErrors(t *testing.T) {
 	mem := NewMemory(bytecode.DefaultTarget())
-	addr := mem.Alloc("global:g", 4, 4, false, blockGlobal)
+	addr := mustAlloc(t, mem, "global:g", 4, 4, false, blockGlobal)
 	if _, err := mem.Load(addr+2, bytecode.TypeI32, 1); err == nil || !strings.Contains(err.Error(), "invalid memory access") {
 		t.Fatalf("Load bounds error = %v, want invalid memory access", err)
 	}
@@ -137,8 +137,8 @@ func TestMemoryBoundsAlignmentCopySetAndCStringErrors(t *testing.T) {
 		t.Fatalf("Store alignment error = %v, want unaligned", err)
 	}
 
-	src := mem.Alloc("global:src", 4, 1, false, blockGlobal)
-	dst := mem.Alloc("global:dst", 4, 1, false, blockGlobal)
+	src := mustAlloc(t, mem, "global:src", 4, 1, false, blockGlobal)
+	dst := mustAlloc(t, mem, "global:dst", 4, 1, false, blockGlobal)
 	if err := mem.Set(src, 0x7f, 4); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestMemoryBoundsAlignmentCopySetAndCStringErrors(t *testing.T) {
 		t.Fatalf("copied byte %#x, want 0x7f", got.Int)
 	}
 
-	cstr := mem.AllocBytes("string:unterminated", []byte("hello"), true, blockString)
+	cstr := mustAllocBytes(t, mem, "string:unterminated", []byte("hello"), true, blockString)
 	if _, err := mem.ReadCString(cstr); err == nil || !strings.Contains(err.Error(), "unterminated") {
 		t.Fatalf("ReadCString error = %v, want unterminated", err)
 	}

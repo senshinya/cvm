@@ -36,6 +36,12 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 	if p == nil {
 		return ExitStatus{}, &TrapError{Reason: "nil program"}
 	}
+	if p.module == nil {
+		return ExitStatus{}, &TrapError{Reason: "program module is nil"}
+	}
+	if p.memory == nil {
+		return ExitStatus{}, &TrapError{Reason: "program memory is nil"}
+	}
 	vm := &VM{
 		program: p,
 		limit:   opts.StepLimit,
@@ -46,6 +52,13 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 	for {
 		st, done, err := vm.step(ctx)
 		if done || err != nil {
+			cleanupErr := vm.cleanupFrames()
+			if err != nil {
+				return st, err
+			}
+			if cleanupErr != nil {
+				return st, cleanupErr
+			}
 			return st, err
 		}
 	}
@@ -540,6 +553,15 @@ func (vm *VM) popFrame() error {
 		}
 	}
 	vm.frames = vm.frames[:len(vm.frames)-1]
+	return nil
+}
+
+func (vm *VM) cleanupFrames() error {
+	for len(vm.frames) != 0 {
+		if err := vm.popFrame(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

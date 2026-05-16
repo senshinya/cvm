@@ -179,6 +179,58 @@ func TestRunExitExtern(t *testing.T) {
 	}
 }
 
+func TestRunExternExitCleansActiveFrames(t *testing.T) {
+	var captured uint64
+	reg := NewExternRegistry(nil, nil)
+	reg.Register("capture_exit", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, errors.New("capture_exit expects 1 argument")
+		}
+		captured = args[0].Int
+		return Value{}, &ExitStatus{Code: 0}, nil
+	})
+
+	mod := testMainModule(
+		bytecode.AddrLocalObject(0),
+		bytecode.Call(1, 1, 1),
+		bytecode.I32Const(99),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeVoid, Params: []bytecode.ValueType{bytecode.TypeObjectAddr}})
+	mod.Globals = append(mod.Globals, bytecode.Global{
+		ID:     1,
+		Name:   "capture_exit",
+		Kind:   bytecode.GlobalExtern,
+		Sig:    1,
+		Extern: bytecode.ExternRef{Name: "capture_exit", ABI: bytecode.DefaultExternABI},
+	})
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "local", Size: 4, Align: 4}}
+	mod.Functions[0].Objects = []bytecode.LocalObject{{ID: 0, Name: "obj", Size: 4, Align: 4, Layout: 0}}
+
+	var buf bytes.Buffer
+	if err := bytecode.EncodeModule(&buf, mod); err != nil {
+		t.Fatalf("EncodeModule: %v", err)
+	}
+	p, err := Load(bytes.NewReader(buf.Bytes()), LoadOptions{Externs: reg})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	st, err := Run(context.Background(), p, RunOptions{})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+	if captured == 0 {
+		t.Fatal("capture_exit did not receive local object address")
+	}
+	err = p.Memory().Store(captured, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 1))
+	if err == nil || !strings.Contains(err.Error(), "use after free") {
+		t.Fatalf("Store after extern exit error = %v, want use after free", err)
+	}
+}
+
 func TestRunPutsExtern(t *testing.T) {
 	var stdout bytes.Buffer
 	mod := testMainModule(
@@ -1080,6 +1132,18 @@ func TestRunRejectsNegativeLocalSlotWithoutPanic(t *testing.T) {
 	_, err := runProgram(t, context.Background(), mod, RunOptions{})
 	if err == nil || !strings.Contains(err.Error(), "negative local slot") {
 		t.Fatalf("Run error = %v, want negative local slot", err)
+	}
+}
+
+func TestRunRejectsZeroValueProgramWithoutPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Run panicked: %v", r)
+		}
+	}()
+	_, err := Run(context.Background(), &Program{}, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "program module is nil") {
+		t.Fatalf("Run error = %v, want nil module trap", err)
 	}
 }
 
