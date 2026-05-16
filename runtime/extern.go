@@ -103,13 +103,23 @@ func (r *ExternRegistry) Lookup(name string) (ExternFunc, bool) {
 }
 
 func (r *ExternRegistry) LookupVariable(name string, mem *Memory) (uint64, bool) {
+	addr, ok, err := r.LookupVariableAddr(name, mem)
+	if err != nil {
+		return 0, false
+	}
+	return addr, ok
+}
+
+func (r *ExternRegistry) LookupVariableAddr(name string, mem *Memory) (uint64, bool, error) {
 	switch name {
 	case "stdout":
-		return r.allocHostWriter(name, mem, r.stdout), true
+		addr, err := r.allocHostWriter(name, mem, r.stdout)
+		return addr, true, err
 	case "stderr":
-		return r.allocHostWriter(name, mem, r.stderr), true
+		addr, err := r.allocHostWriter(name, mem, r.stderr)
+		return addr, true, err
 	default:
-		return 0, false
+		return 0, false, nil
 	}
 }
 
@@ -129,14 +139,20 @@ func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {
 	return w, ok
 }
 
-func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer) uint64 {
-	addr := mem.Alloc("extern:"+name, mem.target.PointerSize, mem.target.PointerAlign, false, blockHostHandle)
+func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer) (uint64, error) {
+	if mem == nil {
+		return 0, fmt.Errorf("memory is nil")
+	}
+	addr, err := mem.TryAlloc("extern:"+name, mem.target.PointerSize, mem.target.PointerAlign, false, blockHostHandle)
+	if err != nil {
+		return 0, err
+	}
 	if err := mem.WritePointer(addr, addr); err != nil {
-		panic(err)
+		return 0, err
 	}
 	if b, _, err := mem.rangeAccess(addr, mem.target.PointerSize, false); err == nil {
 		b.readonly = true
 	}
 	r.hostWriters[addr] = w
-	return addr
+	return addr, nil
 }

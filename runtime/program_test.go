@@ -43,3 +43,35 @@ func TestLoadAppliesGlobalRelocation(t *testing.T) {
 		t.Fatalf("relocated pointer = %#x, want target %#x", got.Int, p.GlobalAddr(1))
 	}
 }
+
+func TestLoadReturnsErrorForStdoutExternVariableWithUnsupportedPointerSize(t *testing.T) {
+	mod := testMainModule(bytecode.I32Const(0), bytecode.Return(bytecode.TypeI32))
+	mod.Target.PointerSize = 3
+	mod.Globals = append(mod.Globals,
+		bytecode.Global{
+			ID:     1,
+			Name:   "stdout",
+			Kind:   bytecode.GlobalExtern,
+			Size:   mod.Target.PointerSize,
+			Align:  mod.Target.PointerAlign,
+			Extern: bytecode.ExternRef{Name: "stdout", ABI: bytecode.DefaultExternABI},
+		},
+	)
+
+	var buf bytes.Buffer
+	if err := bytecode.EncodeModule(&buf, mod); err != nil {
+		t.Fatalf("EncodeModule: %v", err)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Load panicked: %v", r)
+		}
+	}()
+	_, err := Load(bytes.NewReader(buf.Bytes()), LoadOptions{})
+	if err == nil {
+		t.Fatal("Load error = nil, want unsupported stdout extern variable failure")
+	}
+	if msg := err.Error(); !strings.Contains(msg, "stdout") && !strings.Contains(msg, "pointer size") {
+		t.Fatalf("Load error = %v, want stdout or pointer size", err)
+	}
+}

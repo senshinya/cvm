@@ -92,7 +92,10 @@ func (p *Program) allocateGlobals(reg *ExternRegistry) error {
 				p.externs[i] = fn
 				continue
 			}
-			addr, ok := reg.LookupVariable(g.Extern.Name, p.memory)
+			addr, ok, err := reg.LookupVariableAddr(g.Extern.Name, p.memory)
+			if err != nil {
+				return &LoadError{Reason: "resolve extern variable " + g.Extern.Name, Cause: err}
+			}
 			if !ok {
 				return &LoadError{Reason: "unsupported extern variable " + g.Extern.Name}
 			}
