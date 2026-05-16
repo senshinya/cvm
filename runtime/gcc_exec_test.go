@@ -28,11 +28,17 @@ func TestGCCExecutionManifestParses(t *testing.T) {
 }
 
 func TestGCCExecutionManifestRejectsEscapingPath(t *testing.T) {
-	content := "path\texit\tcategory\treason\n" +
-		"sema/testdata/gcc-c99/accept/../reject/foo.c\t0\tarithmetic\tescapes accept root\n"
-	_, err := parseGCCExecManifestContent(content)
-	if err == nil {
-		t.Fatal("expected traversal path to be rejected")
+	paths := []string{
+		"sema/testdata/gcc-c99/accept/../reject/foo.c",
+		"sema/testdata/gcc-c99/accept/..\\reject/foo.c",
+	}
+	for _, path := range paths {
+		content := "path\texit\tcategory\treason\n" +
+			path + "\t0\tarithmetic\tescapes accept root\n"
+		_, err := parseGCCExecManifestContent(content)
+		if err == nil {
+			t.Fatalf("expected traversal path to be rejected: %s", path)
+		}
 	}
 }
 
@@ -83,6 +89,9 @@ func parseGCCExecManifestContent(content string) ([]gccExecCase, error) {
 }
 
 func isAllowedGCCExecPath(manifestPath string) bool {
+	if strings.Contains(manifestPath, "\\") {
+		return false
+	}
 	if path.IsAbs(manifestPath) {
 		return false
 	}
