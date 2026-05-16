@@ -1,11 +1,22 @@
 package runtime
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"shinya.click/cvm/bytecode"
+	"shinya.click/cvm/codegen"
+	"shinya.click/cvm/entity"
+	"shinya.click/cvm/parser"
+	"shinya.click/cvm/preprocessor"
+	"shinya.click/cvm/sema"
 )
 
 type gccExecCase struct {
@@ -39,6 +50,32 @@ func TestGCCExecutionManifestRejectsEscapingPath(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected traversal path to be rejected: %s", path)
 		}
+	}
+}
+
+func TestGCCExecutionFixtures(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("testdata", "gcc-exec", "manifest.tsv"))
+	if err != nil {
+		t.Fatalf("read GCC execution manifest: %v", err)
+	}
+	cases := parseGCCExecManifest(t, string(content))
+	const minGCCExecCases = 4
+	if len(cases) < minGCCExecCases {
+		t.Fatalf("GCC execution suite too small: got %d cases, want >= %d", len(cases), minGCCExecCases)
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(filepath.Base(c.path), func(t *testing.T) {
+			sourcePath := filepath.Join("..", c.path)
+			source, err := os.ReadFile(sourcePath)
+			if err != nil {
+				t.Fatalf("read fixture %s: %v", c.path, err)
+			}
+			st := runGCCExecFixture(t, sourcePath, string(source))
+			if st.Code != c.exitCode {
+				t.Fatalf("%s exit code = %d, want %d", c.path, st.Code, c.exitCode)
+			}
+		})
 	}
 }
 
@@ -86,6 +123,149 @@ func parseGCCExecManifestContent(content string) ([]gccExecCase, error) {
 		cases = append(cases, gccExecCase{path: fields[0], exitCode: exitCode, category: fields[2], reason: fields[3]})
 	}
 	return cases, nil
+}
+
+func runGCCExecFixture(t *testing.T, path, source string) ExitStatus {
+	t.Helper()
+	src := stripGCCDirectives(source)
+	pp, err := preprocessor.PreprocessSource(path, src, preprocessor.Options{})
+	if err != nil {
+		t.Fatalf("%s preprocess: %v", path, err)
+	}
+	if parserTokenCount(pp.Tokens) == 0 {
+		t.Fatalf("%s preprocess produced no parser tokens", path)
+	}
+	candidates, err := parser.NewParser(pp.Tokens).Parse()
+	if err != nil {
+		t.Fatalf("%s parse: %v", path, err)
+	}
+	prog, err := sema.AnalyzeWithOptions(candidates, gccSemaOptions(source))
+	if err != nil {
+		t.Fatalf("%s sema: %v", path, err)
+	}
+	mod, err := codegen.Generate(prog)
+	if err != nil {
+		t.Fatalf("%s codegen: %v", path, err)
+	}
+	var encoded bytes.Buffer
+	if err := bytecode.EncodeModule(&encoded, mod); err != nil {
+		t.Fatalf("%s EncodeModule: %v", path, err)
+	}
+	p, err := Load(bytes.NewReader(encoded.Bytes()), LoadOptions{})
+	if err != nil {
+		t.Fatalf("%s Load: %v", path, err)
+	}
+	st, err := Run(context.Background(), p, RunOptions{})
+	if err != nil {
+		t.Fatalf("%s Run: %v", path, err)
+	}
+	return st
+}
+
+func gccSemaOptions(src string) sema.SemaOptions {
+	return sema.SemaOptions{
+		PedanticErrors:                  gccPedanticErrors(src),
+		GNUExtensions:                   gccGNUExtensions(src),
+		Permissive:                      gccPermissive(src),
+		WErrorDeclarationAfterStatement: gccWErrorDeclarationAfterStatement(src),
+	}
+}
+
+func parserTokenCount(tokens []entity.Token) int {
+	count := 0
+	for _, tok := range tokens {
+		if tok.Typ != entity.EOF {
+			count++
+		}
+	}
+	return count
+}
+
+func gccPedanticErrors(src string) bool {
+	for _, line := range strings.Split(src, "\n") {
+		if strings.Contains(line, "dg-options") && strings.Contains(line, "-pedantic-errors") {
+			return true
+		}
+	}
+	return false
+}
+
+func gccGNUExtensions(src string) bool {
+	for _, line := range strings.Split(src, "\n") {
+		if strings.Contains(line, "dg-options") && strings.Contains(line, "-std=gnu") {
+			return true
+		}
+	}
+	if strings.Contains(src, "empty initializer braces") && strings.Contains(src, "dg-warning") {
+		return true
+	}
+	return false
+}
+
+func gccPermissive(src string) bool {
+	for _, line := range strings.Split(src, "\n") {
+		if strings.Contains(line, "dg-options") && strings.Contains(line, "-fpermissive") {
+			return true
+		}
+	}
+	return false
+}
+
+func gccWErrorDeclarationAfterStatement(src string) bool {
+	for _, line := range strings.Split(src, "\n") {
+		if strings.Contains(line, "dg-options") && strings.Contains(line, "-Werror=declaration-after-statement") {
+			return true
+		}
+	}
+	return false
+}
+
+func stripGCCDirectives(src string) string {
+	var b strings.Builder
+	inBlockComment := false
+	for _, line := range strings.SplitAfter(src, "\n") {
+		body := strings.TrimSuffix(line, "\n")
+		newline := ""
+		if strings.HasSuffix(line, "\n") {
+			newline = "\n"
+		}
+		if isDejaGNULine(body) {
+			if inBlockComment && strings.Contains(body, "*/") {
+				b.WriteString("*/")
+			}
+			b.WriteString(newline)
+			inBlockComment = updateBlockCommentState(body, inBlockComment)
+			continue
+		}
+		b.WriteString(line)
+		inBlockComment = updateBlockCommentState(body, inBlockComment)
+	}
+	return b.String()
+}
+
+func updateBlockCommentState(line string, inBlock bool) bool {
+	for i := 0; i < len(line); i++ {
+		if inBlock {
+			if i+1 < len(line) && line[i] == '*' && line[i+1] == '/' {
+				inBlock = false
+				i++
+			}
+			continue
+		}
+		if i+1 < len(line) && line[i] == '/' && line[i+1] == '*' {
+			inBlock = true
+			i++
+		}
+	}
+	return inBlock
+}
+
+func isDejaGNULine(line string) bool {
+	trim := strings.TrimSpace(line)
+	if strings.HasPrefix(trim, "/*") && strings.HasSuffix(trim, "*/") && strings.Contains(trim, "{ dg-") {
+		return true
+	}
+	return strings.HasPrefix(trim, "//") && strings.Contains(trim, "{ dg-")
 }
 
 func isAllowedGCCExecPath(manifestPath string) bool {
