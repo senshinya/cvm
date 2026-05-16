@@ -28,3 +28,10 @@ Do not copy the compile-only GCC fixture set wholesale. Do not add fixtures
 whose expected behavior is still diagnostic-driven or unclear for execution
 coverage. Compile-only diagnostic cases, including `signbit-sa.c`,
 `inline-10.c`, and `overflow-2.c`, are excluded from this runtime gate.
+
+`gap-report.md` tracks every current GCC accept fixture whose source contains
+`{ dg-do run`. Refresh it with:
+
+```bash
+CVM_UPDATE_GCC_EXEC_GAP_REPORT=1 go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1
+```
