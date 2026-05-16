@@ -59,6 +59,51 @@ func TestRunLocalStoreLoad(t *testing.T) {
 	}
 }
 
+func TestRunIntegerArithmeticAndBranch(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I32Const(3),
+		bytecode.I32Const(4),
+		bytecode.Binary(bytecode.TypeI32, bytecode.BinAdd),
+		bytecode.I32Const(7),
+		bytecode.Binary(bytecode.TypeI32, bytecode.BinEq),
+		bytecode.JumpIfZero(bytecode.TypeBool, 1),
+		bytecode.I32Const(11),
+		bytecode.Return(bytecode.TypeI32),
+		bytecode.LabelInstr(1),
+		bytecode.I32Const(12),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Functions[0].Labels = []bytecode.Label{{ID: 1, Name: "else"}}
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 11 {
+		t.Fatalf("exit code = %d, want 11", st.Code)
+	}
+}
+
+func TestRunSwitch(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I32Const(2),
+		bytecode.Instr{Op: bytecode.OpSwitch, Type: bytecode.TypeI32, Label: 9, Labels: []bytecode.SwitchCase{{Value: 2, Label: 2}}},
+		bytecode.LabelInstr(9),
+		bytecode.I32Const(1),
+		bytecode.Return(bytecode.TypeI32),
+		bytecode.LabelInstr(2),
+		bytecode.I32Const(22),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Functions[0].Labels = []bytecode.Label{{ID: 9, Name: "default"}, {ID: 2, Name: "two"}}
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 22 {
+		t.Fatalf("exit code = %d, want 22", st.Code)
+	}
+}
+
 func TestRunRejectsNegativeLocalSlotWithoutPanic(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -105,8 +150,8 @@ func TestRunStepLimitReportsNextPC(t *testing.T) {
 }
 
 func TestRunUnsupportedOpcodeTrap(t *testing.T) {
-	_, err := runProgram(t, context.Background(), testMainModule(bytecode.Jump(0)), RunOptions{})
-	if err == nil || !strings.Contains(err.Error(), "unsupported opcode OpJump") {
+	_, err := runProgram(t, context.Background(), testMainModule(bytecode.Instr{Op: bytecode.OpUnreachable}), RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "unsupported opcode OpUnreachable") {
 		t.Fatalf("Run error = %v, want unsupported opcode trap", err)
 	}
 }

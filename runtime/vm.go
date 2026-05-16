@@ -129,6 +129,20 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 	switch ins.Op {
 	case bytecode.OpConst:
 		vm.stack = append(vm.stack, constValue(ins))
+	case bytecode.OpDup:
+		if len(vm.stack) == 0 {
+			return ExitStatus{}, true, vm.trap("stack underflow")
+		}
+		vm.stack = append(vm.stack, vm.stack[len(vm.stack)-1])
+	case bytecode.OpPop:
+		if _, err := vm.pop(bytecode.TypeVoid); err != nil {
+			return ExitStatus{}, true, err
+		}
+	case bytecode.OpSwap:
+		if len(vm.stack) < 2 {
+			return ExitStatus{}, true, vm.trap("stack underflow")
+		}
+		vm.stack[len(vm.stack)-1], vm.stack[len(vm.stack)-2] = vm.stack[len(vm.stack)-2], vm.stack[len(vm.stack)-1]
 	case bytecode.OpLoadLocal:
 		if ins.Slot < 0 || ins.Slot >= len(fr.locals) {
 			return ExitStatus{}, true, vm.trap("local slot out of range")
@@ -150,6 +164,60 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 			return ExitStatus{}, true, vm.trap(fmt.Sprintf("local slot %d has type %s, want %s", ins.Slot, fr.locals[ins.Slot].Type, ins.Type))
 		}
 		fr.locals[ins.Slot] = v
+	case bytecode.OpBinary:
+		if err := vm.binary(ins); err != nil {
+			return ExitStatus{}, true, err
+		}
+	case bytecode.OpUnary:
+		if err := vm.unary(ins); err != nil {
+			return ExitStatus{}, true, err
+		}
+	case bytecode.OpCast:
+		if err := vm.cast(ins); err != nil {
+			return ExitStatus{}, true, err
+		}
+	case bytecode.OpJump:
+		if err := fr.jump(ins.Label); err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("invalid jump", err)
+		}
+	case bytecode.OpJumpIfZero:
+		v, err := vm.pop(ins.Type)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		if v.IsZero() {
+			if err := fr.jump(ins.Label); err != nil {
+				return ExitStatus{}, true, vm.trapWithCause("invalid jump", err)
+			}
+		}
+	case bytecode.OpJumpIfNonZero:
+		v, err := vm.pop(ins.Type)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		if !v.IsZero() {
+			if err := fr.jump(ins.Label); err != nil {
+				return ExitStatus{}, true, vm.trapWithCause("invalid jump", err)
+			}
+		}
+	case bytecode.OpSwitch:
+		v, err := vm.pop(ins.Type)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		if !isIntegerLike(ins.Type) {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("unsupported switch type %s", ins.Type))
+		}
+		target := ins.Label
+		for _, c := range ins.Labels {
+			if signedInt(v) == c.Value {
+				target = c.Label
+				break
+			}
+		}
+		if err := fr.jump(target); err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("invalid jump", err)
+		}
 	case bytecode.OpReturn:
 		v, err := vm.pop(ins.Type)
 		if err != nil {
@@ -178,6 +246,203 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 	return ExitStatus{}, false, nil
 }
 
+func (fr *frame) jump(label int) error {
+	pc, ok := fr.labels[label]
+	if !ok {
+		return fmt.Errorf("missing label L%d", label)
+	}
+	fr.pc = pc
+	return nil
+}
+
+func (vm *VM) binary(ins bytecode.Instr) error {
+	r, err := vm.pop(ins.Type)
+	if err != nil {
+		return err
+	}
+	l, err := vm.pop(ins.Type)
+	if err != nil {
+		return err
+	}
+
+	if isFloatType(ins.Type) {
+		return vm.floatBinary(ins, l, r)
+	}
+	if !isIntegerLike(ins.Type) {
+		return vm.trap(fmt.Sprintf("unsupported binary type %s", ins.Type))
+	}
+
+	width := bitWidth(ins.Type)
+	var out Value
+	switch ins.Binary {
+	case bytecode.BinAdd:
+		out = UIntValue(ins.Type, maskToWidth(l.Int+r.Int, width))
+	case bytecode.BinSub:
+		out = UIntValue(ins.Type, maskToWidth(l.Int-r.Int, width))
+	case bytecode.BinMul:
+		out = UIntValue(ins.Type, maskToWidth(l.Int*r.Int, width))
+	case bytecode.BinDivS:
+		rs := signedInt(r)
+		if rs == 0 {
+			return vm.trap("division by zero")
+		}
+		ls := signedInt(l)
+		if ls == minSigned(width) && rs == -1 {
+			return vm.trap("signed division overflow")
+		}
+		out = IntValue(ins.Type, ls/rs)
+	case bytecode.BinDivU:
+		ru := unsignedInt(r)
+		if ru == 0 {
+			return vm.trap("division by zero")
+		}
+		out = UIntValue(ins.Type, unsignedInt(l)/ru)
+	case bytecode.BinRemS:
+		rs := signedInt(r)
+		if rs == 0 {
+			return vm.trap("division by zero")
+		}
+		ls := signedInt(l)
+		if ls == minSigned(width) && rs == -1 {
+			return vm.trap("signed remainder overflow")
+		}
+		out = IntValue(ins.Type, ls%rs)
+	case bytecode.BinRemU:
+		ru := unsignedInt(r)
+		if ru == 0 {
+			return vm.trap("division by zero")
+		}
+		out = UIntValue(ins.Type, unsignedInt(l)%ru)
+	case bytecode.BinAnd:
+		out = UIntValue(ins.Type, maskToWidth(l.Int&r.Int, width))
+	case bytecode.BinOr:
+		out = UIntValue(ins.Type, maskToWidth(l.Int|r.Int, width))
+	case bytecode.BinXor:
+		out = UIntValue(ins.Type, maskToWidth(l.Int^r.Int, width))
+	case bytecode.BinShl:
+		out = UIntValue(ins.Type, shiftLeft(unsignedInt(l), unsignedInt(r), width))
+	case bytecode.BinShrS:
+		out = UIntValue(ins.Type, uint64(shiftRightSigned(signedInt(l), unsignedInt(r), width)))
+	case bytecode.BinShrU:
+		out = UIntValue(ins.Type, shiftRightUnsigned(unsignedInt(l), unsignedInt(r), width))
+	case bytecode.BinEq:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(unsignedInt(l) == unsignedInt(r))))
+	case bytecode.BinNe:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(unsignedInt(l) != unsignedInt(r))))
+	case bytecode.BinLtS:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(signedInt(l) < signedInt(r))))
+	case bytecode.BinLtU:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(unsignedInt(l) < unsignedInt(r))))
+	case bytecode.BinLeS:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(signedInt(l) <= signedInt(r))))
+	case bytecode.BinLeU:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(unsignedInt(l) <= unsignedInt(r))))
+	case bytecode.BinGtS:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(signedInt(l) > signedInt(r))))
+	case bytecode.BinGtU:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(unsignedInt(l) > unsignedInt(r))))
+	case bytecode.BinGeS:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(signedInt(l) >= signedInt(r))))
+	case bytecode.BinGeU:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(unsignedInt(l) >= unsignedInt(r))))
+	default:
+		return vm.trap(fmt.Sprintf("unsupported binary op %s", ins.Binary))
+	}
+	vm.stack = append(vm.stack, normalizeInt(out))
+	return nil
+}
+
+func (vm *VM) floatBinary(ins bytecode.Instr, l, r Value) error {
+	var out Value
+	switch ins.Binary {
+	case bytecode.BinEq:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(l.Float == r.Float)))
+	case bytecode.BinNe:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(l.Float != r.Float)))
+	case bytecode.BinLtF:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(l.Float < r.Float)))
+	case bytecode.BinLeF:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(l.Float <= r.Float)))
+	case bytecode.BinGtF:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(l.Float > r.Float)))
+	case bytecode.BinGeF:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(l.Float >= r.Float)))
+	default:
+		return vm.trap(fmt.Sprintf("unsupported float binary op %s", ins.Binary))
+	}
+	vm.stack = append(vm.stack, out)
+	return nil
+}
+
+func (vm *VM) unary(ins bytecode.Instr) error {
+	v, err := vm.pop(ins.Type)
+	if err != nil {
+		return err
+	}
+	switch ins.Unary {
+	case bytecode.UnaryNeg:
+		if isFloatType(ins.Type) {
+			vm.stack = append(vm.stack, FloatValue(ins.Type, -v.Float))
+			return nil
+		}
+		if !isIntegerLike(ins.Type) {
+			return vm.trap(fmt.Sprintf("unsupported unary type %s", ins.Type))
+		}
+		vm.stack = append(vm.stack, normalizeInt(IntValue(ins.Type, -signedInt(v))))
+		return nil
+	default:
+		return vm.trap(fmt.Sprintf("unsupported unary op %d", int(ins.Unary)))
+	}
+}
+
+func (vm *VM) cast(ins bytecode.Instr) error {
+	v, err := vm.pop(ins.Type)
+	if err != nil {
+		return err
+	}
+	if ins.Type == ins.Type2 {
+		vm.stack = append(vm.stack, v)
+		return nil
+	}
+	if ins.Cast == bytecode.CastBit {
+		if !canBitCast(ins.Type, ins.Type2) {
+			return vm.trap(fmt.Sprintf("unsupported bit cast %s->%s", ins.Type, ins.Type2))
+		}
+		vm.stack = append(vm.stack, bitCast(v, ins.Type2))
+		return nil
+	}
+
+	switch ins.Cast {
+	case bytecode.CastBool:
+		vm.stack = append(vm.stack, UIntValue(bytecode.TypeBool, uint64(boolInt(!v.IsZero()))))
+	case bytecode.CastTrunc, bytecode.CastZExt:
+		if !isIntegerLike(ins.Type) || !isIntegerLike(ins.Type2) {
+			return vm.trap(fmt.Sprintf("unsupported integer cast %s->%s", ins.Type, ins.Type2))
+		}
+		vm.stack = append(vm.stack, normalizeInt(UIntValue(ins.Type2, unsignedInt(v))))
+	case bytecode.CastSExt:
+		if !isIntegerLike(ins.Type) || !isIntegerLike(ins.Type2) {
+			return vm.trap(fmt.Sprintf("unsupported integer cast %s->%s", ins.Type, ins.Type2))
+		}
+		vm.stack = append(vm.stack, normalizeInt(IntValue(ins.Type2, signedInt(v))))
+	case bytecode.CastPtrToInt:
+		if !isPointerType(ins.Type) || !isIntegerLike(ins.Type2) {
+			return vm.trap(fmt.Sprintf("unsupported pointer-to-int cast %s->%s", ins.Type, ins.Type2))
+		}
+		vm.stack = append(vm.stack, normalizeInt(UIntValue(ins.Type2, v.Int)))
+	case bytecode.CastIntToPtr:
+		if !isIntegerLike(ins.Type) || !isPointerType(ins.Type2) {
+			return vm.trap(fmt.Sprintf("unsupported int-to-pointer cast %s->%s", ins.Type, ins.Type2))
+		}
+		vm.stack = append(vm.stack, bitCast(v, ins.Type2))
+	case bytecode.CastFExt, bytecode.CastFTrunc, bytecode.CastIntToFloat, bytecode.CastFloatToInt:
+		return vm.trap(fmt.Sprintf("unsupported float cast %s->%s", ins.Type, ins.Type2))
+	default:
+		return vm.trap(fmt.Sprintf("unsupported cast op %d", int(ins.Cast)))
+	}
+	return nil
+}
+
 func constValue(ins bytecode.Instr) Value {
 	switch ins.Type {
 	case bytecode.TypeF32, bytecode.TypeF64, bytecode.TypeFLong:
@@ -194,6 +459,126 @@ func zeroValue(t bytecode.ValueType) Value {
 	default:
 		return UIntValue(t, 0)
 	}
+}
+
+func boolInt(v bool) int64 {
+	if v {
+		return 1
+	}
+	return 0
+}
+
+func bitCast(v Value, to bytecode.ValueType) Value {
+	if isFloatType(to) {
+		return FloatValue(to, v.Float)
+	}
+	return normalizeInt(UIntValue(to, v.Int))
+}
+
+func normalizeInt(v Value) Value {
+	if isIntegerLike(v.Type) || isPointerType(v.Type) {
+		v.Int = maskToWidth(v.Int, bitWidth(v.Type))
+	}
+	return v
+}
+
+func signedInt(v Value) int64 {
+	width := bitWidth(v.Type)
+	if width == 0 {
+		return int64(v.Int)
+	}
+	u := maskToWidth(v.Int, width)
+	if width == 64 {
+		return int64(u)
+	}
+	sign := uint64(1) << (width - 1)
+	if u&sign == 0 {
+		return int64(u)
+	}
+	return int64(u | ^maskToWidth(^uint64(0), width))
+}
+
+func unsignedInt(v Value) uint64 {
+	return maskToWidth(v.Int, bitWidth(v.Type))
+}
+
+func maskToWidth(v uint64, width uint) uint64 {
+	if width >= 64 {
+		return v
+	}
+	return v & ((uint64(1) << width) - 1)
+}
+
+func minSigned(width uint) int64 {
+	if width >= 64 {
+		return -1 << 63
+	}
+	return -(int64(1) << (width - 1))
+}
+
+func shiftLeft(v, n uint64, width uint) uint64 {
+	if n >= uint64(width) {
+		return 0
+	}
+	return maskToWidth(v<<uint(n), width)
+}
+
+func shiftRightUnsigned(v, n uint64, width uint) uint64 {
+	if n >= uint64(width) {
+		return 0
+	}
+	return maskToWidth(v>>uint(n), width)
+}
+
+func shiftRightSigned(v int64, n uint64, width uint) int64 {
+	if n >= uint64(width) {
+		if v < 0 {
+			return -1
+		}
+		return 0
+	}
+	return v >> uint(n)
+}
+
+func bitWidth(t bytecode.ValueType) uint {
+	switch t {
+	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeU8:
+		return 8
+	case bytecode.TypeI16, bytecode.TypeU16:
+		return 16
+	case bytecode.TypeI32, bytecode.TypeU32:
+		return 32
+	case bytecode.TypeI64, bytecode.TypeU64, bytecode.TypePtr, bytecode.TypeObjectAddr:
+		return 64
+	default:
+		return 0
+	}
+}
+
+func isIntegerLike(t bytecode.ValueType) bool {
+	switch t {
+	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeI32, bytecode.TypeI64, bytecode.TypeU8, bytecode.TypeU16, bytecode.TypeU32, bytecode.TypeU64:
+		return true
+	default:
+		return false
+	}
+}
+
+func isFloatType(t bytecode.ValueType) bool {
+	switch t {
+	case bytecode.TypeF32, bytecode.TypeF64, bytecode.TypeFLong:
+		return true
+	default:
+		return false
+	}
+}
+
+func isPointerType(t bytecode.ValueType) bool {
+	return t == bytecode.TypePtr || t == bytecode.TypeObjectAddr
+}
+
+func canBitCast(from, to bytecode.ValueType) bool {
+	return (isIntegerLike(from) || isPointerType(from)) && (isIntegerLike(to) || isPointerType(to))
 }
 
 func (vm *VM) pop(t bytecode.ValueType) (Value, error) {
