@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `9964b6f fix(codegen): lower complex compound division`
+- Latest implementation/coverage commit before this handoff document: `cabaaaf feat(runtime): execute complex tgmath pow`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -108,6 +108,15 @@ Notable recent coverage additions:
 
 Recent commits at the tip of this branch:
 
+- `cabaaaf feat(runtime): execute complex tgmath pow`
+  - Registers `__cvm_tgmath_cpow*` runtime externs.
+  - Adds runtime coverage for complex double `pow` and complex float `pow`.
+
+- `433a404 feat(runtime): execute complex tgmath exp`
+  - Registers `__cvm_tgmath_cexp*` runtime externs.
+  - Allows complex-return calls to be consumed as complex initializer sources.
+  - Adds runtime coverage for complex double `exp` and complex float `exp`.
+
 - `9964b6f fix(codegen): lower complex compound division`
   - Extends complex compound assignment lowering to `/=`.
   - Adds runtime coverage for complex compound division.
@@ -201,7 +210,7 @@ The current codegen support includes:
 - complex tgmath extern dispatch
 
 Runtime execution of complex arithmetic is still incomplete. Current runtime support includes `__builtin_cabs*` externs for object-address complex arguments.
-Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `+`, `-`, `*`, `/`, `*=`, `+=`, `-=`, `/=`, double-to-float complex copy, `__builtin_cabs`, and `__builtin_cabsf`.
+Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `+`, `-`, `*`, `/`, `*=`, `+=`, `-=`, `/=`, double-to-float complex copy, `__builtin_cabs`, `__builtin_cabsf`, complex tgmath `exp`, and complex tgmath `pow`.
 
 ### GNU Nested Functions
 
