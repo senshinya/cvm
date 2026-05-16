@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `8254e14 fix(codegen): lower complex compound add and subtract`
+- Latest implementation/coverage commit before this handoff document: `9964b6f fix(codegen): lower complex compound division`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -108,6 +108,10 @@ Notable recent coverage additions:
 
 Recent commits at the tip of this branch:
 
+- `9964b6f fix(codegen): lower complex compound division`
+  - Extends complex compound assignment lowering to `/=`.
+  - Adds runtime coverage for complex compound division.
+
 - `8254e14 fix(codegen): lower complex compound add and subtract`
   - Extends complex compound assignment lowering to `+=` and `-=`.
   - Adds runtime coverage using `__builtin_complex` rvalue operands and `__builtin_cabs`.
@@ -197,7 +201,7 @@ The current codegen support includes:
 - complex tgmath extern dispatch
 
 Runtime execution of complex arithmetic is still incomplete. Current runtime support includes `__builtin_cabs*` externs for object-address complex arguments.
-Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `+`, `-`, `*`, `/`, `*=`, `+=`, `-=`, double-to-float complex copy, `__builtin_cabs`, and `__builtin_cabsf`.
+Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `+`, `-`, `*`, `/`, `*=`, `+=`, `-=`, `/=`, double-to-float complex copy, `__builtin_cabs`, and `__builtin_cabsf`.
 
 ### GNU Nested Functions
 
