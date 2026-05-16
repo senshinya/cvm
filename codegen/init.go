@@ -574,6 +574,9 @@ func (fg *funcGen) emitInitializer(dst address, init sema.Expr, typ sema.Type) e
 	if init == nil {
 		return fg.emitZeroInitializer(dst, typ)
 	}
+	if cond, ok := init.(*sema.CondExpr); ok {
+		return fg.emitConditionalInitializer(dst, cond, typ)
+	}
 	if sl, ok := stringLiteralInitializer(init); ok {
 		if _, isArray := sema.Unqual(typ).(*sema.ArrayType); isArray {
 			return fg.emitStringArrayInitializer(dst, sl, typ)
@@ -589,6 +592,25 @@ func (fg *funcGen) emitInitializer(dst address, init sema.Expr, typ sema.Type) e
 	default:
 		return fg.emitScalarInitializer(dst, init, typ)
 	}
+}
+
+func (fg *funcGen) emitConditionalInitializer(dst address, init *sema.CondExpr, typ sema.Type) error {
+	elseLabel := fg.newLabel(true, nil)
+	endLabel := fg.newLabel(false, nil)
+	if err := fg.emitBoolValue(init.Cond); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.JumpIfZero(bytecode.TypeBool, elseLabel))
+	if err := fg.emitInitializer(dst, init.Then, typ); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(endLabel))
+	fg.mark(elseLabel)
+	if err := fg.emitInitializer(dst, init.Else, typ); err != nil {
+		return err
+	}
+	fg.mark(endLabel)
+	return nil
 }
 
 func (fg *funcGen) emitArrayInitializer(dst address, init sema.Expr, typ *sema.ArrayType) error {
