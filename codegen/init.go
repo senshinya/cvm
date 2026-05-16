@@ -712,6 +712,9 @@ func (fg *funcGen) emitScalarInitializer(dst address, init sema.Expr, typ sema.T
 		return err
 	}
 	if vt == bytecode.TypeObjectAddr {
+		if isComplexType(typ) {
+			return fg.emitComplexInitializer(dst, init, typ)
+		}
 		return fg.emitObjectCopyInitializer(dst, init, typ)
 	}
 	if err := dst.emit(); err != nil {
@@ -722,6 +725,136 @@ func (fg *funcGen) emitScalarInitializer(dst address, init sema.Expr, typ sema.T
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.g.alignof(typ), isVolatile(typ)))
 	return nil
+}
+
+func (fg *funcGen) emitComplexInitializer(dst address, init sema.Expr, typ sema.Type) error {
+	if il, ok := init.(*sema.InitList); ok {
+		if len(il.Elems) == 0 {
+			return fg.emitZeroInitializer(dst, typ)
+		}
+		return fg.emitComplexInitializer(dst, il.Elems[0].Value, typ)
+	}
+	if realInit := complexRealInitializer(init); realInit != nil {
+		savedDst, err := fg.saveAddress(dst, ".complex.dst")
+		if err != nil {
+			return err
+		}
+		if err := fg.emitZeroInitializer(savedDst, typ); err != nil {
+			return err
+		}
+		realType, err := complexRealType(typ)
+		if err != nil {
+			return err
+		}
+		realVT, err := fg.g.lowerValueType(realType)
+		if err != nil {
+			return err
+		}
+		if err := savedDst.emit(); err != nil {
+			return err
+		}
+		if err := fg.emitValue(realInit); err != nil {
+			return err
+		}
+		from, err := fg.g.lowerValueType(realInit.GetType())
+		if err != nil {
+			return err
+		}
+		fg.emitCast(from, realVT, sema.UsualArithmetic)
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(realVT, fg.g.alignof(realType), isVolatile(typ)))
+		return nil
+	}
+	return fg.emitComplexValueCopy(dst, init, typ)
+}
+
+func complexRealInitializer(init sema.Expr) sema.Expr {
+	if init == nil {
+		return nil
+	}
+	if ic, ok := init.(*sema.ImplicitCast); ok && isComplexType(ic.To) && !isComplexType(ic.From) {
+		return ic.X
+	}
+	if !isComplexType(init.GetType()) {
+		return init
+	}
+	return nil
+}
+
+func (fg *funcGen) emitComplexValueCopy(dst address, src sema.Expr, dstType sema.Type) error {
+	if ic, ok := src.(*sema.ImplicitCast); ok && isComplexType(ic.From) && isComplexType(ic.To) {
+		src = ic.X
+	}
+	srcRealType, err := complexRealType(src.GetType())
+	if err != nil {
+		return err
+	}
+	dstRealType, err := complexRealType(dstType)
+	if err != nil {
+		return err
+	}
+	srcVT, err := fg.g.lowerValueType(srcRealType)
+	if err != nil {
+		return err
+	}
+	dstVT, err := fg.g.lowerValueType(dstRealType)
+	if err != nil {
+		return err
+	}
+	savedDst, err := fg.saveAddress(dst, ".complex.dst")
+	if err != nil {
+		return err
+	}
+	srcAddrSlot := fg.allocSyntheticSlot(".complex.src", bytecode.TypeObjectAddr)
+	if err := fg.emitAddress(src); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, srcAddrSlot))
+	for _, offset := range []int64{0, fg.g.sizeof(srcRealType)} {
+		dstOffset := int64(0)
+		if offset != 0 {
+			dstOffset = fg.g.sizeof(dstRealType)
+		}
+		if err := fg.offsetAddress(savedDst, dstOffset).emit(); err != nil {
+			return err
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, srcAddrSlot))
+		if offset != 0 {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: offset})
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(srcVT, fg.g.alignof(srcRealType), isVolatile(src.GetType())))
+		fg.emitCast(srcVT, dstVT, sema.UsualArithmetic)
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(dstVT, fg.g.alignof(dstRealType), isVolatile(dstType)))
+	}
+	return nil
+}
+
+func (fg *funcGen) saveAddress(src address, name string) (address, error) {
+	slot := fg.allocSyntheticSlot(name, bytecode.TypeObjectAddr)
+	if err := src.emit(); err != nil {
+		return address{}, err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, slot))
+	return address{emit: func() error {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, slot))
+		return nil
+	}}, nil
+}
+
+func complexRealType(t sema.Type) (sema.Type, error) {
+	bt, ok := sema.Unqual(t).(*sema.BuiltinType)
+	if !ok {
+		return nil, fmt.Errorf("complex real type requested for %s", t)
+	}
+	switch bt.Kind {
+	case sema.FloatComplex:
+		return &sema.BuiltinType{Kind: sema.Float}, nil
+	case sema.DoubleComplex:
+		return &sema.BuiltinType{Kind: sema.Double}, nil
+	case sema.LongDoubleComplex:
+		return &sema.BuiltinType{Kind: sema.LongDouble}, nil
+	default:
+		return nil, fmt.Errorf("complex real type requested for %s", t)
+	}
 }
 
 func (fg *funcGen) emitObjectCopyInitializer(dst address, init sema.Expr, typ sema.Type) error {

@@ -740,6 +740,12 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 		return err
 	}
 	if vt == bytecode.TypeObjectAddr {
+		if isComplexType(lhs.GetType()) {
+			if err := fg.emitComplexAssign(lhs, rhs); err != nil {
+				return err
+			}
+			return fg.emitAddress(lhs)
+		}
 		if err := fg.emitAddress(lhs); err != nil {
 			return err
 		}
@@ -759,6 +765,13 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpSwap})
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.loadStoreAlign(lhs, lhs.GetType()), isVolatile(lhs.GetType())))
 	return nil
+}
+
+func (fg *funcGen) emitComplexAssign(lhs, rhs sema.Expr) error {
+	dst := address{emit: func() error {
+		return fg.emitAddress(lhs)
+	}}
+	return fg.emitComplexInitializer(dst, rhs, lhs.GetType())
 }
 
 func (fg *funcGen) loadStoreAlign(e sema.Expr, t sema.Type) int64 {

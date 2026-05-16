@@ -66,6 +66,10 @@ func (fg *funcGen) emitAddress(e sema.Expr) error {
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(st.object))
 			return nil
 		}
+		if st.kind == storageLocalSlot && st.typ == bytecode.TypeObjectAddr {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, st.slot))
+			return nil
+		}
 	case *sema.UnOp:
 		switch x.Op {
 		case sema.UnAddr:
