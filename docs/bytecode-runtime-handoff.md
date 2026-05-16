@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `113cc36 fix(codegen): lower builtin complex local initializers`
+- Latest implementation/coverage commit before this handoff document: `bb13716 test(runtime): cover complex float copy execution`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -108,6 +108,12 @@ Notable recent coverage additions:
 
 Recent commits at the tip of this branch:
 
+- `bb13716 test(runtime): cover complex float copy execution`
+  - Adds runtime coverage for double-complex to float-complex copy and `__builtin_cabsf`.
+
+- `c159133 test(runtime): cover complex compound multiply execution`
+  - Adds runtime coverage for complex `*=` lowering using `__builtin_cabs` to validate the result magnitude.
+
 - `113cc36 fix(codegen): lower builtin complex local initializers`
   - Lowers local `_Complex` initializers from `__builtin_complex(real, imag)` by writing real and imaginary components directly.
 
@@ -182,6 +188,7 @@ The current codegen support includes:
 - complex tgmath extern dispatch
 
 Runtime execution of complex arithmetic is still incomplete. Current runtime support includes `__builtin_cabs*` externs for object-address complex arguments.
+Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `*=`, double-to-float complex copy, `__builtin_cabs`, and `__builtin_cabsf`.
 
 ### GNU Nested Functions
 
