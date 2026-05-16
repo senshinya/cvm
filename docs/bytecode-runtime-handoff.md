@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `a3da8ef test(codegen): guard GCC bytecode fixture coverage`
+- Latest implementation/coverage commit before this handoff document: `f857cb2 fix(codegen): forward transitive nested captures`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -108,6 +108,17 @@ Notable recent coverage additions:
 
 Recent commits at the tip of this branch:
 
+- `f857cb2 fix(codegen): forward transitive nested captures`
+  - Propagates capture requirements through direct nested-function call chains.
+  - Covers a three-level nested runtime case where the middle function forwards an outer capture to the inner function.
+
+- `38fe90e test(runtime): cover nested VLA capture execution`
+  - Adds runtime coverage for a nested function reading and updating an enclosing VLA.
+
+- `b0af489 fix(codegen): load captured nested variables by address`
+  - Loads and stores captured scalar variables through the hidden object-address static-chain parameter.
+  - Adds runtime coverage for direct nested function calls that read, update, and return captured state.
+
 - `a3da8ef test(codegen): guard GCC bytecode fixture coverage`
   - Adds a codegen package test that fails when imported GCC accept `.c` fixtures from the tracked roots are missing from `gcc-bytecode-compile.tsv`.
 
@@ -167,6 +178,12 @@ Runtime execution of complex arithmetic is still incomplete. Current work primar
 ### GNU Nested Functions
 
 Sema now analyzes GNU nested function bodies in their lexical function scope, and codegen has initial static-chain capture support for direct nested function calls that reference enclosing automatic objects.
+
+The current direct-call support includes:
+
+- scalar captured variables loaded and stored through hidden object-address parameters
+- captured VLA object addresses and dynamic size metadata
+- transitive forwarding for direct nested-function call chains
 
 Current limits:
 
