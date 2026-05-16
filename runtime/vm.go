@@ -56,11 +56,17 @@ func (vm *VM) pushFrame(funcID int, args []Value) error {
 	fn := &vm.program.module.Functions[funcID]
 	maxSlot := -1
 	for _, param := range fn.Params {
+		if param.Slot < 0 {
+			return vm.trap(fmt.Sprintf("negative param slot %d in function %s", param.Slot, fn.Name))
+		}
 		if param.Slot > maxSlot {
 			maxSlot = param.Slot
 		}
 	}
 	for _, local := range fn.Locals {
+		if local.ID < 0 {
+			return vm.trap(fmt.Sprintf("negative local slot %d in function %s", local.ID, fn.Name))
+		}
 		if local.ID > maxSlot {
 			maxSlot = local.ID
 		}
@@ -100,19 +106,20 @@ func (vm *VM) pushFrame(funcID int, args []Value) error {
 }
 
 func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
-	if err := ctx.Err(); err != nil {
-		return ExitStatus{}, true, vm.trapWithCause("context canceled", err)
-	}
-	if vm.limit > 0 && vm.steps >= vm.limit {
-		return ExitStatus{}, true, vm.trap("step limit exceeded")
-	}
 	if len(vm.frames) == 0 {
 		return ExitStatus{}, true, vm.trap("empty call stack")
 	}
-
 	fr := &vm.frames[len(vm.frames)-1]
+
+	if err := ctx.Err(); err != nil {
+		return ExitStatus{}, true, vm.trapAtPCWithCause("context canceled", fr.pc, false, err)
+	}
+	if vm.limit > 0 && vm.steps >= vm.limit {
+		return ExitStatus{}, true, vm.trapAtPC("step limit exceeded", fr.pc, false)
+	}
+
 	if fr.pc < 0 || fr.pc >= len(fr.fn.Instrs) {
-		return ExitStatus{}, true, vm.trap("program counter out of range")
+		return ExitStatus{}, true, vm.trapAtPC("program counter out of range", fr.pc, false)
 	}
 
 	ins := fr.fn.Instrs[fr.pc]
@@ -159,10 +166,10 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		vm.frames = vm.frames[:len(vm.frames)-1]
 		vm.stack = append(vm.stack, v)
 	case bytecode.OpReturnVoid:
-		vm.frames = vm.frames[:len(vm.frames)-1]
-		if len(vm.frames) == 0 {
-			return ExitStatus{}, true, nil
+		if len(vm.frames) == 1 {
+			return ExitStatus{}, true, vm.trap("void return from entry function")
 		}
+		vm.frames = vm.frames[:len(vm.frames)-1]
 	case bytecode.OpLabel:
 		// Labels are markers for control-flow instructions; execution falls through.
 	default:
@@ -206,6 +213,26 @@ func (vm *VM) trap(reason string) *TrapError {
 }
 
 func (vm *VM) trapWithCause(reason string, cause error) *TrapError {
+	if len(vm.frames) == 0 {
+		return &TrapError{
+			Reason: reason,
+			Cause:  cause,
+			Stack:  vm.stackTrace(),
+		}
+	}
+	fr := vm.frames[len(vm.frames)-1]
+	pc := fr.pc
+	if pc > 0 {
+		pc--
+	}
+	return vm.trapAtPCWithCause(reason, pc, true, cause)
+}
+
+func (vm *VM) trapAtPC(reason string, pc int, includeOpcode bool) *TrapError {
+	return vm.trapAtPCWithCause(reason, pc, includeOpcode, nil)
+}
+
+func (vm *VM) trapAtPCWithCause(reason string, pc int, includeOpcode bool, cause error) *TrapError {
 	err := &TrapError{
 		Reason: reason,
 		Cause:  cause,
@@ -218,12 +245,9 @@ func (vm *VM) trapWithCause(reason string, cause error) *TrapError {
 	err.Function = fr.fn.Name
 	err.HasLocation = true
 	err.FunctionID = fr.fn.ID
-	pc := fr.pc
-	if pc > 0 {
-		pc--
-	}
 	err.PC = pc
-	if pc >= 0 && pc < len(fr.fn.Instrs) {
+	err.Opcode = bytecode.Opcode(-1)
+	if includeOpcode && pc >= 0 && pc < len(fr.fn.Instrs) {
 		err.Opcode = fr.fn.Instrs[pc].Op
 	}
 	return err
