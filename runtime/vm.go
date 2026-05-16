@@ -210,7 +210,7 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		}
 		target := ins.Label
 		for _, c := range ins.Labels {
-			if signedInt(v) == c.Value {
+			if switchCaseMatches(ins.Type, v, c.Value) {
 				target = c.Label
 				break
 			}
@@ -320,11 +320,23 @@ func (vm *VM) binary(ins bytecode.Instr) error {
 	case bytecode.BinXor:
 		out = UIntValue(ins.Type, maskToWidth(l.Int^r.Int, width))
 	case bytecode.BinShl:
-		out = UIntValue(ins.Type, shiftLeft(unsignedInt(l), unsignedInt(r), width))
+		n, err := shiftCount(r, width)
+		if err != nil {
+			return vm.trapWithCause("invalid shift count", err)
+		}
+		out = UIntValue(ins.Type, shiftLeft(unsignedInt(l), n, width))
 	case bytecode.BinShrS:
-		out = UIntValue(ins.Type, uint64(shiftRightSigned(signedInt(l), unsignedInt(r), width)))
+		n, err := shiftCount(r, width)
+		if err != nil {
+			return vm.trapWithCause("invalid shift count", err)
+		}
+		out = UIntValue(ins.Type, uint64(shiftRightSigned(signedInt(l), n)))
 	case bytecode.BinShrU:
-		out = UIntValue(ins.Type, shiftRightUnsigned(unsignedInt(l), unsignedInt(r), width))
+		n, err := shiftCount(r, width)
+		if err != nil {
+			return vm.trapWithCause("invalid shift count", err)
+		}
+		out = UIntValue(ins.Type, shiftRightUnsigned(unsignedInt(l), n))
 	case bytecode.BinEq:
 		out = UIntValue(bytecode.TypeBool, uint64(boolInt(unsignedInt(l) == unsignedInt(r))))
 	case bytecode.BinNe:
@@ -468,6 +480,13 @@ func boolInt(v bool) int64 {
 	return 0
 }
 
+func switchCaseMatches(t bytecode.ValueType, v Value, c int64) bool {
+	if isUnsignedIntegerType(t) {
+		return c >= 0 && unsignedInt(v) == uint64(c)
+	}
+	return signedInt(v) == c
+}
+
 func bitCast(v Value, to bytecode.ValueType) Value {
 	if isFloatType(to) {
 		return FloatValue(to, v.Float)
@@ -516,28 +535,31 @@ func minSigned(width uint) int64 {
 	return -(int64(1) << (width - 1))
 }
 
-func shiftLeft(v, n uint64, width uint) uint64 {
-	if n >= uint64(width) {
-		return 0
-	}
-	return maskToWidth(v<<uint(n), width)
-}
-
-func shiftRightUnsigned(v, n uint64, width uint) uint64 {
-	if n >= uint64(width) {
-		return 0
-	}
-	return maskToWidth(v>>uint(n), width)
-}
-
-func shiftRightSigned(v int64, n uint64, width uint) int64 {
-	if n >= uint64(width) {
-		if v < 0 {
-			return -1
+func shiftCount(v Value, width uint) (uint, error) {
+	if isSignedIntegerType(v.Type) {
+		n := signedInt(v)
+		if n < 0 || uint64(n) >= uint64(width) {
+			return 0, fmt.Errorf("%d outside [0,%d)", n, width)
 		}
-		return 0
+		return uint(n), nil
 	}
-	return v >> uint(n)
+	n := unsignedInt(v)
+	if n >= uint64(width) {
+		return 0, fmt.Errorf("%d outside [0,%d)", n, width)
+	}
+	return uint(n), nil
+}
+
+func shiftLeft(v uint64, n, width uint) uint64 {
+	return maskToWidth(v<<n, width)
+}
+
+func shiftRightUnsigned(v uint64, n uint) uint64 {
+	return v >> n
+}
+
+func shiftRightSigned(v int64, n uint) int64 {
+	return v >> n
 }
 
 func bitWidth(t bytecode.ValueType) uint {
@@ -558,6 +580,24 @@ func bitWidth(t bytecode.ValueType) uint {
 func isIntegerLike(t bytecode.ValueType) bool {
 	switch t {
 	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeI32, bytecode.TypeI64, bytecode.TypeU8, bytecode.TypeU16, bytecode.TypeU32, bytecode.TypeU64:
+		return true
+	default:
+		return false
+	}
+}
+
+func isSignedIntegerType(t bytecode.ValueType) bool {
+	switch t {
+	case bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeI32, bytecode.TypeI64:
+		return true
+	default:
+		return false
+	}
+}
+
+func isUnsignedIntegerType(t bytecode.ValueType) bool {
+	switch t {
+	case bytecode.TypeBool, bytecode.TypeU8, bytecode.TypeU16, bytecode.TypeU32, bytecode.TypeU64:
 		return true
 	default:
 		return false

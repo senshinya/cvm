@@ -104,6 +104,161 @@ func TestRunSwitch(t *testing.T) {
 	}
 }
 
+func TestRunUnsignedSwitchUsesUnsignedCaseValues(t *testing.T) {
+	mod := testMainModule(
+		bytecode.U32Const(0x80000000),
+		bytecode.Instr{Op: bytecode.OpSwitch, Type: bytecode.TypeU32, Label: 9, Labels: []bytecode.SwitchCase{{Value: 2147483648, Label: 2}}},
+		bytecode.LabelInstr(9),
+		bytecode.I32Const(1),
+		bytecode.Return(bytecode.TypeI32),
+		bytecode.LabelInstr(2),
+		bytecode.I32Const(22),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Functions[0].Labels = []bytecode.Label{{ID: 9, Name: "default"}, {ID: 2, Name: "high"}}
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 22 {
+		t.Fatalf("exit code = %d, want 22", st.Code)
+	}
+}
+
+func TestRunUnsignedSwitchDoesNotMatchNegativeCase(t *testing.T) {
+	mod := testMainModule(
+		bytecode.U32Const(0xffffffff),
+		bytecode.Instr{Op: bytecode.OpSwitch, Type: bytecode.TypeU32, Label: 9, Labels: []bytecode.SwitchCase{{Value: -1, Label: 2}}},
+		bytecode.LabelInstr(9),
+		bytecode.I32Const(11),
+		bytecode.Return(bytecode.TypeI32),
+		bytecode.LabelInstr(2),
+		bytecode.I32Const(22),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Functions[0].Labels = []bytecode.Label{{ID: 9, Name: "default"}, {ID: 2, Name: "negative"}}
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 11 {
+		t.Fatalf("exit code = %d, want 11", st.Code)
+	}
+}
+
+func TestRunShiftTrapsOnNegativeCount(t *testing.T) {
+	_, err := runProgram(t, context.Background(), testMainModule(
+		bytecode.I32Const(1),
+		bytecode.I32Const(-1),
+		bytecode.Binary(bytecode.TypeI32, bytecode.BinShl),
+		bytecode.Return(bytecode.TypeI32),
+	), RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "invalid shift count") {
+		t.Fatalf("Run error = %v, want invalid shift count", err)
+	}
+}
+
+func TestRunShiftTrapsOnOversizedCount(t *testing.T) {
+	_, err := runProgram(t, context.Background(), testMainModule(
+		bytecode.U32Const(1),
+		bytecode.U32Const(32),
+		bytecode.Binary(bytecode.TypeU32, bytecode.BinShl),
+		bytecode.Return(bytecode.TypeU32),
+	), RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "invalid shift count") {
+		t.Fatalf("Run error = %v, want invalid shift count", err)
+	}
+}
+
+func TestRunUnsignedComparisonUsesUnsignedValues(t *testing.T) {
+	mod := testMainModule(
+		bytecode.U32Const(0xffffffff),
+		bytecode.U32Const(1),
+		bytecode.Binary(bytecode.TypeU32, bytecode.BinGtU),
+		bytecode.Cast(bytecode.TypeBool, bytecode.TypeI32, bytecode.CastZExt),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 1 {
+		t.Fatalf("exit code = %d, want 1", st.Code)
+	}
+}
+
+func TestRunIntegerCasts(t *testing.T) {
+	t.Run("trunc zext", func(t *testing.T) {
+		mod := testMainModule(
+			bytecode.U32Const(0x1ff),
+			bytecode.Cast(bytecode.TypeU32, bytecode.TypeU8, bytecode.CastTrunc),
+			bytecode.Cast(bytecode.TypeU8, bytecode.TypeI32, bytecode.CastZExt),
+			bytecode.Return(bytecode.TypeI32),
+		)
+		st, err := runModule(t, mod)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if st.Code != 255 {
+			t.Fatalf("exit code = %d, want 255", st.Code)
+		}
+	})
+
+	t.Run("sext", func(t *testing.T) {
+		mod := testMainModule(
+			bytecode.Const(bytecode.TypeI8, -1),
+			bytecode.Cast(bytecode.TypeI8, bytecode.TypeI32, bytecode.CastSExt),
+			bytecode.Return(bytecode.TypeI32),
+		)
+		st, err := runModule(t, mod)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if st.Code != -1 {
+			t.Fatalf("exit code = %d, want -1", st.Code)
+		}
+	})
+}
+
+func TestRunBoolCastFromIntAndPointer(t *testing.T) {
+	t.Run("int", func(t *testing.T) {
+		mod := testMainModule(
+			bytecode.I32Const(7),
+			bytecode.Cast(bytecode.TypeI32, bytecode.TypeBool, bytecode.CastBool),
+			bytecode.Cast(bytecode.TypeBool, bytecode.TypeI32, bytecode.CastZExt),
+			bytecode.Return(bytecode.TypeI32),
+		)
+		st, err := runModule(t, mod)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if st.Code != 1 {
+			t.Fatalf("exit code = %d, want 1", st.Code)
+		}
+	})
+
+	t.Run("pointer", func(t *testing.T) {
+		st, err := runProgram(t, context.Background(), testMainModule(
+			bytecode.Instr{Op: bytecode.OpConst, Type: bytecode.TypePtr, Int: 5},
+			bytecode.Cast(bytecode.TypePtr, bytecode.TypeBool, bytecode.CastBool),
+			bytecode.Return(bytecode.TypeBool),
+		), RunOptions{})
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if st.Code != 1 {
+			t.Fatalf("exit code = %d, want 1", st.Code)
+		}
+	})
+}
+
+func TestRunMissingLabelTrap(t *testing.T) {
+	_, err := runProgram(t, context.Background(), testMainModule(bytecode.Jump(99)), RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "missing label L99") {
+		t.Fatalf("Run error = %v, want missing label", err)
+	}
+}
+
 func TestRunRejectsNegativeLocalSlotWithoutPanic(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
