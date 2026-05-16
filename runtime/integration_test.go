@@ -348,3 +348,53 @@ int main(void) {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
 }
+
+func TestCompileAndRunComplexAdd(t *testing.T) {
+	st, err := compileAndRun(t, `
+int main(void) {
+	_Complex double z = __builtin_complex(1.0, 2.0);
+	_Complex double w = __builtin_complex(2.0, 2.0);
+	_Complex double r = z + w;
+	return __builtin_cabs(r) == 5.0 ? 0 : 1;
+}`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestCompileAndRunComplexSub(t *testing.T) {
+	st, err := compileAndRun(t, `
+int main(void) {
+	_Complex double z = __builtin_complex(7.0, 8.0);
+	_Complex double w = __builtin_complex(4.0, 4.0);
+	_Complex double r = z - w;
+	return __builtin_cabs(r) == 5.0 ? 0 : 1;
+}`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestCompileAndRunComplexMulDiv(t *testing.T) {
+	st, err := compileAndRun(t, `
+int main(void) {
+	_Complex double z = __builtin_complex(1.0, 2.0);
+	_Complex double w = __builtin_complex(3.0, 4.0);
+	_Complex double product = z * w;
+	_Complex double quotient = product / w;
+	double mag = __builtin_cabs(quotient);
+	return mag > 2.23 && mag < 2.24 ? 0 : 1;
+}`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}

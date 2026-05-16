@@ -913,7 +913,7 @@ func (fg *funcGen) emitComplexValueCopy(dst address, src sema.Expr, dstType sema
 		return err
 	}
 	srcAddrSlot := fg.allocSyntheticSlot(".complex.src", bytecode.TypeObjectAddr)
-	if err := fg.emitAddress(src); err != nil {
+	if err := fg.emitComplexSourceAddress(src); err != nil {
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, srcAddrSlot))
@@ -933,6 +933,41 @@ func (fg *funcGen) emitComplexValueCopy(dst address, src sema.Expr, dstType sema
 		fg.emitCast(srcVT, dstVT, sema.UsualArithmetic)
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(dstVT, fg.g.alignof(dstRealType), isVolatile(dstType)))
 	}
+	return nil
+}
+
+func (fg *funcGen) emitComplexSourceAddress(src sema.Expr) error {
+	switch x := src.(type) {
+	case *sema.BinOp:
+		return fg.emitValue(src)
+	case *sema.ImplicitCast:
+		if isComplexType(x.To) {
+			return fg.emitComplexRValueAddress(src)
+		}
+		return fg.emitAddress(src)
+	case *sema.CallExpr:
+		if builtinComplexCall(x) != nil {
+			return fg.emitComplexRValueAddress(src)
+		}
+		return fg.emitAddress(src)
+	default:
+		return fg.emitAddress(src)
+	}
+}
+
+func (fg *funcGen) emitComplexRValueAddress(src sema.Expr) error {
+	object, err := fg.newLocalObject(".complex.rvalue", src.GetType())
+	if err != nil {
+		return err
+	}
+	dst := address{emit: func() error {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+		return nil
+	}}
+	if err := fg.emitComplexInitializer(dst, src, src.GetType()); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
 	return nil
 }
 

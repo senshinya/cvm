@@ -971,6 +971,9 @@ func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
 	if x.Op == sema.OpLAnd || x.Op == sema.OpLOr {
 		return fg.emitLogical(x, resultType)
 	}
+	if isComplexType(x.T) {
+		return fg.emitComplexBinOp(x)
+	}
 
 	leftType, err := fg.g.lowerValueType(x.L.GetType())
 	if err != nil {
@@ -998,6 +1001,168 @@ func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
 		fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
 	}
 	return nil
+}
+
+func (fg *funcGen) emitComplexBinOp(x *sema.BinOp) error {
+	if x.Op != sema.OpAdd && x.Op != sema.OpSub && x.Op != sema.OpMul && x.Op != sema.OpDiv {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("complex binary %v is not implemented", x.Op)}
+	}
+	lhsRealType, err := complexRealType(x.L.GetType())
+	if err != nil {
+		return err
+	}
+	rhsRealType, err := complexRealType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	dstRealType, err := complexRealType(x.T)
+	if err != nil {
+		return err
+	}
+	lhsVT, err := fg.g.lowerValueType(lhsRealType)
+	if err != nil {
+		return err
+	}
+	rhsVT, err := fg.g.lowerValueType(rhsRealType)
+	if err != nil {
+		return err
+	}
+	dstVT, err := fg.g.lowerValueType(dstRealType)
+	if err != nil {
+		return err
+	}
+	resultObject, err := fg.newLocalObject(".complex.binop", x.T)
+	if err != nil {
+		return err
+	}
+	lhsAddrSlot := fg.allocSyntheticSlot(".complex.binop.lhs", bytecode.TypeObjectAddr)
+	rhsAddrSlot := fg.allocSyntheticSlot(".complex.binop.rhs", bytecode.TypeObjectAddr)
+	lrSlot := fg.allocSyntheticSlot(".complex.binop.lr", dstVT)
+	liSlot := fg.allocSyntheticSlot(".complex.binop.li", dstVT)
+	rrSlot := fg.allocSyntheticSlot(".complex.binop.rr", dstVT)
+	riSlot := fg.allocSyntheticSlot(".complex.binop.ri", dstVT)
+	if err := fg.emitComplexSourceAddress(x.L); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+	if err := fg.emitComplexSourceAddress(x.R); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, rhsAddrSlot))
+
+	lhsImagOffset := fg.g.sizeof(lhsRealType)
+	rhsImagOffset := fg.g.sizeof(rhsRealType)
+	dstImagOffset := fg.g.sizeof(dstRealType)
+	fg.emitLoadComplexComponent(lhsAddrSlot, 0, lhsVT, dstVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(dstVT, lrSlot))
+	fg.emitLoadComplexComponent(lhsAddrSlot, lhsImagOffset, lhsVT, dstVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(dstVT, liSlot))
+	fg.emitLoadComplexComponent(rhsAddrSlot, 0, rhsVT, dstVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(dstVT, rrSlot))
+	fg.emitLoadComplexComponent(rhsAddrSlot, rhsImagOffset, rhsVT, dstVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(dstVT, riSlot))
+
+	switch x.Op {
+	case sema.OpAdd, sema.OpSub:
+		op := bytecode.BinAdd
+		if x.Op == sema.OpSub {
+			op = bytecode.BinSub
+		}
+		fg.storeComplexBinOpAddSubComponent(resultObject, 0, lrSlot, rrSlot, dstVT, op, fg.g.alignof(dstRealType), isVolatile(x.T))
+		fg.storeComplexBinOpAddSubComponent(resultObject, dstImagOffset, liSlot, riSlot, dstVT, op, fg.g.alignof(dstRealType), isVolatile(x.T))
+	case sema.OpMul:
+		fg.storeComplexBinOpMulReal(resultObject, 0, lrSlot, liSlot, rrSlot, riSlot, dstVT, fg.g.alignof(dstRealType), isVolatile(x.T))
+		fg.storeComplexBinOpMulImag(resultObject, dstImagOffset, lrSlot, liSlot, rrSlot, riSlot, dstVT, fg.g.alignof(dstRealType), isVolatile(x.T))
+	case sema.OpDiv:
+		denomSlot := fg.allocSyntheticSlot(".complex.binop.denom", dstVT)
+		fg.out.Instrs = append(fg.out.Instrs,
+			bytecode.LoadLocal(dstVT, rrSlot),
+			bytecode.LoadLocal(dstVT, rrSlot),
+			bytecode.Binary(dstVT, bytecode.BinMul),
+			bytecode.LoadLocal(dstVT, riSlot),
+			bytecode.LoadLocal(dstVT, riSlot),
+			bytecode.Binary(dstVT, bytecode.BinMul),
+			bytecode.Binary(dstVT, bytecode.BinAdd),
+			bytecode.StoreLocal(dstVT, denomSlot),
+		)
+		fg.storeComplexBinOpDivReal(resultObject, 0, lrSlot, liSlot, rrSlot, riSlot, denomSlot, dstVT, fg.g.alignof(dstRealType), isVolatile(x.T))
+		fg.storeComplexBinOpDivImag(resultObject, dstImagOffset, lrSlot, liSlot, rrSlot, riSlot, denomSlot, dstVT, fg.g.alignof(dstRealType), isVolatile(x.T))
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(resultObject))
+	return nil
+}
+
+func (fg *funcGen) emitComplexResultAddress(dstObject int, dstOffset int64) {
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(dstObject))
+	if dstOffset != 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: dstOffset})
+	}
+}
+
+func (fg *funcGen) storeComplexBinOpAddSubComponent(dstObject int, dstOffset int64, leftSlot int, rightSlot int, dstVT bytecode.ValueType, op bytecode.BinaryOp, dstAlign int64, dstVolatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(dstVT, leftSlot), bytecode.LoadLocal(dstVT, rightSlot))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(dstVT, op), bytecode.Store(dstVT, dstAlign, dstVolatile))
+}
+
+func (fg *funcGen) storeComplexBinOpMulReal(dstObject int, dstOffset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, dstVT bytecode.ValueType, dstAlign int64, dstVolatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(dstVT, lrSlot),
+		bytecode.LoadLocal(dstVT, rrSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.LoadLocal(dstVT, liSlot),
+		bytecode.LoadLocal(dstVT, riSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.Binary(dstVT, bytecode.BinSub),
+		bytecode.Store(dstVT, dstAlign, dstVolatile),
+	)
+}
+
+func (fg *funcGen) storeComplexBinOpMulImag(dstObject int, dstOffset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, dstVT bytecode.ValueType, dstAlign int64, dstVolatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(dstVT, lrSlot),
+		bytecode.LoadLocal(dstVT, riSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.LoadLocal(dstVT, liSlot),
+		bytecode.LoadLocal(dstVT, rrSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.Binary(dstVT, bytecode.BinAdd),
+		bytecode.Store(dstVT, dstAlign, dstVolatile),
+	)
+}
+
+func (fg *funcGen) storeComplexBinOpDivReal(dstObject int, dstOffset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, denomSlot int, dstVT bytecode.ValueType, dstAlign int64, dstVolatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(dstVT, lrSlot),
+		bytecode.LoadLocal(dstVT, rrSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.LoadLocal(dstVT, liSlot),
+		bytecode.LoadLocal(dstVT, riSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.Binary(dstVT, bytecode.BinAdd),
+		bytecode.LoadLocal(dstVT, denomSlot),
+		bytecode.Binary(dstVT, bytecode.BinDivS),
+		bytecode.Store(dstVT, dstAlign, dstVolatile),
+	)
+}
+
+func (fg *funcGen) storeComplexBinOpDivImag(dstObject int, dstOffset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, denomSlot int, dstVT bytecode.ValueType, dstAlign int64, dstVolatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(dstVT, liSlot),
+		bytecode.LoadLocal(dstVT, rrSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.LoadLocal(dstVT, lrSlot),
+		bytecode.LoadLocal(dstVT, riSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.Binary(dstVT, bytecode.BinSub),
+		bytecode.LoadLocal(dstVT, denomSlot),
+		bytecode.Binary(dstVT, bytecode.BinDivS),
+		bytecode.Store(dstVT, dstAlign, dstVolatile),
+	)
 }
 
 func (fg *funcGen) emitLogical(x *sema.BinOp, resultType bytecode.ValueType) error {
