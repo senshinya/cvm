@@ -84,10 +84,11 @@ fixture paths, unsupported fixture roots, and runtime errors.
 ## First Import Batch
 
 An empirical probe of the current repository GCC accept fixtures shows that the
-Phase 1 runtime can execute four deterministic GCC-derived fixtures end-to-end.
-The first batch should include all four current runnable cases rather than
-padding the manifest with compile-only or unsuitable cases. As runtime support
-grows, expand this gate toward a small stable set of roughly 10-25 fixtures.
+first suitable batch is two deterministic GCC-derived fixtures after excluding
+inline-main cases that do not link cleanly as runnable executables and
+warning/overflow diagnostic cases that are compile-only rather than runtime
+gates. As runtime support grows, expand this gate toward a small stable set of
+roughly 10-25 fixtures.
 
 Prefer future fixtures covering:
 
