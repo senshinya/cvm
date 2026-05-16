@@ -163,6 +163,7 @@ sema/testdata/gcc-c90-as-c99/accept/Wvla-5.c	current GCC accept fixture compiles
 sema/testdata/gcc-c90-as-c99/accept/Wvla-6.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/Wvla-7.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/builtins-12.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c90-as-c99/accept/builtins-16.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/builtins-35.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/c90-arraydecl-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/c90-array-lval-1.c	current GCC accept fixture compiles to validated bytecode
