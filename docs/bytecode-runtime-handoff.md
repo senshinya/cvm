@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `34612f9 test(codegen): cover C99 float preprocess fixture`
+- Latest implementation/coverage commit before this handoff document: `a3da8ef test(codegen): guard GCC bytecode fixture coverage`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -108,6 +108,13 @@ Notable recent coverage additions:
 
 Recent commits at the tip of this branch:
 
+- `a3da8ef test(codegen): guard GCC bytecode fixture coverage`
+  - Adds a codegen package test that fails when imported GCC accept `.c` fixtures from the tracked roots are missing from `gcc-bytecode-compile.tsv`.
+
+- `c565aca fix(codegen): reject escaping capturing nested functions`
+  - Rejects taking a function pointer to a capturing GNU nested function with a clear codegen diagnostic.
+  - Keeps direct static-chain nested calls supported while avoiding bytecode that would drop captured state.
+
 - `34612f9 test(codegen): cover C99 float preprocess fixture`
   - Adds the final imported C99 accept `.c` fixture that was still outside the bytecode compile manifest.
 
@@ -163,7 +170,7 @@ Sema now analyzes GNU nested function bodies in their lexical function scope, an
 
 Current limits:
 
-- escaping nested function addresses and GCC-style trampolines are not implemented
+- escaping nested function addresses are rejected during codegen; GCC-style trampolines are not implemented
 - indirect calls through nested function pointers with captured state are not implemented
 - the current support is intentionally scoped to compile validated bytecode for known imported GCC accept fixtures
 
@@ -189,16 +196,15 @@ Runtime support exists for real math externs; complex extern runtime behavior re
 - Complex runtime execution is not complete.
 - Long double runtime memory/operations are still limited in places.
 - The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation, but runtime execution coverage is still much smaller.
-- Static-chain support is deliberately narrow and does not yet model escaping nested functions or trampolines.
+- Static-chain support is deliberately narrow and rejects escaping capturing nested functions instead of modeling trampolines.
 
 ## Suggested Next Work
 
 The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots. Suggested next directions:
 
-- Review and harden static-chain capture support, especially diagnostics or explicit failures for escaping nested function addresses.
 - Expand runtime execution coverage fixture-by-fixture, starting with cases that already compile cleanly and exercise existing runtime opcodes.
 - Continue complex and long double runtime work where execution still lags behind bytecode generation.
-- Add a small coverage check script or test to prevent future imported GCC accept `.c` fixtures from silently missing `codegen/testdata/gcc-bytecode-compile.tsv`.
+- Revisit static-chain support if the bytecode format grows an explicit closure/trampoline representation.
 
 Recommended workflow:
 

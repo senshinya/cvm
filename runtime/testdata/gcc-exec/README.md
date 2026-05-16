@@ -5,9 +5,9 @@ the Phase 1 cvm bytecode runtime gate. The manifest is intentionally curated:
 it contains only deterministic GCC accept fixtures that compile to bytecode,
 load through the binary runtime path, and have a stable runtime exit code.
 
-The current gate has six fixtures. Keep it small until runtime semantics and
-fixture suitability are clear enough to expand without mixing compile-only,
-diagnostic-only, or hosted-library behavior into the execution suite.
+The current gate has 18 fixtures. Keep it curated as runtime semantics expand,
+without mixing compile-only, diagnostic-only, or unsuitable hosted-library
+behavior into the execution suite.
 
 Manifest rules:
 
@@ -22,15 +22,16 @@ Manifest rules:
 - `exit` is the expected deterministic runtime exit code.
 - `category` and `reason` must explain why the fixture belongs in the runtime
   gate.
-- The source must contain a `{ dg-do run }` directive.
+- The source must contain a `{ dg-do run }` directive or a
+  `{ dg-require-effective-target c99_runtime }` runtime requirement.
 
 Do not copy the compile-only GCC fixture set wholesale. Do not add fixtures
 whose expected behavior is still diagnostic-driven or unclear for execution
-coverage. Compile-only diagnostic cases, including `signbit-sa.c`,
-`inline-10.c`, and `overflow-2.c`, are excluded from this runtime gate.
+coverage. Compile-only diagnostic cases, including `inline-10.c` and
+`overflow-2.c`, are excluded from this runtime gate.
 
 `gap-report.md` tracks every current GCC accept fixture whose source contains
-`{ dg-do run`. Refresh it with:
+`{ dg-do run` or `{ dg-require-effective-target c99_runtime`. Refresh it with:
 
 ```bash
 CVM_UPDATE_GCC_EXEC_GAP_REPORT=1 go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1
