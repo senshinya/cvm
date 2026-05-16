@@ -210,7 +210,7 @@ func (g *generator) internSig(ret bytecode.ValueType, params []bytecode.ValueTyp
 }
 
 func (g *generator) emitFunction(fn *sema.FuncDef) error {
-	sig, err := g.lowerFuncSig(fn.T)
+	sig, err := g.lowerFuncDefSig(fn)
 	if err != nil {
 		return err
 	}
@@ -229,6 +229,15 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		}
 		f.Params = append(f.Params, bytecode.Param{Name: p.Sym.Name, Type: pt, Slot: p.Sym.SlotID})
 		paramDeclsBySlot[p.Sym.SlotID] = p
+	}
+	if len(fn.Params) == 0 && len(fn.OldStyleParamTypes) != 0 {
+		for i, t := range fn.OldStyleParamTypes {
+			pt, err := g.lowerValueType(t)
+			if err != nil {
+				return err
+			}
+			f.Params = append(f.Params, bytecode.Param{Name: fmt.Sprintf(".arg%d", i), Type: pt, Slot: i})
+		}
 	}
 	seenSlots := map[int]bool{}
 	maxSlot := -1
@@ -339,6 +348,37 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		g.mod.Globals[fn.Sym.GlobalID].Extern = bytecode.ExternRef{}
 	}
 	return nil
+}
+
+func (g *generator) lowerFuncDefSig(fn *sema.FuncDef) (int, error) {
+	if fn == nil || fn.T == nil {
+		return 0, fmt.Errorf("cannot lower nil function definition signature")
+	}
+	if fn.T.HasProto {
+		return g.lowerFuncSig(fn.T)
+	}
+	ret, err := g.lowerValueType(fn.T.Ret)
+	if err != nil {
+		return 0, err
+	}
+	params := make([]bytecode.ValueType, 0, len(fn.Params))
+	for _, p := range fn.Params {
+		pt, err := g.lowerValueType(p.T)
+		if err != nil {
+			return 0, err
+		}
+		params = append(params, pt)
+	}
+	if len(params) == 0 && len(fn.OldStyleParamTypes) != 0 {
+		for _, p := range fn.OldStyleParamTypes {
+			pt, err := g.lowerValueType(p)
+			if err != nil {
+				return 0, err
+			}
+			params = append(params, pt)
+		}
+	}
+	return g.internSig(ret, params, false), nil
 }
 
 func (fg *funcGen) emitImplicitTerminal() error {
