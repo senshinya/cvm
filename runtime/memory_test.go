@@ -89,6 +89,33 @@ func TestMemoryReadWriteFloat64(t *testing.T) {
 	}
 }
 
+func TestMemoryReadWriteFloat32(t *testing.T) {
+	mem := NewMemory(bytecode.DefaultTarget())
+	addr := mem.Alloc("global:f32", 4, 4, false, blockGlobal)
+	if err := mem.Store(addr, bytecode.TypeF32, 4, FloatValue(bytecode.TypeF32, 1.5)); err != nil {
+		t.Fatalf("Store: %v", err)
+	}
+	got, err := mem.Load(addr, bytecode.TypeF32, 4)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.Float != 1.5 {
+		t.Fatalf("loaded %v, want 1.5", got.Float)
+	}
+}
+
+func TestMemoryRejectsLongDoubleLoadStore(t *testing.T) {
+	mem := NewMemory(bytecode.DefaultTarget())
+	addr := mem.Alloc("global:flong", 16, 8, false, blockGlobal)
+	if _, err := mem.Load(addr, bytecode.TypeFLong, 8); err == nil || !strings.Contains(err.Error(), "unsupported long double memory load") {
+		t.Fatalf("Load error = %v, want unsupported long double memory load", err)
+	}
+	err := mem.Store(addr, bytecode.TypeFLong, 8, FloatValue(bytecode.TypeFLong, 1))
+	if err == nil || !strings.Contains(err.Error(), "unsupported long double memory store") {
+		t.Fatalf("Store error = %v, want unsupported long double memory store", err)
+	}
+}
+
 func TestMemoryRejectsUnknownEndian(t *testing.T) {
 	target := bytecode.DefaultTarget()
 	target.Endian = "middle"

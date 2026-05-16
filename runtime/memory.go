@@ -85,6 +85,9 @@ func (m *Memory) AllocBytes(name string, data []byte, readonly bool, kind blockK
 }
 
 func (m *Memory) Load(addr uint64, t bytecode.ValueType, align int64) (Value, error) {
+	if t == bytecode.TypeFLong {
+		return Value{}, fmt.Errorf("unsupported long double memory load")
+	}
 	b, off, size, err := m.access(addr, t, align, false)
 	if err != nil {
 		return Value{}, err
@@ -131,6 +134,9 @@ func (m *Memory) Load(addr uint64, t bytecode.ValueType, align int64) (Value, er
 }
 
 func (m *Memory) Store(addr uint64, t bytecode.ValueType, align int64, v Value) error {
+	if t == bytecode.TypeFLong {
+		return fmt.Errorf("unsupported long double memory store")
+	}
 	b, off, size, err := m.access(addr, t, align, true)
 	if err != nil {
 		return err
