@@ -85,6 +85,7 @@ sema/testdata/gcc-c99-extra/accept/array-const-1.c	current GCC accept fixture co
 sema/testdata/gcc-c99-extra/accept/array-const-2.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/cast-4.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/complex-4.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/const-elim-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/float-range-3.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/float-range-4.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/float-range-5.c	current GCC accept fixture compiles to validated bytecode
