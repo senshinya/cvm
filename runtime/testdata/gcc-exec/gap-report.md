@@ -9,13 +9,13 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 
 | stage | count |
 | --- | ---: |
-| ok | 1 |
+| ok | 4 |
 | preprocess | 0 |
 | parse | 0 |
 | sema | 0 |
 | codegen | 7 |
-| encode-load | 7 |
-| runtime | 2 |
+| encode-load | 3 |
+| runtime | 3 |
 | exit-mismatch | 0 |
 | total | 17 |
 
@@ -23,6 +23,9 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 
 | path | observed exit |
 | --- | ---: |
+| `sema/testdata/gcc-c99/accept/c99-bool-4.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-digraph-1.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-hexfloat-2.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-main-1.c` | 0 |
 
 ## Failures By Stage
@@ -43,10 +46,6 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 
 | path | error |
 | --- | --- |
-| `sema/testdata/gcc-c99/accept/c99-bool-4.c` | `runtime load error: unresolved extern strcmp` |
-| `sema/testdata/gcc-c99/accept/c99-digraph-1.c` | `runtime load error: unresolved extern strcmp` |
-| `sema/testdata/gcc-c99/accept/c99-func-1.c` | `runtime load error: unresolved extern strcmp` |
-| `sema/testdata/gcc-c99/accept/c99-hexfloat-2.c` | `runtime load error: unresolved extern strcmp` |
 | `sema/testdata/gcc-c99/accept/c99-math-double-1.c` | `runtime load error: unresolved extern feclearexcept` |
 | `sema/testdata/gcc-c99/accept/c99-math-float-1.c` | `runtime load error: unresolved extern feclearexcept` |
 | `sema/testdata/gcc-c99/accept/c99-math-long-double-1.c` | `runtime load error: unresolved extern feclearexcept` |
@@ -55,11 +54,12 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 
 | path | error |
 | --- | --- |
+| `sema/testdata/gcc-c99/accept/c99-func-1.c` | `runtime trap: extern strcmp failed in main#0 pc=4 opcode=OpCall stack=[main#0]: invalid memory access at 0x0 size=1` |
 | `sema/testdata/gcc-c99/accept/c99-func-3.c` | `runtime trap: unsupported binary type ptr in main#0 pc=4 opcode=OpBinary stack=[main#0]` |
 | `sema/testdata/gcc-c99/accept/c99-scope-1.c` | `runtime trap: unsupported bit cast i32->void in sfoo#0 pc=4 opcode=OpCast stack=[sfoo#0 > main#1]` |
 
 ## Next Blockers
 
 - `codegen`: 7 fixtures
-- `encode-load`: 7 fixtures
-- `runtime`: 2 fixtures
+- `encode-load`: 3 fixtures
+- `runtime`: 3 fixtures

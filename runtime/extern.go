@@ -90,7 +90,42 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		}
 		return IntValue(bytecode.TypeI32, int64(len(s))), nil, nil
 	})
+	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("strcmp expects 2 arguments")
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("strcmp requires memory")
+		}
+		left, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		right, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(strcmpResult(left, right))), nil, nil
+	})
 	return r
+}
+
+func strcmpResult(left, right string) int {
+	for i := 0; i < len(left) && i < len(right); i++ {
+		if left[i] < right[i] {
+			return -1
+		}
+		if left[i] > right[i] {
+			return 1
+		}
+	}
+	if len(left) < len(right) {
+		return -1
+	}
+	if len(left) > len(right) {
+		return 1
+	}
+	return 0
 }
 
 func (r *ExternRegistry) Register(name string, fn ExternFunc) {

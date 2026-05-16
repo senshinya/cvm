@@ -1,2 +1,5 @@
 path	exit	category	reason
+sema/testdata/gcc-c99/accept/c99-bool-4.c	0	extern	strcmp validates stdbool macro stringization through runtime extern calls
+sema/testdata/gcc-c99/accept/c99-digraph-1.c	0	extern	strcmp validates digraph stringization through runtime extern calls
+sema/testdata/gcc-c99/accept/c99-hexfloat-2.c	0	extern	strcmp validates hexfloat token stringization through runtime extern calls
 sema/testdata/gcc-c99/accept/c99-main-1.c	0	arithmetic	C99 implicit main return exercises binary load and entry return

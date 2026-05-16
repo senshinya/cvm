@@ -11,7 +11,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "abort", "puts", "fputs"} {
+	for _, name := range []string{"exit", "abort", "puts", "fputs", "strcmp"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -97,6 +97,52 @@ func TestFputsUnknownStreamHandleReturnsError(t *testing.T) {
 	}
 	if out.String() != "" || errOut.String() != "" {
 		t.Fatalf("stdout=%q stderr=%q, want no output", out.String(), errOut.String())
+	}
+}
+
+func TestStrcmpComparesCStrings(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("strcmp")
+	if !ok {
+		t.Fatal("missing strcmp extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	tests := []struct {
+		name string
+		a    string
+		b    string
+		want int64
+	}{
+		{name: "equal", a: "abc", b: "abc", want: 0},
+		{name: "left less", a: "abc", b: "abd", want: -1},
+		{name: "left greater", a: "abd", b: "abc", want: 1},
+		{name: "prefix less", a: "ab", b: "abc", want: -1},
+		{name: "prefix greater", a: "abc", b: "ab", want: 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := mustAllocBytes(t, mem, "strcmp:a", []byte(tt.a+"\x00"), true, blockString)
+			b := mustAllocBytes(t, mem, "strcmp:b", []byte(tt.b+"\x00"), true, blockString)
+			ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(a), ObjectAddrValue(b)})
+			if err != nil || exit != nil {
+				t.Fatalf("strcmp ret=%#v exit=%#v err=%v", ret, exit, err)
+			}
+			if ret.Type != bytecode.TypeI32 || int64(int32(ret.Int)) != tt.want {
+				t.Fatalf("strcmp(%q, %q) = %#v, want i32 %d", tt.a, tt.b, ret, tt.want)
+			}
+		})
+	}
+}
+
+func TestStrcmpRequiresMemory(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("strcmp")
+	if !ok {
+		t.Fatal("missing strcmp extern")
+	}
+	_, _, err := fn(context.Background(), nil, []Value{PtrValue(0), PtrValue(0)})
+	if err == nil || !strings.Contains(err.Error(), "strcmp requires memory") {
+		t.Fatalf("strcmp err = %v, want memory error", err)
 	}
 }
 
