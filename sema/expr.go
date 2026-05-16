@@ -1025,6 +1025,16 @@ func (s *Sema) typeCall(node *entity.AstNode, scope *Scope, argList *entity.AstN
 		return &CallExpr{Callee: callee, T: ErrorTypeSingleton, Range: node.SourceRange}
 	}
 	args := s.collectCallArgs(argList, scope)
+	if name := tgmathPseudoName(callee); name != "" {
+		for i, arg := range args {
+			args[i] = s.castFunctionDecay(s.castArrayDecay(s.castLValueToRValue(arg)))
+		}
+		if !tgmathArityOK(name, len(args)) {
+			s.report(InvalidTypeSpec(node.SourceStart, "wrong number of arguments"))
+			return &CallExpr{Callee: callee, Args: args, T: ft.Ret, Range: node.SourceRange}
+		}
+		return &CallExpr{Callee: callee, Args: args, T: s.tgmathReturnType(args), Range: node.SourceRange}
+	}
 	for i, arg := range args {
 		arg = s.castFunctionDecay(s.castArrayDecay(s.castLValueToRValue(arg)))
 		if ft.HasProto && i < len(ft.Params) {
@@ -1039,6 +1049,95 @@ func (s *Sema) typeCall(node *entity.AstNode, scope *Scope, argList *entity.AstN
 	}
 	s.validateCallReturnType(ft.Ret, node.SourceStart)
 	return &CallExpr{Callee: callee, Args: args, T: ft.Ret, Range: node.SourceRange}
+}
+
+func tgmathPseudoName(e Expr) string {
+	for {
+		ic, ok := e.(*ImplicitCast)
+		if !ok || (ic.Kind != LValueToRValue && ic.Kind != FunctionDecay) {
+			break
+		}
+		e = ic.X
+	}
+	vr, ok := e.(*VarRef)
+	if !ok || vr.Sym == nil {
+		return ""
+	}
+	switch vr.Sym.Name {
+	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow":
+		return vr.Sym.Name
+	default:
+		return ""
+	}
+}
+
+func tgmathArityOK(name string, argc int) bool {
+	switch name {
+	case "__cvm_tgmath_pow":
+		return argc == 2
+	default:
+		return argc == 1
+	}
+}
+
+func (s *Sema) tgmathReturnType(args []Expr) Type {
+	rank := tgmathRankDouble
+	complexResult := false
+	allFloat := len(args) > 0
+	for _, arg := range args {
+		argRank, argComplex, argIsFloat := tgmathTypeRank(arg.GetType())
+		if argRank > rank {
+			rank = argRank
+		}
+		complexResult = complexResult || argComplex
+		allFloat = allFloat && argIsFloat
+	}
+	if allFloat {
+		rank = tgmathRankFloat
+	}
+	switch {
+	case complexResult && rank == tgmathRankLongDouble:
+		return s.Types.Builtin(LongDoubleComplex)
+	case complexResult && rank == tgmathRankDouble:
+		return s.Types.Builtin(DoubleComplex)
+	case complexResult:
+		return s.Types.Builtin(FloatComplex)
+	case rank == tgmathRankLongDouble:
+		return s.Types.Builtin(LongDouble)
+	case rank == tgmathRankDouble:
+		return s.Types.Builtin(Double)
+	default:
+		return s.Types.Builtin(Float)
+	}
+}
+
+const (
+	tgmathRankFloat = iota + 1
+	tgmathRankDouble
+	tgmathRankLongDouble
+)
+
+func tgmathTypeRank(t Type) (rank int, complex bool, isFloat bool) {
+	bt, ok := unqualifiedBuiltin(t)
+	if !ok {
+		return tgmathRankDouble, false, false
+	}
+	switch bt.Kind {
+	case Float:
+		return tgmathRankFloat, false, true
+	case Double:
+		return tgmathRankDouble, false, false
+	case LongDouble:
+		return tgmathRankLongDouble, false, false
+	case FloatComplex:
+		return tgmathRankFloat, true, true
+	case DoubleComplex:
+		return tgmathRankDouble, true, false
+	case LongDoubleComplex:
+		return tgmathRankLongDouble, true, false
+	default:
+		return tgmathRankDouble, false, false
+	}
 }
 
 func (s *Sema) validateCallReturnType(t Type, pos entity.SourcePos) {

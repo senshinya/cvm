@@ -15,6 +15,7 @@ func Generate(prog *sema.Program) (*bytecode.Module, error) {
 		prog:                     prog,
 		mod:                      bytecode.NewModule(),
 		globalMap:                map[*sema.Symbol]int{},
+		externMap:                map[string]int{},
 		sigMap:                   map[string]int{},
 		layoutMap:                map[sema.Type]int{},
 		stringMap:                map[string]int{},
@@ -33,6 +34,7 @@ type generator struct {
 	prog                     *sema.Program
 	mod                      *bytecode.Module
 	globalMap                map[*sema.Symbol]int
+	externMap                map[string]int
 	sigMap                   map[string]int
 	layoutMap                map[sema.Type]int
 	stringMap                map[string]int
@@ -175,6 +177,25 @@ func externRefForSymbol(sym *sema.Symbol) bytecode.ExternRef {
 		Name: sym.Name,
 		ABI:  bytecode.DefaultExternABI,
 	}
+}
+
+func (g *generator) syntheticExtern(name string, ret bytecode.ValueType, params []bytecode.ValueType) int {
+	key := fmt.Sprintf("%s:%s/%v/%v", name, ret, params, false)
+	if id, ok := g.externMap[key]; ok {
+		return id
+	}
+	sig := g.internSig(ret, params, false)
+	id := len(g.mod.Globals)
+	g.mod.Globals = append(g.mod.Globals, bytecode.Global{
+		ID:     id,
+		Name:   name,
+		Kind:   bytecode.GlobalExtern,
+		Func:   -1,
+		Sig:    sig,
+		Extern: bytecode.ExternRef{Name: name, ABI: bytecode.DefaultExternABI},
+	})
+	g.externMap[key] = id
+	return id
 }
 
 func (g *generator) internSig(ret bytecode.ValueType, params []bytecode.ValueType, variadic bool) int {

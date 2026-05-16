@@ -33,7 +33,7 @@ func (fg *funcGen) storageForVar(sym *sema.Symbol, t sema.Type) (storage, error)
 			return storage{kind: storageAddress, object: id, global: -1, typ: vt, sym: sym}, nil
 		}
 	}
-	if sym != nil && sym.SlotID >= 0 && isSlotType(vt) {
+	if sym != nil && sym.SlotID >= 0 && (isSlotType(vt) || isComplexType(t)) {
 		return storage{kind: storageLocalSlot, slot: sym.SlotID, object: -1, global: -1, typ: vt, sym: sym}, nil
 	}
 	if sym != nil && sym.Storage != sema.StorageAuto && sym.Storage != sema.StorageRegister && sym.GlobalID >= 0 {

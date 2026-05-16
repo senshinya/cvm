@@ -221,14 +221,14 @@ func tgmathHeader() string {
 #define asinh(x) __cvm_tgmath_asinh(x)
 #define atanh(x) __cvm_tgmath_atanh(x)
 #define cos(x) __cvm_tgmath_cos(x)
-#define sin(x) __cvm_tgmath_select1((x), __cvm_tgmath_sinf, __cvm_tgmath_sin, __cvm_tgmath_sinl)
+#define sin(x) __cvm_tgmath_sin((x))
 #define tan(x) __cvm_tgmath_tan(x)
 #define cosh(x) __cvm_tgmath_cosh(x)
 #define sinh(x) __cvm_tgmath_sinh(x)
 #define tanh(x) __cvm_tgmath_tanh(x)
-#define exp(x) __cvm_tgmath_select1((x), __cvm_tgmath_expf, __cvm_tgmath_exp, __cvm_tgmath_expl)
+#define exp(x) __cvm_tgmath_exp((x))
 #define log(x) __cvm_tgmath_log(x)
-#define pow(x, y) __cvm_tgmath_select2((x), (y), __cvm_tgmath_powf, __cvm_tgmath_pow, __cvm_tgmath_powl)
+#define pow(x, y) __cvm_tgmath_pow((x), (y))
 #define sqrt(x) __cvm_tgmath_sqrt(x)
 #define fabs(x) __cvm_tgmath_fabs(x)
 #define atan2(x, y) __cvm_tgmath_atan2((x), (y))
@@ -274,17 +274,9 @@ func tgmathHeader() string {
 #define conj(x) __cvm_tgmath_conj(x)
 #define cproj(x) __cvm_tgmath_cproj(x)
 #define creal(x) __cvm_tgmath_creal(x)
-#define __cvm_tgmath_select1(x, f, d, l) ((sizeof(x) == sizeof(float)) ? f(x) : ((sizeof(x) == sizeof(long double)) ? l(x) : d(x)))
-#define __cvm_tgmath_select2(x, y, f, d, l) (((sizeof(x) == sizeof(long double)) || (sizeof(y) == sizeof(long double))) ? l((x), (y)) : (((sizeof(x) == sizeof(float)) && (sizeof(y) == sizeof(float))) ? f((x), (y)) : d((x), (y))))
-float __cvm_tgmath_sinf(float);
-double __cvm_tgmath_sin(double);
-long double __cvm_tgmath_sinl(long double);
-float __cvm_tgmath_expf(float);
-double __cvm_tgmath_exp(double);
-long double __cvm_tgmath_expl(long double);
-float __cvm_tgmath_powf(float, float);
-double __cvm_tgmath_pow(double, double);
-long double __cvm_tgmath_powl(long double, long double);
+double __cvm_tgmath_sin();
+double __cvm_tgmath_exp();
+double __cvm_tgmath_pow();
 #endif
 `
 }

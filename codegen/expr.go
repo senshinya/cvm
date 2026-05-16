@@ -405,6 +405,9 @@ func (fg *funcGen) emitIncDecOperation(x *sema.UnOp, typ bytecode.ValueType) err
 }
 
 func (fg *funcGen) emitCall(x *sema.CallExpr) error {
+	if name := tgmathPseudoCallName(x.Callee); name != "" {
+		return fg.emitTgmathCall(x, name)
+	}
 	ft, err := functionTypeFromCallee(x.Callee.GetType())
 	if err != nil {
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
@@ -432,6 +435,104 @@ func (fg *funcGen) emitCall(x *sema.CallExpr) error {
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpCallIndirect, Sig: sig, Argc: len(x.Args)})
 	return nil
+}
+
+func (fg *funcGen) emitTgmathCall(x *sema.CallExpr, pseudo string) error {
+	ret, err := fg.g.lowerValueType(x.GetType())
+	if err != nil {
+		return err
+	}
+	params := make([]bytecode.ValueType, 0, len(x.Args))
+	for _, arg := range x.Args {
+		if err := fg.emitValue(arg); err != nil {
+			return err
+		}
+		pt, err := fg.g.lowerValueType(arg.GetType())
+		if err != nil {
+			return err
+		}
+		params = append(params, pt)
+	}
+	global := fg.g.syntheticExtern(tgmathExternName(pseudo, x), ret, params)
+	sig := fg.g.internSig(ret, params, false)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Call(global, sig, len(x.Args)))
+	return nil
+}
+
+func tgmathPseudoCallName(e sema.Expr) string {
+	vr := functionVarRef(e)
+	if vr == nil || vr.Sym == nil {
+		return ""
+	}
+	switch vr.Sym.Name {
+	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow":
+		return vr.Sym.Name
+	default:
+		return ""
+	}
+}
+
+func tgmathExternName(pseudo string, x *sema.CallExpr) string {
+	base := pseudo
+	if tgmathCallIsComplex(x) {
+		switch pseudo {
+		case "__cvm_tgmath_sin":
+			base = "__cvm_tgmath_csin"
+		case "__cvm_tgmath_exp":
+			base = "__cvm_tgmath_cexp"
+		case "__cvm_tgmath_pow":
+			base = "__cvm_tgmath_cpow"
+		}
+	}
+	switch tgmathCallRank(x) {
+	case sema.Float, sema.FloatComplex:
+		return base + "f"
+	case sema.LongDouble, sema.LongDoubleComplex:
+		return base + "l"
+	default:
+		return base
+	}
+}
+
+func tgmathCallIsComplex(x *sema.CallExpr) bool {
+	for _, arg := range x.Args {
+		if bt, ok := sema.Unqual(arg.GetType()).(*sema.BuiltinType); ok {
+			switch bt.Kind {
+			case sema.FloatComplex, sema.DoubleComplex, sema.LongDoubleComplex:
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func tgmathCallRank(x *sema.CallExpr) sema.BuiltinKind {
+	rank := sema.Double
+	allFloat := len(x.Args) > 0
+	for _, arg := range x.Args {
+		bt, ok := sema.Unqual(arg.GetType()).(*sema.BuiltinType)
+		if !ok {
+			allFloat = false
+			continue
+		}
+		switch bt.Kind {
+		case sema.LongDouble, sema.LongDoubleComplex:
+			return bt.Kind
+		case sema.Double, sema.DoubleComplex:
+			rank = bt.Kind
+			allFloat = false
+		case sema.Float, sema.FloatComplex:
+		default:
+			allFloat = false
+		}
+	}
+	if allFloat {
+		if tgmathCallIsComplex(x) {
+			return sema.FloatComplex
+		}
+		return sema.Float
+	}
+	return rank
 }
 
 func (fg *funcGen) emitSizeof(x *sema.SizeofExpr) error {

@@ -52,6 +52,30 @@ func TestGCCTgmathFloatSinUsesFloatExtern(t *testing.T) {
 	}
 }
 
+func TestGCCTgmathComplexExpUsesComplexExtern(t *testing.T) {
+	sourcePath := filepath.Join("..", "sema", "testdata", "gcc-c99", "accept", "c99-tgmath-3.c")
+	source, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := compileGCCBytecodeFixture(t, sourcePath, string(source))
+	if !moduleHasExtern(mod, "__cvm_tgmath_cexp") {
+		t.Fatalf("c99-tgmath-3.c did not reference complex tgmath extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathComplexPowFloatUsesComplexFloatExtern(t *testing.T) {
+	sourcePath := filepath.Join("..", "sema", "testdata", "gcc-c99", "accept", "c99-tgmath-4.c")
+	source, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := compileGCCBytecodeFixture(t, sourcePath, string(source))
+	if !moduleHasExtern(mod, "__cvm_tgmath_cpowf") {
+		t.Fatalf("c99-tgmath-4.c did not reference complex float tgmath extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string
