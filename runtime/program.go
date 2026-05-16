@@ -21,6 +21,7 @@ type Program struct {
 	funcAddr   []uint64
 	stringAddr []uint64
 	externs    map[int]ExternFunc
+	externCtx  *ExternContext
 	entryFunc  int
 }
 
@@ -46,6 +47,7 @@ func Load(r io.Reader, opts LoadOptions) (*Program, error) {
 		stringAddr: make([]uint64, len(mod.Strings)),
 		externs:    make(map[int]ExternFunc),
 	}
+	p.externCtx = reg.context(p.memory)
 	if err := p.allocateGlobals(reg); err != nil {
 		return nil, err
 	}
@@ -72,6 +74,63 @@ func (p *Program) StringAddr(id int) uint64 { return p.stringAddr[id] }
 
 func (p *Program) FuncAddr(id int) uint64 { return p.funcAddr[id] }
 
+func (p *Program) ExternByGlobal(id int) (ExternFunc, error) {
+	g, err := p.global(id)
+	if err != nil {
+		return nil, err
+	}
+	if !isExternFunction(g) {
+		return nil, fmt.Errorf("global %d is not an extern function", id)
+	}
+	fn, ok := p.externs[id]
+	if !ok {
+		return nil, fmt.Errorf("extern function global %d is unresolved", id)
+	}
+	return fn, nil
+}
+
+func (p *Program) FuncIDByAddress(addr uint64) (int, error) {
+	globalID, err := p.FuncGlobalByAddress(addr)
+	if err != nil {
+		return 0, err
+	}
+	g := p.module.Globals[globalID]
+	if g.Kind != bytecode.GlobalFunc {
+		return 0, fmt.Errorf("function address %#x resolves to non-local function global %d", addr, globalID)
+	}
+	if g.Func < 0 || g.Func >= len(p.module.Functions) {
+		return 0, fmt.Errorf("global %d references invalid function id %d", globalID, g.Func)
+	}
+	return g.Func, nil
+}
+
+func (p *Program) FuncGlobalByAddress(addr uint64) (int, error) {
+	if p == nil || p.module == nil {
+		return 0, fmt.Errorf("nil program")
+	}
+	for globalID, funcAddr := range p.funcAddr {
+		if funcAddr == 0 || funcAddr != addr {
+			continue
+		}
+		g, err := p.global(globalID)
+		if err != nil {
+			return 0, err
+		}
+		if g.Kind == bytecode.GlobalFunc || isExternFunction(g) {
+			return globalID, nil
+		}
+		return 0, fmt.Errorf("address %#x resolves to non-function global %d", addr, globalID)
+	}
+	return 0, fmt.Errorf("invalid function address %#x", addr)
+}
+
+func (p *Program) ExternContext() *ExternContext {
+	if p.externCtx != nil {
+		return p.externCtx
+	}
+	return &ExternContext{Memory: p.memory}
+}
+
 func (p *Program) TryGlobalAddr(id int) (uint64, error) {
 	if id < 0 || id >= len(p.globalAddr) {
 		return 0, fmt.Errorf("invalid global id %d", id)
@@ -91,6 +150,16 @@ func (p *Program) TryFuncAddr(id int) (uint64, error) {
 		return 0, fmt.Errorf("invalid function address id %d", id)
 	}
 	return p.funcAddr[id], nil
+}
+
+func (p *Program) global(id int) (bytecode.Global, error) {
+	if p == nil || p.module == nil {
+		return bytecode.Global{}, fmt.Errorf("nil program")
+	}
+	if id < 0 || id >= len(p.module.Globals) {
+		return bytecode.Global{}, fmt.Errorf("invalid global id %d", id)
+	}
+	return p.module.Globals[id], nil
 }
 
 func (p *Program) allocateGlobals(reg *ExternRegistry) error {

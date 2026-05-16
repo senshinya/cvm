@@ -353,6 +353,32 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if err := fr.jump(target); err != nil {
 			return ExitStatus{}, true, vm.trapWithCause("invalid jump", err)
 		}
+	case bytecode.OpCall:
+		args, err := vm.popCallArgs(ins.Sig, ins.Argc)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		st, done, err := vm.invokeGlobal(ctx, ins.Global, ins.Sig, args)
+		if done || err != nil {
+			return st, done, err
+		}
+	case bytecode.OpCallIndirect:
+		args, err := vm.popCallArgs(ins.Sig, ins.Argc)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		callee, err := vm.popPointer()
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		globalID, err := vm.program.FuncGlobalByAddress(callee.Int)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("invalid indirect call target", err)
+		}
+		st, done, err := vm.invokeGlobal(ctx, globalID, ins.Sig, args)
+		if done || err != nil {
+			return st, done, err
+		}
 	case bytecode.OpReturn:
 		v, err := vm.pop(ins.Type)
 		if err != nil {
@@ -388,6 +414,92 @@ func (fr *frame) jump(label int) error {
 	}
 	fr.pc = pc
 	return nil
+}
+
+func (vm *VM) popCallArgs(sigID, argc int) ([]Value, error) {
+	if vm.program == nil || vm.program.module == nil {
+		return nil, vm.trap("nil program")
+	}
+	if sigID < 0 || sigID >= len(vm.program.module.Sigs) {
+		return nil, vm.trap(fmt.Sprintf("invalid call signature %d", sigID))
+	}
+	if argc < 0 {
+		return nil, vm.trap(fmt.Sprintf("negative call argc %d", argc))
+	}
+
+	sig := vm.program.module.Sigs[sigID]
+	if !sig.Variadic && argc != len(sig.Params) {
+		return nil, vm.trap(fmt.Sprintf("call argc %d does not match signature parameter count %d", argc, len(sig.Params)))
+	}
+	if sig.Variadic && argc < len(sig.Params) {
+		return nil, vm.trap(fmt.Sprintf("variadic call argc %d is less than signature parameter count %d", argc, len(sig.Params)))
+	}
+
+	args := make([]Value, argc)
+	for i := argc - 1; i >= len(sig.Params); i-- {
+		v, err := vm.popAnyValue()
+		if err != nil {
+			return nil, err
+		}
+		args[i] = v
+	}
+	for i := len(sig.Params) - 1; i >= 0; i-- {
+		v, err := vm.pop(sig.Params[i])
+		if err != nil {
+			return nil, err
+		}
+		args[i] = v
+	}
+	return args, nil
+}
+
+func (vm *VM) invokeGlobal(ctx context.Context, globalID, sigID int, args []Value) (ExitStatus, bool, error) {
+	g, err := vm.program.global(globalID)
+	if err != nil {
+		return ExitStatus{}, true, vm.trapWithCause("invalid call target", err)
+	}
+	if g.Sig != sigID {
+		return ExitStatus{}, true, vm.trap(fmt.Sprintf("call signature %d does not match global %d signature %d", sigID, globalID, g.Sig))
+	}
+
+	switch g.Kind {
+	case bytecode.GlobalFunc:
+		if g.Func < 0 || g.Func >= len(vm.program.module.Functions) {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("global %d references invalid function id %d", globalID, g.Func))
+		}
+		if vm.program.module.Functions[g.Func].Sig != sigID {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("call signature %d does not match function %d signature %d", sigID, g.Func, vm.program.module.Functions[g.Func].Sig))
+		}
+		if err := vm.pushFrame(g.Func, args); err != nil {
+			return ExitStatus{}, true, err
+		}
+		return ExitStatus{}, false, nil
+	case bytecode.GlobalExtern:
+		if !isExternFunction(g) {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("global %d is not an extern function", globalID))
+		}
+		fn, err := vm.program.ExternByGlobal(globalID)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("invalid extern call target", err)
+		}
+		ret, exit, err := fn(ctx, vm.program.ExternContext(), args)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause(fmt.Sprintf("extern %s failed", g.Extern.Name), err)
+		}
+		if exit != nil {
+			return *exit, true, nil
+		}
+		sig := vm.program.module.Sigs[sigID]
+		if sig.Ret != bytecode.TypeVoid {
+			if ret.Type != sig.Ret {
+				return ExitStatus{}, true, vm.trap(fmt.Sprintf("extern %s returned %s, want %s", g.Extern.Name, ret.Type, sig.Ret))
+			}
+			vm.stack = append(vm.stack, ret)
+		}
+		return ExitStatus{}, false, nil
+	default:
+		return ExitStatus{}, true, vm.trap(fmt.Sprintf("global %d is not callable", globalID))
+	}
 }
 
 func (vm *VM) binary(ins bytecode.Instr) error {
@@ -876,6 +988,18 @@ func (vm *VM) popPointer() (Value, error) {
 	v := vm.stack[len(vm.stack)-1]
 	if !isPointerType(v.Type) {
 		return Value{}, vm.trap(fmt.Sprintf("stack value has type %s, want pointer", v.Type))
+	}
+	vm.stack = vm.stack[:len(vm.stack)-1]
+	return v, nil
+}
+
+func (vm *VM) popAnyValue() (Value, error) {
+	if len(vm.stack) == 0 {
+		return Value{}, vm.trap("stack underflow")
+	}
+	v := vm.stack[len(vm.stack)-1]
+	if v.Type == bytecode.TypeVoid {
+		return Value{}, vm.trap("stack value has type void, want non-void")
 	}
 	vm.stack = vm.stack[:len(vm.stack)-1]
 	return v, nil

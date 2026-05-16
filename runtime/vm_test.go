@@ -17,11 +17,16 @@ func runModule(t *testing.T, mod *bytecode.Module) (ExitStatus, error) {
 
 func runModuleWithOptions(t *testing.T, ctx context.Context, mod *bytecode.Module, opts RunOptions) (ExitStatus, error) {
 	t.Helper()
+	return runModuleWithExterns(t, ctx, mod, opts, DefaultExternRegistry(nil, nil))
+}
+
+func runModuleWithExterns(t *testing.T, ctx context.Context, mod *bytecode.Module, opts RunOptions, externs *ExternRegistry) (ExitStatus, error) {
+	t.Helper()
 	var buf bytes.Buffer
 	if err := bytecode.EncodeModule(&buf, mod); err != nil {
 		t.Fatalf("EncodeModule: %v", err)
 	}
-	p, err := Load(bytes.NewReader(buf.Bytes()), LoadOptions{Externs: DefaultExternRegistry(nil, nil)})
+	p, err := Load(bytes.NewReader(buf.Bytes()), LoadOptions{Externs: externs})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -40,6 +45,223 @@ func TestRunReturnsMainConstant(t *testing.T) {
 	}
 	if st.Code != 5 {
 		t.Fatalf("exit code = %d, want 5", st.Code)
+	}
+}
+
+func TestRunDirectCall(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I32Const(20),
+		bytecode.I32Const(22),
+		bytecode.Call(1, 1, 2),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeI32, Params: []bytecode.ValueType{bytecode.TypeI32, bytecode.TypeI32}})
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "add", Kind: bytecode.GlobalFunc, Func: 1, Sig: 1})
+	mod.Functions = append(mod.Functions, bytecode.Function{
+		ID:       1,
+		GlobalID: 1,
+		Name:     "add",
+		Sig:      1,
+		Params: []bytecode.Param{
+			{Name: "a", Type: bytecode.TypeI32, Slot: 0},
+			{Name: "b", Type: bytecode.TypeI32, Slot: 1},
+		},
+		Instrs: []bytecode.Instr{
+			bytecode.LoadLocal(bytecode.TypeI32, 0),
+			bytecode.LoadLocal(bytecode.TypeI32, 1),
+			bytecode.Binary(bytecode.TypeI32, bytecode.BinAdd),
+			bytecode.Return(bytecode.TypeI32),
+		},
+		MaxStack: 2,
+	})
+
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 42 {
+		t.Fatalf("exit code = %d, want 42", st.Code)
+	}
+}
+
+func TestRunIndirectCall(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrFunc(1),
+		bytecode.I32Const(40),
+		bytecode.I32Const(2),
+		bytecode.Instr{Op: bytecode.OpCallIndirect, Sig: 1, Argc: 2},
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeI32, Params: []bytecode.ValueType{bytecode.TypeI32, bytecode.TypeI32}})
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "add", Kind: bytecode.GlobalFunc, Func: 1, Sig: 1})
+	mod.Functions = append(mod.Functions, bytecode.Function{
+		ID:       1,
+		GlobalID: 1,
+		Name:     "add",
+		Sig:      1,
+		Params: []bytecode.Param{
+			{Name: "a", Type: bytecode.TypeI32, Slot: 0},
+			{Name: "b", Type: bytecode.TypeI32, Slot: 1},
+		},
+		Instrs: []bytecode.Instr{
+			bytecode.LoadLocal(bytecode.TypeI32, 0),
+			bytecode.LoadLocal(bytecode.TypeI32, 1),
+			bytecode.Binary(bytecode.TypeI32, bytecode.BinAdd),
+			bytecode.Return(bytecode.TypeI32),
+		},
+		MaxStack: 2,
+	})
+
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 42 {
+		t.Fatalf("exit code = %d, want 42", st.Code)
+	}
+}
+
+func TestRunExitExtern(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I32Const(17),
+		bytecode.Call(1, 1, 1),
+		bytecode.I32Const(0),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeVoid, Params: []bytecode.ValueType{bytecode.TypeI32}})
+	mod.Globals = append(mod.Globals, bytecode.Global{
+		ID:     1,
+		Name:   "exit",
+		Kind:   bytecode.GlobalExtern,
+		Sig:    1,
+		Extern: bytecode.ExternRef{Name: "exit", ABI: bytecode.DefaultExternABI},
+	})
+
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 17 {
+		t.Fatalf("exit code = %d, want 17", st.Code)
+	}
+}
+
+func TestRunPutsExtern(t *testing.T) {
+	var stdout bytes.Buffer
+	mod := testMainModule(
+		bytecode.AddrString(0),
+		bytecode.Call(1, 1, 1),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeI32, Params: []bytecode.ValueType{bytecode.TypeObjectAddr}})
+	mod.Globals = append(mod.Globals, bytecode.Global{
+		ID:     1,
+		Name:   "puts",
+		Kind:   bytecode.GlobalExtern,
+		Sig:    1,
+		Extern: bytecode.ExternRef{Name: "puts", ABI: bytecode.DefaultExternABI},
+	})
+	mod.Strings = []bytecode.StringConst{{ID: 0, Value: "hi", Bytes: []byte("hi\x00")}}
+
+	st, err := runModuleWithExterns(t, context.Background(), mod, RunOptions{}, DefaultExternRegistry(&stdout, nil))
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 3 {
+		t.Fatalf("exit code = %d, want 3", st.Code)
+	}
+	if got := stdout.String(); got != "hi\n" {
+		t.Fatalf("stdout = %q, want %q", got, "hi\n")
+	}
+}
+
+func TestRunVariadicExternPreservesArgumentOrder(t *testing.T) {
+	reg := NewExternRegistry(nil, nil)
+	reg.Register("probe", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, errors.New("probe expects 3 arguments")
+		}
+		if args[0].Type != bytecode.TypeI32 || args[0].Int != 7 {
+			return Value{}, nil, errors.New("arg0 mismatch")
+		}
+		if args[1].Type != bytecode.TypeI64 || args[1].Int != 9 {
+			return Value{}, nil, errors.New("arg1 mismatch")
+		}
+		if args[2].Type != bytecode.TypeObjectAddr {
+			return Value{}, nil, errors.New("arg2 mismatch")
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, errors.New("missing extern context")
+		}
+		return IntValue(bytecode.TypeI32, 23), nil, nil
+	})
+
+	mod := testMainModule(
+		bytecode.I32Const(7),
+		bytecode.I64Const(9),
+		bytecode.AddrString(0),
+		bytecode.Call(1, 1, 3),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeI32, Params: []bytecode.ValueType{bytecode.TypeI32}, Variadic: true})
+	mod.Globals = append(mod.Globals, bytecode.Global{
+		ID:     1,
+		Name:   "probe",
+		Kind:   bytecode.GlobalExtern,
+		Sig:    1,
+		Extern: bytecode.ExternRef{Name: "probe", ABI: bytecode.DefaultExternABI},
+	})
+	mod.Strings = []bytecode.StringConst{{ID: 0, Value: "x", Bytes: []byte("x\x00")}}
+
+	st, err := runModuleWithExterns(t, context.Background(), mod, RunOptions{}, reg)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 23 {
+		t.Fatalf("exit code = %d, want 23", st.Code)
+	}
+}
+
+func TestRunInvalidIndirectCallTargetTraps(t *testing.T) {
+	mod := testMainModule(
+		bytecode.Instr{Op: bytecode.OpConst, Type: bytecode.TypePtr, Int: 0x1234},
+		bytecode.Instr{Op: bytecode.OpCallIndirect, Sig: 1, Argc: 0},
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeI32})
+
+	_, err := runModule(t, mod)
+	if err == nil || !strings.Contains(err.Error(), "invalid indirect call target") {
+		t.Fatalf("Run error = %v, want invalid indirect call target", err)
+	}
+}
+
+func TestRunCallRejectsBadArgc(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I32Const(1),
+		bytecode.I32Const(2),
+		bytecode.Call(1, 1, 2),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeI32, Params: []bytecode.ValueType{bytecode.TypeI32}})
+	mod.Globals = append(mod.Globals, bytecode.Global{
+		ID:     1,
+		Name:   "id",
+		Kind:   bytecode.GlobalExtern,
+		Sig:    1,
+		Extern: bytecode.ExternRef{Name: "id", ABI: bytecode.DefaultExternABI},
+	})
+
+	_, err := Run(context.Background(), &Program{
+		module: mod,
+		memory: NewMemory(mod.Target),
+		externs: map[int]ExternFunc{1: func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+			return args[0], nil, nil
+		}},
+		entryFunc: 0,
+	}, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "argc") {
+		t.Fatalf("Run error = %v, want argc trap", err)
 	}
 }
 
