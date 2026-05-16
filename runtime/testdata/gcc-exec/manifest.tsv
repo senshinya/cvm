@@ -1,3 +1,2 @@
 path	exit	category	reason
 sema/testdata/gcc-c99/accept/c99-main-1.c	0	arithmetic	C99 implicit main return exercises binary load and entry return
-sema/testdata/gcc-c99-extra/accept/signbit-sa.c	0	builtin	constant signbit calls on positive values return zero

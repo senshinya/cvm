@@ -22,6 +22,7 @@ bytecode compile gate:
 
 - source path appears in `codegen/testdata/gcc-bytecode-compile.tsv`;
 - the source is accepted by the current frontend and codegen;
+- the source contains a `{ dg-do run }` directive;
 - the generated binary bytecode can be loaded by `runtime.Load`;
 - `runtime.Run` returns a deterministic exit code;
 - the case does not require unsupported hosted-library behavior, GCC target
@@ -70,25 +71,29 @@ Extend `runtime/gcc_exec_test.go` with a table-driven runner:
    - `sema/testdata/gcc-c99-extra/accept`
    - `sema/testdata/gcc-c90-as-c99/accept`
 4. Read the fixture source.
-5. Strip DejaGNU directive-only lines using the same line-preserving behavior as
+5. Reject sources without a `{ dg-do run }` directive because compile-only and
+   diagnostic-only GCC cases are not runtime execution fixtures.
+6. Strip DejaGNU directive-only lines using the same line-preserving behavior as
    the existing GCC fixture runners.
-6. Run the full compile-to-runtime path:
+7. Run the full compile-to-runtime path:
    `preprocessor.PreprocessSource`, `parser.Parse`, `sema.AnalyzeWithOptions`
    using GCC-compatible options, `codegen.Generate`, `bytecode.EncodeModule`,
    `runtime.Load`, `runtime.Run`.
-7. Assert the returned exit code equals the manifest value.
+8. Assert the returned exit code equals the manifest value.
 
 The runner should fail fast on malformed manifest rows, missing files, duplicate
-fixture paths, unsupported fixture roots, and runtime errors.
+fixture paths, unsupported fixture roots, missing run directives, and runtime
+errors.
 
 ## First Import Batch
 
 An empirical probe of the current repository GCC accept fixtures shows that the
-first suitable batch is two deterministic GCC-derived fixtures after excluding
-inline-main cases that do not link cleanly as runnable executables and
-warning/overflow diagnostic cases that are compile-only rather than runtime
-gates. As runtime support grows, expand this gate toward a small stable set of
-roughly 10-25 fixtures.
+first suitable batch is one deterministic GCC-derived runtime fixture after
+requiring `{ dg-do run }`. Compile-only diagnostic cases, including
+`signbit-sa.c`, `inline-10.c`, and `overflow-2.c`, are excluded from the
+runtime gate even when they can compile, encode, load, or return a deterministic
+status under the current implementation. As runtime support grows, expand this
+gate toward a small stable set of roughly 10-25 fixtures.
 
 Prefer future fixtures covering:
 
@@ -123,10 +128,10 @@ explicitly extended to support trap expectations.
 
 Required checks:
 
-- `go test ./runtime -run TestGCCExecution -count=1`
+- `go test ./runtime -run 'TestGCCExecution|TestCompileAndRun' -count=1`
 - `go test ./runtime -count=1`
-- `go test ./codegen -run TestGCCBytecodeCompileSuite -count=1`
 - `go test ./... -count=1`
+- `git diff --check`
 
 The suite is complete when the runtime GCC execution manifest exists, the runner
 executes all listed fixtures through binary bytecode loading, and all required

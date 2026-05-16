@@ -53,13 +53,43 @@ func TestGCCExecutionManifestRejectsEscapingPath(t *testing.T) {
 	}
 }
 
+func TestHasGCCRunDirectiveAcceptsBlockCommentRun(t *testing.T) {
+	source := "/* { dg-do run } */\nint main(void) { return 0; }\n"
+	if !hasGCCRunDirective(source) {
+		t.Fatalf("hasGCCRunDirective(%q) = false, want true", source)
+	}
+}
+
+func TestHasGCCRunDirectiveRejectsNonRunCases(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{
+			name:   "compile only",
+			source: "/* { dg-do compile } */\nint main(void) { return 0; }\n",
+		},
+		{
+			name:   "no directive",
+			source: "int main(void) { return 0; }\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if hasGCCRunDirective(tt.source) {
+				t.Fatalf("hasGCCRunDirective(%q) = true, want false", tt.source)
+			}
+		})
+	}
+}
+
 func TestGCCExecutionFixtures(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("testdata", "gcc-exec", "manifest.tsv"))
 	if err != nil {
 		t.Fatalf("read GCC execution manifest: %v", err)
 	}
 	cases := parseGCCExecManifest(t, string(content))
-	const minGCCExecCases = 2
+	const minGCCExecCases = 1
 	if len(cases) < minGCCExecCases {
 		t.Fatalf("GCC execution suite too small: got %d cases, want >= %d", len(cases), minGCCExecCases)
 	}
@@ -70,6 +100,9 @@ func TestGCCExecutionFixtures(t *testing.T) {
 			source, err := os.ReadFile(sourcePath)
 			if err != nil {
 				t.Fatalf("read fixture %s: %v", c.path, err)
+			}
+			if !hasGCCRunDirective(string(source)) {
+				t.Fatalf("%s is not a GCC runtime fixture: missing { dg-do run } directive", c.path)
 			}
 			st := runGCCExecFixture(t, sourcePath, string(source))
 			if st.Code != c.exitCode {
@@ -268,6 +301,10 @@ func isDejaGNULine(line string) bool {
 		return true
 	}
 	return strings.HasPrefix(trim, "//") && strings.Contains(trim, "{ dg-")
+}
+
+func hasGCCRunDirective(source string) bool {
+	return strings.Contains(source, "{ dg-do run }")
 }
 
 func isAllowedGCCExecPath(manifestPath string) bool {

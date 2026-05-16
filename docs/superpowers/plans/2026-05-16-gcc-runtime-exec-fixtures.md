@@ -178,7 +178,7 @@ func TestGCCExecutionFixtures(t *testing.T) {
 		t.Fatalf("read GCC execution manifest: %v", err)
 	}
 	cases := parseGCCExecManifest(t, string(content))
-	const minGCCExecCases = 2
+	const minGCCExecCases = 1
 	if len(cases) < minGCCExecCases {
 		t.Fatalf("GCC execution suite too small: got %d cases, want >= %d", len(cases), minGCCExecCases)
 	}
@@ -189,6 +189,9 @@ func TestGCCExecutionFixtures(t *testing.T) {
 			source, err := os.ReadFile(sourcePath)
 			if err != nil {
 				t.Fatalf("read fixture %s: %v", c.path, err)
+			}
+			if !hasGCCRunDirective(string(source)) {
+				t.Fatalf("%s is not a GCC runtime fixture: missing { dg-do run } directive", c.path)
 			}
 			st := runGCCExecFixture(t, sourcePath, string(source))
 			if st.Code != c.exitCode {
@@ -373,6 +376,10 @@ func isDejaGNULine(line string) bool {
 	}
 	return strings.HasPrefix(trim, "//") && strings.Contains(trim, "{ dg-")
 }
+
+func hasGCCRunDirective(source string) bool {
+	return strings.Contains(source, "{ dg-do run }")
+}
 ```
 
 - [ ] **Step 4: Run the empty manifest gate and verify it fails on minimum count**
@@ -383,7 +390,7 @@ Run:
 go test ./runtime -run TestGCCExecutionFixtures -count=1
 ```
 
-Expected: FAIL with `GCC execution suite too small: got 0 cases, want >= 2`.
+Expected: FAIL with `GCC execution suite too small: got 0 cases, want >= 1`.
 
 - [ ] **Step 5: Commit the runner**
 
@@ -569,11 +576,10 @@ rm -f "$tmp_probe"
 Expected output:
 
 ```text
-sema/testdata/gcc-c99-extra/accept/signbit-sa.c	0
 sema/testdata/gcc-c99/accept/c99-main-1.c	0
 ```
 
-These two rows are the suitable GCC accept fixtures that the current Phase 1 runtime can compile, encode, load, and run with deterministic exit status. Inline-main cases that fail to link as runnable executables and warning/overflow diagnostic cases are excluded from the runtime execution gate.
+This row is the suitable GCC accept fixture that the current Phase 1 runtime can compile, encode, load, and run with deterministic exit status and that also declares `{ dg-do run }`. Compile-only diagnostic cases, including `signbit-sa.c`, `inline-10.c`, and `overflow-2.c`, are excluded from the runtime execution gate.
 
 - [ ] **Step 2: Inspect candidate source files before adding them**
 
@@ -581,13 +587,11 @@ Run:
 
 ```bash
 sed -n '1,180p' sema/testdata/gcc-c99/accept/c99-main-1.c
-sed -n '1,180p' sema/testdata/gcc-c99-extra/accept/signbit-sa.c
 ```
 
 Confirm the return values match the source:
 
 - `c99-main-1.c`: C99 implicit `return 0` from `main`.
-- `signbit-sa.c`: `signbit` calls on positive constants combine to `0`.
 
 - [ ] **Step 3: Fill the manifest with the first curated batch**
 
@@ -596,7 +600,6 @@ Edit `runtime/testdata/gcc-exec/manifest.tsv` so it contains exactly these curre
 ```tsv
 path	exit	category	reason
 sema/testdata/gcc-c99/accept/c99-main-1.c	0	arithmetic	C99 implicit main return exercises binary load and entry return
-sema/testdata/gcc-c99-extra/accept/signbit-sa.c	0	builtin	constant signbit calls on positive values return zero
 ```
 
 Every row uses a repository-relative path from an allowed `accept/` root.
@@ -609,7 +612,7 @@ Run:
 go test ./runtime -run TestGCCExecutionFixtures -count=1
 ```
 
-Expected: PASS. If one of these two fixtures fails at runtime, stop and capture the failing path and stage; do not broaden runtime behavior in this task.
+Expected: PASS. If this fixture fails at runtime, stop and capture the failing path and stage; do not broaden runtime behavior in this task.
 
 - [ ] **Step 5: Run runtime package tests**
 
@@ -656,6 +659,7 @@ under the cvm bytecode runtime.
 Rules:
 
 - Do not copy the compile-only GCC fixture set wholesale.
+- Require a `{ dg-do run }` directive in each fixture source.
 - Add execution fixtures only when the runtime implements the required bytecode
   and extern behavior.
 - Do not add skipped rows to this manifest. Unsupported execution cases should
@@ -665,6 +669,8 @@ Rules:
 - Avoid hosted library requirements, diagnostics-only cases, target harness
   behavior, undefined behavior, bit-fields, varargs, floating-point execution,
   inline assembly, atomics, and unsupported GCC builtins.
+- Exclude compile-only diagnostic cases, including `signbit-sa.c`,
+  `inline-10.c`, and `overflow-2.c`.
 ```
 
 - [ ] **Step 2: Run focused tests**
