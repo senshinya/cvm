@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `cabaaaf feat(runtime): execute complex tgmath pow`
+- Latest implementation/coverage commit before this handoff document: `f638c82 fix(runtime): copy object returns before frame exit`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `f638c82 fix(runtime): copy object returns before frame exit`
+  - Lowers object-address returns through `OpReturnObject`.
+  - Runtime copies the designated return object before freeing the callee frame.
+  - Adds coverage for complex float returns promoted to complex double in the caller.
 
 - `cabaaaf feat(runtime): execute complex tgmath pow`
   - Registers `__cvm_tgmath_cpow*` runtime externs.
@@ -210,7 +215,7 @@ The current codegen support includes:
 - complex tgmath extern dispatch
 
 Runtime execution of complex arithmetic is still incomplete. Current runtime support includes `__builtin_cabs*` externs for object-address complex arguments.
-Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `+`, `-`, `*`, `/`, `*=`, `+=`, `-=`, `/=`, double-to-float complex copy, `__builtin_cabs`, `__builtin_cabsf`, complex tgmath `exp`, and complex tgmath `pow`.
+Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `+`, `-`, `*`, `/`, `*=`, `+=`, `-=`, `/=`, object-return copy-out, double-to-float complex copy, complex float return promoted to complex double, `__builtin_cabs`, `__builtin_cabsf`, complex tgmath `exp`, and complex tgmath `pow`.
 
 ### GNU Nested Functions
 
