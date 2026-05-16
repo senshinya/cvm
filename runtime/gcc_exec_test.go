@@ -127,6 +127,8 @@ func parseGCCExecManifestContent(content string) ([]gccExecCase, error) {
 
 func runGCCExecFixture(t *testing.T, path, source string) ExitStatus {
 	t.Helper()
+	const gccExecStepLimit = 100000
+
 	src := stripGCCDirectives(source)
 	pp, err := preprocessor.PreprocessSource(path, src, preprocessor.Options{})
 	if err != nil {
@@ -155,7 +157,7 @@ func runGCCExecFixture(t *testing.T, path, source string) ExitStatus {
 	if err != nil {
 		t.Fatalf("%s Load: %v", path, err)
 	}
-	st, err := Run(context.Background(), p, RunOptions{})
+	st, err := Run(context.Background(), p, RunOptions{StepLimit: gccExecStepLimit})
 	if err != nil {
 		t.Fatalf("%s Run: %v", path, err)
 	}
