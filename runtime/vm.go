@@ -826,6 +826,9 @@ func pointerDiff(left, right uint64, elemSize int64) (int64, error) {
 	elem := uint64(elemSize)
 	if left >= right {
 		delta := left - right
+		if delta%elem != 0 {
+			return 0, fmt.Errorf("pointer difference %d is not divisible by element size %d", delta, elemSize)
+		}
 		quotient := delta / elem
 		if quotient > math.MaxInt64 {
 			return 0, fmt.Errorf("pointer difference %d exceeds i64 range", quotient)
@@ -833,6 +836,9 @@ func pointerDiff(left, right uint64, elemSize int64) (int64, error) {
 		return int64(quotient), nil
 	}
 	delta := right - left
+	if delta%elem != 0 {
+		return 0, fmt.Errorf("pointer difference -%d is not divisible by element size %d", delta, elemSize)
+	}
 	quotient := delta / elem
 	minInt64Magnitude := uint64(math.MaxInt64) + 1
 	if quotient > minInt64Magnitude {

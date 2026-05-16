@@ -287,7 +287,7 @@ func TestRunPtrAddRejectsInvalidElementSize(t *testing.T) {
 }
 
 func TestVMPointerDiffChecksScaledQuotient(t *testing.T) {
-	got, err := pointerDiff(math.MaxUint64, 0, 2)
+	got, err := pointerDiff(uint64(math.MaxInt64)*2, 0, 2)
 	if err != nil {
 		t.Fatalf("pointerDiff: %v", err)
 	}
@@ -303,6 +303,26 @@ func TestVMPointerDiffAllowsMinInt64(t *testing.T) {
 	}
 	if got != math.MinInt64 {
 		t.Fatalf("pointerDiff = %d, want %d", got, int64(math.MinInt64))
+	}
+}
+
+func TestVMPointerDiffRejectsNonDivisibleDistance(t *testing.T) {
+	tests := []struct {
+		name       string
+		left       uint64
+		right      uint64
+		wantSubstr string
+	}{
+		{name: "positive", left: 9, right: 0, wantSubstr: "pointer difference 9 is not divisible"},
+		{name: "negative", left: 0, right: 9, wantSubstr: "pointer difference -9 is not divisible"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := pointerDiff(tt.left, tt.right, 4)
+			if err == nil || !strings.Contains(err.Error(), tt.wantSubstr) {
+				t.Fatalf("pointerDiff error = %v, want %q", err, tt.wantSubstr)
+			}
+		})
 	}
 }
 
