@@ -414,3 +414,19 @@ int main(void) {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
 }
+
+func TestCompileAndRunComplexCompoundDiv(t *testing.T) {
+	st, err := compileAndRun(t, `
+int main(void) {
+	_Complex double z = __builtin_complex(11.0, 2.0);
+	z /= __builtin_complex(3.0, 4.0);
+	double mag = __builtin_cabs(z);
+	return mag > 2.23 && mag < 2.24 ? 0 : 1;
+}`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}

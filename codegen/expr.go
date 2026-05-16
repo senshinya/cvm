@@ -290,7 +290,7 @@ func (fg *funcGen) emitLocalSlotPointerCompoundAssign(x *sema.CompoundAssign, st
 }
 
 func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
-	if x.Op != sema.OpAdd && x.Op != sema.OpSub && x.Op != sema.OpMul {
+	if x.Op != sema.OpAdd && x.Op != sema.OpSub && x.Op != sema.OpMul && x.Op != sema.OpDiv {
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("complex compound assignment %v is not implemented", x.Op)}
 	}
 	lhsRealType, err := complexRealType(x.L.GetType())
@@ -345,6 +345,24 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 		return nil
 	}
 
+	if x.Op == sema.OpDiv {
+		denomSlot := fg.allocSyntheticSlot(".complex.compound.denom", lhsVT)
+		fg.out.Instrs = append(fg.out.Instrs,
+			bytecode.LoadLocal(lhsVT, rrSlot),
+			bytecode.LoadLocal(lhsVT, rrSlot),
+			bytecode.Binary(lhsVT, bytecode.BinMul),
+			bytecode.LoadLocal(lhsVT, riSlot),
+			bytecode.LoadLocal(lhsVT, riSlot),
+			bytecode.Binary(lhsVT, bytecode.BinMul),
+			bytecode.Binary(lhsVT, bytecode.BinAdd),
+			bytecode.StoreLocal(lhsVT, denomSlot),
+		)
+		fg.storeComplexCompoundDivReal(lhsAddrSlot, 0, lrSlot, liSlot, rrSlot, riSlot, denomSlot, lhsVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+		fg.storeComplexCompoundDivImag(lhsAddrSlot, lhsImagOffset, lrSlot, liSlot, rrSlot, riSlot, denomSlot, lhsVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+		return nil
+	}
+
 	fg.out.Instrs = append(fg.out.Instrs,
 		bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot),
 		bytecode.LoadLocal(lhsVT, lrSlot),
@@ -377,6 +395,45 @@ func (fg *funcGen) storeComplexCompoundAddSubComponent(lhsAddrSlot int, offset i
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(vt, leftSlot), bytecode.LoadLocal(vt, rightSlot))
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(vt, op), bytecode.Store(vt, align, volatile))
+}
+
+func (fg *funcGen) storeComplexCompoundDivReal(lhsAddrSlot int, offset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, denomSlot int, vt bytecode.ValueType, align int64, volatile bool) {
+	fg.emitComplexCompoundAddress(lhsAddrSlot, offset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(vt, lrSlot),
+		bytecode.LoadLocal(vt, rrSlot),
+		bytecode.Binary(vt, bytecode.BinMul),
+		bytecode.LoadLocal(vt, liSlot),
+		bytecode.LoadLocal(vt, riSlot),
+		bytecode.Binary(vt, bytecode.BinMul),
+		bytecode.Binary(vt, bytecode.BinAdd),
+		bytecode.LoadLocal(vt, denomSlot),
+		bytecode.Binary(vt, bytecode.BinDivS),
+		bytecode.Store(vt, align, volatile),
+	)
+}
+
+func (fg *funcGen) storeComplexCompoundDivImag(lhsAddrSlot int, offset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, denomSlot int, vt bytecode.ValueType, align int64, volatile bool) {
+	fg.emitComplexCompoundAddress(lhsAddrSlot, offset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(vt, liSlot),
+		bytecode.LoadLocal(vt, rrSlot),
+		bytecode.Binary(vt, bytecode.BinMul),
+		bytecode.LoadLocal(vt, lrSlot),
+		bytecode.LoadLocal(vt, riSlot),
+		bytecode.Binary(vt, bytecode.BinMul),
+		bytecode.Binary(vt, bytecode.BinSub),
+		bytecode.LoadLocal(vt, denomSlot),
+		bytecode.Binary(vt, bytecode.BinDivS),
+		bytecode.Store(vt, align, volatile),
+	)
+}
+
+func (fg *funcGen) emitComplexCompoundAddress(lhsAddrSlot int, offset int64) {
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+	if offset != 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: offset})
+	}
 }
 
 func (fg *funcGen) emitLoadComplexComponent(addrSlot int, offset int64, from, to bytecode.ValueType, align int64, volatile bool) {
