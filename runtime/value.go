@@ -35,9 +35,13 @@ func FloatValue(t bytecode.ValueType, v float64) Value {
 
 func (v Value) ExitCode() (int, error) {
 	switch v.Type {
-	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeI32,
-		bytecode.TypeI64, bytecode.TypeU8, bytecode.TypeU16, bytecode.TypeU32,
-		bytecode.TypeU64:
+	case bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeI32, bytecode.TypeI64:
+		signed := int64(v.Int)
+		if int64(int(signed)) != signed {
+			return 0, fmt.Errorf("exit code %d exceeds int range", signed)
+		}
+		return int(signed), nil
+	case bytecode.TypeBool, bytecode.TypeU8, bytecode.TypeU16, bytecode.TypeU32, bytecode.TypeU64:
 		if v.Int > uint64(math.MaxInt) {
 			return 0, fmt.Errorf("exit code %d exceeds int range", v.Int)
 		}

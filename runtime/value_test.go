@@ -35,3 +35,13 @@ func TestValueRejectsPointerExitCode(t *testing.T) {
 		t.Fatal("ExitCode accepted pointer")
 	}
 }
+
+func TestValueAsExitCodeAcceptsNegativeSignedInt(t *testing.T) {
+	got, err := IntValue(bytecode.TypeI32, -1).ExitCode()
+	if err != nil {
+		t.Fatalf("ExitCode returned error: %v", err)
+	}
+	if got != -1 {
+		t.Fatalf("ExitCode = %d, want -1", got)
+	}
+}
