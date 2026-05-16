@@ -731,6 +731,40 @@ func TestRunReturnedLocalObjectAddressTrapsAfterFrameExit(t *testing.T) {
 	}
 }
 
+func TestRunReturnObjectCopiesLocalBeforeFrameExit(t *testing.T) {
+	mod := testMainModule(
+		bytecode.Call(1, 1, 0),
+		bytecode.Load(bytecode.TypeI32, 4, false),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeObjectAddr})
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "copy", Kind: bytecode.GlobalFunc, Func: 1, Sig: 1})
+	mod.Functions = append(mod.Functions, bytecode.Function{
+		ID:       1,
+		GlobalID: 1,
+		Name:     "copy",
+		Sig:      1,
+		Objects:  []bytecode.LocalObject{{ID: 0, Name: "obj", Size: 4, Align: 4, Layout: 0}},
+		Instrs: []bytecode.Instr{
+			bytecode.AddrLocalObject(0),
+			bytecode.I32Const(55),
+			bytecode.Store(bytecode.TypeI32, 4, false),
+			bytecode.AddrLocalObject(0),
+			bytecode.Instr{Op: bytecode.OpReturnObject, Object: 0},
+		},
+		MaxStack: 2,
+	})
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "local", Size: 4, Align: 4}}
+
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 55 {
+		t.Fatalf("exit code = %d, want 55", st.Code)
+	}
+}
+
 func TestRunGlobalLoadStore(t *testing.T) {
 	mod := testMainModule(
 		bytecode.AddrGlobal(1),
@@ -1299,7 +1333,6 @@ func TestRunUnsupportedOpcodeTrap(t *testing.T) {
 		ins  bytecode.Instr
 		want string
 	}{
-		{name: "return object", ins: bytecode.Instr{Op: bytecode.OpReturnObject}, want: "unsupported opcode OpReturnObject"},
 		{name: "va start", ins: bytecode.Instr{Op: bytecode.OpVaStart, Slot: 0}, want: "unsupported opcode OpVaStart"},
 		{name: "va arg", ins: bytecode.Instr{Op: bytecode.OpVaArg, Type: bytecode.TypeI32}, want: "unsupported opcode OpVaArg"},
 		{name: "va end", ins: bytecode.Instr{Op: bytecode.OpVaEnd, Slot: 0}, want: "unsupported opcode OpVaEnd"},

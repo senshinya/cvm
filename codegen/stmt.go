@@ -336,11 +336,27 @@ func (fg *funcGen) emitStmt(s sema.Stmt) error {
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpReturnVoid})
 			return nil
 		}
-		if err := fg.emitValue(x.Value); err != nil {
-			return err
-		}
 		t, err := fg.g.lowerValueType(x.Value.GetType())
 		if err != nil {
+			return err
+		}
+		if t == bytecode.TypeObjectAddr {
+			object, err := fg.newLocalObject(".return", x.Value.GetType())
+			if err != nil {
+				return err
+			}
+			dst := address{emit: func() error {
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+				return nil
+			}}
+			if err := fg.emitInitializer(dst, x.Value, x.Value.GetType()); err != nil {
+				return err
+			}
+			fg.emitDynamicObjectCleanups(0)
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object), bytecode.Instr{Op: bytecode.OpReturnObject, Object: object})
+			return nil
+		}
+		if err := fg.emitValue(x.Value); err != nil {
 			return err
 		}
 		fg.emitDynamicObjectCleanups(0)

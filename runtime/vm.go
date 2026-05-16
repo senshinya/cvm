@@ -536,7 +536,21 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 			return ExitStatus{}, true, err
 		}
 	case bytecode.OpReturnObject:
-		return ExitStatus{}, true, vm.trap(fmt.Sprintf("unsupported opcode %s", ins.Op))
+		addr, err := vm.pop(bytecode.TypeObjectAddr)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		if len(vm.frames) == 1 {
+			return ExitStatus{}, true, vm.trap("object return from entry function")
+		}
+		retAddr, err := vm.copyReturnObject(ins.Object, addr.Int)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		if err := vm.popFrame(); err != nil {
+			return ExitStatus{}, true, err
+		}
+		vm.stack = append(vm.stack, ObjectAddrValue(retAddr))
 	case bytecode.OpUnreachable:
 		return ExitStatus{}, true, vm.trap("unreachable")
 	case bytecode.OpVaStart, bytecode.OpVaArg, bytecode.OpVaEnd:
@@ -584,6 +598,33 @@ func (vm *VM) popFrame() error {
 	}
 	vm.frames = vm.frames[:len(vm.frames)-1]
 	return nil
+}
+
+func (vm *VM) copyReturnObject(objectID int, src uint64) (uint64, error) {
+	if len(vm.frames) == 0 {
+		return 0, vm.trap("empty call stack")
+	}
+	fr := &vm.frames[len(vm.frames)-1]
+	var object bytecode.LocalObject
+	found := false
+	for _, candidate := range fr.fn.Objects {
+		if candidate.ID == objectID {
+			object = candidate
+			found = true
+			break
+		}
+	}
+	if !found {
+		return 0, vm.trap(fmt.Sprintf("return object %d not found in function %s", objectID, fr.fn.Name))
+	}
+	dst, err := vm.program.Memory().TryAlloc(fmt.Sprintf("return:%s:%s", fr.fn.Name, object.Name), object.Size, object.Align, false, blockGlobal)
+	if err != nil {
+		return 0, vm.trapWithCause(fmt.Sprintf("return object %d allocation failed", objectID), err)
+	}
+	if err := vm.program.Memory().Copy(dst, src, object.Size); err != nil {
+		return 0, vm.trapWithCause(fmt.Sprintf("return object %d copy failed", objectID), err)
+	}
+	return dst, nil
 }
 
 func (vm *VM) cleanupFrames() error {
