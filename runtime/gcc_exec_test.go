@@ -53,6 +53,72 @@ func TestGCCExecutionManifestRejectsEscapingPath(t *testing.T) {
 	}
 }
 
+func TestGCCExecutionManifestRejectsInvalidRows(t *testing.T) {
+	const validRow = "sema/testdata/gcc-c99/accept/c99-main-1.c\t0\tarithmetic\treturns zero\n"
+	tests := []struct {
+		name    string
+		content string
+		wantErr string
+	}{
+		{
+			name:    "bad header",
+			content: "path\texit\treason\n" + validRow,
+			wantErr: "manifest header is missing or malformed",
+		},
+		{
+			name:    "malformed row",
+			content: "path\texit\tcategory\treason\nsema/testdata/gcc-c99/accept/c99-main-1.c\t0\tarithmetic\n",
+			wantErr: "manifest line 2 malformed",
+		},
+		{
+			name:    "duplicate path",
+			content: "path\texit\tcategory\treason\n" + validRow + validRow,
+			wantErr: "duplicates path",
+		},
+		{
+			name:    "absolute path",
+			content: "path\texit\tcategory\treason\n/sema/testdata/gcc-c99/accept/c99-main-1.c\t0\tarithmetic\tabsolute path\n",
+			wantErr: "outside supported GCC accept fixture roots",
+		},
+		{
+			name:    "unsupported root",
+			content: "path\texit\tcategory\treason\nsema/testdata/gcc-c99/reject/not-accept.c\t0\tarithmetic\twrong root\n",
+			wantErr: "outside supported GCC accept fixture roots",
+		},
+		{
+			name:    "non C source",
+			content: "path\texit\tcategory\treason\nsema/testdata/gcc-c99/accept/not-c.txt\t0\tarithmetic\tnot source\n",
+			wantErr: "outside supported GCC accept fixture roots",
+		},
+		{
+			name:    "invalid exit",
+			content: "path\texit\tcategory\treason\nsema/testdata/gcc-c99/accept/c99-main-1.c\tzero\tarithmetic\tbad exit\n",
+			wantErr: "invalid exit code",
+		},
+		{
+			name:    "empty category",
+			content: "path\texit\tcategory\treason\nsema/testdata/gcc-c99/accept/c99-main-1.c\t0\t\tmissing category\n",
+			wantErr: "empty category",
+		},
+		{
+			name:    "empty reason",
+			content: "path\texit\tcategory\treason\nsema/testdata/gcc-c99/accept/c99-main-1.c\t0\tarithmetic\t \n",
+			wantErr: "empty reason",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := parseGCCExecManifestContent(tt.content)
+			if err == nil {
+				t.Fatalf("parseGCCExecManifestContent succeeded, want error containing %q", tt.wantErr)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %q, want substring %q", err.Error(), tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestHasGCCRunDirectiveAcceptsBlockCommentRun(t *testing.T) {
 	source := "/* { dg-do run } */\nint main(void) { return 0; }\n"
 	if !hasGCCRunDirective(source) {
