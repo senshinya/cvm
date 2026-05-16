@@ -290,8 +290,8 @@ func (fg *funcGen) emitLocalSlotPointerCompoundAssign(x *sema.CompoundAssign, st
 }
 
 func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
-	if x.Op != sema.OpMul {
-		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "complex compound assignment is only implemented for multiplication"}
+	if x.Op != sema.OpAdd && x.Op != sema.OpSub && x.Op != sema.OpMul {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("complex compound assignment %v is not implemented", x.Op)}
 	}
 	lhsRealType, err := complexRealType(x.L.GetType())
 	if err != nil {
@@ -319,7 +319,7 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
-	if err := fg.emitAddress(x.R); err != nil {
+	if err := fg.emitComplexSourceAddress(x.R); err != nil {
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, rhsAddrSlot))
@@ -333,6 +333,17 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(lhsVT, rrSlot))
 	fg.emitLoadComplexComponent(rhsAddrSlot, rhsImagOffset, rhsVT, lhsVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(lhsVT, riSlot))
+
+	if x.Op == sema.OpAdd || x.Op == sema.OpSub {
+		op := bytecode.BinAdd
+		if x.Op == sema.OpSub {
+			op = bytecode.BinSub
+		}
+		fg.storeComplexCompoundAddSubComponent(lhsAddrSlot, 0, lrSlot, rrSlot, lhsVT, op, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+		fg.storeComplexCompoundAddSubComponent(lhsAddrSlot, lhsImagOffset, liSlot, riSlot, lhsVT, op, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+		return nil
+	}
 
 	fg.out.Instrs = append(fg.out.Instrs,
 		bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot),
@@ -357,6 +368,15 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 		bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot),
 	)
 	return nil
+}
+
+func (fg *funcGen) storeComplexCompoundAddSubComponent(lhsAddrSlot int, offset int64, leftSlot int, rightSlot int, vt bytecode.ValueType, op bytecode.BinaryOp, align int64, volatile bool) {
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+	if offset != 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: offset})
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(vt, leftSlot), bytecode.LoadLocal(vt, rightSlot))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(vt, op), bytecode.Store(vt, align, volatile))
 }
 
 func (fg *funcGen) emitLoadComplexComponent(addrSlot int, offset int64, from, to bytecode.ValueType, align int64, volatile bool) {
