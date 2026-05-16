@@ -82,6 +82,7 @@ sema/testdata/gcc-c99-extra/accept/binary-constants-1.c	current GCC accept fixtu
 sema/testdata/gcc-c99-extra/accept/binary-constants-2.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/builtin-stringop-chk-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/builtin-strncat-chk-1.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/builtins-58.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/builtins-nonnull.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/array-const-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/array-const-2.c	current GCC accept fixture compiles to validated bytecode
