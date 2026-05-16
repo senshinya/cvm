@@ -3,6 +3,7 @@ package codegen
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -37,6 +38,40 @@ func TestGCCBytecodeCompileSuite(t *testing.T) {
 				t.Fatalf("validate bytecode: %v\n%s", err, bytecode.PrintModule(mod))
 			}
 		})
+	}
+}
+
+func TestGCCBytecodeManifestCoversImportedAcceptFixtures(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("testdata", "gcc-bytecode-compile.tsv"))
+	if err != nil {
+		t.Fatalf("read GCC bytecode manifest: %v", err)
+	}
+	cases := parseGCCBytecodeManifest(t, string(content))
+	covered := map[string]bool{}
+	for _, c := range cases {
+		covered[c.path] = true
+	}
+	roots := []string{
+		filepath.Join("..", "sema", "testdata", "gcc-c99", "accept"),
+		filepath.Join("..", "sema", "testdata", "gcc-c99-extra", "accept"),
+		filepath.Join("..", "sema", "testdata", "gcc-c90-as-c99", "accept"),
+	}
+	var missing []string
+	for _, root := range roots {
+		matches, err := filepath.Glob(filepath.Join(root, "*.c"))
+		if err != nil {
+			t.Fatalf("glob %s: %v", root, err)
+		}
+		for _, match := range matches {
+			manifestPath := filepath.ToSlash(strings.TrimPrefix(match, filepath.Clean("..")+string(filepath.Separator)))
+			if !covered[manifestPath] {
+				missing = append(missing, manifestPath)
+			}
+		}
+	}
+	sort.Strings(missing)
+	if len(missing) != 0 {
+		t.Fatalf("GCC bytecode manifest is missing %d imported accept fixtures:\n%s", len(missing), strings.Join(missing, "\n"))
 	}
 }
 
