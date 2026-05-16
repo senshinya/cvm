@@ -315,6 +315,143 @@ func TestRunLocalStoreLoad(t *testing.T) {
 	}
 }
 
+func TestRunLocalObjectAddress(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrLocalObject(0),
+		bytecode.I32Const(44),
+		bytecode.Store(bytecode.TypeI32, 4, false),
+		bytecode.AddrLocalObject(0),
+		bytecode.Load(bytecode.TypeI32, 4, false),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "local", Size: 4, Align: 4}}
+	mod.Functions[0].Objects = []bytecode.LocalObject{{ID: 0, Name: "obj", Size: 4, Align: 4, Layout: 0}}
+
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 44 {
+		t.Fatalf("exit code = %d, want 44", st.Code)
+	}
+}
+
+func TestRunLocalObjectBadIDTraps(t *testing.T) {
+	_, err := runProgram(t, context.Background(), testMainModule(bytecode.AddrLocalObject(99)), RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "invalid local object 99") {
+		t.Fatalf("Run error = %v, want invalid local object trap", err)
+	}
+}
+
+func TestRunFieldAddress(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrLocalObject(0),
+		bytecode.Instr{Op: bytecode.OpFieldAddr, Layout: 0, Field: 0},
+		bytecode.I32Const(44),
+		bytecode.Store(bytecode.TypeI32, 4, false),
+		bytecode.AddrLocalObject(0),
+		bytecode.Instr{Op: bytecode.OpFieldAddr, Layout: 0, Field: 0},
+		bytecode.Load(bytecode.TypeI32, 4, false),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Layouts = []bytecode.ObjectLayout{{
+		ID:     0,
+		Name:   "record",
+		Size:   8,
+		Align:  4,
+		Fields: []bytecode.FieldLayout{{ID: 0, Name: "field", Offset: 4, Type: bytecode.TypeI32}},
+	}}
+	mod.Functions[0].Objects = []bytecode.LocalObject{{ID: 0, Name: "obj", Size: 8, Align: 4, Layout: 0}}
+
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 44 {
+		t.Fatalf("exit code = %d, want 44", st.Code)
+	}
+}
+
+func TestRunFieldAddressBadFieldTraps(t *testing.T) {
+	mod := testMainModule(
+		bytecode.Instr{Op: bytecode.OpConst, Type: bytecode.TypeObjectAddr, Int: 0x1000},
+		bytecode.Instr{Op: bytecode.OpFieldAddr, Layout: 0, Field: 99},
+	)
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "record"}}
+
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "invalid field 99 in layout 0") {
+		t.Fatalf("Run error = %v, want invalid field trap", err)
+	}
+}
+
+func TestRunFieldAddressOffsetOverflowTraps(t *testing.T) {
+	mod := testMainModule(
+		bytecode.Instr{Op: bytecode.OpConst, Type: bytecode.TypeObjectAddr, Int: -1},
+		bytecode.Instr{Op: bytecode.OpFieldAddr, Layout: 0, Field: 0},
+	)
+	mod.Layouts = []bytecode.ObjectLayout{{
+		ID:     0,
+		Name:   "record",
+		Fields: []bytecode.FieldLayout{{ID: 0, Name: "field", Offset: 1, Type: bytecode.TypeI32}},
+	}}
+
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "field offset overflow") {
+		t.Fatalf("Run error = %v, want field offset overflow trap", err)
+	}
+}
+
+func TestRunDynamicObjectAddress(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I64Const(4),
+		bytecode.Instr{Op: bytecode.OpAllocDynamicObject, Object: 0, Type: bytecode.TypeI64, Align: 4, Layout: 0},
+		bytecode.Instr{Op: bytecode.OpDynamicObjectAddr, Object: 0, Type: bytecode.TypeObjectAddr},
+		bytecode.I32Const(44),
+		bytecode.Store(bytecode.TypeI32, 4, false),
+		bytecode.Instr{Op: bytecode.OpDynamicObjectAddr, Object: 0, Type: bytecode.TypeObjectAddr},
+		bytecode.Load(bytecode.TypeI32, 4, false),
+		bytecode.Instr{Op: bytecode.OpFreeDynamicObject, Object: 0},
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "vla", Align: 4}}
+	mod.Functions[0].DynamicObjects = []bytecode.DynamicObject{{ID: 0, Name: "dyn", Align: 4, Layout: 0}}
+
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 44 {
+		t.Fatalf("exit code = %d, want 44", st.Code)
+	}
+}
+
+func TestRunDynamicObjectBadIDTraps(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I64Const(4),
+		bytecode.Instr{Op: bytecode.OpAllocDynamicObject, Object: 99, Type: bytecode.TypeI64, Align: 4, Layout: 0},
+	)
+
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "invalid dynamic object 99") {
+		t.Fatalf("Run error = %v, want invalid dynamic object trap", err)
+	}
+}
+
+func TestRunDynamicObjectAddressBeforeAllocTraps(t *testing.T) {
+	mod := testMainModule(
+		bytecode.Instr{Op: bytecode.OpDynamicObjectAddr, Object: 0, Type: bytecode.TypeObjectAddr},
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "vla", Align: 4}}
+	mod.Functions[0].DynamicObjects = []bytecode.DynamicObject{{ID: 0, Name: "dyn", Align: 4, Layout: 0}}
+
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "dynamic object 0 is not allocated") {
+		t.Fatalf("Run error = %v, want dynamic object before alloc trap", err)
+	}
+}
+
 func TestRunGlobalLoadStore(t *testing.T) {
 	mod := testMainModule(
 		bytecode.AddrGlobal(1),
@@ -858,9 +995,16 @@ func TestRunStepLimitReportsNextPC(t *testing.T) {
 	}
 }
 
-func TestRunUnsupportedOpcodeTrap(t *testing.T) {
+func TestRunUnreachableTrap(t *testing.T) {
 	_, err := runProgram(t, context.Background(), testMainModule(bytecode.Instr{Op: bytecode.OpUnreachable}), RunOptions{})
-	if err == nil || !strings.Contains(err.Error(), "unsupported opcode OpUnreachable") {
+	if err == nil || !strings.Contains(err.Error(), "unreachable") || strings.Contains(err.Error(), "unsupported opcode") {
+		t.Fatalf("Run error = %v, want unreachable trap", err)
+	}
+}
+
+func TestRunUnsupportedOpcodeTrap(t *testing.T) {
+	_, err := runProgram(t, context.Background(), testMainModule(bytecode.Instr{Op: bytecode.OpVaStart, Slot: 0}), RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "unsupported opcode OpVaStart") {
 		t.Fatalf("Run error = %v, want unsupported opcode trap", err)
 	}
 }

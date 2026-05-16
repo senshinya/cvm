@@ -21,10 +21,12 @@ type VM struct {
 }
 
 type frame struct {
-	fn     *bytecode.Function
-	pc     int
-	locals []Value
-	labels map[int]int
+	fn             *bytecode.Function
+	pc             int
+	locals         []Value
+	labels         map[int]int
+	localObjects   map[int]uint64
+	dynamicObjects map[int]uint64
 }
 
 func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
@@ -98,10 +100,24 @@ func (vm *VM) pushFrame(funcID int, args []Value) error {
 		}
 	}
 
+	localObjects := make(map[int]uint64, len(fn.Objects))
+	for _, object := range fn.Objects {
+		if _, exists := localObjects[object.ID]; exists {
+			return vm.trap(fmt.Sprintf("duplicate local object %d in function %s", object.ID, fn.Name))
+		}
+		addr, err := vm.program.Memory().TryAlloc(fmt.Sprintf("local:%s:%s", fn.Name, object.Name), object.Size, object.Align, false, blockLocal)
+		if err != nil {
+			return vm.trapWithCause(fmt.Sprintf("local object %d allocation failed", object.ID), err)
+		}
+		localObjects[object.ID] = addr
+	}
+
 	vm.frames = append(vm.frames, frame{
-		fn:     fn,
-		locals: locals,
-		labels: labels,
+		fn:             fn,
+		locals:         locals,
+		labels:         labels,
+		localObjects:   localObjects,
+		dynamicObjects: make(map[int]uint64),
 	})
 	return nil
 }
@@ -183,6 +199,41 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 			return ExitStatus{}, true, vm.trapWithCause("invalid function address", err)
 		}
 		vm.stack = append(vm.stack, PtrValue(addr))
+	case bytecode.OpAddrLocalObject:
+		addr, ok := fr.localObjects[ins.Object]
+		if !ok {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("invalid local object %d", ins.Object))
+		}
+		vm.stack = append(vm.stack, ObjectAddrValue(addr))
+	case bytecode.OpAllocDynamicObject:
+		size, err := vm.pop(bytecode.TypeI64)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		object, ok := fr.dynamicObject(ins.Object)
+		if !ok {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("invalid dynamic object %d", ins.Object))
+		}
+		align := ins.Align
+		if align <= 0 {
+			align = object.Align
+		}
+		addr, err := vm.program.Memory().TryAlloc(fmt.Sprintf("dynamic:%s:%s", fr.fn.Name, object.Name), signedInt(size), align, false, blockDynamic)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause(fmt.Sprintf("dynamic object %d allocation failed", ins.Object), err)
+		}
+		fr.dynamicObjects[ins.Object] = addr
+	case bytecode.OpFreeDynamicObject:
+		if _, ok := fr.dynamicObject(ins.Object); !ok {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("invalid dynamic object %d", ins.Object))
+		}
+		delete(fr.dynamicObjects, ins.Object)
+	case bytecode.OpDynamicObjectAddr:
+		addr, ok := fr.dynamicObjects[ins.Object]
+		if !ok {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("dynamic object %d is not allocated", ins.Object))
+		}
+		vm.stack = append(vm.stack, UIntValue(ins.Type, addr))
 	case bytecode.OpLoadConst:
 		base, err := vm.program.TryGlobalAddr(ins.Global)
 		if err != nil {
@@ -251,6 +302,23 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		out, err := addSignedOffset(addr.Int, ins.Int)
 		if err != nil {
 			return ExitStatus{}, true, vm.trapWithCause("offset overflow", err)
+		}
+		vm.stack = append(vm.stack, ObjectAddrValue(out))
+	case bytecode.OpFieldAddr:
+		addr, err := vm.pop(bytecode.TypeObjectAddr)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		if ins.Layout < 0 || ins.Layout >= len(vm.program.module.Layouts) {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("invalid layout %d", ins.Layout))
+		}
+		layout := vm.program.module.Layouts[ins.Layout]
+		if ins.Field < 0 || ins.Field >= len(layout.Fields) {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("invalid field %d in layout %d", ins.Field, ins.Layout))
+		}
+		out, err := addSignedOffset(addr.Int, layout.Fields[ins.Field].Offset)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("field offset overflow", err)
 		}
 		vm.stack = append(vm.stack, ObjectAddrValue(out))
 	case bytecode.OpPtrAdd:
@@ -399,6 +467,12 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 			return ExitStatus{}, true, vm.trap("void return from entry function")
 		}
 		vm.frames = vm.frames[:len(vm.frames)-1]
+	case bytecode.OpReturnObject:
+		return ExitStatus{}, true, vm.trap(fmt.Sprintf("unsupported opcode %s", ins.Op))
+	case bytecode.OpUnreachable:
+		return ExitStatus{}, true, vm.trap("unreachable")
+	case bytecode.OpBitFieldLoad, bytecode.OpBitFieldStore, bytecode.OpVaStart, bytecode.OpVaArg, bytecode.OpVaEnd:
+		return ExitStatus{}, true, vm.trap(fmt.Sprintf("unsupported opcode %s", ins.Op))
 	case bytecode.OpLabel:
 		// Labels are markers for control-flow instructions; execution falls through.
 	default:
@@ -414,6 +488,15 @@ func (fr *frame) jump(label int) error {
 	}
 	fr.pc = pc
 	return nil
+}
+
+func (fr *frame) dynamicObject(objectID int) (bytecode.DynamicObject, bool) {
+	for _, object := range fr.fn.DynamicObjects {
+		if object.ID == objectID {
+			return object, true
+		}
+	}
+	return bytecode.DynamicObject{}, false
 }
 
 func (vm *VM) popCallArgs(sigID, argc int) ([]Value, error) {
