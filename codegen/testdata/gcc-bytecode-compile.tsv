@@ -65,6 +65,7 @@ sema/testdata/gcc-c99/accept/c99-vla-1.c	current GCC accept fixture compiles to 
 sema/testdata/gcc-c99/accept/c99-vla-2.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/20011015-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/20011021-1.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/20090922-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/Wc90-c99-compat-9.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/Wconversion-complex-c99.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/Wconversion-complex-gnu.c	current GCC accept fixture compiles to validated bytecode
