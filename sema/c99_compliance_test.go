@@ -45,6 +45,29 @@ func TestC99SelectionExpressionTagScopeDoesNotLeak(t *testing.T) {
 	}
 }
 
+func TestC99NestedFunctionDiscoveredInBodyGetsAnalyzed(t *testing.T) {
+	prog := mustAnalyzeWithOptions(t, `
+		void outer(void) {
+			void inner(void) {}
+		}
+	`, SemaOptions{GNUExtensions: true})
+	inner := findFuncDef(t, prog, "inner")
+	if inner.Body == nil {
+		t.Fatalf("nested function body was not analyzed")
+	}
+}
+
+func TestC99NestedFunctionCanReferenceContainingScope(t *testing.T) {
+	mustAnalyzeWithOptions(t, `
+		void outer(int n) {
+			int a[n];
+			void inner(void) {
+				(void)a[0];
+			}
+		}
+	`, SemaOptions{GNUExtensions: true})
+}
+
 func sizeofOperandType(expr Expr) Type {
 	if ic, ok := expr.(*ImplicitCast); ok {
 		expr = ic.X
