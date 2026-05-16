@@ -3,6 +3,7 @@ package runtime
 import (
 	"bytes"
 	"context"
+	"math"
 	"strings"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "abort", "puts", "fputs", "strcmp", "memcmp"} {
+	for _, name := range []string{"exit", "abort", "puts", "fputs", "strcmp", "memcmp", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -178,6 +179,77 @@ func TestMemcmpComparesBytes(t *testing.T) {
 				t.Fatalf("memcmp = %#v, want i32 %d", ret, tt.want)
 			}
 		})
+	}
+}
+
+func TestFenvExternsAreNoOps(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	for _, name := range []string{"feclearexcept", "fetestexcept"} {
+		t.Run(name, func(t *testing.T) {
+			fn, ok := reg.Lookup(name)
+			if !ok {
+				t.Fatalf("missing %s extern", name)
+			}
+			ret, exit, err := fn(context.Background(), nil, []Value{IntValue(bytecode.TypeI32, 0)})
+			if err != nil || exit != nil {
+				t.Fatalf("%s ret=%#v exit=%#v err=%v", name, ret, exit, err)
+			}
+			if ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+				t.Fatalf("%s ret = %#v, want i32 0", name, ret)
+			}
+		})
+	}
+}
+
+func TestMathClassificationExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	tests := []struct {
+		name string
+		fn   string
+		arg  Value
+		want int64
+	}{
+		{name: "float subnormal", fn: "__cvm_fpclassifyf", arg: FloatValue(bytecode.TypeF32, float64(math.SmallestNonzeroFloat32)), want: 3},
+		{name: "double subnormal", fn: "__cvm_fpclassify", arg: FloatValue(bytecode.TypeF64, math.SmallestNonzeroFloat64*2), want: 3},
+		{name: "double normal", fn: "__cvm_fpclassify", arg: FloatValue(bytecode.TypeF64, minNormalFloat64), want: 2},
+		{name: "double zero", fn: "__cvm_fpclassify", arg: FloatValue(bytecode.TypeF64, 0), want: 4},
+		{name: "double nan", fn: "__cvm_isnan", arg: FloatValue(bytecode.TypeF64, math.NaN()), want: 1},
+		{name: "double inf", fn: "__cvm_isinf", arg: FloatValue(bytecode.TypeF64, math.Inf(1)), want: 1},
+		{name: "negative zero sign", fn: "__cvm_signbit", arg: FloatValue(bytecode.TypeF64, math.Copysign(0, -1)), want: 1},
+		{name: "long double normal", fn: "__cvm_isnormall", arg: FloatValue(bytecode.TypeFLong, 1), want: 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fn, ok := reg.Lookup(tt.fn)
+			if !ok {
+				t.Fatalf("missing %s extern", tt.fn)
+			}
+			ret, exit, err := fn(context.Background(), nil, []Value{tt.arg})
+			if err != nil || exit != nil {
+				t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.fn, ret, exit, err)
+			}
+			if ret.Type != bytecode.TypeI32 || int64(int32(ret.Int)) != tt.want {
+				t.Fatalf("%s ret = %#v, want i32 %d", tt.fn, ret, tt.want)
+			}
+		})
+	}
+}
+
+func TestMathUnorderedExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("__cvm_isunordered")
+	if !ok {
+		t.Fatal("missing __cvm_isunordered extern")
+	}
+	ret, exit, err := fn(context.Background(), nil, []Value{
+		FloatValue(bytecode.TypeF64, math.NaN()),
+		FloatValue(bytecode.TypeF64, 1),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("__cvm_isunordered ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("__cvm_isunordered ret = %#v, want i32 1", ret)
 	}
 }
 

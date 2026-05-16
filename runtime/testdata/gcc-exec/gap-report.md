@@ -9,12 +9,12 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 
 | stage | count |
 | --- | ---: |
-| ok | 14 |
+| ok | 17 |
 | preprocess | 0 |
 | parse | 0 |
 | sema | 0 |
 | codegen | 0 |
-| encode-load | 3 |
+| encode-load | 0 |
 | runtime | 0 |
 | exit-mismatch | 0 |
 | total | 17 |
@@ -34,20 +34,15 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 | `sema/testdata/gcc-c99/accept/c99-hexfloat-2.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-init-1.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-main-1.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-math-double-1.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-math-float-1.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-math-long-double-1.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-mixdecl-1.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-scope-1.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-scope-2.c` | 0 |
 
 ## Failures By Stage
 
-### encode-load
-
-| path | error |
-| --- | --- |
-| `sema/testdata/gcc-c99/accept/c99-math-double-1.c` | `runtime load error: unresolved extern feclearexcept` |
-| `sema/testdata/gcc-c99/accept/c99-math-float-1.c` | `runtime load error: unresolved extern feclearexcept` |
-| `sema/testdata/gcc-c99/accept/c99-math-long-double-1.c` | `runtime load error: unresolved extern feclearexcept` |
-
 ## Next Blockers
 
-- `encode-load`: 3 fixtures
+- No current blockers.

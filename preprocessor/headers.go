@@ -35,7 +35,7 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 	case "limits.h":
 		return "#ifndef __CVM_LIMITS_H\n#define __CVM_LIMITS_H\n#define CHAR_BIT 8\n#define SCHAR_MIN (-128)\n#define SCHAR_MAX 127\n#define UCHAR_MAX 255\n#define SHRT_MIN (-32768)\n#define SHRT_MAX 32767\n#define USHRT_MAX 65535\n#define INT_MIN (-2147483647-1)\n#define INT_MAX 2147483647\n#define UINT_MAX 4294967295U\n#define LONG_MIN (-9223372036854775807L-1L)\n#define LONG_MAX 9223372036854775807L\n#define ULONG_MAX 18446744073709551615UL\n#define LLONG_MIN (-9223372036854775807LL-1LL)\n#define LLONG_MAX 9223372036854775807LL\n#define ULLONG_MAX 18446744073709551615ULL\n#endif\n", true
 	case "float.h":
-		return "#ifndef __CVM_FLOAT_H\n#define __CVM_FLOAT_H\n#define FLT_ROUNDS 1\n#define FLT_RADIX 2\n#define FLT_MANT_DIG 24\n#define FLT_DIG 6\n#define FLT_MIN_EXP (-125)\n#define FLT_MIN_10_EXP (-37)\n#define FLT_MAX_EXP 128\n#define FLT_MAX_10_EXP 38\n#define FLT_MAX 3.40282346638528859812e+38F\n#define FLT_EPSILON 1.1920928955078125e-7F\n#define FLT_MIN 1.17549435082228750797e-38F\n#define DBL_MANT_DIG 53\n#define DBL_DIG 15\n#define DBL_MIN_EXP (-1021)\n#define DBL_MIN_10_EXP (-307)\n#define DBL_MAX_EXP 1024\n#define DBL_MAX_10_EXP 308\n#define DBL_MAX 1.79769313486231570815e+308\n#define DBL_EPSILON 2.22044604925031308085e-16\n#define DBL_MIN 2.22507385850720138309e-308\n#define LDBL_MANT_DIG 64\n#define LDBL_DIG 18\n#define LDBL_MIN_EXP (-16381)\n#define LDBL_MIN_10_EXP (-4931)\n#define LDBL_MAX_EXP 16384\n#define LDBL_MAX_10_EXP 4932\n#define LDBL_MAX 1.18973149535723176502e+4932L\n#define LDBL_EPSILON 1.08420217248550443401e-19L\n#define LDBL_MIN 3.36210314311209350626e-4932L\n#define FLT_EVAL_METHOD 0\n#define DECIMAL_DIG 21\n#endif\n", true
+		return "#ifndef __CVM_FLOAT_H\n#define __CVM_FLOAT_H\n#define FLT_ROUNDS 1\n#define FLT_RADIX 2\n#define FLT_MANT_DIG 24\n#define FLT_DIG 6\n#define FLT_MIN_EXP (-125)\n#define FLT_MIN_10_EXP (-37)\n#define FLT_MAX_EXP 128\n#define FLT_MAX_10_EXP 38\n#define FLT_MAX 3.40282346638528859812e+38F\n#define FLT_EPSILON 1.1920928955078125e-7F\n#define FLT_MIN 1.17549435082228750797e-38F\n#define DBL_MANT_DIG 53\n#define DBL_DIG 15\n#define DBL_MIN_EXP (-1021)\n#define DBL_MIN_10_EXP (-307)\n#define DBL_MAX_EXP 1024\n#define DBL_MAX_10_EXP 308\n#define DBL_MAX 1.79769313486231570815e+308\n#define DBL_EPSILON 2.22044604925031308085e-16\n#define DBL_MIN 2.22507385850720138309e-308\n#define LDBL_MANT_DIG 53\n#define LDBL_DIG 15\n#define LDBL_MIN_EXP (-1021)\n#define LDBL_MIN_10_EXP (-307)\n#define LDBL_MAX_EXP 1024\n#define LDBL_MAX_10_EXP 308\n#define LDBL_MAX 1.79769313486231570815e+308L\n#define LDBL_EPSILON 2.22044604925031308085e-16L\n#define LDBL_MIN 2.22507385850720138309e-308L\n#define FLT_EVAL_METHOD 0\n#define DECIMAL_DIG 17\n#endif\n", true
 	default:
 		return "", false
 	}
@@ -171,18 +171,38 @@ func mathHeader() string {
 #define FP_NORMAL 2
 #define FP_SUBNORMAL 3
 #define FP_ZERO 4
-#define fpclassify(x) FP_NORMAL
-#define isfinite(x) 1
-#define isinf(x) 0
-#define isnan(x) 0
-#define isnormal(x) 1
-#define signbit(x) 0
+int __cvm_fpclassifyf(float);
+int __cvm_fpclassify(double);
+int __cvm_fpclassifyl(long double);
+int __cvm_isfinitef(float);
+int __cvm_isfinite(double);
+int __cvm_isfinitel(long double);
+int __cvm_isinff(float);
+int __cvm_isinf(double);
+int __cvm_isinfl(long double);
+int __cvm_isnanf(float);
+int __cvm_isnan(double);
+int __cvm_isnanl(long double);
+int __cvm_isnormalf(float);
+int __cvm_isnormal(double);
+int __cvm_isnormall(long double);
+int __cvm_signbitf(float);
+int __cvm_signbit(double);
+int __cvm_signbitl(long double);
+int __cvm_isunordered(double, double);
+#define __cvm_math_select1(x, f, d, l) ((sizeof(x) == sizeof(float)) ? f(x) : ((sizeof(x) == sizeof(long double)) ? l(x) : d(x)))
+#define fpclassify(x) __cvm_math_select1((x), __cvm_fpclassifyf, __cvm_fpclassify, __cvm_fpclassifyl)
+#define isfinite(x) __cvm_math_select1((x), __cvm_isfinitef, __cvm_isfinite, __cvm_isfinitel)
+#define isinf(x) __cvm_math_select1((x), __cvm_isinff, __cvm_isinf, __cvm_isinfl)
+#define isnan(x) __cvm_math_select1((x), __cvm_isnanf, __cvm_isnan, __cvm_isnanl)
+#define isnormal(x) __cvm_math_select1((x), __cvm_isnormalf, __cvm_isnormal, __cvm_isnormall)
+#define signbit(x) __cvm_signbit((double)(x))
 #define isgreater(x, y) ((x) > (y))
 #define isgreaterequal(x, y) ((x) >= (y))
 #define isless(x, y) ((x) < (y))
 #define islessequal(x, y) ((x) <= (y))
-#define islessgreater(x, y) ((x) != (y))
-#define isunordered(x, y) 0
+#define islessgreater(x, y) (!__cvm_isunordered((x), (y)) && ((x) != (y)))
+#define isunordered(x, y) __cvm_isunordered((x), (y))
 #endif
 `
 }

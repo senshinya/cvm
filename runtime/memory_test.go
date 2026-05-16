@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"bytes"
 	"math"
 	"strings"
 	"testing"
@@ -104,15 +105,21 @@ func TestMemoryReadWriteFloat32(t *testing.T) {
 	}
 }
 
-func TestMemoryRejectsLongDoubleLoadStore(t *testing.T) {
+func TestMemoryReadWriteLongDouble(t *testing.T) {
 	mem := NewMemory(bytecode.DefaultTarget())
 	addr := mustAlloc(t, mem, "global:flong", 16, 8, false, blockGlobal)
-	if _, err := mem.Load(addr, bytecode.TypeFLong, 8); err == nil || !strings.Contains(err.Error(), "unsupported long double memory load") {
-		t.Fatalf("Load error = %v, want unsupported long double memory load", err)
+	if err := mem.Store(addr, bytecode.TypeFLong, 8, FloatValue(bytecode.TypeFLong, 1.5)); err != nil {
+		t.Fatalf("Store: %v", err)
 	}
-	err := mem.Store(addr, bytecode.TypeFLong, 8, FloatValue(bytecode.TypeFLong, 1))
-	if err == nil || !strings.Contains(err.Error(), "unsupported long double memory store") {
-		t.Fatalf("Store error = %v, want unsupported long double memory store", err)
+	got, err := mem.Load(addr, bytecode.TypeFLong, 8)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.Type != bytecode.TypeFLong || got.Float != 1.5 {
+		t.Fatalf("loaded %#v, want long double 1.5", got)
+	}
+	if raw := mem.blocks[len(mem.blocks)-1].data[8:16]; !bytes.Equal(raw, make([]byte, 8)) {
+		t.Fatalf("long double padding bytes = %v, want zero", raw)
 	}
 }
 

@@ -71,9 +71,6 @@ func (m *Memory) TryAlloc(name string, size, align int64, readonly bool, kind bl
 }
 
 func (m *Memory) Load(addr uint64, t bytecode.ValueType, align int64) (Value, error) {
-	if t == bytecode.TypeFLong {
-		return Value{}, fmt.Errorf("unsupported long double memory load")
-	}
 	b, off, size, err := m.access(addr, t, align, false)
 	if err != nil {
 		return Value{}, err
@@ -112,6 +109,12 @@ func (m *Memory) Load(addr uint64, t bytecode.ValueType, align int64) (Value, er
 			return Value{}, err
 		}
 		return FloatValue(t, math.Float64frombits(order.Uint64(raw))), nil
+	case bytecode.TypeFLong:
+		order, err := m.byteOrder()
+		if err != nil {
+			return Value{}, err
+		}
+		return FloatValue(t, math.Float64frombits(order.Uint64(raw[:8]))), nil
 	case bytecode.TypePtr, bytecode.TypeObjectAddr:
 		return m.loadPointer(raw, t)
 	default:
@@ -120,9 +123,6 @@ func (m *Memory) Load(addr uint64, t bytecode.ValueType, align int64) (Value, er
 }
 
 func (m *Memory) Store(addr uint64, t bytecode.ValueType, align int64, v Value) error {
-	if t == bytecode.TypeFLong {
-		return fmt.Errorf("unsupported long double memory store")
-	}
 	b, off, size, err := m.access(addr, t, align, true)
 	if err != nil {
 		return err
@@ -161,6 +161,13 @@ func (m *Memory) Store(addr uint64, t bytecode.ValueType, align int64, v Value) 
 			return err
 		}
 		order.PutUint64(raw, math.Float64bits(v.Float))
+	case bytecode.TypeFLong:
+		order, err := m.byteOrder()
+		if err != nil {
+			return err
+		}
+		order.PutUint64(raw[:8], math.Float64bits(v.Float))
+		clear(raw[8:])
 	case bytecode.TypePtr, bytecode.TypeObjectAddr:
 		return m.storePointer(raw, v.Int)
 	default:
@@ -326,6 +333,8 @@ func valueSize(target bytecode.TargetInfo, t bytecode.ValueType) int64 {
 		return 4
 	case bytecode.TypeI64, bytecode.TypeU64, bytecode.TypeF64:
 		return 8
+	case bytecode.TypeFLong:
+		return 16
 	case bytecode.TypePtr, bytecode.TypeObjectAddr:
 		return target.PointerSize
 	default:

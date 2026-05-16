@@ -126,6 +126,13 @@ func TestHasGCCRunDirectiveAcceptsBlockCommentRun(t *testing.T) {
 	}
 }
 
+func TestHasGCCRunDirectiveAcceptsTargetQualifiedRun(t *testing.T) {
+	source := "/* { dg-do run { target *-*-solaris2* } } */\nint main(void) { return 0; }\n"
+	if !hasGCCRunDirective(source) {
+		t.Fatalf("hasGCCRunDirective(%q) = false, want true", source)
+	}
+}
+
 func TestHasGCCRunDirectiveRejectsNonRunCases(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -370,7 +377,7 @@ func isDejaGNULine(line string) bool {
 }
 
 func hasGCCRunDirective(source string) bool {
-	return strings.Contains(source, "{ dg-do run }")
+	return strings.Contains(source, "{ dg-do run")
 }
 
 func isAllowedGCCExecPath(manifestPath string) bool {

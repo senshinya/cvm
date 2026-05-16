@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"os"
 
 	"shinya.click/cvm/bytecode"
@@ -133,7 +134,100 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		right := rightBlock.data[rightOff : rightOff+int(n)]
 		return IntValue(bytecode.TypeI32, int64(memcmpResult(left, right))), nil, nil
 	})
+	r.Register("feclearexcept", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("feclearexcept expects 1 argument")
+		}
+		return IntValue(bytecode.TypeI32, 0), nil, nil
+	})
+	r.Register("fetestexcept", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("fetestexcept expects 1 argument")
+		}
+		return IntValue(bytecode.TypeI32, 0), nil, nil
+	})
+	registerMathExterns(r)
 	return r
+}
+
+func registerMathExterns(r *ExternRegistry) {
+	for _, suffix := range []string{"f", "", "l"} {
+		r.Register("__cvm_fpclassify"+suffix, mathUnaryExtern("__cvm_fpclassify"+suffix, func(v Value) int64 {
+			return cvmFPClassify(v)
+		}))
+		r.Register("__cvm_isfinite"+suffix, mathUnaryExtern("__cvm_isfinite"+suffix, func(v Value) int64 {
+			class := cvmFPClassify(v)
+			return boolInt(class != fpClassNaN && class != fpClassInfinite)
+		}))
+		r.Register("__cvm_isinf"+suffix, mathUnaryExtern("__cvm_isinf"+suffix, func(v Value) int64 {
+			return boolInt(cvmFPClassify(v) == fpClassInfinite)
+		}))
+		r.Register("__cvm_isnan"+suffix, mathUnaryExtern("__cvm_isnan"+suffix, func(v Value) int64 {
+			return boolInt(cvmFPClassify(v) == fpClassNaN)
+		}))
+		r.Register("__cvm_isnormal"+suffix, mathUnaryExtern("__cvm_isnormal"+suffix, func(v Value) int64 {
+			return boolInt(cvmFPClassify(v) == fpClassNormal)
+		}))
+		r.Register("__cvm_signbit"+suffix, mathUnaryExtern("__cvm_signbit"+suffix, func(v Value) int64 {
+			return boolInt(math.Signbit(cvmFloat(v)))
+		}))
+	}
+	r.Register("__cvm_isunordered", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("__cvm_isunordered expects 2 arguments")
+		}
+		return IntValue(bytecode.TypeI32, boolInt(math.IsNaN(cvmFloat(args[0])) || math.IsNaN(cvmFloat(args[1])))), nil, nil
+	})
+}
+
+func mathUnaryExtern(name string, pred func(Value) int64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isFloatType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects floating argument", name)
+		}
+		return IntValue(bytecode.TypeI32, pred(args[0])), nil, nil
+	}
+}
+
+const (
+	fpClassNaN       = 0
+	fpClassInfinite  = 1
+	fpClassNormal    = 2
+	fpClassSubnormal = 3
+	fpClassZero      = 4
+
+	minNormalFloat32 = 1.1754943508222875e-38
+	minNormalFloat64 = 2.2250738585072014e-308
+)
+
+func cvmFPClassify(v Value) int64 {
+	f := cvmFloat(v)
+	switch {
+	case math.IsNaN(f):
+		return fpClassNaN
+	case math.IsInf(f, 0):
+		return fpClassInfinite
+	case f == 0:
+		return fpClassZero
+	}
+	minNormal := minNormalFloat64
+	if v.Type == bytecode.TypeF32 {
+		minNormal = minNormalFloat32
+	}
+	if math.Abs(f) < minNormal {
+		return fpClassSubnormal
+	}
+	return fpClassNormal
+}
+
+func cvmFloat(v Value) float64 {
+	if v.Type == bytecode.TypeF32 {
+		return float64(float32(v.Float))
+	}
+	return v.Float
 }
 
 func strcmpResult(left, right string) int {

@@ -117,6 +117,114 @@ func TestRunVariadicDirectCallConsumesExtraArgs(t *testing.T) {
 	}
 }
 
+func TestRunFloatDivision(t *testing.T) {
+	t.Run("finite", func(t *testing.T) {
+		mod := testMainModule(
+			bytecode.F64Const(6),
+			bytecode.F64Const(2),
+			bytecode.Binary(bytecode.TypeF64, bytecode.BinDivS),
+			bytecode.F64Const(3),
+			bytecode.Binary(bytecode.TypeF64, bytecode.BinEq),
+			bytecode.Cast(bytecode.TypeBool, bytecode.TypeI32, bytecode.CastZExt),
+			bytecode.Return(bytecode.TypeI32),
+		)
+		st, err := runModule(t, mod)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if st.Code != 1 {
+			t.Fatalf("exit code = %d, want 1", st.Code)
+		}
+	})
+
+	t.Run("nan", func(t *testing.T) {
+		mod := testMainModule(
+			bytecode.F64Const(0),
+			bytecode.F64Const(0),
+			bytecode.Binary(bytecode.TypeF64, bytecode.BinDivS),
+			bytecode.Instr{Op: bytecode.OpDup, Type: bytecode.TypeF64},
+			bytecode.Binary(bytecode.TypeF64, bytecode.BinEq),
+			bytecode.Cast(bytecode.TypeBool, bytecode.TypeI32, bytecode.CastZExt),
+			bytecode.Return(bytecode.TypeI32),
+		)
+		st, err := runModule(t, mod)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if st.Code != 0 {
+			t.Fatalf("exit code = %d, want 0", st.Code)
+		}
+	})
+}
+
+func TestRunFloatCasts(t *testing.T) {
+	tests := []struct {
+		name   string
+		instrs []bytecode.Instr
+		want   int
+	}{
+		{
+			name: "int to double",
+			instrs: []bytecode.Instr{
+				bytecode.I32Const(7),
+				bytecode.Cast(bytecode.TypeI32, bytecode.TypeF64, bytecode.CastIntToFloat),
+				bytecode.F64Const(7),
+				bytecode.Binary(bytecode.TypeF64, bytecode.BinEq),
+				bytecode.Cast(bytecode.TypeBool, bytecode.TypeI32, bytecode.CastZExt),
+				bytecode.Return(bytecode.TypeI32),
+			},
+			want: 1,
+		},
+		{
+			name: "double to float",
+			instrs: []bytecode.Instr{
+				bytecode.F64Const(1.25),
+				bytecode.Cast(bytecode.TypeF64, bytecode.TypeF32, bytecode.CastFTrunc),
+				bytecode.F32Const(1.25),
+				bytecode.Binary(bytecode.TypeF32, bytecode.BinEq),
+				bytecode.Cast(bytecode.TypeBool, bytecode.TypeI32, bytecode.CastZExt),
+				bytecode.Return(bytecode.TypeI32),
+			},
+			want: 1,
+		},
+		{
+			name: "double to long double",
+			instrs: []bytecode.Instr{
+				bytecode.F64Const(1.25),
+				bytecode.Cast(bytecode.TypeF64, bytecode.TypeFLong, bytecode.CastFExt),
+				bytecode.Instr{Op: bytecode.OpConst, Type: bytecode.TypeFLong, Float: 1.25},
+				bytecode.Binary(bytecode.TypeFLong, bytecode.BinEq),
+				bytecode.Cast(bytecode.TypeBool, bytecode.TypeI32, bytecode.CastZExt),
+				bytecode.Return(bytecode.TypeI32),
+			},
+			want: 1,
+		},
+		{
+			name: "double to int",
+			instrs: []bytecode.Instr{
+				bytecode.F64Const(-3.75),
+				bytecode.Cast(bytecode.TypeF64, bytecode.TypeI32, bytecode.CastFloatToInt),
+				bytecode.I32Const(-3),
+				bytecode.Binary(bytecode.TypeI32, bytecode.BinEq),
+				bytecode.Cast(bytecode.TypeBool, bytecode.TypeI32, bytecode.CastZExt),
+				bytecode.Return(bytecode.TypeI32),
+			},
+			want: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			st, err := runModule(t, testMainModule(tt.instrs...))
+			if err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			if st.Code != tt.want {
+				t.Fatalf("exit code = %d, want %d", st.Code, tt.want)
+			}
+		})
+	}
+}
+
 func TestRunIndirectCall(t *testing.T) {
 	mod := testMainModule(
 		bytecode.AddrFunc(1),

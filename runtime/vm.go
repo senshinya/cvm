@@ -815,6 +815,14 @@ func (vm *VM) pointerBinary(ins bytecode.Instr, l, r Value) error {
 func (vm *VM) floatBinary(ins bytecode.Instr, l, r Value) error {
 	var out Value
 	switch ins.Binary {
+	case bytecode.BinAdd:
+		out = floatResult(ins.Type, l.Float+r.Float)
+	case bytecode.BinSub:
+		out = floatResult(ins.Type, l.Float-r.Float)
+	case bytecode.BinMul:
+		out = floatResult(ins.Type, l.Float*r.Float)
+	case bytecode.BinDivS:
+		out = floatResult(ins.Type, l.Float/r.Float)
 	case bytecode.BinEq:
 		out = UIntValue(bytecode.TypeBool, uint64(boolInt(l.Float == r.Float)))
 	case bytecode.BinNe:
@@ -832,6 +840,13 @@ func (vm *VM) floatBinary(ins bytecode.Instr, l, r Value) error {
 	}
 	vm.stack = append(vm.stack, out)
 	return nil
+}
+
+func floatResult(t bytecode.ValueType, v float64) Value {
+	if t == bytecode.TypeF32 {
+		v = float64(float32(v))
+	}
+	return FloatValue(t, v)
 }
 
 func (vm *VM) unary(ins bytecode.Instr) error {
@@ -900,8 +915,29 @@ func (vm *VM) cast(ins bytecode.Instr) error {
 			return vm.trap(fmt.Sprintf("unsupported int-to-pointer cast %s->%s", ins.Type, ins.Type2))
 		}
 		vm.stack = append(vm.stack, bitCast(v, ins.Type2))
-	case bytecode.CastFExt, bytecode.CastFTrunc, bytecode.CastIntToFloat, bytecode.CastFloatToInt:
-		return vm.trap(fmt.Sprintf("unsupported float cast %s->%s", ins.Type, ins.Type2))
+	case bytecode.CastFExt, bytecode.CastFTrunc:
+		if !isFloatType(ins.Type) || !isFloatType(ins.Type2) {
+			return vm.trap(fmt.Sprintf("unsupported float cast %s->%s", ins.Type, ins.Type2))
+		}
+		vm.stack = append(vm.stack, floatResult(ins.Type2, v.Float))
+	case bytecode.CastIntToFloat:
+		if !isIntegerLike(ins.Type) || !isFloatType(ins.Type2) {
+			return vm.trap(fmt.Sprintf("unsupported int-to-float cast %s->%s", ins.Type, ins.Type2))
+		}
+		f := float64(signedInt(v))
+		if isUnsignedIntegerType(ins.Type) {
+			f = float64(unsignedInt(v))
+		}
+		vm.stack = append(vm.stack, floatResult(ins.Type2, f))
+	case bytecode.CastFloatToInt:
+		if !isFloatType(ins.Type) || !isIntegerLike(ins.Type2) {
+			return vm.trap(fmt.Sprintf("unsupported float-to-int cast %s->%s", ins.Type, ins.Type2))
+		}
+		if isUnsignedIntegerType(ins.Type2) {
+			vm.stack = append(vm.stack, normalizeInt(UIntValue(ins.Type2, uint64(v.Float))))
+		} else {
+			vm.stack = append(vm.stack, normalizeInt(IntValue(ins.Type2, int64(v.Float))))
+		}
 	default:
 		return vm.trap(fmt.Sprintf("unsupported cast op %d", int(ins.Cast)))
 	}
