@@ -846,6 +846,22 @@ int main(void) {
 	}
 }
 
+func TestGenerateRejectsEscapingCapturingNestedFunction(t *testing.T) {
+	err := generateModuleError(t, `
+int main(void) {
+	int x = 1;
+	int inner(void) { return x; }
+	int (*fp)(void) = inner;
+	return fp();
+}`, sema.SemaOptions{GNUExtensions: true})
+	if err == nil {
+		t.Fatal("Generate succeeded, want escaping capturing nested function error")
+	}
+	if !strings.Contains(err.Error(), "capturing nested function") {
+		t.Fatalf("error = %v, want capturing nested function diagnostic", err)
+	}
+}
+
 func TestGenerateExternFunctionAddressUsesAddrFuncGlobal(t *testing.T) {
 	mod := compileModule(t, `
 int ext(int);
@@ -1135,6 +1151,25 @@ func compileModule(t *testing.T, source string) *bytecode.Module {
 		t.Fatalf("validate bytecode: %v\n%s", err, bytecode.PrintModule(mod))
 	}
 	return mod
+}
+
+func generateModuleError(t *testing.T, source string, opts sema.SemaOptions) error {
+	t.Helper()
+
+	tokens, err := lexer.NewLexer(source).ScanTokens()
+	if err != nil {
+		t.Fatalf("lex: %v", err)
+	}
+	candidates, err := parser.NewParser(tokens).Parse()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	prog, err := sema.AnalyzeWithOptions(candidates, opts)
+	if err != nil {
+		t.Fatalf("sema: %v", err)
+	}
+	_, err = Generate(prog)
+	return err
 }
 
 func analyzeProgram(t *testing.T, source string) *sema.Program {

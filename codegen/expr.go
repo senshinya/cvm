@@ -799,6 +799,9 @@ func (fg *funcGen) emitFunctionAddress(e sema.Expr) error {
 	if vr == nil || vr.Sym == nil || vr.Sym.GlobalID < 0 {
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "function address is not backed by a global symbol"}
 	}
+	if def := fg.g.funcDefForSymbol(vr.Sym); def != nil && len(fg.g.nestedCaptures[def]) > 0 {
+		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: fmt.Sprintf("capturing nested function %q cannot be used as a function pointer", vr.Sym.Name)}
+	}
 	global := vr.Sym.GlobalID
 	if global >= len(fg.g.mod.Globals) {
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: fmt.Sprintf("function global %d is missing", global)}
