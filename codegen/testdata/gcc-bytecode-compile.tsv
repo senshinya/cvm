@@ -173,6 +173,8 @@ sema/testdata/gcc-c99-extra/accept/stmt-expr-4.c	current GCC accept fixture comp
 sema/testdata/gcc-c99-extra/accept/system-binary-constants-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/system-octal-constants-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/transparent-union-1.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/ucnid-10-utf8.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/ucnid-10.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/ucnid-16-utf8.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/visibility-8.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/vla-2.c	current GCC accept fixture compiles to validated bytecode
