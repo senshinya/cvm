@@ -84,6 +84,39 @@ func TestRunDirectCall(t *testing.T) {
 	}
 }
 
+func TestRunVariadicDirectCallConsumesExtraArgs(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I32Const(7),
+		bytecode.I64Const(9),
+		bytecode.Call(1, 1, 2),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeI32, Params: []bytecode.ValueType{bytecode.TypeI32}, Variadic: true})
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "first", Kind: bytecode.GlobalFunc, Func: 1, Sig: 1})
+	mod.Functions = append(mod.Functions, bytecode.Function{
+		ID:       1,
+		GlobalID: 1,
+		Name:     "first",
+		Sig:      1,
+		Params: []bytecode.Param{
+			{Name: "a", Type: bytecode.TypeI32, Slot: 0},
+		},
+		Instrs: []bytecode.Instr{
+			bytecode.LoadLocal(bytecode.TypeI32, 0),
+			bytecode.Return(bytecode.TypeI32),
+		},
+		MaxStack: 1,
+	})
+
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+}
+
 func TestRunIndirectCall(t *testing.T) {
 	mod := testMainModule(
 		bytecode.AddrFunc(1),

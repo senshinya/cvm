@@ -470,7 +470,12 @@ func (vm *VM) invokeGlobal(ctx context.Context, globalID, sigID int, args []Valu
 		if vm.program.module.Functions[g.Func].Sig != sigID {
 			return ExitStatus{}, true, vm.trap(fmt.Sprintf("call signature %d does not match function %d signature %d", sigID, g.Func, vm.program.module.Functions[g.Func].Sig))
 		}
-		if err := vm.pushFrame(g.Func, args); err != nil {
+		sig := vm.program.module.Sigs[sigID]
+		fixedArgs := args
+		if sig.Variadic {
+			fixedArgs = args[:len(sig.Params)]
+		}
+		if err := vm.pushFrame(g.Func, fixedArgs); err != nil {
 			return ExitStatus{}, true, err
 		}
 		return ExitStatus{}, false, nil
