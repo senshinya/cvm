@@ -14,6 +14,11 @@ import (
 
 func compileAndRun(t *testing.T, src string, stdout *bytes.Buffer) (ExitStatus, error) {
 	t.Helper()
+	return compileAndRunWithOptions(t, src, stdout, sema.SemaOptions{})
+}
+
+func compileAndRunWithOptions(t *testing.T, src string, stdout *bytes.Buffer, opts sema.SemaOptions) (ExitStatus, error) {
+	t.Helper()
 
 	pp, err := preprocessor.PreprocessSource("main.c", src, preprocessor.Options{})
 	if err != nil {
@@ -23,7 +28,7 @@ func compileAndRun(t *testing.T, src string, stdout *bytes.Buffer) (ExitStatus, 
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	prog, err := sema.Analyze(candidates)
+	prog, err := sema.AnalyzeWithOptions(candidates, opts)
 	if err != nil {
 		t.Fatalf("sema: %v", err)
 	}
@@ -231,5 +236,20 @@ func TestCompileAndRunFuncIdentifierHasDistinctAddress(t *testing.T) {
 	}
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestCompileAndRunCapturingNestedFunctionDirectCall(t *testing.T) {
+	st, err := compileAndRunWithOptions(t, `
+int main(void) {
+	int x = 4;
+	int inner(void) { x += 2; x++; return x; }
+	return inner();
+}`, nil, sema.SemaOptions{GNUExtensions: true})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
 	}
 }

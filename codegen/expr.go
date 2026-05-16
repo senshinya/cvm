@@ -41,6 +41,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		if isFunctionDesignator(x) {
 			return fg.emitFunctionAddress(x)
 		}
+		if fg.isCapturedVar(x.Sym) {
+			return fg.emitLValueValue(x, x.T)
+		}
 		st, err := fg.storageForVar(x.Sym, x.T)
 		if err != nil {
 			return err
@@ -181,7 +184,7 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 
 func (fg *funcGen) emitCompoundAssign(x *sema.CompoundAssign) error {
 	vr, ok := x.L.(*sema.VarRef)
-	if !ok {
+	if !ok || fg.isCapturedVar(vr.Sym) {
 		return fg.emitAddressableCompoundAssign(x)
 	}
 	st, err := fg.storageForVar(vr.Sym, vr.T)
@@ -439,6 +442,9 @@ func (fg *funcGen) emitStmtExpr(x *sema.StmtExpr) error {
 
 func (fg *funcGen) emitIncDec(x *sema.UnOp) error {
 	if vr, ok := x.X.(*sema.VarRef); ok {
+		if fg.isCapturedVar(vr.Sym) {
+			return fg.emitAddressableIncDec(x)
+		}
 		st, err := fg.storageForVar(vr.Sym, vr.T)
 		if err != nil {
 			return err
@@ -832,6 +838,16 @@ func (fg *funcGen) emitLValueValue(e sema.Expr, t sema.Type) error {
 		return err
 	}
 	if vr, ok := e.(*sema.VarRef); ok {
+		if fg.isCapturedVar(vr.Sym) {
+			if vt == bytecode.TypeObjectAddr {
+				return fg.emitAddress(e)
+			}
+			if err := fg.emitAddress(e); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(vt, fg.loadStoreAlign(e, t), isVolatile(t)))
+			return nil
+		}
 		st, err := fg.storageForVar(vr.Sym, vr.T)
 		if err != nil {
 			return err
@@ -867,16 +883,18 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 		return fg.emitBitFieldAssign(member, rhs)
 	}
 	if vr, ok := lhs.(*sema.VarRef); ok {
-		st, err := fg.storageForVar(vr.Sym, vr.T)
-		if err != nil {
-			return err
-		}
-		if st.kind == storageLocalSlot {
-			if err := fg.emitValue(rhs); err != nil {
+		if !fg.isCapturedVar(vr.Sym) {
+			st, err := fg.storageForVar(vr.Sym, vr.T)
+			if err != nil {
 				return err
 			}
-			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(st.typ, st.slot))
-			return nil
+			if st.kind == storageLocalSlot {
+				if err := fg.emitValue(rhs); err != nil {
+					return err
+				}
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(st.typ, st.slot))
+				return nil
+			}
 		}
 	}
 	vt, err := fg.g.lowerValueType(lhs.GetType())

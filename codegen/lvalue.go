@@ -47,6 +47,11 @@ func (fg *funcGen) storageForVar(sym *sema.Symbol, t sema.Type) (storage, error)
 	return storage{kind: storageAddress, object: -1, global: -1, typ: vt, sym: sym}, nil
 }
 
+func (fg *funcGen) isCapturedVar(sym *sema.Symbol) bool {
+	_, ok := fg.capturedObjectSlot[sym]
+	return ok
+}
+
 func (fg *funcGen) emitAddress(e sema.Expr) error {
 	switch x := e.(type) {
 	case *sema.VarRef:
