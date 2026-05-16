@@ -1,1 +1,5 @@
 path	exit	category	reason
+sema/testdata/gcc-c99/accept/c99-main-1.c	0	arithmetic	trivial main return exercises binary load and entry return
+sema/testdata/gcc-c99-extra/accept/signbit-sa.c	0	builtin	constant signbit calls on positive values return zero
+sema/testdata/gcc-c99-extra/accept/inline-10.c	1	function	inline main returns a deterministic nonzero status
+sema/testdata/gcc-c99-extra/accept/overflow-2.c	1	arithmetic	overflow conversion branch returns deterministic nonzero status
