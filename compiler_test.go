@@ -137,7 +137,9 @@ func TestMainEmitBytecodeFlagWritesLoadableBinaryModule(t *testing.T) {
 	os.Args = []string{"cvm", "--emit-bytecode", out, src}
 	defer func() { os.Args = oldArgs }()
 
-	main()
+	if code := runMain(os.Args[1:]); code != 0 {
+		t.Fatalf("runMain exit code = %d, want 0", code)
+	}
 
 	f, err := os.Open(out)
 	if err != nil {
@@ -150,5 +152,20 @@ func TestMainEmitBytecodeFlagWritesLoadableBinaryModule(t *testing.T) {
 	}
 	if mod.Entry == nil || mod.Entry.Name != "main" {
 		t.Fatalf("entry = %#v, want main", mod.Entry)
+	}
+}
+
+func TestMainRunBytecodeUsesExitCode(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "main.c")
+	out := filepath.Join(dir, "main.cvmbc")
+	if err := os.WriteFile(src, []byte(`int main(void) { return 7; }`), 0644); err != nil {
+		t.Fatalf("write source: %v", err)
+	}
+	if err := (&Compiler{EmitBytecode: out}).RunFile(src); err != nil {
+		t.Fatalf("emit bytecode: %v", err)
+	}
+	if code := runMain([]string{"run", out}); code != 7 {
+		t.Fatalf("runMain exit code = %d, want 7", code)
 	}
 }
