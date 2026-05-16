@@ -333,3 +333,18 @@ int main(void) {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
 }
+
+func TestCompileAndRunComplexCopyToFloat(t *testing.T) {
+	st, err := compileAndRun(t, `
+int main(void) {
+	_Complex double z = __builtin_complex(3.0, 4.0);
+	_Complex float f = z;
+	return __builtin_cabsf(f) == 5.0f ? 0 : 1;
+}`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
