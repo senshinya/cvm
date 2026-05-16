@@ -564,7 +564,25 @@ func (fg *funcGen) emitCall(x *sema.CallExpr) error {
 				return err
 			}
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Call(global, sig, len(x.Args)))
+		argc := len(x.Args)
+		callSig := sig
+		if vr := functionVarRef(x.Callee); vr != nil && vr.Sym != nil {
+			if def := fg.g.funcDefForSymbol(vr.Sym); def != nil {
+				captures := fg.g.nestedCaptures[def]
+				if len(captures) > 0 {
+					callSig, err = fg.g.lowerFuncDefSig(def)
+					if err != nil {
+						return err
+					}
+					extra, err := fg.emitCaptureArgs(captures)
+					if err != nil {
+						return err
+					}
+					argc += extra
+				}
+			}
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Call(global, callSig, argc))
 		return nil
 	}
 	if err := fg.emitValue(x.Callee); err != nil {
@@ -1153,12 +1171,33 @@ func (g *generator) directCallGlobal(e sema.Expr, sig int) (int, bool) {
 		if global, ok := g.globalMap[vr.Sym]; ok {
 			return global, true
 		}
+		if def := g.funcDefForSymbol(vr.Sym); def != nil && def.Sym != nil && def.Sym.GlobalID >= 0 {
+			return def.Sym.GlobalID, true
+		}
 		if vr.Sym.Kind == sema.SymFunc && vr.Sym.Storage == sema.StorageExtern && sig >= 0 && sig < len(g.mod.Sigs) {
 			callSig := g.mod.Sigs[sig]
 			return g.syntheticExtern(vr.Sym.Name, callSig.Ret, callSig.Params, callSig.Variadic), true
 		}
 	}
 	return -1, false
+}
+
+func (g *generator) funcDefForSymbol(sym *sema.Symbol) *sema.FuncDef {
+	if sym == nil {
+		return nil
+	}
+	if def := g.funcMap[sym]; def != nil {
+		return def
+	}
+	if sym.Storage != sema.StorageExtern && sym.GlobalID >= 0 {
+		if def := g.funcByGlobal[sym.GlobalID]; def != nil {
+			return def
+		}
+	}
+	if sym.Storage == sema.StorageExtern {
+		return nil
+	}
+	return g.funcByName[sym.Name]
 }
 
 func functionVarRef(e sema.Expr) *sema.VarRef {
