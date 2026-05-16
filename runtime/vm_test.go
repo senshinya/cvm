@@ -59,6 +59,50 @@ func TestRunLocalStoreLoad(t *testing.T) {
 	}
 }
 
+func TestRunGlobalLoadStore(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrGlobal(1),
+		bytecode.I32Const(17),
+		bytecode.Store(bytecode.TypeI32, 4, false),
+		bytecode.AddrGlobal(1),
+		bytecode.Load(bytecode.TypeI32, 4, false),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "g", Kind: bytecode.GlobalVar, Size: 4, Align: 4})
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 17 {
+		t.Fatalf("exit code = %d, want 17", st.Code)
+	}
+}
+
+func TestRunMemSetAndMemCopy(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrGlobal(1),
+		bytecode.I32Const(65),
+		bytecode.Instr{Op: bytecode.OpMemSet, Size: 4, Align: 1},
+		bytecode.AddrGlobal(2),
+		bytecode.AddrGlobal(1),
+		bytecode.Instr{Op: bytecode.OpMemCopy, Size: 4, Align: 1},
+		bytecode.AddrGlobal(2),
+		bytecode.Load(bytecode.TypeI32, 4, false),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Globals = append(mod.Globals,
+		bytecode.Global{ID: 1, Name: "a", Kind: bytecode.GlobalVar, Size: 4, Align: 4},
+		bytecode.Global{ID: 2, Name: "b", Kind: bytecode.GlobalVar, Size: 4, Align: 4},
+	)
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code == 0 {
+		t.Fatalf("exit code = 0, want copied nonzero bytes")
+	}
+}
+
 func TestRunIntegerArithmeticAndBranch(t *testing.T) {
 	mod := testMainModule(
 		bytecode.I32Const(3),

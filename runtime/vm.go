@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"shinya.click/cvm/bytecode"
 )
@@ -164,6 +165,96 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 			return ExitStatus{}, true, vm.trap(fmt.Sprintf("local slot %d has type %s, want %s", ins.Slot, fr.locals[ins.Slot].Type, ins.Type))
 		}
 		fr.locals[ins.Slot] = v
+	case bytecode.OpAddrGlobal:
+		vm.stack = append(vm.stack, ObjectAddrValue(vm.program.GlobalAddr(ins.Global)))
+	case bytecode.OpAddrString:
+		vm.stack = append(vm.stack, ObjectAddrValue(vm.program.StringAddr(int(ins.Int))))
+	case bytecode.OpAddrFunc:
+		vm.stack = append(vm.stack, PtrValue(vm.program.FuncAddr(ins.Global)))
+	case bytecode.OpLoad:
+		addr, err := vm.pop(bytecode.TypeObjectAddr)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		v, err := vm.program.Memory().Load(addr.Int, ins.Type, ins.Align)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("memory load failed", err)
+		}
+		vm.stack = append(vm.stack, v)
+	case bytecode.OpStore:
+		v, err := vm.pop(ins.Type)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		addr, err := vm.pop(bytecode.TypeObjectAddr)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		if err := vm.program.Memory().Store(addr.Int, ins.Type, ins.Align, v); err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("memory store failed", err)
+		}
+	case bytecode.OpMemCopy:
+		src, err := vm.pop(bytecode.TypeObjectAddr)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		dst, err := vm.pop(bytecode.TypeObjectAddr)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		if err := vm.program.Memory().Copy(dst.Int, src.Int, ins.Size); err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("memory copy failed", err)
+		}
+	case bytecode.OpMemSet:
+		v, err := vm.pop(bytecode.TypeI32)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		dst, err := vm.pop(bytecode.TypeObjectAddr)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		if err := vm.program.Memory().Set(dst.Int, byte(v.Int), ins.Size); err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("memory set failed", err)
+		}
+	case bytecode.OpOffset:
+		addr, err := vm.pop(ins.Type)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		out, err := addSignedOffset(addr.Int, ins.Int)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("offset overflow", err)
+		}
+		vm.stack = append(vm.stack, UIntValue(ins.Type, out))
+	case bytecode.OpPtrAdd:
+		index, err := vm.popInteger()
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		base, err := vm.popPointer()
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		out, err := addPointerIndex(base.Int, index, ins.Size)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("pointer add failed", err)
+		}
+		vm.stack = append(vm.stack, UIntValue(base.Type, out))
+	case bytecode.OpPtrDiff:
+		right, err := vm.popPointer()
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		left, err := vm.popPointer()
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		diff, err := pointerDiff(left.Int, right.Int, ins.Size)
+		if err != nil {
+			return ExitStatus{}, true, vm.trapWithCause("pointer diff failed", err)
+		}
+		vm.stack = append(vm.stack, IntValue(bytecode.TypeI64, diff))
 	case bytecode.OpBinary:
 		if err := vm.binary(ins); err != nil {
 			return ExitStatus{}, true, err
@@ -624,6 +715,114 @@ func isPointerType(t bytecode.ValueType) bool {
 
 func canBitCast(from, to bytecode.ValueType) bool {
 	return (isIntegerLike(from) || isPointerType(from)) && (isIntegerLike(to) || isPointerType(to))
+}
+
+func addSignedOffset(base uint64, offset int64) (uint64, error) {
+	if offset >= 0 {
+		delta := uint64(offset)
+		if delta > math.MaxUint64-base {
+			return 0, fmt.Errorf("%#x + %d overflows", base, offset)
+		}
+		return base + delta, nil
+	}
+	delta := absInt64(offset)
+	if delta > base {
+		return 0, fmt.Errorf("%#x + %d underflows", base, offset)
+	}
+	return base - delta, nil
+}
+
+func addPointerIndex(base uint64, index Value, elemSize int64) (uint64, error) {
+	neg, delta, err := scaledIndex(index, elemSize)
+	if err != nil {
+		return 0, err
+	}
+	if neg {
+		if delta > base {
+			return 0, fmt.Errorf("%#x - %d underflows", base, delta)
+		}
+		return base - delta, nil
+	}
+	if delta > math.MaxUint64-base {
+		return 0, fmt.Errorf("%#x + %d overflows", base, delta)
+	}
+	return base + delta, nil
+}
+
+func scaledIndex(index Value, elemSize int64) (bool, uint64, error) {
+	if elemSize <= 0 {
+		return false, 0, fmt.Errorf("invalid element size %d", elemSize)
+	}
+	elem := uint64(elemSize)
+	neg := false
+	var mag uint64
+	if isSignedIntegerType(index.Type) {
+		n := signedInt(index)
+		if n < 0 {
+			neg = true
+			mag = absInt64(n)
+		} else {
+			mag = uint64(n)
+		}
+	} else if isUnsignedIntegerType(index.Type) {
+		mag = unsignedInt(index)
+	} else {
+		return false, 0, fmt.Errorf("unsupported pointer index type %s", index.Type)
+	}
+	if mag != 0 && elem > math.MaxUint64/mag {
+		return false, 0, fmt.Errorf("pointer index %d * element size %d overflows", mag, elemSize)
+	}
+	return neg, mag * elem, nil
+}
+
+func pointerDiff(left, right uint64, elemSize int64) (int64, error) {
+	if elemSize <= 0 {
+		return 0, fmt.Errorf("invalid element size %d", elemSize)
+	}
+	elem := uint64(elemSize)
+	if left >= right {
+		delta := left - right
+		if delta > math.MaxInt64 {
+			return 0, fmt.Errorf("pointer difference %d exceeds i64 range", delta)
+		}
+		return int64(delta / elem), nil
+	}
+	delta := right - left
+	if delta > math.MaxInt64 {
+		return 0, fmt.Errorf("pointer difference -%d exceeds i64 range", delta)
+	}
+	return -int64(delta / elem), nil
+}
+
+func absInt64(v int64) uint64 {
+	if v >= 0 {
+		return uint64(v)
+	}
+	return uint64(-(v + 1)) + 1
+}
+
+func (vm *VM) popInteger() (Value, error) {
+	if len(vm.stack) == 0 {
+		return Value{}, vm.trap("stack underflow")
+	}
+	v := vm.stack[len(vm.stack)-1]
+	if !isIntegerLike(v.Type) {
+		return Value{}, vm.trap(fmt.Sprintf("stack value has type %s, want integer", v.Type))
+	}
+	vm.stack = vm.stack[:len(vm.stack)-1]
+	return v, nil
+}
+
+func (vm *VM) popPointer() (Value, error) {
+	if len(vm.stack) == 0 {
+		return Value{}, vm.trap("stack underflow")
+	}
+	v := vm.stack[len(vm.stack)-1]
+	if !isPointerType(v.Type) {
+		return Value{}, vm.trap(fmt.Sprintf("stack value has type %s, want pointer", v.Type))
+	}
+	vm.stack = vm.stack[:len(vm.stack)-1]
+	return v, nil
 }
 
 func (vm *VM) pop(t bytecode.ValueType) (Value, error) {

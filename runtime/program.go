@@ -68,6 +68,10 @@ func (p *Program) Memory() *Memory { return p.memory }
 
 func (p *Program) GlobalAddr(id int) uint64 { return p.globalAddr[id] }
 
+func (p *Program) StringAddr(id int) uint64 { return p.stringAddr[id] }
+
+func (p *Program) FuncAddr(id int) uint64 { return p.funcAddr[id] }
+
 func (p *Program) allocateGlobals(reg *ExternRegistry) error {
 	for i, g := range p.module.Globals {
 		switch g.Kind {
