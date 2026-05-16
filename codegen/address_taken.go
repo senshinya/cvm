@@ -97,6 +97,8 @@ func walkExprForAddressTaken(e sema.Expr, out map[*sema.Symbol]bool) {
 		walkExprForAddressTaken(x.X, out)
 	case *sema.ExplicitCast:
 		walkExprForAddressTaken(x.X, out)
+	case *sema.StmtExpr:
+		walkStmtForAddressTaken(x.Block, out)
 	}
 }
 

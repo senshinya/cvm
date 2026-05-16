@@ -381,7 +381,7 @@ func (s *Sema) typePrimary(node *entity.AstNode, scope *Scope) Expr {
 		if !s.Options.GNUExtensions {
 			s.report(InvalidTypeSpec(node.SourceStart, "statement expression requires GNU C mode"))
 		}
-		block := s.typeBlock(node.Children[1], scope, &funcCtx{})
+		block := s.typeBlock(node.Children[1], scope, s.funcCtx)
 		return &StmtExpr{Block: block, T: blockResultType(s, block), Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)

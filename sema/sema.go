@@ -14,6 +14,7 @@ type Sema struct {
 	errors  []*common.CvmError
 
 	pendingFuncs   []*pendingFunc
+	funcCtx        *funcCtx
 	allowArrayStar bool
 }
 
@@ -428,6 +429,9 @@ func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
 	s.scope = bodyScope
 	defer func() { s.scope = prev }()
 	ctx := &funcCtx{def: pf.def, prog: prog}
+	prevCtx := s.funcCtx
+	s.funcCtx = ctx
+	defer func() { s.funcCtx = prevCtx }()
 	body, _ := s.typeStmt(pf.bodyAst, bodyScope, ctx).(*Block)
 	if body == nil {
 		body = &Block{Range: pf.bodyAst.SourceRange, Scope: bodyScope}

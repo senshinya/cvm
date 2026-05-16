@@ -117,6 +117,8 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		return fg.emitValue(x.R)
 	case *sema.CondExpr:
 		return fg.emitCondExpr(x)
+	case *sema.StmtExpr:
+		return fg.emitStmtExpr(x)
 	case *sema.SizeofExpr:
 		return fg.emitSizeof(x)
 	case *sema.UnOp:
@@ -292,6 +294,42 @@ func (fg *funcGen) emitCondExpr(x *sema.CondExpr) error {
 		return err
 	}
 	fg.mark(endLabel)
+	return nil
+}
+
+func (fg *funcGen) emitStmtExpr(x *sema.StmtExpr) error {
+	if x.Block == nil {
+		return nil
+	}
+	if !exprLeavesValue(x) {
+		return fg.emitStmt(x.Block)
+	}
+	scopeMark := len(fg.activeDynamicObjects)
+	items := x.Block.Items
+	last := len(items) - 1
+	for i, item := range items {
+		if i == last {
+			if exprStmt, ok := item.(*sema.ExprStmt); ok && exprStmt.Expr != nil {
+				if err := fg.emitValue(exprStmt.Expr); err != nil {
+					return err
+				}
+				if !fg.lastInstrTerminal() {
+					fg.popDynamicObjectScope(scopeMark)
+				} else {
+					fg.activeDynamicObjects = fg.activeDynamicObjects[:scopeMark]
+				}
+				return nil
+			}
+		}
+		if err := fg.emitStmt(item); err != nil {
+			return err
+		}
+	}
+	if !fg.lastInstrTerminal() {
+		fg.popDynamicObjectScope(scopeMark)
+	} else {
+		fg.activeDynamicObjects = fg.activeDynamicObjects[:scopeMark]
+	}
 	return nil
 }
 

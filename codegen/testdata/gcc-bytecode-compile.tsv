@@ -124,6 +124,9 @@ sema/testdata/gcc-c99-extra/accept/qual-return-1.c	current GCC accept fixture co
 sema/testdata/gcc-c99-extra/accept/qual-return-2.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/qual-return-4.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/signbit-sa.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/stmt-expr-1.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/stmt-expr-2.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/stmt-expr-4.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/system-binary-constants-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/system-octal-constants-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/transparent-union-1.c	current GCC accept fixture compiles to validated bytecode
