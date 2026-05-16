@@ -16,3 +16,4 @@ sema/testdata/gcc-c99/accept/c99-math-long-double-1.c	0	math	C99 long double mat
 sema/testdata/gcc-c99/accept/c99-mixdecl-1.c	0	scope	C99 mixed declarations run after prefix/postfix decrement lowering
 sema/testdata/gcc-c99/accept/c99-scope-1.c	0	scope	C99 selection-statement tag scope does not leak past the if statement
 sema/testdata/gcc-c99/accept/c99-scope-2.c	0	scope	C99 statement scopes remain isolated across if switch while do and for
+sema/testdata/gcc-c99-extra/accept/signbit-sa.c	0	math	GCC c99_runtime signbit fixture executes float double and long double signbit macros
