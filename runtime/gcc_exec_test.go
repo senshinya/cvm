@@ -155,7 +155,7 @@ func TestGCCExecutionFixtures(t *testing.T) {
 		t.Fatalf("read GCC execution manifest: %v", err)
 	}
 	cases := parseGCCExecManifest(t, string(content))
-	const minGCCExecCases = 4
+	const minGCCExecCases = 6
 	if len(cases) < minGCCExecCases {
 		t.Fatalf("GCC execution suite too small: got %d cases, want >= %d", len(cases), minGCCExecCases)
 	}

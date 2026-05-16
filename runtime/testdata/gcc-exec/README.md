@@ -5,7 +5,7 @@ the Phase 1 cvm bytecode runtime gate. The manifest is intentionally curated:
 it contains only deterministic GCC accept fixtures that compile to bytecode,
 load through the binary runtime path, and have a stable runtime exit code.
 
-The current gate has four fixtures. Keep it small until runtime semantics and
+The current gate has six fixtures. Keep it small until runtime semantics and
 fixture suitability are clear enough to expand without mixing compile-only,
 diagnostic-only, or hosted-library behavior into the execution suite.
 

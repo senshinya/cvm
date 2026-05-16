@@ -410,6 +410,14 @@ func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
 		Linkage: LinkageNone,
 		Pos:     pf.def.Range.SourceStart,
 	}
+	funcDecl := &VarDecl{
+		Sym:     funcSym,
+		T:       funcType,
+		Init:    &StringLit{Value: pf.def.Sym.Name, T: funcType, Range: pf.def.Range},
+		Storage: StorageStatic,
+		Range:   pf.def.Range,
+	}
+	funcSym.Decl = funcDecl
 	_ = bodyScope.InsertChecked("__func__", funcSym)
 	prev := s.scope
 	s.scope = bodyScope
@@ -418,6 +426,9 @@ func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
 	body, _ := s.typeStmt(pf.bodyAst, bodyScope, ctx).(*Block)
 	if body == nil {
 		body = &Block{Range: pf.bodyAst.SourceRange, Scope: bodyScope}
+	}
+	if funcSym.Used {
+		pf.def.Locals = append([]*VarDecl{funcDecl}, pf.def.Locals...)
 	}
 	pf.def.Body = body
 	pf.def.Labels = map[string]*LabeledStmt{}

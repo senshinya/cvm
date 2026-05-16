@@ -82,6 +82,10 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		if err := fg.emitValue(x.X); err != nil {
 			return err
 		}
+		if b, ok := sema.Unqual(x.To).(*sema.BuiltinType); ok && b.Kind == sema.Void {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
+			return nil
+		}
 		from, err := fg.g.lowerValueType(x.X.GetType())
 		if err != nil {
 			return err

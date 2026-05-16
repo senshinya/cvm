@@ -375,6 +375,9 @@ func (s *Sema) lookupVar(node *entity.AstNode, scope *Scope) Expr {
 	}
 	switch sym.Kind {
 	case SymVar, SymParam, SymFunc:
+		if sym.Name == "__func__" {
+			sym.Used = true
+		}
 		return &VarRef{Sym: sym, T: sym.T, Range: node.SourceRange}
 	case SymEnumerator:
 		var enumerator *Enumerator

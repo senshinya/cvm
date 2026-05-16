@@ -669,6 +669,9 @@ func (vm *VM) binary(ins bytecode.Instr) error {
 	if isFloatType(ins.Type) {
 		return vm.floatBinary(ins, l, r)
 	}
+	if ins.Type == bytecode.TypePtr || ins.Type == bytecode.TypeObjectAddr {
+		return vm.pointerBinary(ins, l, r)
+	}
 	if !isIntegerLike(ins.Type) {
 		return vm.trap(fmt.Sprintf("unsupported binary type %s", ins.Type))
 	}
@@ -762,6 +765,20 @@ func (vm *VM) binary(ins bytecode.Instr) error {
 		return vm.trap(fmt.Sprintf("unsupported binary op %s", ins.Binary))
 	}
 	vm.stack = append(vm.stack, normalizeInt(out))
+	return nil
+}
+
+func (vm *VM) pointerBinary(ins bytecode.Instr, l, r Value) error {
+	var out Value
+	switch ins.Binary {
+	case bytecode.BinEq:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(l.Int == r.Int)))
+	case bytecode.BinNe:
+		out = UIntValue(bytecode.TypeBool, uint64(boolInt(l.Int != r.Int)))
+	default:
+		return vm.trap(fmt.Sprintf("unsupported pointer binary op %s", ins.Binary))
+	}
+	vm.stack = append(vm.stack, out)
 	return nil
 }
 

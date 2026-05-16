@@ -89,3 +89,37 @@ func TestCompileAndRunLocalArrayAddressing(t *testing.T) {
 		t.Fatalf("exit code = %d, want 11", st.Code)
 	}
 }
+
+func TestCompileAndRunVoidCastDiscardsValue(t *testing.T) {
+	st, err := compileAndRun(t, `int main(void) { if (1) { (void)0; } return 7; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+}
+
+func TestCompileAndRunFuncIdentifierCString(t *testing.T) {
+	st, err := compileAndRun(t, `
+extern int strcmp(const char *, const char *);
+int main(void) {
+	return strcmp(__func__, "main") || sizeof(__func__) != 5;
+}`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestCompileAndRunFuncIdentifierHasDistinctAddress(t *testing.T) {
+	st, err := compileAndRun(t, `int main(void) { return "main" == __func__; }`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
