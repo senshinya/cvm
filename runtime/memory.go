@@ -40,17 +40,42 @@ func NewMemory(target bytecode.TargetInfo) *Memory {
 }
 
 func (m *Memory) Alloc(name string, size, align int64, readonly bool, kind blockKind) uint64 {
-	if size < 0 {
-		panic(fmt.Sprintf("negative memory allocation size %d", size))
+	addr, err := m.TryAlloc(name, size, align, readonly, kind)
+	if err != nil {
+		panic(err)
 	}
+	return addr
+}
+
+func (m *Memory) TryAlloc(name string, size, align int64, readonly bool, kind blockKind) (uint64, error) {
 	if align <= 0 {
 		align = 1
 	}
-	base := alignUp(m.next, uint64(align))
-	b := &memoryBlock{id: len(m.blocks), name: name, base: base, data: make([]byte, size), align: align, readonly: readonly, kind: kind}
+	if size < 0 {
+		return 0, fmt.Errorf("negative memory allocation size %d", size)
+	}
+	if uint64(size) > uint64(maxInt()) {
+		return 0, fmt.Errorf("memory allocation size %d exceeds make limit", size)
+	}
+	base, err := alignUpChecked(m.next, uint64(align))
+	if err != nil {
+		return 0, err
+	}
+	if uint64(size) > math.MaxUint64-base {
+		return 0, fmt.Errorf("memory allocation %q overflows address space", name)
+	}
+	end := base + uint64(size)
+	if 0x10 > math.MaxUint64-end {
+		return 0, fmt.Errorf("memory allocation %q overflows next address", name)
+	}
+	data, err := makeBlockData(size)
+	if err != nil {
+		return 0, err
+	}
+	b := &memoryBlock{id: len(m.blocks), name: name, base: base, data: data, align: align, readonly: readonly, kind: kind}
 	m.blocks = append(m.blocks, b)
-	m.next = base + uint64(size) + 0x10
-	return base
+	m.next = end + 0x10
+	return base, nil
 }
 
 func (m *Memory) AllocBytes(name string, data []byte, readonly bool, kind blockKind) uint64 {
@@ -69,11 +94,35 @@ func (m *Memory) Load(addr uint64, t bytecode.ValueType, align int64) (Value, er
 	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeU8:
 		return UIntValue(t, uint64(raw[0])), nil
 	case bytecode.TypeI16, bytecode.TypeU16:
-		return UIntValue(t, uint64(m.order().Uint16(raw))), nil
+		order, err := m.byteOrder()
+		if err != nil {
+			return Value{}, err
+		}
+		return UIntValue(t, uint64(order.Uint16(raw))), nil
 	case bytecode.TypeI32, bytecode.TypeU32:
-		return UIntValue(t, uint64(m.order().Uint32(raw))), nil
+		order, err := m.byteOrder()
+		if err != nil {
+			return Value{}, err
+		}
+		return UIntValue(t, uint64(order.Uint32(raw))), nil
+	case bytecode.TypeF32:
+		order, err := m.byteOrder()
+		if err != nil {
+			return Value{}, err
+		}
+		return FloatValue(t, float64(math.Float32frombits(order.Uint32(raw)))), nil
 	case bytecode.TypeI64, bytecode.TypeU64:
-		return UIntValue(t, m.order().Uint64(raw)), nil
+		order, err := m.byteOrder()
+		if err != nil {
+			return Value{}, err
+		}
+		return UIntValue(t, order.Uint64(raw)), nil
+	case bytecode.TypeF64:
+		order, err := m.byteOrder()
+		if err != nil {
+			return Value{}, err
+		}
+		return FloatValue(t, math.Float64frombits(order.Uint64(raw))), nil
 	case bytecode.TypePtr, bytecode.TypeObjectAddr:
 		return m.loadPointer(raw, t)
 	default:
@@ -91,11 +140,35 @@ func (m *Memory) Store(addr uint64, t bytecode.ValueType, align int64, v Value) 
 	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeU8:
 		raw[0] = byte(v.Int)
 	case bytecode.TypeI16, bytecode.TypeU16:
-		m.order().PutUint16(raw, uint16(v.Int))
+		order, err := m.byteOrder()
+		if err != nil {
+			return err
+		}
+		order.PutUint16(raw, uint16(v.Int))
 	case bytecode.TypeI32, bytecode.TypeU32:
-		m.order().PutUint32(raw, uint32(v.Int))
+		order, err := m.byteOrder()
+		if err != nil {
+			return err
+		}
+		order.PutUint32(raw, uint32(v.Int))
+	case bytecode.TypeF32:
+		order, err := m.byteOrder()
+		if err != nil {
+			return err
+		}
+		order.PutUint32(raw, math.Float32bits(float32(v.Float)))
 	case bytecode.TypeI64, bytecode.TypeU64:
-		m.order().PutUint64(raw, v.Int)
+		order, err := m.byteOrder()
+		if err != nil {
+			return err
+		}
+		order.PutUint64(raw, v.Int)
+	case bytecode.TypeF64:
+		order, err := m.byteOrder()
+		if err != nil {
+			return err
+		}
+		order.PutUint64(raw, math.Float64bits(v.Float))
 	case bytecode.TypePtr, bytecode.TypeObjectAddr:
 		return m.storePointer(raw, v.Int)
 	default:
@@ -187,30 +260,45 @@ func (m *Memory) rangeAccess(addr uint64, size int64, write bool) (*memoryBlock,
 	return nil, 0, fmt.Errorf("invalid memory access at %#x size=%d", addr, size)
 }
 
-func (m *Memory) order() binary.ByteOrder {
-	if m.target.Endian == "little" || m.target.Endian == "" {
-		return binary.LittleEndian
+func (m *Memory) byteOrder() (binary.ByteOrder, error) {
+	switch m.target.Endian {
+	case "", "little":
+		return binary.LittleEndian, nil
+	case "big":
+		return binary.BigEndian, nil
+	default:
+		return nil, fmt.Errorf("unsupported endian %q", m.target.Endian)
 	}
-	return binary.BigEndian
 }
 
 func (m *Memory) loadPointer(raw []byte, t bytecode.ValueType) (Value, error) {
+	order, err := m.byteOrder()
+	if err != nil {
+		return Value{}, err
+	}
 	switch m.target.PointerSize {
 	case 4:
-		return UIntValue(t, uint64(m.order().Uint32(raw))), nil
+		return UIntValue(t, uint64(order.Uint32(raw))), nil
 	case 8:
-		return UIntValue(t, m.order().Uint64(raw)), nil
+		return UIntValue(t, order.Uint64(raw)), nil
 	default:
 		return Value{}, fmt.Errorf("unsupported pointer size %d", m.target.PointerSize)
 	}
 }
 
 func (m *Memory) storePointer(raw []byte, ptr uint64) error {
+	order, err := m.byteOrder()
+	if err != nil {
+		return err
+	}
 	switch m.target.PointerSize {
 	case 4:
-		m.order().PutUint32(raw, uint32(ptr))
+		if ptr > math.MaxUint32 {
+			return fmt.Errorf("pointer value %#x exceeds 32-bit pointer size", ptr)
+		}
+		order.PutUint32(raw, uint32(ptr))
 	case 8:
-		m.order().PutUint64(raw, ptr)
+		order.PutUint64(raw, ptr)
 	default:
 		return fmt.Errorf("unsupported pointer size %d", m.target.PointerSize)
 	}
@@ -236,13 +324,30 @@ func valueSize(target bytecode.TargetInfo, t bytecode.ValueType) int64 {
 	}
 }
 
-func alignUp(v, align uint64) uint64 {
+func alignUpChecked(v, align uint64) (uint64, error) {
 	if align <= 1 {
-		return v
+		return v, nil
 	}
 	rem := v % align
 	if rem == 0 {
-		return v
+		return v, nil
 	}
-	return v + align - rem
+	delta := align - rem
+	if delta > math.MaxUint64-v {
+		return 0, fmt.Errorf("aligned address overflows for %#x align=%d", v, align)
+	}
+	return v + delta, nil
+}
+
+func makeBlockData(size int64) (data []byte, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("memory allocation size %d exceeds make limit: %v", size, r)
+		}
+	}()
+	return make([]byte, int(size)), nil
+}
+
+func maxInt() int {
+	return int(^uint(0) >> 1)
 }
