@@ -36,15 +36,42 @@ func TestTrapErrorIncludesExecutionContext(t *testing.T) {
 
 func TestTrapErrorIncludesUnnamedExecutionContext(t *testing.T) {
 	err := &TrapError{
-		Reason:     "invalid jump",
-		FunctionID: 2,
-		PC:         9,
-		Opcode:     bytecode.OpJump,
+		Reason:      "invalid jump",
+		HasLocation: true,
+		FunctionID:  2,
+		PC:          9,
+		Opcode:      bytecode.OpJump,
 	}
 	got := err.Error()
 	for _, want := range []string{"invalid jump", "fn#2", "pc=9", "OpJump"} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("TrapError missing %q: %s", want, got)
+		}
+	}
+}
+
+func TestTrapErrorIncludesZeroValuedLocation(t *testing.T) {
+	err := &TrapError{
+		Reason:      "constant trap",
+		HasLocation: true,
+		FunctionID:  0,
+		PC:          0,
+		Opcode:      bytecode.OpConst,
+	}
+	got := err.Error()
+	for _, want := range []string{"constant trap", "fn#0", "pc=0", "OpConst"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("TrapError missing %q: %s", want, got)
+		}
+	}
+}
+
+func TestTrapErrorOmitsLocationWhenAbsent(t *testing.T) {
+	err := &TrapError{Reason: "abort"}
+	got := err.Error()
+	for _, unwanted := range []string{"fn#0", "pc=0", "OpConst"} {
+		if strings.Contains(got, unwanted) {
+			t.Fatalf("TrapError invented location %q: %s", unwanted, got)
 		}
 	}
 }

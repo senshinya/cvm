@@ -30,13 +30,14 @@ func (e *LoadError) Unwrap() error {
 }
 
 type TrapError struct {
-	Reason     string
-	Function   string
-	FunctionID int
-	PC         int
-	Opcode     bytecode.Opcode
-	Stack      []string
-	Cause      error
+	Reason      string
+	Function    string
+	HasLocation bool
+	FunctionID  int
+	PC          int
+	Opcode      bytecode.Opcode
+	Stack       []string
+	Cause       error
 }
 
 func (e *TrapError) Error() string {
@@ -44,7 +45,7 @@ func (e *TrapError) Error() string {
 		return "<nil>"
 	}
 	loc := ""
-	if e.Function != "" || e.FunctionID != 0 || e.PC != 0 || e.Opcode != 0 {
+	if e.Function != "" || e.HasLocation {
 		function := e.Function
 		if function == "" {
 			function = "fn"
