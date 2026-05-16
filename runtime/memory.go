@@ -226,6 +226,23 @@ func (m *Memory) WritePointer(addr uint64, ptr uint64) error {
 	return m.Store(addr, bytecode.TypePtr, m.target.PointerAlign, PtrValue(ptr))
 }
 
+func (m *Memory) Free(addr uint64, kind blockKind) error {
+	for _, b := range m.blocks {
+		if b.base != addr {
+			continue
+		}
+		if b.kind != kind {
+			return fmt.Errorf("memory block at %#x has kind %d, want %d", addr, b.kind, kind)
+		}
+		if b.freed {
+			return fmt.Errorf("double free at %#x", addr)
+		}
+		b.freed = true
+		return nil
+	}
+	return fmt.Errorf("invalid free at %#x", addr)
+}
+
 func (m *Memory) access(addr uint64, t bytecode.ValueType, align int64, write bool) (*memoryBlock, int, int, error) {
 	size := int(valueSize(m.target, t))
 	if size <= 0 {

@@ -214,6 +214,15 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if !ok {
 			return ExitStatus{}, true, vm.trap(fmt.Sprintf("invalid dynamic object %d", ins.Object))
 		}
+		if _, exists := fr.dynamicObjects[ins.Object]; exists {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("dynamic object %d is already allocated", ins.Object))
+		}
+		if ins.Layout != object.Layout {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("dynamic object %d layout %d does not match instruction layout %d", ins.Object, object.Layout, ins.Layout))
+		}
+		if object.Layout < 0 || object.Layout >= len(vm.program.module.Layouts) {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("invalid dynamic object layout %d", object.Layout))
+		}
 		align := ins.Align
 		if align <= 0 {
 			align = object.Align
@@ -227,13 +236,23 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if _, ok := fr.dynamicObject(ins.Object); !ok {
 			return ExitStatus{}, true, vm.trap(fmt.Sprintf("invalid dynamic object %d", ins.Object))
 		}
-		delete(fr.dynamicObjects, ins.Object)
-	case bytecode.OpDynamicObjectAddr:
 		addr, ok := fr.dynamicObjects[ins.Object]
 		if !ok {
 			return ExitStatus{}, true, vm.trap(fmt.Sprintf("dynamic object %d is not allocated", ins.Object))
 		}
-		vm.stack = append(vm.stack, UIntValue(ins.Type, addr))
+		if err := vm.program.Memory().Free(addr, blockDynamic); err != nil {
+			return ExitStatus{}, true, vm.trapWithCause(fmt.Sprintf("dynamic object %d free failed", ins.Object), err)
+		}
+		delete(fr.dynamicObjects, ins.Object)
+	case bytecode.OpDynamicObjectAddr:
+		if ins.Type != bytecode.TypeObjectAddr {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("dynamic object address has type %s, want %s", ins.Type, bytecode.TypeObjectAddr))
+		}
+		addr, ok := fr.dynamicObjects[ins.Object]
+		if !ok {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("dynamic object %d is not allocated", ins.Object))
+		}
+		vm.stack = append(vm.stack, ObjectAddrValue(addr))
 	case bytecode.OpLoadConst:
 		base, err := vm.program.TryGlobalAddr(ins.Global)
 		if err != nil {
@@ -457,16 +476,22 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 			if err != nil {
 				return ExitStatus{}, true, vm.trapWithCause("invalid exit code", err)
 			}
-			vm.frames = vm.frames[:len(vm.frames)-1]
+			if err := vm.popFrame(); err != nil {
+				return ExitStatus{}, true, err
+			}
 			return ExitStatus{Code: code}, true, nil
 		}
-		vm.frames = vm.frames[:len(vm.frames)-1]
+		if err := vm.popFrame(); err != nil {
+			return ExitStatus{}, true, err
+		}
 		vm.stack = append(vm.stack, v)
 	case bytecode.OpReturnVoid:
 		if len(vm.frames) == 1 {
 			return ExitStatus{}, true, vm.trap("void return from entry function")
 		}
-		vm.frames = vm.frames[:len(vm.frames)-1]
+		if err := vm.popFrame(); err != nil {
+			return ExitStatus{}, true, err
+		}
 	case bytecode.OpReturnObject:
 		return ExitStatus{}, true, vm.trap(fmt.Sprintf("unsupported opcode %s", ins.Op))
 	case bytecode.OpUnreachable:
@@ -497,6 +522,25 @@ func (fr *frame) dynamicObject(objectID int) (bytecode.DynamicObject, bool) {
 		}
 	}
 	return bytecode.DynamicObject{}, false
+}
+
+func (vm *VM) popFrame() error {
+	if len(vm.frames) == 0 {
+		return vm.trap("empty call stack")
+	}
+	fr := &vm.frames[len(vm.frames)-1]
+	for objectID, addr := range fr.dynamicObjects {
+		if err := vm.program.Memory().Free(addr, blockDynamic); err != nil {
+			return vm.trapWithCause(fmt.Sprintf("dynamic object %d free failed", objectID), err)
+		}
+	}
+	for objectID, addr := range fr.localObjects {
+		if err := vm.program.Memory().Free(addr, blockLocal); err != nil {
+			return vm.trapWithCause(fmt.Sprintf("local object %d free failed", objectID), err)
+		}
+	}
+	vm.frames = vm.frames[:len(vm.frames)-1]
+	return nil
 }
 
 func (vm *VM) popCallArgs(sigID, argc int) ([]Value, error) {

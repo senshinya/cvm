@@ -35,7 +35,7 @@ func runModuleWithExterns(t *testing.T, ctx context.Context, mod *bytecode.Modul
 
 func runProgram(t *testing.T, ctx context.Context, mod *bytecode.Module, opts RunOptions) (ExitStatus, error) {
 	t.Helper()
-	return Run(ctx, &Program{module: mod, entryFunc: 0}, opts)
+	return Run(ctx, &Program{module: mod, memory: NewMemory(mod.Target), entryFunc: 0}, opts)
 }
 
 func TestRunReturnsMainConstant(t *testing.T) {
@@ -263,7 +263,7 @@ func TestRunInvalidIndirectCallTargetTraps(t *testing.T) {
 	)
 	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeI32})
 
-	_, err := runModule(t, mod)
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
 	if err == nil || !strings.Contains(err.Error(), "invalid indirect call target") {
 		t.Fatalf("Run error = %v, want invalid indirect call target", err)
 	}
@@ -449,6 +449,125 @@ func TestRunDynamicObjectAddressBeforeAllocTraps(t *testing.T) {
 	_, err := runProgram(t, context.Background(), mod, RunOptions{})
 	if err == nil || !strings.Contains(err.Error(), "dynamic object 0 is not allocated") {
 		t.Fatalf("Run error = %v, want dynamic object before alloc trap", err)
+	}
+}
+
+func TestRunDynamicObjectAddressAfterFreeTraps(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I64Const(4),
+		bytecode.Instr{Op: bytecode.OpAllocDynamicObject, Object: 0, Type: bytecode.TypeI64, Align: 4, Layout: 0},
+		bytecode.Instr{Op: bytecode.OpFreeDynamicObject, Object: 0},
+		bytecode.Instr{Op: bytecode.OpDynamicObjectAddr, Object: 0, Type: bytecode.TypeObjectAddr},
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "vla", Align: 4}}
+	mod.Functions[0].DynamicObjects = []bytecode.DynamicObject{{ID: 0, Name: "dyn", Align: 4, Layout: 0}}
+
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "dynamic object 0 is not allocated") {
+		t.Fatalf("Run error = %v, want dynamic object after free trap", err)
+	}
+}
+
+func TestRunDynamicObjectStaleAddressAfterFreeTraps(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I64Const(4),
+		bytecode.Instr{Op: bytecode.OpAllocDynamicObject, Object: 0, Type: bytecode.TypeI64, Align: 4, Layout: 0},
+		bytecode.Instr{Op: bytecode.OpDynamicObjectAddr, Object: 0, Type: bytecode.TypeObjectAddr},
+		bytecode.Instr{Op: bytecode.OpDup},
+		bytecode.Instr{Op: bytecode.OpFreeDynamicObject, Object: 0},
+		bytecode.I32Const(1),
+		bytecode.Store(bytecode.TypeI32, 4, false),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "vla", Align: 4}}
+	mod.Functions[0].DynamicObjects = []bytecode.DynamicObject{{ID: 0, Name: "dyn", Align: 4, Layout: 0}}
+
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "use after free") {
+		t.Fatalf("Run error = %v, want use after free trap", err)
+	}
+}
+
+func TestRunDynamicObjectRejectsDuplicateAlloc(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I64Const(4),
+		bytecode.Instr{Op: bytecode.OpAllocDynamicObject, Object: 0, Type: bytecode.TypeI64, Align: 4, Layout: 0},
+		bytecode.I64Const(4),
+		bytecode.Instr{Op: bytecode.OpAllocDynamicObject, Object: 0, Type: bytecode.TypeI64, Align: 4, Layout: 0},
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "vla", Align: 4}}
+	mod.Functions[0].DynamicObjects = []bytecode.DynamicObject{{ID: 0, Name: "dyn", Align: 4, Layout: 0}}
+
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "dynamic object 0 is already allocated") {
+		t.Fatalf("Run error = %v, want duplicate allocation trap", err)
+	}
+}
+
+func TestRunDynamicObjectRejectsLayoutMismatch(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I64Const(4),
+		bytecode.Instr{Op: bytecode.OpAllocDynamicObject, Object: 0, Type: bytecode.TypeI64, Align: 4, Layout: 1},
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Layouts = []bytecode.ObjectLayout{
+		{ID: 0, Name: "vla", Align: 4},
+		{ID: 1, Name: "other", Align: 4},
+	}
+	mod.Functions[0].DynamicObjects = []bytecode.DynamicObject{{ID: 0, Name: "dyn", Align: 4, Layout: 0}}
+
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "does not match instruction layout") {
+		t.Fatalf("Run error = %v, want layout mismatch trap", err)
+	}
+}
+
+func TestRunDynamicObjectRejectsNonObjectAddrType(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I64Const(4),
+		bytecode.Instr{Op: bytecode.OpAllocDynamicObject, Object: 0, Type: bytecode.TypeI64, Align: 4, Layout: 0},
+		bytecode.Instr{Op: bytecode.OpDynamicObjectAddr, Object: 0, Type: bytecode.TypePtr},
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "vla", Align: 4}}
+	mod.Functions[0].DynamicObjects = []bytecode.DynamicObject{{ID: 0, Name: "dyn", Align: 4, Layout: 0}}
+
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "dynamic object address has type ptr") {
+		t.Fatalf("Run error = %v, want dynamic object address type trap", err)
+	}
+}
+
+func TestRunReturnedLocalObjectAddressTrapsAfterFrameExit(t *testing.T) {
+	mod := testMainModule(
+		bytecode.Call(1, 1, 0),
+		bytecode.Load(bytecode.TypeI32, 4, false),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeObjectAddr})
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "leak", Kind: bytecode.GlobalFunc, Func: 1, Sig: 1})
+	mod.Functions = append(mod.Functions, bytecode.Function{
+		ID:       1,
+		GlobalID: 1,
+		Name:     "leak",
+		Sig:      1,
+		Objects:  []bytecode.LocalObject{{ID: 0, Name: "obj", Size: 4, Align: 4, Layout: 0}},
+		Instrs: []bytecode.Instr{
+			bytecode.AddrLocalObject(0),
+			bytecode.I32Const(55),
+			bytecode.Store(bytecode.TypeI32, 4, false),
+			bytecode.AddrLocalObject(0),
+			bytecode.Return(bytecode.TypeObjectAddr),
+		},
+		MaxStack: 2,
+	})
+	mod.Layouts = []bytecode.ObjectLayout{{ID: 0, Name: "local", Size: 4, Align: 4}}
+
+	_, err := runProgram(t, context.Background(), mod, RunOptions{})
+	if err == nil || !strings.Contains(err.Error(), "use after free") {
+		t.Fatalf("Run error = %v, want use after free trap", err)
 	}
 }
 
@@ -1003,9 +1122,25 @@ func TestRunUnreachableTrap(t *testing.T) {
 }
 
 func TestRunUnsupportedOpcodeTrap(t *testing.T) {
-	_, err := runProgram(t, context.Background(), testMainModule(bytecode.Instr{Op: bytecode.OpVaStart, Slot: 0}), RunOptions{})
-	if err == nil || !strings.Contains(err.Error(), "unsupported opcode OpVaStart") {
-		t.Fatalf("Run error = %v, want unsupported opcode trap", err)
+	tests := []struct {
+		name string
+		ins  bytecode.Instr
+		want string
+	}{
+		{name: "return object", ins: bytecode.Instr{Op: bytecode.OpReturnObject}, want: "unsupported opcode OpReturnObject"},
+		{name: "bitfield load", ins: bytecode.Instr{Op: bytecode.OpBitFieldLoad, Type: bytecode.TypeI32}, want: "unsupported opcode OpBitFieldLoad"},
+		{name: "bitfield store", ins: bytecode.Instr{Op: bytecode.OpBitFieldStore, Type: bytecode.TypeI32}, want: "unsupported opcode OpBitFieldStore"},
+		{name: "va start", ins: bytecode.Instr{Op: bytecode.OpVaStart, Slot: 0}, want: "unsupported opcode OpVaStart"},
+		{name: "va arg", ins: bytecode.Instr{Op: bytecode.OpVaArg, Type: bytecode.TypeI32}, want: "unsupported opcode OpVaArg"},
+		{name: "va end", ins: bytecode.Instr{Op: bytecode.OpVaEnd, Slot: 0}, want: "unsupported opcode OpVaEnd"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := runProgram(t, context.Background(), testMainModule(tt.ins), RunOptions{})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Run error = %v, want %q", err, tt.want)
+			}
+		})
 	}
 }
 
