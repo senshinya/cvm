@@ -43,6 +43,9 @@ func (g *generator) prepareNestedCaptures() {
 			continue
 		}
 		g.nestedCaptures[fn] = caps
+	}
+	g.propagateNestedCallCaptures(owner)
+	for fn, caps := range g.nestedCaptures {
 		for _, cap := range caps {
 			own := owner[cap.sym]
 			if own == nil || own == fn {
@@ -56,6 +59,55 @@ func (g *generator) prepareNestedCaptures() {
 			m[cap.sym] = true
 		}
 	}
+}
+
+func (g *generator) propagateNestedCallCaptures(owner map[*sema.Symbol]*sema.FuncDef) {
+	for {
+		changed := false
+		for _, fn := range g.prog.Funcs {
+			for _, callee := range g.directNestedCalls(fn) {
+				for _, cap := range g.nestedCaptures[callee] {
+					if cap.sym == nil || owner[cap.sym] == nil || owner[cap.sym] == fn {
+						continue
+					}
+					if hasCapture(g.nestedCaptures[fn], cap.sym) {
+						continue
+					}
+					g.nestedCaptures[fn] = append(g.nestedCaptures[fn], cap)
+					changed = true
+				}
+			}
+		}
+		if !changed {
+			return
+		}
+	}
+}
+
+func (g *generator) directNestedCalls(fn *sema.FuncDef) []*sema.FuncDef {
+	if fn == nil {
+		return nil
+	}
+	seen := map[*sema.FuncDef]bool{}
+	var out []*sema.FuncDef
+	add := func(def *sema.FuncDef) {
+		if def == nil || def == fn || seen[def] {
+			return
+		}
+		seen[def] = true
+		out = append(out, def)
+	}
+	walkStmtForDirectNestedCalls(fn.Body, g, add)
+	return out
+}
+
+func hasCapture(caps []capture, sym *sema.Symbol) bool {
+	for _, cap := range caps {
+		if cap.sym == sym {
+			return true
+		}
+	}
+	return false
 }
 
 func collectCaptures(fn *sema.FuncDef, owner map[*sema.Symbol]*sema.FuncDef) []capture {
@@ -147,6 +199,97 @@ func (fg *funcGen) emitCaptureArgs(caps []capture) (int, error) {
 		}
 	}
 	return count, nil
+}
+
+func walkStmtForDirectNestedCalls(s sema.Stmt, g *generator, add func(*sema.FuncDef)) {
+	switch x := s.(type) {
+	case *sema.Block:
+		for _, item := range x.Items {
+			walkStmtForDirectNestedCalls(item, g, add)
+		}
+	case *sema.DeclStmt:
+		for _, d := range x.Decls {
+			if vd, ok := d.(*sema.VarDecl); ok {
+				walkExprForDirectNestedCalls(vd.Init, g, add)
+			}
+		}
+	case *sema.ExprStmt:
+		walkExprForDirectNestedCalls(x.Expr, g, add)
+	case *sema.ReturnStmt:
+		walkExprForDirectNestedCalls(x.Value, g, add)
+	case *sema.IfStmt:
+		walkExprForDirectNestedCalls(x.Cond, g, add)
+		walkStmtForDirectNestedCalls(x.Then, g, add)
+		walkStmtForDirectNestedCalls(x.Else, g, add)
+	case *sema.WhileStmt:
+		walkExprForDirectNestedCalls(x.Cond, g, add)
+		walkStmtForDirectNestedCalls(x.Body, g, add)
+	case *sema.ForStmt:
+		walkStmtForDirectNestedCalls(x.Init, g, add)
+		walkExprForDirectNestedCalls(x.Cond, g, add)
+		walkExprForDirectNestedCalls(x.Post, g, add)
+		walkStmtForDirectNestedCalls(x.Body, g, add)
+	case *sema.SwitchStmt:
+		walkExprForDirectNestedCalls(x.Cond, g, add)
+		walkStmtForDirectNestedCalls(x.Body, g, add)
+	case *sema.CaseStmt:
+		walkStmtForDirectNestedCalls(x.Body, g, add)
+	case *sema.DefaultStmt:
+		walkStmtForDirectNestedCalls(x.Body, g, add)
+	case *sema.LabeledStmt:
+		walkStmtForDirectNestedCalls(x.Body, g, add)
+	}
+}
+
+func walkExprForDirectNestedCalls(e sema.Expr, g *generator, add func(*sema.FuncDef)) {
+	switch x := e.(type) {
+	case nil:
+	case *sema.CallExpr:
+		if vr := functionVarRef(x.Callee); vr != nil && vr.Sym != nil {
+			add(g.funcDefForSymbol(vr.Sym))
+		}
+		walkExprForDirectNestedCalls(x.Callee, g, add)
+		for _, arg := range x.Args {
+			walkExprForDirectNestedCalls(arg, g, add)
+		}
+	case *sema.UnOp:
+		walkExprForDirectNestedCalls(x.X, g, add)
+	case *sema.BinOp:
+		walkExprForDirectNestedCalls(x.L, g, add)
+		walkExprForDirectNestedCalls(x.R, g, add)
+	case *sema.AssignExpr:
+		walkExprForDirectNestedCalls(x.L, g, add)
+		walkExprForDirectNestedCalls(x.R, g, add)
+	case *sema.CompoundAssign:
+		walkExprForDirectNestedCalls(x.L, g, add)
+		walkExprForDirectNestedCalls(x.R, g, add)
+	case *sema.MemberExpr:
+		walkExprForDirectNestedCalls(x.Base, g, add)
+	case *sema.IndexExpr:
+		walkExprForDirectNestedCalls(x.Base, g, add)
+		walkExprForDirectNestedCalls(x.Index, g, add)
+	case *sema.CondExpr:
+		walkExprForDirectNestedCalls(x.Cond, g, add)
+		walkExprForDirectNestedCalls(x.Then, g, add)
+		walkExprForDirectNestedCalls(x.Else, g, add)
+	case *sema.SizeofExpr:
+		walkExprForDirectNestedCalls(x.Operand.Expr, g, add)
+	case *sema.CommaExpr:
+		walkExprForDirectNestedCalls(x.L, g, add)
+		walkExprForDirectNestedCalls(x.R, g, add)
+	case *sema.CompoundLit:
+		walkExprForDirectNestedCalls(x.Init, g, add)
+	case *sema.InitList:
+		for _, elem := range x.Elems {
+			walkExprForDirectNestedCalls(elem.Value, g, add)
+		}
+	case *sema.ImplicitCast:
+		walkExprForDirectNestedCalls(x.X, g, add)
+	case *sema.ExplicitCast:
+		walkExprForDirectNestedCalls(x.X, g, add)
+	case *sema.StmtExpr:
+		walkStmtForDirectNestedCalls(x.Block, g, add)
+	}
 }
 
 func walkStmtForCaptures(s sema.Stmt, add func(*sema.Symbol)) {

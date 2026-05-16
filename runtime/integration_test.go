@@ -270,3 +270,21 @@ int main(void) {
 		t.Fatalf("exit code = %d, want 7", st.Code)
 	}
 }
+
+func TestCompileAndRunNestedFunctionForwardsOuterCapture(t *testing.T) {
+	st, err := compileAndRunWithOptions(t, `
+int main(void) {
+	int x = 2;
+	int middle(void) {
+		int inner(void) { return x + 5; }
+		return inner();
+	}
+	return middle();
+}`, nil, sema.SemaOptions{GNUExtensions: true})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+}
