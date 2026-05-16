@@ -834,8 +834,12 @@ func pointerDiff(left, right uint64, elemSize int64) (int64, error) {
 	}
 	delta := right - left
 	quotient := delta / elem
-	if quotient > math.MaxInt64 {
+	minInt64Magnitude := uint64(math.MaxInt64) + 1
+	if quotient > minInt64Magnitude {
 		return 0, fmt.Errorf("pointer difference -%d exceeds i64 range", quotient)
+	}
+	if quotient == minInt64Magnitude {
+		return math.MinInt64, nil
 	}
 	return -int64(quotient), nil
 }

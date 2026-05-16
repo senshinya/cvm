@@ -296,6 +296,16 @@ func TestVMPointerDiffChecksScaledQuotient(t *testing.T) {
 	}
 }
 
+func TestVMPointerDiffAllowsMinInt64(t *testing.T) {
+	got, err := pointerDiff(0, uint64(1)<<63, 1)
+	if err != nil {
+		t.Fatalf("pointerDiff: %v", err)
+	}
+	if got != math.MinInt64 {
+		t.Fatalf("pointerDiff = %d, want %d", got, int64(math.MinInt64))
+	}
+}
+
 func TestRunIntegerArithmeticAndBranch(t *testing.T) {
 	mod := testMainModule(
 		bytecode.I32Const(3),
