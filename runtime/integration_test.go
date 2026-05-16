@@ -253,3 +253,20 @@ int main(void) {
 		t.Fatalf("exit code = %d, want 7", st.Code)
 	}
 }
+
+func TestCompileAndRunCapturingNestedFunctionVLA(t *testing.T) {
+	st, err := compileAndRunWithOptions(t, `
+int main(void) {
+	int n = 3;
+	int a[n];
+	a[0] = 5;
+	int inner(void) { a[0] += 2; return a[0]; }
+	return inner();
+}`, nil, sema.SemaOptions{GNUExtensions: true})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+}
