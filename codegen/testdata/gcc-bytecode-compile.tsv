@@ -213,3 +213,4 @@ sema/testdata/gcc-c90-as-c99/accept/c90-restrict-1.c	current GCC accept fixture 
 sema/testdata/gcc-c90-as-c99/accept/c90-vla-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/float-range-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/pr29467.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c90-as-c99/accept/pr33694.c	current GCC accept fixture compiles to validated bytecode
