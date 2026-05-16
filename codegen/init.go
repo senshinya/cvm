@@ -787,6 +787,9 @@ func (fg *funcGen) emitComplexInitializer(dst address, init sema.Expr, typ sema.
 		}
 		return fg.emitComplexInitializer(dst, il.Elems[0].Value, typ)
 	}
+	if call := builtinComplexCall(init); call != nil {
+		return fg.emitBuiltinComplexInitializer(dst, call, typ)
+	}
 	if realInit := complexRealInitializer(init); realInit != nil {
 		savedDst, err := fg.saveAddress(dst, ".complex.dst")
 		if err != nil {
@@ -818,6 +821,58 @@ func (fg *funcGen) emitComplexInitializer(dst address, init sema.Expr, typ sema.
 		return nil
 	}
 	return fg.emitComplexValueCopy(dst, init, typ)
+}
+
+func builtinComplexCall(init sema.Expr) *sema.CallExpr {
+	if ic, ok := init.(*sema.ImplicitCast); ok && isComplexType(ic.From) && isComplexType(ic.To) {
+		init = ic.X
+	}
+	call, ok := init.(*sema.CallExpr)
+	if !ok {
+		return nil
+	}
+	vr := functionVarRef(call.Callee)
+	if vr == nil || vr.Sym == nil || vr.Sym.Name != "__builtin_complex" {
+		return nil
+	}
+	return call
+}
+
+func (fg *funcGen) emitBuiltinComplexInitializer(dst address, call *sema.CallExpr, typ sema.Type) error {
+	if len(call.Args) != 2 {
+		return fmt.Errorf("__builtin_complex initializer has %d args, want 2", len(call.Args))
+	}
+	realType, err := complexRealType(typ)
+	if err != nil {
+		return err
+	}
+	realVT, err := fg.g.lowerValueType(realType)
+	if err != nil {
+		return err
+	}
+	savedDst, err := fg.saveAddress(dst, ".complex.dst")
+	if err != nil {
+		return err
+	}
+	for i, arg := range call.Args {
+		offset := int64(0)
+		if i == 1 {
+			offset = fg.g.sizeof(realType)
+		}
+		if err := fg.offsetAddress(savedDst, offset).emit(); err != nil {
+			return err
+		}
+		if err := fg.emitValue(arg); err != nil {
+			return err
+		}
+		from, err := fg.g.lowerValueType(arg.GetType())
+		if err != nil {
+			return err
+		}
+		fg.emitCast(from, realVT, sema.UsualArithmetic)
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(realVT, fg.g.alignof(realType), isVolatile(typ)))
+	}
+	return nil
 }
 
 func complexRealInitializer(init sema.Expr) sema.Expr {
