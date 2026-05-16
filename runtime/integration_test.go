@@ -288,3 +288,17 @@ int main(void) {
 		t.Fatalf("exit code = %d, want 7", st.Code)
 	}
 }
+
+func TestCompileAndRunBuiltinCabsDoubleComplex(t *testing.T) {
+	st, err := compileAndRun(t, `
+_Complex double z = __builtin_complex(3.0, 4.0);
+int main(void) {
+	return __builtin_cabs(z) == 5.0 ? 0 : 1;
+}`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}

@@ -175,12 +175,41 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealExterns(r, "__cvm_tgmath_sin", math.Sin)
 	registerTgmathRealExterns(r, "__cvm_tgmath_exp", math.Exp)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_pow", math.Pow)
+	r.Register("__builtin_cabsf", complexAbsExtern("__builtin_cabsf", bytecode.TypeF32, 4))
+	r.Register("__builtin_cabs", complexAbsExtern("__builtin_cabs", bytecode.TypeF64, 8))
+	r.Register("__builtin_cabsl", complexAbsExtern("__builtin_cabsl", bytecode.TypeFLong, 16))
 	r.Register("__cvm_isunordered", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("__cvm_isunordered expects 2 arguments")
 		}
 		return IntValue(bytecode.TypeI32, boolInt(math.IsNaN(cvmFloat(args[0])) || math.IsNaN(cvmFloat(args[1])))), nil, nil
 	})
+}
+
+func complexAbsExtern(name string, realType bytecode.ValueType, realSize uint64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if args[0].Type != bytecode.TypeObjectAddr {
+			return Value{}, nil, fmt.Errorf("%s expects complex object address", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if args[0].Int > math.MaxUint64-realSize {
+			return Value{}, nil, fmt.Errorf("%s complex imaginary component address overflows", name)
+		}
+		real, err := ec.Memory.Load(args[0].Int, realType, int64(realSize))
+		if err != nil {
+			return Value{}, nil, err
+		}
+		imag, err := ec.Memory.Load(args[0].Int+realSize, realType, int64(realSize))
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return FloatValue(realType, math.Hypot(cvmFloat(real), cvmFloat(imag))), nil, nil
+	}
 }
 
 func registerTgmathRealExterns(r *ExternRegistry, base string, fn func(float64) float64) {
