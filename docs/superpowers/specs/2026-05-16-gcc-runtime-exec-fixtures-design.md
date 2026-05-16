@@ -83,8 +83,13 @@ fixture paths, unsupported fixture roots, and runtime errors.
 
 ## First Import Batch
 
-The first batch should be small and stable, roughly 10-25 fixtures. Prefer
-fixtures covering:
+An empirical probe of the current repository GCC accept fixtures shows that the
+Phase 1 runtime can execute four deterministic GCC-derived fixtures end-to-end.
+The first batch should include all four current runnable cases rather than
+padding the manifest with compile-only or unsuitable cases. As runtime support
+grows, expand this gate toward a small stable set of roughly 10-25 fixtures.
+
+Prefer future fixtures covering:
 
 - integer arithmetic and conversions;
 - local variables;
