@@ -116,7 +116,7 @@ func (g *generator) emitStaticVarInitializer(vd *sema.VarDecl) error {
 	}
 	init, err := g.emitStaticInitializer(vd.Init, vd.T)
 	if err != nil {
-		return err
+		return fmt.Errorf("static initializer for %q: %w", vd.Sym.Name, err)
 	}
 	g.mod.Globals[globalID].Init = init
 	return nil

@@ -15,6 +15,20 @@ func TestInitializerListAndStaticFold(t *testing.T) {
 	}
 }
 
+func TestInitializerCompletesUnsizedStringLiteralArrays(t *testing.T) {
+	r := analyzeSource(t, `char a[] = "foo"; char b[] = ("bar"); char c[] = { ("baz") };`)
+	if len(r.Errors) != 0 {
+		t.Fatalf("unexpected errors: %v", r.Errors)
+	}
+	for i, want := range []int64{4, 4, 4} {
+		vd := r.Program.Globals[i].(*VarDecl)
+		at, ok := Unqual(vd.T).(*ArrayType)
+		if !ok || at.SizeKind != ArrayConstantSize || at.Size != want {
+			t.Fatalf("global %d type = %s, want char[%d]", i, vd.T, want)
+		}
+	}
+}
+
 func TestInitializerDesignatedStruct(t *testing.T) {
 	r := analyzeSource(t, "struct S { int x; int y; } s = { .y = 5 };")
 	if len(r.Errors) != 0 {

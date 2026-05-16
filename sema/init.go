@@ -152,12 +152,15 @@ func (s *Sema) completeUnsizedArrayInitializerType(t Type, init Expr) Type {
 	if !ok || at.SizeKind != ArrayUnsized {
 		return t
 	}
+	if lit, ok := stringLiteralInitializerExpr(init); ok && isStringInitializableArrayElem(unqual(at.Elem)) {
+		return s.Types.ArrayConstant(at.Elem, int64(len(lit.Value)+1))
+	}
 	il, ok := init.(*InitList)
 	if !ok || il == nil {
 		return t
 	}
 	if len(il.Elems) == 1 {
-		if lit, ok := il.Elems[0].Value.(*StringLit); ok {
+		if lit, ok := stringLiteralInitializerExpr(il.Elems[0].Value); ok && isStringInitializableArrayElem(unqual(at.Elem)) {
 			return s.Types.ArrayConstant(at.Elem, int64(len(lit.Value)+1))
 		}
 	}
