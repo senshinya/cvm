@@ -91,6 +91,15 @@ func (s *Sema) typeBlock(node *entity.AstNode, parent *Scope, ctx *funcCtx) *Blo
 	return block
 }
 
+func (s *Sema) typeScopedStmt(node *entity.AstNode, parent *Scope, ctx *funcCtx) Stmt {
+	scope := NewScope(ScopeBlock, parent)
+	scope.Range = node.SourceRange
+	prev := s.scope
+	s.scope = scope
+	defer func() { s.scope = prev }()
+	return s.typeStmt(node, scope, ctx)
+}
+
 func (s *Sema) collectBlockItems(node *entity.AstNode, scope *Scope, ctx *funcCtx, out *[]Stmt) {
 	switch {
 	case node.ReducedBy(parser.BlockItemList, 1):
@@ -245,16 +254,31 @@ func (s *Sema) declareBlockFunction(name string, ft *FunctionType, storage Stora
 func (s *Sema) typeSelection(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
 	switch {
 	case node.ReducedBy(parser.SelectionStatement, 1):
-		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[2], scope)))
-		return &IfStmt{Cond: cond, Then: s.typeStmt(node.Children[4], scope, ctx), Range: node.SourceRange}
+		stmtScope := NewScope(ScopeBlock, scope)
+		stmtScope.Range = node.SourceRange
+		prev := s.scope
+		s.scope = stmtScope
+		defer func() { s.scope = prev }()
+		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[2], stmtScope)))
+		return &IfStmt{Cond: cond, Then: s.typeScopedStmt(node.Children[4], stmtScope, ctx), Range: node.SourceRange}
 	case node.ReducedBy(parser.SelectionStatement, 2):
-		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[2], scope)))
-		return &IfStmt{Cond: cond, Then: s.typeStmt(node.Children[4], scope, ctx), Else: s.typeStmt(node.Children[6], scope, ctx), Range: node.SourceRange}
+		stmtScope := NewScope(ScopeBlock, scope)
+		stmtScope.Range = node.SourceRange
+		prev := s.scope
+		s.scope = stmtScope
+		defer func() { s.scope = prev }()
+		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[2], stmtScope)))
+		return &IfStmt{Cond: cond, Then: s.typeScopedStmt(node.Children[4], stmtScope, ctx), Else: s.typeScopedStmt(node.Children[6], stmtScope, ctx), Range: node.SourceRange}
 	case node.ReducedBy(parser.SelectionStatement, 3):
-		cond := s.castIntegerPromotion(s.castLValueToRValue(s.typeExpr(node.Children[2], scope)))
+		stmtScope := NewScope(ScopeBlock, scope)
+		stmtScope.Range = node.SourceRange
+		prev := s.scope
+		s.scope = stmtScope
+		defer func() { s.scope = prev }()
+		cond := s.castIntegerPromotion(s.castLValueToRValue(s.typeExpr(node.Children[2], stmtScope)))
 		sw := &SwitchStmt{Cond: cond, Order: ctx.nextOrder(), Range: node.SourceRange}
 		ctx.switchStack = append(ctx.switchStack, sw)
-		sw.Body = s.typeStmt(node.Children[4], scope, ctx)
+		sw.Body = s.typeScopedStmt(node.Children[4], stmtScope, ctx)
 		ctx.switchStack = ctx.switchStack[:len(ctx.switchStack)-1]
 		collectCasesAndDefault(sw.Body, sw, s)
 		validateSwitchVMJumps(sw, ctx.vmScopes, s)
@@ -276,9 +300,9 @@ func (s *Sema) typeSelection(node *entity.AstNode, scope *Scope, ctx *funcCtx) S
 			cond = s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[4], declScope)))
 			stmtIdx = 6
 		}
-		stmt := &IfStmt{Cond: cond, Then: s.typeStmt(node.Children[stmtIdx], declScope, ctx), Range: node.SourceRange}
+		stmt := &IfStmt{Cond: cond, Then: s.typeScopedStmt(node.Children[stmtIdx], declScope, ctx), Range: node.SourceRange}
 		if node.ReducedBy(parser.SelectionStatement, 6) || node.ReducedBy(parser.SelectionStatement, 7) {
-			stmt.Else = s.typeStmt(node.Children[len(node.Children)-1], declScope, ctx)
+			stmt.Else = s.typeScopedStmt(node.Children[len(node.Children)-1], declScope, ctx)
 		}
 		return stmt
 	case node.ReducedBy(parser.SelectionStatement, 8),
@@ -298,7 +322,7 @@ func (s *Sema) typeSelection(node *entity.AstNode, scope *Scope, ctx *funcCtx) S
 		}
 		sw := &SwitchStmt{Cond: cond, Order: ctx.nextOrder(), Range: node.SourceRange}
 		ctx.switchStack = append(ctx.switchStack, sw)
-		sw.Body = s.typeStmt(node.Children[stmtIdx], declScope, ctx)
+		sw.Body = s.typeScopedStmt(node.Children[stmtIdx], declScope, ctx)
 		ctx.switchStack = ctx.switchStack[:len(ctx.switchStack)-1]
 		collectCasesAndDefault(sw.Body, sw, s)
 		validateSwitchVMJumps(sw, ctx.vmScopes, s)
@@ -406,16 +430,26 @@ func namedLabelTargetKind(node *entity.AstNode) namedLabelTarget {
 func (s *Sema) typeIteration(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
 	switch {
 	case node.ReducedBy(parser.IterationStatement, 1):
-		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[2], scope)))
+		stmtScope := NewScope(ScopeBlock, scope)
+		stmtScope.Range = node.SourceRange
+		prev := s.scope
+		s.scope = stmtScope
+		defer func() { s.scope = prev }()
+		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[2], stmtScope)))
 		ctx.loopDepth++
-		body := s.typeStmt(node.Children[4], scope, ctx)
+		body := s.typeScopedStmt(node.Children[4], stmtScope, ctx)
 		ctx.loopDepth--
 		return &WhileStmt{Cond: cond, Body: body, Range: node.SourceRange}
 	case node.ReducedBy(parser.IterationStatement, 2):
+		stmtScope := NewScope(ScopeBlock, scope)
+		stmtScope.Range = node.SourceRange
+		prev := s.scope
+		s.scope = stmtScope
+		defer func() { s.scope = prev }()
 		ctx.loopDepth++
-		body := s.typeStmt(node.Children[1], scope, ctx)
+		body := s.typeScopedStmt(node.Children[1], stmtScope, ctx)
 		ctx.loopDepth--
-		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[4], scope)))
+		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[4], stmtScope)))
 		return &WhileStmt{Cond: cond, Body: body, DoWhile: true, Range: node.SourceRange}
 	}
 	forScope := NewScope(ScopeBlock, scope)
@@ -426,7 +460,7 @@ func (s *Sema) typeIteration(node *entity.AstNode, scope *Scope, ctx *funcCtx) S
 	fp := s.collectForParts(node, forScope, ctx)
 	fs := &ForStmt{Init: fp.init, Cond: fp.cond, Post: fp.post, Scope: forScope, Range: node.SourceRange}
 	ctx.loopDepth++
-	fs.Body = s.typeStmt(fp.body, forScope, ctx)
+	fs.Body = s.typeScopedStmt(fp.body, forScope, ctx)
 	ctx.loopDepth--
 	return fs
 }

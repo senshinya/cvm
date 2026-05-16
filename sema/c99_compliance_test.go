@@ -14,6 +14,47 @@ func TestC99FuncIdentifierIsImplicitInFunctionScope(t *testing.T) {
 	}
 }
 
+func TestC99SelectionExpressionTagScopeDoesNotLeak(t *testing.T) {
+	prog := mustAnalyze(t, `
+		struct foo { char a; };
+		int sfoo(void) {
+			if (sizeof (struct foo { int a; double b; char *c; void *d; }))
+				(void) 0;
+			return sizeof (struct foo);
+		}
+	`)
+
+	outer := prog.SymTab.File.LookupTag("foo")
+	if outer == nil {
+		t.Fatal("outer struct foo tag missing")
+	}
+	fn := findFuncDef(t, prog, "sfoo")
+	if len(fn.Body.Items) != 2 {
+		t.Fatalf("sfoo body item count = %d, want 2", len(fn.Body.Items))
+	}
+	ret, ok := fn.Body.Items[1].(*ReturnStmt)
+	if !ok {
+		t.Fatalf("sfoo second body item = %T, want *ReturnStmt", fn.Body.Items[1])
+	}
+	retType := sizeofOperandType(ret.Value)
+	if retType == nil {
+		t.Fatalf("return value is not sizeof(type): %T", ret.Value)
+	}
+	if got, want := sizeofType(retType), sizeofType(outer.T); got != want {
+		t.Fatalf("return sizeof(struct foo) = %d, want outer struct size %d", got, want)
+	}
+}
+
+func sizeofOperandType(expr Expr) Type {
+	if ic, ok := expr.(*ImplicitCast); ok {
+		expr = ic.X
+	}
+	if sz, ok := expr.(*SizeofExpr); ok {
+		return sz.Operand.Type
+	}
+	return nil
+}
+
 func TestC99StringLiteralInitializesCharacterArray(t *testing.T) {
 	mustAnalyze(t, `
 		char global[] = { "foo" };

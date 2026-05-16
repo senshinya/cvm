@@ -9,13 +9,13 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 
 | stage | count |
 | --- | ---: |
-| ok | 6 |
+| ok | 7 |
 | preprocess | 0 |
 | parse | 0 |
 | sema | 0 |
 | codegen | 7 |
 | encode-load | 3 |
-| runtime | 1 |
+| runtime | 0 |
 | exit-mismatch | 0 |
 | total | 17 |
 
@@ -29,6 +29,7 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 | `sema/testdata/gcc-c99/accept/c99-func-3.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-hexfloat-2.c` | 0 |
 | `sema/testdata/gcc-c99/accept/c99-main-1.c` | 0 |
+| `sema/testdata/gcc-c99/accept/c99-scope-1.c` | 0 |
 
 ## Failures By Stage
 
@@ -52,14 +53,7 @@ Scope: GCC accept fixtures under `sema/testdata/gcc-*` whose source contains `{ 
 | `sema/testdata/gcc-c99/accept/c99-math-float-1.c` | `runtime load error: unresolved extern feclearexcept` |
 | `sema/testdata/gcc-c99/accept/c99-math-long-double-1.c` | `runtime load error: unresolved extern feclearexcept` |
 
-### runtime
-
-| path | error |
-| --- | --- |
-| `sema/testdata/gcc-c99/accept/c99-scope-1.c` | `runtime trap: extern abort failed in main#1 pc=19 opcode=OpCall stack=[main#1]: runtime trap: abort` |
-
 ## Next Blockers
 
 - `codegen`: 7 fixtures
 - `encode-load`: 3 fixtures
-- `runtime`: 1 fixtures
