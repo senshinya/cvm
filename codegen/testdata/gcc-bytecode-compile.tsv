@@ -70,6 +70,7 @@ sema/testdata/gcc-c99-extra/accept/Wconversion-complex-gnu.c	current GCC accept 
 sema/testdata/gcc-c99-extra/accept/Wconversion-integer.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/Wconversion-integer-no-sign.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/Wconversion-real-integer.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/Wimplicit-function-declaration-c99.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/Wsign-conversion.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/Wjump-misses-init-2.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/Wparentheses-10.c	current GCC accept fixture compiles to validated bytecode
