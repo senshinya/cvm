@@ -144,6 +144,7 @@ sema/testdata/gcc-c99-extra/accept/pr27639.c	current GCC accept fixture compiles
 sema/testdata/gcc-c99-extra/accept/pr30457.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/pr33666.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/pr38934.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c99-extra/accept/pr52132.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/pr52592.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/pr54363.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/pr57773.c	current GCC accept fixture compiles to validated bytecode
