@@ -182,6 +182,11 @@ sema/testdata/gcc-c99-extra/accept/vla-7.c	current GCC accept fixture compiles t
 sema/testdata/gcc-c99-extra/accept/vla-9.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c99-extra/accept/wtr-int-type-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/Wdeclaration-after-statement-4.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c90-as-c99/accept/Woverlength-strings-pedantic-c89-ext.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c90-as-c99/accept/Woverlength-strings-pedantic-c89-no.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c90-as-c99/accept/Woverlength-strings-pedantic-c89.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c90-as-c99/accept/Woverlength-strings-pedantic-c90-ext.c	current GCC accept fixture compiles to validated bytecode
+sema/testdata/gcc-c90-as-c99/accept/Woverlength-strings-pedantic-c90.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/Wvla-1.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/Wvla-3.c	current GCC accept fixture compiles to validated bytecode
 sema/testdata/gcc-c90-as-c99/accept/Wvla-5.c	current GCC accept fixture compiles to validated bytecode
