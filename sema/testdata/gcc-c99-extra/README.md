@@ -11,10 +11,9 @@
 
 截至本次导入，清单共 333 个显式 C99/GNU99 非 `c99*.c` 用例：
 
-- 已导入 144 个：54 个 accept，90 个 reject。
-- 跳过 189 个：主要原因是 GCC target/runtime harness、GNU 扩展、GCC builtin、GCC inline
-  方言/代码生成、GCC
-  warning/diagnostic 行为，以及少量尚未覆盖的 C99 边界语义。
+- 已导入 225 个：123 个 accept，102 个 reject。
+- 跳过 108 个：主要原因是 GCC target/runtime harness、GCC inline
+  方言/代码生成，以及 GCC warning/diagnostic 行为。
 
 这里的 skip 不表示这些语义永远不做；它们是后续 C99 合规工作的待办分类。主
 `gcc-c99` 目录仍维持更严格策略：除预处理器/系统宏依赖外，`c99*.c` 用例都应进入门禁。

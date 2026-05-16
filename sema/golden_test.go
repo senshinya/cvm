@@ -21,6 +21,10 @@ func TestGoldenPass(t *testing.T) {
 	if len(matches) == 0 {
 		t.Skip("no testdata/pass cases yet")
 	}
+	const minPassGoldenCases = 12
+	if len(matches) < minPassGoldenCases {
+		t.Fatalf("sema pass golden suite too small: got %d cases, want >= %d", len(matches), minPassGoldenCases)
+	}
 	for _, src := range matches {
 		t.Run(filepath.Base(src), func(t *testing.T) {
 			source, err := os.ReadFile(src)
@@ -38,6 +42,9 @@ func TestGoldenPass(t *testing.T) {
 			prog, err := Analyze(candidates)
 			if err != nil {
 				t.Fatalf("sema: %v", err)
+			}
+			if err := ValidateProgramInvariants(prog); err != nil {
+				t.Fatalf("IR invariant: %v", err)
 			}
 			got := PrintProgram(prog)
 			goldenPath := strings.TrimSuffix(src, ".c") + ".ir.golden"

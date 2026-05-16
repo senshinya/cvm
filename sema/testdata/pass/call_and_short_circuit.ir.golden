@@ -1,0 +1,38 @@
+Program
+  FuncDef name="inc" type=int (int) global=0
+    Param name="x" type=int slot=0
+    Block
+      ReturnStmt
+        BinOp op=0 type=int
+          ImplicitCast kind=0 from=int to=int
+            VarRef name="x" type=int
+          IntLit value=1 type=int
+  FuncDef name="choose" type=int (int, int) global=1
+    Param name="a" type=int slot=0
+    Param name="b" type=int slot=1
+    Block
+      ReturnStmt
+        BinOp op=11 type=int
+          ImplicitCast kind=14 from=int to=_Bool
+            BinOp op=10 type=int
+              ImplicitCast kind=14 from=int to=_Bool
+                ImplicitCast kind=0 from=int to=int
+                  VarRef name="a" type=int
+              ImplicitCast kind=14 from=int to=_Bool
+                CallExpr type=int
+                  callee:
+                    ImplicitCast kind=2 from=int (int) to=int (int)*
+                      ImplicitCast kind=0 from=int (int) to=int (int)
+                        VarRef name="inc" type=int (int)
+                  ImplicitCast kind=0 from=int to=int
+                    VarRef name="b" type=int
+          ImplicitCast kind=14 from=int to=_Bool
+            BinOp op=10 type=int
+              ImplicitCast kind=14 from=int to=_Bool
+                UnOp op=3 type=int category=0
+                  ImplicitCast kind=14 from=int to=_Bool
+                    ImplicitCast kind=0 from=int to=int
+                      VarRef name="a" type=int
+              ImplicitCast kind=14 from=int to=_Bool
+                ImplicitCast kind=0 from=int to=int
+                  VarRef name="b" type=int

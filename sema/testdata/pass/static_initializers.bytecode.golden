@@ -1,0 +1,26 @@
+Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Global #0 var name="g" size=4 align=4 readonly=false init_zero=0 init_bytes=4 init_relocs=0
+  InitBytes hex=07000000
+Global #1 var name="arr" size=12 align=4 readonly=false init_zero=0 init_bytes=12 init_relocs=0
+  InitBytes hex=010000000200000003000000
+Global #2 var name="gp" size=8 align=8 readonly=false init_zero=0 init_bytes=8 init_relocs=1
+  InitBytes hex=0000000000000000
+  reloc offset=0 kind=global target=global#0("g") addend=0
+Global #3 func name="read_globals" func=0
+Layout #0 name="int" size=4 align=4 elem_size=0
+Layout #1 name="int[3]" size=12 align=4 elem_size=4
+Layout #2 name="int*" size=8 align=8 elem_size=0
+Sig #0 ret=i32 params=()
+Func #0 global=3 name="read_globals" sig=0 max_stack=0
+  0000: AddrGlobal 1
+  0001: Cast objectaddr->ptr Bit
+  0002: Cast ptr->objectaddr Bit
+  0003: I32Const 1
+  0004: PtrAdd elem_size=4
+  0005: I32Load align=4 volatile=false
+  0006: AddrGlobal 2
+  0007: PtrLoad align=8 volatile=false
+  0008: Cast ptr->objectaddr Bit
+  0009: I32Load align=4 volatile=false
+  0010: I32Add
+  0011: I32Return

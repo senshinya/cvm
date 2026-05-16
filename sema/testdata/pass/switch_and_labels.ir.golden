@@ -1,0 +1,39 @@
+Program
+  FuncDef name="route" type=int (int) global=0
+    Param name="x" type=int slot=0
+    Block
+      DeclStmt
+        VarDecl name="y" type=int storage=1 slot=1
+          init:
+            IntLit value=0 type=int
+      LabeledStmt name="start"
+        SwitchStmt
+          cond:
+            ImplicitCast kind=0 from=int to=int
+              VarRef name="x" type=int
+          body:
+            Block
+              CaseStmt value=0
+                ExprStmt
+                  AssignExpr type=int
+                    VarRef name="y" type=int
+                    IntLit value=10 type=int
+              BreakStmt
+              CaseStmt value=1
+                ExprStmt
+                  AssignExpr type=int
+                    VarRef name="x" type=int
+                    BinOp op=1 type=int
+                      ImplicitCast kind=0 from=int to=int
+                        VarRef name="x" type=int
+                      IntLit value=1 type=int
+              GotoStmt target="start"
+              DefaultStmt
+                ExprStmt
+                  AssignExpr type=int
+                    VarRef name="y" type=int
+                    ImplicitCast kind=0 from=int to=int
+                      VarRef name="x" type=int
+      ReturnStmt
+        ImplicitCast kind=0 from=int to=int
+          VarRef name="y" type=int

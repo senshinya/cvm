@@ -1,0 +1,26 @@
+Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Global #0 func name="sum_pair" func=0
+Layout #0 name="struct{...}" size=8 align=1 elem_size=0
+  Field #0 name="left" offset=0 type=i32
+  Field #1 name="right" offset=4 type=i32
+Sig #0 ret=i32 params=()
+Func #0 global=0 name="sum_pair" sig=0 max_stack=0
+  Object #0 name="p" size=8 align=1 layout=0
+  0000: AddrLocalObject 0
+  0001: I32Const 0
+  0002: MemSet size=8 align=1 volatile=false
+  0003: AddrLocalObject 0
+  0004: I32Const 3
+  0005: I32Store align=4 volatile=false
+  0006: AddrLocalObject 0
+  0007: ObjectAddrOffset 4
+  0008: I32Const 4
+  0009: I32Store align=4 volatile=false
+  0010: AddrLocalObject 0
+  0011: FieldAddr layout=0 field=0
+  0012: I32Load align=4 volatile=false
+  0013: AddrLocalObject 0
+  0014: FieldAddr layout=0 field=1
+  0015: I32Load align=4 volatile=false
+  0016: I32Add
+  0017: I32Return

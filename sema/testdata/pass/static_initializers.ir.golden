@@ -1,0 +1,30 @@
+Program
+  VarDecl name="g" type=int storage=0 global=0
+    init:
+      IntLit value=7 type=int
+  VarDecl name="arr" type=int[3] storage=0 global=1
+    init:
+      InitList type=int[3]
+        Designator index=0
+        IntLit value=1 type=int
+        Designator index=1
+        IntLit value=2 type=int
+        Designator index=2
+        IntLit value=3 type=int
+  VarDecl name="gp" type=int* storage=0 global=2
+    init:
+      AddrConst symbol="g" offset=0 type=int*
+  FuncDef name="read_globals" type=int () global=3
+    Block
+      ReturnStmt
+        BinOp op=0 type=int
+          ImplicitCast kind=0 from=int to=int
+            IndexExpr type=int
+              ImplicitCast kind=1 from=int[3] to=int*
+                ImplicitCast kind=0 from=int[3] to=int[3]
+                  VarRef name="arr" type=int[3]
+              IntLit value=1 type=int
+          ImplicitCast kind=0 from=int to=int
+            UnOp op=5 type=int category=1
+              ImplicitCast kind=0 from=int* to=int*
+                VarRef name="gp" type=int*

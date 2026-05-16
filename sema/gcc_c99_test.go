@@ -36,7 +36,7 @@ func TestGCCC99FixtureCoverage(t *testing.T) {
 	if importedAccept != accept || importedReject != reject {
 		t.Fatalf("manifest import counts do not match directories: manifest accept=%d reject=%d, dirs accept=%d reject=%d", importedAccept, importedReject, accept, reject)
 	}
-	const minImported = 40
+	const minImported = 135
 	if accept+reject < minImported {
 		t.Fatalf("GCC C99 suite too small: accept=%d reject=%d total=%d, want >= %d", accept, reject, accept+reject, minImported)
 	}

@@ -1,0 +1,20 @@
+Program
+  TagDecl tag= type=struct{...}
+  FuncDef name="sum_pair" type=int () global=0
+    Block
+      DeclStmt
+        VarDecl name="p" type=struct{...} storage=1 slot=0
+          init:
+            InitList type=struct{...}
+              Designator field="left"
+              IntLit value=3 type=int
+              Designator field="right"
+              IntLit value=4 type=int
+      ReturnStmt
+        BinOp op=0 type=int
+          ImplicitCast kind=0 from=int to=int
+            MemberExpr access=.left type=int category=1
+              VarRef name="p" type=struct{...}
+          ImplicitCast kind=0 from=int to=int
+            MemberExpr access=.right type=int category=1
+              VarRef name="p" type=struct{...}

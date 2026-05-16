@@ -1,0 +1,38 @@
+Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Global #0 func name="route" func=0
+Sig #0 ret=i32 params=(i32)
+Func #0 global=0 name="route" sig=0 max_stack=0
+  Param slot=0 name="x" type=i32
+  Local #1 name="y" type=i32
+  Label #0 name="start" stack=() statement=true
+  Label #1 name="" stack=() statement=true
+  Label #2 name="" stack=() statement=true
+  Label #3 name="" stack=() statement=true
+  Label #4 name="" stack=() statement=true
+  0000: I32Const 0
+  0001: I32StoreLocal 1
+  0002: L0:
+  0003: I32LoadLocal 0
+  0004: Switch i32 default=L2 cases=(0:L3, 1:L4)
+  0005: L3:
+  0006: I32Const 10
+  0007: Dup
+  0008: I32StoreLocal 1
+  0009: Pop
+  0010: Jump L1
+  0011: L4:
+  0012: I32LoadLocal 0
+  0013: I32Const 1
+  0014: I32Sub
+  0015: Dup
+  0016: I32StoreLocal 0
+  0017: Pop
+  0018: Jump L0
+  0019: L2:
+  0020: I32LoadLocal 0
+  0021: Dup
+  0022: I32StoreLocal 1
+  0023: Pop
+  0024: L1:
+  0025: I32LoadLocal 1
+  0026: I32Return

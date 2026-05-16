@@ -1,0 +1,54 @@
+Module target="cvm-default" endian=little ptr_size=8 ptr_align=8 bool_size=1 bool_align=1 bitfield_policy="cvm" layout_version="1"
+Global #0 func name="inc" func=0
+Global #1 func name="choose" func=1
+Sig #0 ret=i32 params=(i32)
+Sig #1 ret=i32 params=(i32, i32)
+Func #0 global=0 name="inc" sig=0 max_stack=0
+  Param slot=0 name="x" type=i32
+  0000: I32LoadLocal 0
+  0001: I32Const 1
+  0002: I32Add
+  0003: I32Return
+Func #1 global=1 name="choose" sig=1 max_stack=0
+  Param slot=0 name="a" type=i32
+  Param slot=1 name="b" type=i32
+  Label #0 name="" stack=() statement=true
+  Label #1 name="" stack=(bool) statement=false
+  Label #2 name="" stack=() statement=true
+  Label #3 name="" stack=(bool) statement=false
+  Label #4 name="" stack=() statement=true
+  Label #5 name="" stack=(bool) statement=false
+  0000: I32LoadLocal 0
+  0001: Cast i32->bool Bool
+  0002: JumpIfZero bool L2
+  0003: I32LoadLocal 1
+  0004: Call global=0 sig=0 argc=1
+  0005: Cast i32->bool Bool
+  0006: Jump L3
+  0007: L2:
+  0008: BoolConst 0
+  0009: L3:
+  0010: Cast bool->i32 ZExt
+  0011: Cast i32->bool Bool
+  0012: JumpIfNonZero bool L0
+  0013: I32LoadLocal 0
+  0014: Cast i32->bool Bool
+  0015: BoolConst 0
+  0016: BoolEq
+  0017: Cast bool->i32 ZExt
+  0018: Cast i32->bool Bool
+  0019: JumpIfZero bool L4
+  0020: I32LoadLocal 1
+  0021: Cast i32->bool Bool
+  0022: Jump L5
+  0023: L4:
+  0024: BoolConst 0
+  0025: L5:
+  0026: Cast bool->i32 ZExt
+  0027: Cast i32->bool Bool
+  0028: Jump L1
+  0029: L0:
+  0030: BoolConst 1
+  0031: L1:
+  0032: Cast bool->i32 ZExt
+  0033: I32Return
