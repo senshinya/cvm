@@ -177,6 +177,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealExterns(r, "__cvm_tgmath_exp", math.Exp)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_pow", math.Pow)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cexp", cmplx.Exp)
+	registerTgmathComplexBinaryExterns(r, "__cvm_tgmath_cpow", cmplx.Pow)
 	r.Register("__builtin_cabsf", complexAbsExtern("__builtin_cabsf", bytecode.TypeF32, 4))
 	r.Register("__builtin_cabs", complexAbsExtern("__builtin_cabs", bytecode.TypeF64, 8))
 	r.Register("__builtin_cabsl", complexAbsExtern("__builtin_cabsl", bytecode.TypeFLong, 16))
@@ -207,6 +208,12 @@ func registerTgmathComplexExterns(r *ExternRegistry, base string, fn func(comple
 	r.Register(base+"l", complexUnaryExtern(base+"l", bytecode.TypeFLong, 16, fn))
 }
 
+func registerTgmathComplexBinaryExterns(r *ExternRegistry, base string, fn func(complex128, complex128) complex128) {
+	r.Register(base+"f", complexBinaryExtern(base+"f", bytecode.TypeF32, 4, fn))
+	r.Register(base, complexBinaryExtern(base, bytecode.TypeF64, 8, fn))
+	r.Register(base+"l", complexBinaryExtern(base+"l", bytecode.TypeFLong, 16, fn))
+}
+
 func complexUnaryExtern(name string, realType bytecode.ValueType, realSize uint64, fn func(complex128) complex128) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
@@ -217,6 +224,27 @@ func complexUnaryExtern(name string, realType bytecode.ValueType, realSize uint6
 			return Value{}, nil, err
 		}
 		addr, err := storeComplexResult(name, ec, realType, realSize, fn(z))
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return ObjectAddrValue(addr), nil, nil
+	}
+}
+
+func complexBinaryExtern(name string, realType bytecode.ValueType, realSize uint64, fn func(complex128, complex128) complex128) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		left, err := loadComplexArg(name, ec, args[0], realType, realSize)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		right, err := loadComplexOrRealArg(name, ec, args[1], realType, realSize)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		addr, err := storeComplexResult(name, ec, realType, realSize, fn(left, right))
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -243,6 +271,16 @@ func loadComplexArg(name string, ec *ExternContext, arg Value, realType bytecode
 		return 0, err
 	}
 	return complex(cvmFloat(realPart), cvmFloat(imagPart)), nil
+}
+
+func loadComplexOrRealArg(name string, ec *ExternContext, arg Value, realType bytecode.ValueType, realSize uint64) (complex128, error) {
+	if arg.Type == bytecode.TypeObjectAddr {
+		return loadComplexArg(name, ec, arg, realType, realSize)
+	}
+	if !isFloatType(arg.Type) {
+		return 0, fmt.Errorf("%s expects complex or floating argument", name)
+	}
+	return complex(cvmFloat(arg), 0), nil
 }
 
 func storeComplexResult(name string, ec *ExternContext, realType bytecode.ValueType, realSize uint64, z complex128) (uint64, error) {

@@ -265,6 +265,45 @@ int main(void)
 	}
 }
 
+func TestTgmathComplexPowExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  complex double z = __builtin_complex(2.0, 0.0);
+  complex double r = pow(z, 3.0);
+  return __builtin_cabs(r) == 8.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-complex-pow.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestTgmathComplexFloatPowExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  complex float z = __builtin_complex(2.0f, 0.0f);
+  return foo(z, 3.0f);
+}
+
+int foo(complex float x, float y)
+{
+  complex float r = pow(x, y);
+  return __builtin_cabsf(r) == 8.0f ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-complex-float-pow.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)
