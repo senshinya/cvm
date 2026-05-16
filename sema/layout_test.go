@@ -64,6 +64,31 @@ func TestVoidParameterListDoesNotCreateFrameSlot(t *testing.T) {
 	}
 }
 
+func TestBlockFunctionDeclarationGetsExternGlobalID(t *testing.T) {
+	prog, err := Analyze(parseCandidates(t, `
+void f(void) {
+	int (*a(void))[1];
+	(void)a;
+}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(prog.Globals) != 1 {
+		t.Fatalf("program globals = %d, want one block function declaration", len(prog.Globals))
+	}
+	fd, ok := prog.Globals[0].(*FuncDecl)
+	if !ok || fd.Sym == nil || fd.Sym.Name != "a" {
+		t.Fatalf("global declaration = %#v, want function a", prog.Globals[0])
+	}
+	if fd.Sym.GlobalID < 0 {
+		t.Fatalf("block function declaration global id = %d, want extern global", fd.Sym.GlobalID)
+	}
+	if fd.Sym.SlotID != -1 {
+		t.Fatalf("block function declaration slot = %d, want -1", fd.Sym.SlotID)
+	}
+}
+
 func TestBlockExternDeclarationDoesNotUseFrameSlotOrFakeGlobalID(t *testing.T) {
 	prog, err := Analyze(parseCandidates(t, `
 int f(void) {

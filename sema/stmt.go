@@ -201,7 +201,7 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 			s.report(InvalidTypeSpec(pos, "function declarator cannot have initializer"))
 			return nil
 		}
-		return s.declareBlockFunction(name, ft, storage, pos, srcRange, scope)
+		return s.declareBlockFunction(name, ft, storage, pos, srcRange, scope, ctx)
 	}
 	if storage == StorageNone {
 		storage = StorageAuto
@@ -225,7 +225,7 @@ func (s *Sema) walkBlockInitDecl(node *entity.AstNode, spec SpecResult, scope *S
 	return vd
 }
 
-func (s *Sema) declareBlockFunction(name string, ft *FunctionType, storage StorageClass, pos entity.SourcePos, srcRange entity.SourceRange, scope *Scope) Decl {
+func (s *Sema) declareBlockFunction(name string, ft *FunctionType, storage StorageClass, pos entity.SourcePos, srcRange entity.SourceRange, scope *Scope, ctx *funcCtx) Decl {
 	s.validateFunctionVMReturn(ft, pos)
 	if storage != StorageNone && storage != StorageExtern {
 		s.report(InvalidTypeSpec(pos, "block-scope function declaration must be extern"))
@@ -247,7 +247,13 @@ func (s *Sema) declareBlockFunction(name string, ft *FunctionType, storage Stora
 	}
 	scope.Insert(name, fileSym)
 	fd := &FuncDecl{Sym: fileSym, T: ft, Storage: StorageExtern, Range: srcRange}
+	if fileSym.Decl == nil {
+		fileSym.Decl = fd
+	}
 	fileSym.Defs = append(fileSym.Defs, fd)
+	if ctx != nil && ctx.prog != nil {
+		ctx.prog.Globals = append(ctx.prog.Globals, fd)
+	}
 	return fd
 }
 
