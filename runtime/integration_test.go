@@ -316,3 +316,20 @@ int main(void) {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
 }
+
+func TestCompileAndRunComplexCompoundMultiply(t *testing.T) {
+	st, err := compileAndRun(t, `
+int main(void) {
+	_Complex double z = __builtin_complex(1.0, 2.0);
+	_Complex double w = __builtin_complex(3.0, 4.0);
+	z *= w;
+	double mag = __builtin_cabs(z);
+	return mag > 11.0 && mag < 12.0 ? 0 : 1;
+}`, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
