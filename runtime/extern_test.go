@@ -253,6 +253,35 @@ func TestMathUnorderedExtern(t *testing.T) {
 	}
 }
 
+func TestTgmathFloatExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	tests := []struct {
+		name string
+		fn   string
+		args []Value
+		want float64
+	}{
+		{name: "sin", fn: "__cvm_tgmath_sin", args: []Value{FloatValue(bytecode.TypeF64, 0)}, want: 0},
+		{name: "exp", fn: "__cvm_tgmath_exp", args: []Value{FloatValue(bytecode.TypeF64, 0)}, want: 1},
+		{name: "pow", fn: "__cvm_tgmath_pow", args: []Value{FloatValue(bytecode.TypeF64, 2), FloatValue(bytecode.TypeF64, 3)}, want: 8},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fn, ok := reg.Lookup(tt.fn)
+			if !ok {
+				t.Fatalf("missing %s extern", tt.fn)
+			}
+			ret, exit, err := fn(context.Background(), nil, tt.args)
+			if err != nil || exit != nil {
+				t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.fn, ret, exit, err)
+			}
+			if ret.Type != bytecode.TypeF64 || ret.Float != tt.want {
+				t.Fatalf("%s ret = %#v, want f64 %v", tt.fn, ret, tt.want)
+			}
+		})
+	}
+}
+
 func TestAbortReturnsTrap(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	fn, _ := reg.Lookup("abort")

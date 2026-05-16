@@ -40,9 +40,30 @@ func TestGCCBytecodeCompileSuite(t *testing.T) {
 	}
 }
 
+func TestGCCTgmathFloatSinUsesFloatExtern(t *testing.T) {
+	sourcePath := filepath.Join("..", "sema", "testdata", "gcc-c99", "accept", "c99-tgmath-2.c")
+	source, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := compileGCCBytecodeFixture(t, sourcePath, string(source))
+	if !moduleHasExtern(mod, "__cvm_tgmath_sinf") {
+		t.Fatalf("c99-tgmath-2.c did not reference float tgmath extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string
+}
+
+func moduleHasExtern(mod *bytecode.Module, name string) bool {
+	for _, g := range mod.Globals {
+		if g.Kind == bytecode.GlobalExtern && g.Extern.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func parseGCCBytecodeManifest(t *testing.T, content string) []gccBytecodeCase {

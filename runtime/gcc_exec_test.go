@@ -192,6 +192,45 @@ func TestGCCExecutionFixtures(t *testing.T) {
 	}
 }
 
+func TestTgmathSinFloatExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+float foo(float x)
+{
+  return sin(x);
+}
+
+int main(void)
+{
+  return foo(0.0f) == 0.0f ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-sin-float.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestTgmathExpPowExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (exp(0.0) != 1.0)
+    return 1;
+  if (pow(2.0f, 3.0f) != 8.0f)
+    return 2;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-exp-pow.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)

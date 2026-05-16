@@ -172,12 +172,51 @@ func registerMathExterns(r *ExternRegistry) {
 			return boolInt(math.Signbit(cvmFloat(v)))
 		}))
 	}
+	registerTgmathRealExterns(r, "__cvm_tgmath_sin", math.Sin)
+	registerTgmathRealExterns(r, "__cvm_tgmath_exp", math.Exp)
+	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_pow", math.Pow)
 	r.Register("__cvm_isunordered", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("__cvm_isunordered expects 2 arguments")
 		}
 		return IntValue(bytecode.TypeI32, boolInt(math.IsNaN(cvmFloat(args[0])) || math.IsNaN(cvmFloat(args[1])))), nil, nil
 	})
+}
+
+func registerTgmathRealExterns(r *ExternRegistry, base string, fn func(float64) float64) {
+	r.Register(base+"f", mathUnaryFloatExtern(base+"f", bytecode.TypeF32, fn))
+	r.Register(base, mathUnaryFloatExtern(base, bytecode.TypeF64, fn))
+	r.Register(base+"l", mathUnaryFloatExtern(base+"l", bytecode.TypeFLong, fn))
+}
+
+func registerTgmathRealBinaryExterns(r *ExternRegistry, base string, fn func(float64, float64) float64) {
+	r.Register(base+"f", mathBinaryFloatExtern(base+"f", bytecode.TypeF32, fn))
+	r.Register(base, mathBinaryFloatExtern(base, bytecode.TypeF64, fn))
+	r.Register(base+"l", mathBinaryFloatExtern(base+"l", bytecode.TypeFLong, fn))
+}
+
+func mathUnaryFloatExtern(name string, ret bytecode.ValueType, fn func(float64) float64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isFloatType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects floating argument", name)
+		}
+		return floatResult(ret, fn(cvmFloat(args[0]))), nil, nil
+	}
+}
+
+func mathBinaryFloatExtern(name string, ret bytecode.ValueType, fn func(float64, float64) float64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isFloatType(args[0].Type) || !isFloatType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects floating arguments", name)
+		}
+		return floatResult(ret, fn(cvmFloat(args[0]), cvmFloat(args[1]))), nil, nil
+	}
 }
 
 func mathUnaryExtern(name string, pred func(Value) int64) ExternFunc {
