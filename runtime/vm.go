@@ -218,7 +218,7 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 			return ExitStatus{}, true, vm.trapWithCause("memory set failed", err)
 		}
 	case bytecode.OpOffset:
-		addr, err := vm.pop(ins.Type)
+		addr, err := vm.pop(bytecode.TypeObjectAddr)
 		if err != nil {
 			return ExitStatus{}, true, err
 		}
@@ -226,7 +226,7 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if err != nil {
 			return ExitStatus{}, true, vm.trapWithCause("offset overflow", err)
 		}
-		vm.stack = append(vm.stack, UIntValue(ins.Type, out))
+		vm.stack = append(vm.stack, ObjectAddrValue(out))
 	case bytecode.OpPtrAdd:
 		index, err := vm.popInteger()
 		if err != nil {

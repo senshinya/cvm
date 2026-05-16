@@ -103,6 +103,30 @@ func TestRunMemSetAndMemCopy(t *testing.T) {
 	}
 }
 
+func TestRunOffsetFollowsObjectAddrStackContract(t *testing.T) {
+	mod := testMainModule(
+		bytecode.AddrGlobal(1),
+		bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypePtr, Int: 4},
+		bytecode.I32Const(23),
+		bytecode.Store(bytecode.TypeI32, 4, false),
+		bytecode.AddrGlobal(1),
+		bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypePtr, Int: 4},
+		bytecode.Load(bytecode.TypeI32, 4, false),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "g", Kind: bytecode.GlobalVar, Size: 8, Align: 4})
+	if err := bytecode.ValidateModule(mod); err != nil {
+		t.Fatalf("ValidateModule: %v", err)
+	}
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 23 {
+		t.Fatalf("exit code = %d, want 23", st.Code)
+	}
+}
+
 func TestRunIntegerArithmeticAndBranch(t *testing.T) {
 	mod := testMainModule(
 		bytecode.I32Const(3),
