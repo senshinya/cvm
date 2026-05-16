@@ -454,7 +454,7 @@ func (fg *funcGen) emitCall(x *sema.CallExpr) error {
 	if err != nil {
 		return err
 	}
-	if global := directCallGlobal(x.Callee); global >= 0 {
+	if global, ok := fg.g.directCallGlobal(x.Callee, ft); ok {
 		for _, arg := range x.Args {
 			if err := fg.emitValue(arg); err != nil {
 				return err
@@ -491,7 +491,7 @@ func (fg *funcGen) emitTgmathCall(x *sema.CallExpr, pseudo string) error {
 		}
 		params = append(params, pt)
 	}
-	global := fg.g.syntheticExtern(tgmathExternName(pseudo, x), ret, params)
+	global := fg.g.syntheticExtern(tgmathExternName(pseudo, x), ret, params, false)
 	sig := fg.g.internSig(ret, params, false)
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Call(global, sig, len(x.Args)))
 	return nil
@@ -1025,11 +1025,28 @@ func functionTypeFromCallee(t sema.Type) (*sema.FunctionType, error) {
 	return nil, fmt.Errorf("callee type %s is not a function pointer", t)
 }
 
-func directCallGlobal(e sema.Expr) int {
+func (g *generator) directCallGlobal(e sema.Expr, ft *sema.FunctionType) (int, bool) {
 	if vr := functionVarRef(e); vr != nil && vr.Sym != nil {
-		return vr.Sym.GlobalID
+		if global, ok := g.globalMap[vr.Sym]; ok {
+			return global, true
+		}
+		if vr.Sym.Kind == sema.SymFunc && vr.Sym.Storage == sema.StorageExtern && ft != nil {
+			ret, err := g.lowerValueType(ft.Ret)
+			if err != nil {
+				return -1, false
+			}
+			params := make([]bytecode.ValueType, 0, len(ft.Params))
+			for _, p := range ft.Params {
+				pt, err := g.lowerValueType(p)
+				if err != nil {
+					return -1, false
+				}
+				params = append(params, pt)
+			}
+			return g.syntheticExtern(vr.Sym.Name, ret, params, ft.Variadic), true
+		}
 	}
-	return -1
+	return -1, false
 }
 
 func functionVarRef(e sema.Expr) *sema.VarRef {

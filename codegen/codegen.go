@@ -179,12 +179,12 @@ func externRefForSymbol(sym *sema.Symbol) bytecode.ExternRef {
 	}
 }
 
-func (g *generator) syntheticExtern(name string, ret bytecode.ValueType, params []bytecode.ValueType) int {
-	key := fmt.Sprintf("%s:%s/%v/%v", name, ret, params, false)
+func (g *generator) syntheticExtern(name string, ret bytecode.ValueType, params []bytecode.ValueType, variadic bool) int {
+	key := fmt.Sprintf("%s:%s/%v/%v", name, ret, params, variadic)
 	if id, ok := g.externMap[key]; ok {
 		return id
 	}
-	sig := g.internSig(ret, params, false)
+	sig := g.internSig(ret, params, variadic)
 	id := len(g.mod.Globals)
 	g.mod.Globals = append(g.mod.Globals, bytecode.Global{
 		ID:     id,
