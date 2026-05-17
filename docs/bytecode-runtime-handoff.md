@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `04a0380 fix(codegen): lower floating increment and decrement`
+- Latest implementation/coverage commit before this handoff document: `5e282a5 test(runtime): cover floating compound expression values`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,10 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `5e282a5 test(runtime): cover floating compound expression values`
+  - Extends runtime coverage to consume floating compound-assignment expression results.
+  - Covers both local-slot `float += double` and addressable `long double` struct-field compound assignment.
 
 - `04a0380 fix(codegen): lower floating increment and decrement`
   - Reuses the shared increment/decrement operation for local-slot scalar values.
@@ -397,7 +401,7 @@ Complex-to-scalar runtime coverage includes local initialization from imaginary 
 Complex constant-expression coverage includes automatic and static complex initializers with arithmetic over imaginary literals and static conditional initializers selecting `__builtin_complex`.
 VLA runtime coverage includes local VLA dynamic object allocation, VLA fields inside local structs and unions, VLA parameter dynamic strides, and nested-function VLA capture cases.
 Integer conversion runtime coverage includes Wconversion-derived signed-to-unsigned conversion, unsigned-char narrowing, conditional conversions, and function argument conversions.
-Scalar floating runtime coverage includes `long double` local arithmetic, `long double` by-value arguments and returns, mixed-width floating compound assignment such as `float += double`, and floating `++`/`--` for local slots and addressable fields.
+Scalar floating runtime coverage includes `long double` local arithmetic, `long double` by-value arguments and returns, mixed-width floating compound assignment such as `float += double`, floating compound-assignment expression results for local slots and addressable fields, and floating `++`/`--` for local slots and addressable fields.
 
 ### GNU Nested Functions
 
