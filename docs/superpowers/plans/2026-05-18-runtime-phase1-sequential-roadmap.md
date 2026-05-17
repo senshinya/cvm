@@ -164,7 +164,7 @@ go test ./preprocessor -run TestBuiltinCtypeHeaderDeclaresRuntimeSurface -count=
   - `feat(runtime): add ctype case conversion externs`
   - `docs: record ctype case conversion externs`
 
-## Plan 9: `string.h` Read-Only Helpers
+## Plan 9: `string.h` Read-Only Helpers - Completed
 
 Add builtin `<string.h>` declarations for already modeled read-only helpers: `strcmp`, `memcmp`, `strlen`, `strchr`, and `strstr`, plus GCC runtime coverage through the header.
 

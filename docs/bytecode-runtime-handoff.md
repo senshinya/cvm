@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `ab0cbe3 feat(runtime): add ctype case conversion externs`
+- Latest implementation/coverage commit before this handoff document: `6c98dab feat(runtime): add string read-only header surface`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `6c98dab feat(runtime): add string read-only header surface`
+  - Adds builtin `<string.h>` declarations for `strcmp`, `memcmp`, `strlen`, `strchr`, and `strstr`.
+  - Locks the existing plain read-only string extern aliases into registry smoke coverage.
+  - Adds GCC runtime execution coverage through the `<string.h>` header.
 
 - `ab0cbe3 feat(runtime): add ctype case conversion externs`
   - Extends builtin `<ctype.h>` declarations with `tolower` and `toupper`.
