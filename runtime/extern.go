@@ -114,6 +114,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("abs", signedAbsExtern("abs", bytecode.TypeI32))
 	r.Register("labs", signedAbsExtern("labs", bytecode.TypeI64))
 	r.Register("llabs", signedAbsExtern("llabs", bytecode.TypeI64))
+	r.Register("atoi", atoiExtern("atoi", bytecode.TypeI32))
+	r.Register("atol", atoiExtern("atol", bytecode.TypeI64))
+	r.Register("atoll", atoiExtern("atoll", bytecode.TypeI64))
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("strcmp expects 2 arguments")
@@ -477,6 +480,60 @@ func signedAbsExtern(name string, ret bytecode.ValueType) ExternFunc {
 			v = -v
 		}
 		return normalizeInt(IntValue(ret, v)), nil, nil
+	}
+}
+
+func atoiExtern(name string, ret bytecode.ValueType) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return normalizeInt(IntValue(ret, parseAtoiString(s))), nil, nil
+	}
+}
+
+func parseAtoiString(s string) int64 {
+	i := 0
+	for i < len(s) && isASCIIWhitespace(s[i]) {
+		i++
+	}
+	neg := false
+	if i < len(s) {
+		switch s[i] {
+		case '-':
+			neg = true
+			i++
+		case '+':
+			i++
+		}
+	}
+	var v int64
+	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+		v = v*10 + int64(s[i]-'0')
+		i++
+	}
+	if neg {
+		return -v
+	}
+	return v
+}
+
+func isASCIIWhitespace(ch byte) bool {
+	switch ch {
+	case ' ', '\f', '\n', '\r', '\t', '\v':
+		return true
+	default:
+		return false
 	}
 }
 

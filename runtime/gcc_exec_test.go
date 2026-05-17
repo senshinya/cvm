@@ -999,6 +999,29 @@ int main(void)
 	}
 }
 
+func TestStdlibAtoiExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  if (atoi(" \t-42tail") != -42)
+    return 1;
+  if (atol("\n12345x") != 12345L)
+    return 2;
+  if (atoll("  -9876543210") != -9876543210LL)
+    return 3;
+  if (atoi("nondigit") != 0)
+    return 4;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-atoi-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

@@ -117,6 +117,9 @@ func stdlibHeader() string {
 int abs(int);
 long labs(long);
 long long llabs(long long);
+int atoi(const char *);
+long atol(const char *);
+long long atoll(const char *);
 #endif
 `
 }
