@@ -56,6 +56,7 @@ int fputc_unlocked(int, FILE *);
 int puts(const char *);
 int putchar(int);
 int fflush(FILE *);
+int fclose(FILE *);
 int ferror(FILE *);
 void clearerr(FILE *);
 int feof(FILE *);

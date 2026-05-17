@@ -82,6 +82,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		r.Register(name, fputsExtern(name, r))
 	}
 	r.Register("fflush", fflushExtern("fflush", r))
+	r.Register("fclose", fcloseExtern("fclose", r))
 	r.Register("fwrite", fwriteExtern("fwrite", r))
 	r.Register("fread", freadExtern("fread", r))
 	for _, name := range []string{"ferror", "feof"} {
@@ -236,6 +237,21 @@ func fflushExtern(name string, r *ExternRegistry) ExternFunc {
 			if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 				return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 			}
+		}
+		return IntValue(bytecode.TypeI32, 0), nil, nil
+	}
+}
+
+func fcloseExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream pointer", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}

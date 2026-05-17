@@ -887,6 +887,21 @@ int main(void)
 	}
 }
 
+func TestStdioFcloseExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  return fclose(stdout) == 0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "stdio-fclose-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
