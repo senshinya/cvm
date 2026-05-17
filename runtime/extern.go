@@ -753,7 +753,9 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_memset", "memset"} {
 		r.Register(name, memorySetExtern(name))
 	}
-	r.Register("__builtin_bzero", memoryBzeroExtern("__builtin_bzero"))
+	for _, name := range []string{"__builtin_bzero", "bzero"} {
+		r.Register(name, memoryBzeroExtern(name))
+	}
 	for _, name := range []string{"__builtin___memcpy_chk", "__builtin___memmove_chk"} {
 		r.Register(name, memoryCheckedCopyExtern(name, false))
 	}

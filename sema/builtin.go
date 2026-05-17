@@ -43,7 +43,7 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(voidPtr, []Type{voidPtr, intT, sizeT}, false, true)
 	case "memset":
 		return s.Types.Function(voidPtr, []Type{voidPtr, intT, sizeT}, false, true)
-	case "__builtin_bzero":
+	case "__builtin_bzero", "bzero":
 		return s.Types.Function(voidT, []Type{voidPtr, sizeT}, false, true)
 	case "__builtin_strcpy", "__builtin_stpcpy", "__builtin_strcat":
 		return s.Types.Function(charPtr, []Type{charPtr, constCharPtr}, false, true)

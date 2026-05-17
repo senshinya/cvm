@@ -154,6 +154,11 @@ int memcmp(const void *, const void *, size_t);
 size_t strlen(const char *);
 char *strchr(const char *, int);
 char *strstr(const char *, const char *);
+void *memcpy(void *, const void *, size_t);
+void *memmove(void *, const void *, size_t);
+void *mempcpy(void *, const void *, size_t);
+void *memset(void *, int, size_t);
+void bzero(void *, size_t);
 #endif
 `
 }
