@@ -56,6 +56,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		}
 		return fg.emitLValueValue(x, x.T)
 	case *sema.ImplicitCast:
+		if isComplexType(x.From) && !isComplexType(x.To) {
+			return fg.emitComplexToScalarCast(x.X, x.From, x.To, x.Kind)
+		}
 		switch x.Kind {
 		case sema.LValueToRValue:
 			if isFunctionExpr(x.X) {
@@ -84,6 +87,20 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		}
 		fg.emitCast(from, to, x.Kind)
 	case *sema.ExplicitCast:
+		if isComplexType(x.X.GetType()) && !isComplexType(x.To) {
+			if b, ok := sema.Unqual(x.To).(*sema.BuiltinType); ok && b.Kind == sema.Void {
+				if err := fg.emitValue(x.X); err != nil {
+					return err
+				}
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
+				return nil
+			}
+			kind := sema.FloatingConversion
+			if to, err := fg.g.lowerValueType(x.To); err == nil && to == bytecode.TypeBool {
+				kind = sema.BoolConversion
+			}
+			return fg.emitComplexToScalarCast(x.X, x.X.GetType(), x.To, kind)
+		}
 		if err := fg.emitValue(x.X); err != nil {
 			return err
 		}
@@ -209,6 +226,37 @@ func (fg *funcGen) emitComplexUnaryMinus(x *sema.UnOp) error {
 	fg.storeComplexUnaryNegComponent(object, 0, srcSlot, 0, vt, fg.g.alignof(realType), isVolatile(x.T))
 	fg.storeComplexUnaryNegComponent(object, imagOffset, srcSlot, imagOffset, vt, fg.g.alignof(realType), isVolatile(x.T))
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+	return nil
+}
+
+func (fg *funcGen) emitComplexToScalarCast(src sema.Expr, fromType, toType sema.Type, kind sema.CastKind) error {
+	realType, err := complexRealType(fromType)
+	if err != nil {
+		return err
+	}
+	realVT, err := fg.g.lowerValueType(realType)
+	if err != nil {
+		return err
+	}
+	toVT, err := fg.g.lowerValueType(toType)
+	if err != nil {
+		return err
+	}
+	addrSlot := fg.allocSyntheticSlot(".complex.scalar.src", bytecode.TypeObjectAddr)
+	if err := fg.emitComplexSourceAddress(src); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot))
+	if toVT == bytecode.TypeBool {
+		fg.emitLoadComplexComponent(addrSlot, 0, realVT, realVT, fg.g.alignof(realType), isVolatile(fromType))
+		fg.emitCast(realVT, bytecode.TypeBool, sema.BoolConversion)
+		fg.emitLoadComplexComponent(addrSlot, fg.g.sizeof(realType), realVT, realVT, fg.g.alignof(realType), isVolatile(fromType))
+		fg.emitCast(realVT, bytecode.TypeBool, sema.BoolConversion)
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(bytecode.TypeBool, bytecode.BinOr))
+		return nil
+	}
+	fg.emitLoadComplexComponent(addrSlot, 0, realVT, realVT, fg.g.alignof(realType), isVolatile(fromType))
+	fg.emitCast(realVT, toVT, kind)
 	return nil
 }
 

@@ -374,6 +374,21 @@ int main(void)
 	}
 }
 
+func TestGCCImaginaryToRealLocalInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  double d = 3.0i;
+  return d == 0.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "imaginary-to-real-local-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)
