@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `732ea7e feat(runtime): support no-arg vformat externs`
+- Latest implementation/coverage commit before this handoff document: `d31031d test(runtime): cover no-arg vformat externs`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,10 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `d31031d test(runtime): cover no-arg vformat externs`
+  - Adds direct runtime extern coverage for `vprintf`/`vfprintf` literal output.
+  - Adds checked v-format extern coverage for stdout/FILE and buffer-writing variants.
 
 - `732ea7e feat(runtime): support no-arg vformat externs`
   - Registers `vprintf`/`vfprintf`/`vsprintf`/`vsnprintf` plain and builtin externs, plus checked builtin variants.
