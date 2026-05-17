@@ -820,6 +820,67 @@ int main(void)
 	}
 }
 
+func TestGCCComplexStructAssignmentExpressionMemberExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+struct pair make(void)
+{
+  struct pair p = { 9, __builtin_complex(5.0, 12.0) };
+  return p;
+}
+
+int main(void)
+{
+  struct pair p = { 1, __builtin_complex(3.0, 4.0) };
+  if ((p = make()).tag != 9)
+    return 1;
+  return __builtin_cabs((p = make()).value) == 13.0 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-assignment-expression-member-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexStructAssignmentExpressionArgumentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+struct pair make(void)
+{
+  struct pair p = { 9, __builtin_complex(5.0, 12.0) };
+  return p;
+}
+
+double norm_pair(struct pair p)
+{
+  return p.tag + __builtin_cabs(p.value);
+}
+
+int main(void)
+{
+  struct pair p = { 1, __builtin_complex(3.0, 4.0) };
+  if (norm_pair(p = make()) != 22.0)
+    return 1;
+  return p.tag == 9 && __builtin_cabs(p.value) == 13.0 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-assignment-expression-argument-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexArrayInitializerExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
