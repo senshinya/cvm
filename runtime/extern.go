@@ -176,6 +176,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealExterns(r, "__cvm_tgmath_sin", math.Sin)
 	registerTgmathRealExterns(r, "__cvm_tgmath_exp", math.Exp)
 	registerTgmathRealExterns(r, "__cvm_tgmath_sqrt", math.Sqrt)
+	registerTgmathRealExterns(r, "__cvm_tgmath_fabs", math.Abs)
 	registerTgmathRealExterns(r, "__cvm_tgmath_cos", math.Cos)
 	registerTgmathRealExterns(r, "__cvm_tgmath_tan", math.Tan)
 	registerTgmathRealExterns(r, "__cvm_tgmath_log", math.Log)

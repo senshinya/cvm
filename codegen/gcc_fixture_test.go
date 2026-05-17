@@ -204,6 +204,20 @@ float f(int *quo) {
 	}
 }
 
+func TestGCCTgmathFabsDispatchesRealAndComplex(t *testing.T) {
+	source := `#include <tgmath.h>
+float rf(float x) { return fabs(x); }
+double cf(void) { return fabs(__builtin_complex(3.0, 4.0)); }
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-fabs-dispatch.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_fabsf") {
+		t.Fatalf("fabs(float) did not reference float real extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+	if !moduleHasExtern(mod, "__builtin_cabs") {
+		t.Fatalf("fabs(complex double) did not reference complex abs extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string
