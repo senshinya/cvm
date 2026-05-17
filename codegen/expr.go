@@ -273,6 +273,9 @@ func (fg *funcGen) storeComplexUnaryNegComponent(dstObject int, dstOffset int64,
 }
 
 func (fg *funcGen) emitCompoundAssign(x *sema.CompoundAssign) error {
+	if member, ok := x.L.(*sema.MemberExpr); ok && member.Field != nil && member.Field.IsBitField {
+		return fg.emitBitFieldCompoundAssign(member, x)
+	}
 	vr, ok := x.L.(*sema.VarRef)
 	if !ok || fg.isCapturedVar(vr.Sym) {
 		return fg.emitAddressableCompoundAssign(x)
@@ -635,6 +638,9 @@ func (fg *funcGen) emitStmtExpr(x *sema.StmtExpr) error {
 }
 
 func (fg *funcGen) emitIncDec(x *sema.UnOp) error {
+	if member, ok := x.X.(*sema.MemberExpr); ok && member.Field != nil && member.Field.IsBitField {
+		return fg.emitBitFieldIncDec(member, x)
+	}
 	if vr, ok := x.X.(*sema.VarRef); ok {
 		if fg.isCapturedVar(vr.Sym) {
 			return fg.emitAddressableIncDec(x)
@@ -1180,6 +1186,83 @@ func (fg *funcGen) emitBitFieldAssign(lhs *sema.MemberExpr, rhs sema.Expr) error
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpSwap})
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpBitFieldStore, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile})
+	return nil
+}
+
+func (fg *funcGen) emitBitFieldCompoundAssign(lhs *sema.MemberExpr, x *sema.CompoundAssign) error {
+	addr, err := fg.bitFieldAddress(lhs)
+	if err != nil {
+		return err
+	}
+	rt, err := fg.g.lowerValueType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	computeType, ok := compoundArithmeticType(addr.valueType, rt)
+	if !ok {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("compound assignment lowering is not implemented for bit-field %s", addr.valueType)}
+	}
+	op, err := binaryOp(x.Op, computeType)
+	if err != nil {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
+	}
+	addrSlot := fg.allocSyntheticSlot(".bitfield.compound.addr", bytecode.TypeObjectAddr)
+	valueSlot := fg.allocSyntheticSlot(".bitfield.compound.value", addr.valueType)
+	if err := addr.emit(); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpBitFieldLoad, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+	)
+	fg.emitCast(addr.valueType, computeType, sema.IntegralConversion)
+	if err := fg.emitValue(x.R); err != nil {
+		return err
+	}
+	fg.emitCast(rt, computeType, sema.IntegralConversion)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
+	fg.emitCast(computeType, addr.valueType, sema.IntegralConversion)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.Instr{Op: bytecode.OpDup},
+		bytecode.StoreLocal(addr.valueType, valueSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Instr{Op: bytecode.OpBitFieldStore, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+		bytecode.LoadLocal(addr.valueType, valueSlot),
+	)
+	return nil
+}
+
+func (fg *funcGen) emitBitFieldIncDec(member *sema.MemberExpr, x *sema.UnOp) error {
+	addr, err := fg.bitFieldAddress(member)
+	if err != nil {
+		return err
+	}
+	addrSlot := fg.allocSyntheticSlot(".bitfield.incdec.addr", bytecode.TypeObjectAddr)
+	valueSlot := fg.allocSyntheticSlot(".bitfield.incdec.value", addr.valueType)
+	if err := addr.emit(); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpBitFieldLoad, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+		bytecode.StoreLocal(addr.valueType, valueSlot),
+		bytecode.LoadLocal(addr.valueType, valueSlot),
+	)
+	if err := fg.emitIncDecOperation(x, addr.valueType); err != nil {
+		return err
+	}
+	if x.Op == sema.UnIncPre || x.Op == sema.UnDecPre {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(addr.valueType, valueSlot))
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Instr{Op: bytecode.OpBitFieldStore, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+		bytecode.LoadLocal(addr.valueType, valueSlot),
+	)
 	return nil
 }
 

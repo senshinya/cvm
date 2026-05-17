@@ -599,6 +599,60 @@ int main(void)
 	}
 }
 
+func TestGCCBitFieldCompoundAndIncDecExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct bits {
+  unsigned int a : 3;
+};
+
+int main(void)
+{
+  struct bits s = { 1 };
+  if ((s.a += 3) != 4)
+    return 1;
+  if (s.a++ != 4)
+    return 2;
+  if (s.a != 5)
+    return 3;
+  if (--s.a != 4)
+    return 4;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "bit-field-compound-incdec-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCBoolBitFieldCompoundAndIncDecExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct bits {
+  _Bool b : 1;
+};
+
+int main(void)
+{
+  struct bits s = { 0 };
+  if ((s.b += 2) != 1)
+    return 1;
+  if (s.b-- != 1)
+    return 2;
+  if (s.b != 0)
+    return 3;
+  if (--s.b != 1)
+    return 4;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "bool-bit-field-compound-incdec-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
