@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `22c8c7a feat(runtime): execute tgmath exp log helpers`
+- Latest implementation/coverage commit before this handoff document: `b26bd6d feat(runtime): execute tgmath binary real helpers`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `b26bd6d feat(runtime): execute tgmath binary real helpers`
+  - Adds `<tgmath.h>` pseudo-function plumbing for real-only binary helpers `fdim`, `fmax`, `fmin`, `fmod`, and `remainder`.
+  - Extends binary tgmath arity handling for this helper family.
+  - Registers real runtime externs and adds runtime/extern-registry coverage for the helper calls.
 
 - `22c8c7a feat(runtime): execute tgmath exp log helpers`
   - Adds `<tgmath.h>` pseudo-function plumbing for real-only `exp2`, `expm1`, `log10`, `log1p`, and `log2`.
@@ -597,6 +602,11 @@ Current limits:
 - `__cvm_tgmath_round`
 - `__cvm_tgmath_exp2`
 - `__cvm_tgmath_expm1`
+- `__cvm_tgmath_fdim`
+- `__cvm_tgmath_fmax`
+- `__cvm_tgmath_fmin`
+- `__cvm_tgmath_fmod`
+- `__cvm_tgmath_remainder`
 - `__cvm_tgmath_log10`
 - `__cvm_tgmath_log1p`
 - `__cvm_tgmath_log2`
@@ -611,7 +621,7 @@ Current limits:
 
 Sema preserves argument types for these pseudo calls, and codegen dispatches to concrete synthetic externs:
 
-- real: `__cvm_tgmath_sinf`, `__cvm_tgmath_sinh`, `__cvm_tgmath_asinh`, `__cvm_tgmath_asin`, `__cvm_tgmath_acosh`, `__cvm_tgmath_acos`, `__cvm_tgmath_atan`, `__cvm_tgmath_atanh`, `__cvm_tgmath_atan2`, `__cvm_tgmath_hypot`, `__cvm_tgmath_cbrt`, `__cvm_tgmath_ceil`, `__cvm_tgmath_floor`, `__cvm_tgmath_trunc`, `__cvm_tgmath_round`, `__cvm_tgmath_exp2`, `__cvm_tgmath_expm1`, `__cvm_tgmath_log10`, `__cvm_tgmath_log1p`, `__cvm_tgmath_log2`, `__cvm_tgmath_cos`, `__cvm_tgmath_cosh`, `__cvm_tgmath_tan`, `__cvm_tgmath_tanh`, `__cvm_tgmath_exp`, `__cvm_tgmath_log`, `__cvm_tgmath_sqrtl`, `__cvm_tgmath_powl`, etc.
+- real: `__cvm_tgmath_sinf`, `__cvm_tgmath_sinh`, `__cvm_tgmath_asinh`, `__cvm_tgmath_asin`, `__cvm_tgmath_acosh`, `__cvm_tgmath_acos`, `__cvm_tgmath_atan`, `__cvm_tgmath_atanh`, `__cvm_tgmath_atan2`, `__cvm_tgmath_hypot`, `__cvm_tgmath_cbrt`, `__cvm_tgmath_ceil`, `__cvm_tgmath_floor`, `__cvm_tgmath_trunc`, `__cvm_tgmath_round`, `__cvm_tgmath_exp2`, `__cvm_tgmath_expm1`, `__cvm_tgmath_fdim`, `__cvm_tgmath_fmax`, `__cvm_tgmath_fmin`, `__cvm_tgmath_fmod`, `__cvm_tgmath_remainder`, `__cvm_tgmath_log10`, `__cvm_tgmath_log1p`, `__cvm_tgmath_log2`, `__cvm_tgmath_cos`, `__cvm_tgmath_cosh`, `__cvm_tgmath_tan`, `__cvm_tgmath_tanh`, `__cvm_tgmath_exp`, `__cvm_tgmath_log`, `__cvm_tgmath_sqrtl`, `__cvm_tgmath_powl`, etc.
 - complex: `__cvm_tgmath_csinh`, `__cvm_tgmath_casinh`, `__cvm_tgmath_casin`, `__cvm_tgmath_cacosh`, `__cvm_tgmath_cacos`, `__cvm_tgmath_catan`, `__cvm_tgmath_catanh`, `__cvm_tgmath_ccos`, `__cvm_tgmath_ccosh`, `__cvm_tgmath_ctan`, `__cvm_tgmath_ctanh`, `__cvm_tgmath_cexp`, `__cvm_tgmath_clog`, `__cvm_tgmath_csqrt`, `__cvm_tgmath_cpowf`, etc.
 
 Runtime support exists for real math externs and for the currently covered complex `csin*`/`csinh*`/`casinh*`/`casin*`/`cacosh*`/`cacos*`/`catan*`/`catanh*`/`ccos*`/`ccosh*`/`ctan*`/`ctanh*`/`cexp*`/`clog*`/`csqrt*`/`cpow*` externs. Broader complex tgmath coverage remains a later phase.
