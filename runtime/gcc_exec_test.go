@@ -709,6 +709,28 @@ int main(void)
 	}
 }
 
+func TestGCCPointerFieldInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct box {
+  int *p;
+};
+
+int main(void)
+{
+  int values[2] = { 10, 20 };
+  struct box b = { values };
+  if (b.p[1] != 20)
+    return 1;
+  return *(b.p += 1) == 20 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "pointer-field-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
