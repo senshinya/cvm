@@ -87,6 +87,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		}
 		fg.emitCast(from, to, x.Kind)
 	case *sema.ExplicitCast:
+		if isComplexType(x.To) {
+			return fg.emitComplexRValueAddress(x)
+		}
 		if isComplexType(x.X.GetType()) && !isComplexType(x.To) {
 			if b, ok := sema.Unqual(x.To).(*sema.BuiltinType); ok && b.Kind == sema.Void {
 				if err := fg.emitValue(x.X); err != nil {

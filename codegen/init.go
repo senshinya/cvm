@@ -934,6 +934,9 @@ func complexRealInitializer(init sema.Expr) sema.Expr {
 	if ic, ok := init.(*sema.ImplicitCast); ok && isComplexType(ic.To) && !isComplexType(ic.From) {
 		return ic.X
 	}
+	if ec, ok := init.(*sema.ExplicitCast); ok && isComplexType(ec.To) && !isComplexType(ec.X.GetType()) {
+		return ec.X
+	}
 	if !isComplexType(init.GetType()) {
 		return init
 	}
@@ -1000,6 +1003,11 @@ func (fg *funcGen) emitComplexSourceAddress(src sema.Expr) error {
 		}
 		return fg.emitAddress(src)
 	case *sema.ImplicitCast:
+		if isComplexType(x.To) {
+			return fg.emitComplexRValueAddress(src)
+		}
+		return fg.emitAddress(src)
+	case *sema.ExplicitCast:
 		if isComplexType(x.To) {
 			return fg.emitComplexRValueAddress(src)
 		}

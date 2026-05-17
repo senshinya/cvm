@@ -424,6 +424,21 @@ int main(void)
 	}
 }
 
+func TestGCCScalarExplicitCastToComplexExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  __complex__ double z = (__complex__ double)3.0;
+  return __builtin_cabs(z - __builtin_complex(3.0, 0.0)) == 0.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "scalar-explicit-cast-to-complex-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)
