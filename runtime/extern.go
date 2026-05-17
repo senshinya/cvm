@@ -1226,8 +1226,17 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			width = width*10 + int(format[i]-'0')
 			i++
 		}
+		precision := -1
 		if i < len(format) && format[i] == '.' {
-			return "", fmt.Errorf("%s unsupported precision in format", name)
+			i++
+			if i < len(format) && format[i] == '*' {
+				return "", fmt.Errorf("%s unsupported dynamic precision in format", name)
+			}
+			precision = 0
+			for i < len(format) && format[i] >= '0' && format[i] <= '9' {
+				precision = precision*10 + int(format[i]-'0')
+				i++
+			}
 		}
 		for i < len(format) {
 			switch format[i] {
@@ -1253,6 +1262,7 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 		arg := args[argIndex]
 		argIndex++
 		piece := ""
+		integerFormat := false
 		switch format[i] {
 		case 's':
 			if !isPointerType(arg.Type) {
@@ -1263,47 +1273,83 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				return "", err
 			}
 			piece = s
+			if precision >= 0 && len(piece) > precision {
+				piece = piece[:precision]
+			}
 		case 'd', 'i':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%%c expects integer argument", name, format[i])
 			}
 			piece = strconv.FormatInt(signedInt(arg), 10)
+			integerFormat = true
 		case 'u':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%u expects integer argument", name)
 			}
 			piece = strconv.FormatUint(unsignedInt(arg), 10)
+			integerFormat = true
 		case 'x':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%x expects integer argument", name)
 			}
 			piece = strconv.FormatUint(unsignedInt(arg), 16)
+			integerFormat = true
 		case 'X':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%X expects integer argument", name)
 			}
 			piece = strings.ToUpper(strconv.FormatUint(unsignedInt(arg), 16))
+			integerFormat = true
 		case 'o':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%o expects integer argument", name)
 			}
 			piece = strconv.FormatUint(unsignedInt(arg), 8)
+			integerFormat = true
 		case 'p':
 			if !isPointerType(arg.Type) {
 				return "", fmt.Errorf("%s %%p expects pointer argument", name)
+			}
+			if precision >= 0 {
+				return "", fmt.Errorf("%s %%p does not support precision", name)
 			}
 			piece = "0x" + strconv.FormatUint(arg.Int, 16)
 		case 'c':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%c expects integer argument", name)
 			}
+			if precision >= 0 {
+				return "", fmt.Errorf("%s %%c does not support precision", name)
+			}
 			piece = string([]byte{byte(unsignedInt(arg))})
 		default:
 			return "", fmt.Errorf("%s unsupported format %%%c", name, format[i])
 		}
+		if integerFormat && precision >= 0 {
+			piece = applyIntegerPrecision(piece, precision)
+			zeroPad = false
+		}
 		writeFormattedPiece(&out, piece, width, leftAlign, zeroPad)
 	}
 	return out.String(), nil
+}
+
+func applyIntegerPrecision(piece string, precision int) string {
+	negative := strings.HasPrefix(piece, "-")
+	digits := piece
+	if negative {
+		digits = piece[1:]
+	}
+	if precision == 0 && digits == "0" {
+		digits = ""
+	}
+	if len(digits) < precision {
+		digits = strings.Repeat("0", precision-len(digits)) + digits
+	}
+	if negative {
+		return "-" + digits
+	}
+	return digits
 }
 
 func writeFormattedPiece(out *strings.Builder, piece string, width int, leftAlign, zeroPad bool) {
