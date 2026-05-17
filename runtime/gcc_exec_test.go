@@ -401,6 +401,23 @@ int main(void)
 	}
 }
 
+func TestTgmathAsinhExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (asinh(0.0f) != 0.0f)
+    return 1;
+  return asinh(0.0L) == 0.0L ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-asinh-real.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathComplexSinExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
@@ -413,6 +430,23 @@ int main(void)
 }
 `
 	st := runGCCExecFixture(t, "tgmath-complex-sin.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestTgmathComplexAsinhExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  complex double z = __builtin_complex(0.0, 0.0);
+  complex double r = asinh(z);
+  return __builtin_cabs(r) == 0.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-complex-asinh.c", source)
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}

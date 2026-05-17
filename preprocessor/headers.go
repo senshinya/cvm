@@ -287,6 +287,7 @@ double __cvm_tgmath_tanh();
 double __cvm_tgmath_asin();
 double __cvm_tgmath_acos();
 double __cvm_tgmath_atan();
+double __cvm_tgmath_asinh();
 #endif
 `
 }
