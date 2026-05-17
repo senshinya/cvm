@@ -238,6 +238,16 @@ complex float f(complex float z) { return conj(z); }
 	}
 }
 
+func TestGCCTgmathCargUsesComplexRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(complex float z) { return carg(z); }
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-carg-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_cargf") {
+		t.Fatalf("carg(complex float) did not reference complex-float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string

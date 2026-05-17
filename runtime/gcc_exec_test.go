@@ -741,6 +741,22 @@ int main(void)
 	}
 }
 
+func TestTgmathCargExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  complex float z = __builtin_complex(1.0f, 0.0f);
+  return carg(z) == 0.0f ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-carg.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathBinaryRealHelpersExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

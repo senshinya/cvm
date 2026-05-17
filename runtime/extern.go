@@ -230,6 +230,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealIntBinaryExterns(r, "__cvm_tgmath_ldexp", math.Ldexp)
 	registerTgmathFrexpExterns(r, "__cvm_tgmath_frexp")
 	registerTgmathRemquoExterns(r, "__cvm_tgmath_remquo")
+	registerTgmathComplexRealExterns(r, "__cvm_tgmath_carg", func(z complex128) float64 { return math.Atan2(imag(z), real(z)) })
 	registerTgmathComplexRealExterns(r, "__cvm_tgmath_cimag", func(z complex128) float64 { return imag(z) })
 	registerTgmathComplexRealExterns(r, "__cvm_tgmath_creal", func(z complex128) float64 { return real(z) })
 	registerTgmathRealTernaryExterns(r, "__cvm_tgmath_fma", math.FMA)
