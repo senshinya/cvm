@@ -529,6 +529,38 @@ int main(void)
 	}
 }
 
+func TestGCCBuiltinCabslExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  __complex__ long double z = __builtin_complex(3.0L, 4.0L);
+  return __builtin_cabsl(z) == 5.0L ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "builtin-cabsl-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestTgmathComplexLongDoubleExpExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  complex long double z = __builtin_complex(0.0L, 0.0L);
+  complex long double r = exp(z);
+  return __builtin_cabsl(r) == 1.0L ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-complex-long-double-exp.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)
