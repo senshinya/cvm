@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `5296871 feat(runtime): execute tgmath hypot`
+- Latest implementation/coverage commit before this handoff document: `4149979 feat(runtime): execute tgmath cbrt`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `4149979 feat(runtime): execute tgmath cbrt`
+  - Adds `<tgmath.h>` pseudo-function plumbing for the real-only `cbrt` macro.
+  - Registers real runtime externs for `cbrt` across float/double/long-double suffix variants.
+  - Adds runtime coverage for `cbrt(8)` and direct extern-registry coverage.
 
 - `5296871 feat(runtime): execute tgmath hypot`
   - Adds `<tgmath.h>` pseudo-function plumbing for the binary `hypot` macro.
@@ -575,6 +580,7 @@ Current limits:
 - `__cvm_tgmath_atanh`
 - `__cvm_tgmath_atan2`
 - `__cvm_tgmath_hypot`
+- `__cvm_tgmath_cbrt`
 - `__cvm_tgmath_cos`
 - `__cvm_tgmath_cosh`
 - `__cvm_tgmath_tan`
@@ -586,7 +592,7 @@ Current limits:
 
 Sema preserves argument types for these pseudo calls, and codegen dispatches to concrete synthetic externs:
 
-- real: `__cvm_tgmath_sinf`, `__cvm_tgmath_sinh`, `__cvm_tgmath_asinh`, `__cvm_tgmath_asin`, `__cvm_tgmath_acosh`, `__cvm_tgmath_acos`, `__cvm_tgmath_atan`, `__cvm_tgmath_atanh`, `__cvm_tgmath_atan2`, `__cvm_tgmath_hypot`, `__cvm_tgmath_cos`, `__cvm_tgmath_cosh`, `__cvm_tgmath_tan`, `__cvm_tgmath_tanh`, `__cvm_tgmath_exp`, `__cvm_tgmath_log`, `__cvm_tgmath_sqrtl`, `__cvm_tgmath_powl`, etc.
+- real: `__cvm_tgmath_sinf`, `__cvm_tgmath_sinh`, `__cvm_tgmath_asinh`, `__cvm_tgmath_asin`, `__cvm_tgmath_acosh`, `__cvm_tgmath_acos`, `__cvm_tgmath_atan`, `__cvm_tgmath_atanh`, `__cvm_tgmath_atan2`, `__cvm_tgmath_hypot`, `__cvm_tgmath_cbrt`, `__cvm_tgmath_cos`, `__cvm_tgmath_cosh`, `__cvm_tgmath_tan`, `__cvm_tgmath_tanh`, `__cvm_tgmath_exp`, `__cvm_tgmath_log`, `__cvm_tgmath_sqrtl`, `__cvm_tgmath_powl`, etc.
 - complex: `__cvm_tgmath_csinh`, `__cvm_tgmath_casinh`, `__cvm_tgmath_casin`, `__cvm_tgmath_cacosh`, `__cvm_tgmath_cacos`, `__cvm_tgmath_catan`, `__cvm_tgmath_catanh`, `__cvm_tgmath_ccos`, `__cvm_tgmath_ccosh`, `__cvm_tgmath_ctan`, `__cvm_tgmath_ctanh`, `__cvm_tgmath_cexp`, `__cvm_tgmath_clog`, `__cvm_tgmath_csqrt`, `__cvm_tgmath_cpowf`, etc.
 
 Runtime support exists for real math externs and for the currently covered complex `csin*`/`csinh*`/`casinh*`/`casin*`/`cacosh*`/`cacos*`/`catan*`/`catanh*`/`ccos*`/`ccosh*`/`ctan*`/`ctanh*`/`cexp*`/`clog*`/`csqrt*`/`cpow*` externs. Broader complex tgmath coverage remains a later phase.
