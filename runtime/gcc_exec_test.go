@@ -855,6 +855,21 @@ int main(void)
 	}
 }
 
+func TestStdioFputcExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  return fputc('B', stdout) == 'B' ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "stdio-fputc-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

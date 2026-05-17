@@ -51,6 +51,8 @@ extern FILE *stdout;
 extern FILE *stderr;
 int fputs(const char * restrict, FILE * restrict);
 int fputs_unlocked(const char * restrict, FILE * restrict);
+int fputc(int, FILE *);
+int fputc_unlocked(int, FILE *);
 int puts(const char *);
 int putchar(int);
 int printf(const char *, ...);

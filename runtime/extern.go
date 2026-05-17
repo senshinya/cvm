@@ -75,6 +75,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		return IntValue(bytecode.TypeI32, int64(len(s)+1)), nil, nil
 	})
 	r.Register("putchar", putcharExtern("putchar", r))
+	for _, name := range []string{"fputc", "fputc_unlocked"} {
+		r.Register(name, fputcExtern(name, r))
+	}
 	for _, name := range []string{"fputs", "fputs_unlocked"} {
 		r.Register(name, fputsExtern(name, r))
 	}
@@ -165,6 +168,26 @@ func putcharExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		ch := byte(args[0].Int)
 		if _, err := r.externStdout(ec).Write([]byte{ch}); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
+	}
+}
+
+func fputcExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects character and stream arguments", name)
+		}
+		w, ok := r.lookupHostWriter(args[1].Int)
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
+		}
+		ch := byte(args[0].Int)
+		if _, err := w.Write([]byte{ch}); err != nil {
 			return Value{}, nil, err
 		}
 		return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
