@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `97b2f37 test(runtime): cover scalar complex conversions`
+- Latest implementation/coverage commit before this handoff document: `e030206 fix(sema): evaluate complex constant expressions`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `e030206 fix(sema): evaluate complex constant expressions`
+  - Extends constant evaluation to carry complex real and imaginary components.
+  - Writes static complex constant-expression initializers into bytecode static data.
+  - Adds runtime coverage for automatic and static `3.0 + 4.0 * 1.0iF` initializers.
 
 - `97b2f37 test(runtime): cover scalar complex conversions`
   - Extends scalar RHS complex compound runtime coverage across `+=`, `-=`, `*=`, and `/=`.
@@ -264,6 +269,7 @@ Runtime execution of complex arithmetic is still incomplete. Current runtime sup
 Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `+`, `-`, `*`, `/`, `==`, `!=`, `*=`, `+=`, `-=`, `/=`, scalar RHS complex compound assignment, object-return copy-out, double-to-float complex copy, complex float return promoted to complex double, `__builtin_cabs`, `__builtin_cabsf`, complex tgmath `sin`, complex tgmath `exp`, and complex tgmath `pow`.
 GCC-derived complex runtime coverage also includes imaginary floating constants such as `-1.0i` and integer imaginary constants such as `1i`.
 Complex-to-scalar runtime coverage includes local initialization from imaginary literals, where the real component is selected.
+Complex constant-expression coverage includes automatic and static complex initializers with arithmetic over imaginary literals.
 
 ### GNU Nested Functions
 
