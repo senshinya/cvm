@@ -198,6 +198,13 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealExterns(r, "__cvm_tgmath_log10", math.Log10)
 	registerTgmathRealExterns(r, "__cvm_tgmath_log1p", math.Log1p)
 	registerTgmathRealExterns(r, "__cvm_tgmath_log2", math.Log2)
+	registerTgmathRealExterns(r, "__cvm_tgmath_erf", math.Erf)
+	registerTgmathRealExterns(r, "__cvm_tgmath_erfc", math.Erfc)
+	registerTgmathRealExterns(r, "__cvm_tgmath_tgamma", math.Gamma)
+	registerTgmathRealExterns(r, "__cvm_tgmath_lgamma", func(v float64) float64 {
+		r, _ := math.Lgamma(v)
+		return r
+	})
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_pow", math.Pow)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_atan2", math.Atan2)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_hypot", math.Hypot)

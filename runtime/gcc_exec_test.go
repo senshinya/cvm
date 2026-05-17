@@ -547,6 +547,27 @@ int main(void)
 	}
 }
 
+func TestTgmathSpecialUnaryHelpersExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (erf(0.0f) != 0.0f)
+    return 1;
+  if (erfc(0.0L) != 1.0L)
+    return 2;
+  if (tgamma(1.0f) != 1.0f)
+    return 3;
+  return lgamma(1.0L) == 0.0L ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-special-unary-helpers.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathBinaryRealHelpersExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
