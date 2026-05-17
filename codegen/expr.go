@@ -1086,7 +1086,7 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 		if err := fg.emitAddress(lhs); err != nil {
 			return err
 		}
-		if err := fg.emitAddress(rhs); err != nil {
+		if err := fg.emitObjectSourceAddress(rhs); err != nil {
 			return err
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(lhs.GetType()), Align: fg.g.alignof(lhs.GetType()), Volatile: isVolatile(lhs.GetType())})
