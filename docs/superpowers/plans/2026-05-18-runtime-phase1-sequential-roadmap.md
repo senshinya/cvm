@@ -148,7 +148,7 @@ go test ./preprocessor -run TestBuiltinCtypeHeaderDeclaresRuntimeSurface -count=
   - `feat(runtime): add ctype classification externs`
   - `docs: record ctype classification externs`
 
-## Plan 8: `ctype.h` Case Conversion Helpers
+## Plan 8: `ctype.h` Case Conversion Helpers - Completed
 
 Add `tolower` and `toupper`.
 
