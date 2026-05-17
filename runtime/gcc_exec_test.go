@@ -569,6 +569,47 @@ int main(void)
 	}
 }
 
+func TestGCCComplexStructDesignatedInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+int main(void)
+{
+  struct pair p = { .value = __builtin_complex(5.0, 12.0), .tag = 7 };
+  return p.tag == 7 && __builtin_cabs(p.value) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-designated-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStaticComplexStructDesignatedInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+const struct pair p = { .value = __builtin_complex(5.0, 12.0), .tag = 7 };
+
+int main(void)
+{
+  return p.tag == 7 && __builtin_cabs(p.value) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "static-complex-struct-designated-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexExplicitCastNarrowsThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
