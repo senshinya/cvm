@@ -1070,6 +1070,32 @@ int main(void)
 	}
 }
 
+func TestStringHeaderReadOnlyHelpersExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  const char *text = "abcdef";
+  if (strlen(text) != 6)
+    return 1;
+  if (strchr(text, 'd') != text + 3)
+    return 2;
+  if (strchr(text, 'z') != 0)
+    return 3;
+  if (strstr(text, "cd") != text + 2)
+    return 4;
+  if (strcmp(text, "abcdef") != 0)
+    return 5;
+  return memcmp(text, "abcxef", 4) < 0 ? 0 : 6;
+}
+`
+	st := runGCCExecFixture(t, "string-read-only-header-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
