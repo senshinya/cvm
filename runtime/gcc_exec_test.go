@@ -1114,6 +1114,30 @@ int main(void)
 	}
 }
 
+func TestStdioUnlockedStatusAliasesExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (fgetc(stdin) != EOF)
+    return 1;
+  if (feof_unlocked(stdin) == 0)
+    return 2;
+  if (ferror_unlocked(stdin) != 0)
+    return 3;
+  clearerr_unlocked(stdin);
+  if (feof_unlocked(stdin) != 0)
+    return 4;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-unlocked-status-aliases-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioInputUnlockedAliasesExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

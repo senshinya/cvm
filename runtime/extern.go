@@ -106,10 +106,12 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	for _, name := range []string{"fread", "fread_unlocked"} {
 		r.Register(name, freadExtern(name, r))
 	}
-	for _, name := range []string{"ferror", "feof"} {
+	for _, name := range []string{"ferror", "ferror_unlocked", "feof", "feof_unlocked"} {
 		r.Register(name, streamStatusExtern(name, r))
 	}
-	r.Register("clearerr", clearerrExtern("clearerr", r))
+	for _, name := range []string{"clearerr", "clearerr_unlocked"} {
+		r.Register(name, clearerrExtern(name, r))
+	}
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("strcmp expects 2 arguments")
@@ -478,7 +480,7 @@ func streamStatusExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
-		if name == "feof" && r.hostEOF[args[0].Int] {
+		if (name == "feof" || name == "feof_unlocked") && r.hostEOF[args[0].Int] {
 			return IntValue(bytecode.TypeI32, 1), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
