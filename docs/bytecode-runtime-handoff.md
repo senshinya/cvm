@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `f638c82 fix(runtime): copy object returns before frame exit`
+- Latest implementation/coverage commit before this handoff document: `be841cd test(runtime): cover complex tgmath pow return promotion`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,10 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `be841cd test(runtime): cover complex tgmath pow return promotion`
+  - Extends complex tgmath `pow` runtime coverage to the original GCC-style shape where a helper returns `complex double` from `pow(complex float, float)`.
+  - Verifies the caller consumes the promoted complex return object after the callee frame exits.
 
 - `f638c82 fix(runtime): copy object returns before frame exit`
   - Lowers object-address returns through `OpReturnObject`.
@@ -246,7 +250,7 @@ Sema preserves argument types for these pseudo calls, and codegen dispatches to 
 - real: `__cvm_tgmath_sinf`, `__cvm_tgmath_exp`, `__cvm_tgmath_powl`, etc.
 - complex: `__cvm_tgmath_cexp`, `__cvm_tgmath_cpowf`, etc.
 
-Runtime support exists for real math externs; complex extern runtime behavior remains a later phase.
+Runtime support exists for real math externs and for the currently covered complex `cexp*`/`cpow*` externs. Broader complex tgmath coverage remains a later phase.
 
 ## Known Limits
 
