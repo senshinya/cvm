@@ -116,7 +116,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib abs externs`
   - `docs: record stdlib abs externs`
 
-## Plan 6: `stdlib.h` Integer String Parsers
+## Plan 6: `stdlib.h` Integer String Parsers - Completed
 
 Add `atoi`, `atol`, and `atoll` over simple C decimal parsing: skip ASCII whitespace, accept optional sign, consume leading digits, stop at first non-digit.
 
