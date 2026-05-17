@@ -393,6 +393,61 @@ int main(void)
 	}
 }
 
+func TestGCCIntegerConversionWarningsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <limits.h>
+
+int fuc(unsigned char uc)
+{
+  return uc;
+}
+
+unsigned fui(unsigned int ui)
+{
+  return ui + -1;
+}
+
+int main(void)
+{
+  int x = 0;
+  unsigned int ui = 3;
+  unsigned char uc = 3;
+
+  uc = -1;
+  if (uc != UCHAR_MAX)
+    return 1;
+
+  ui = -1;
+  if (ui != UINT_MAX)
+    return 2;
+
+  uc = x ? 1U : -1;
+  if (uc != UCHAR_MAX)
+    return 3;
+
+  ui = x ? 1U : -1;
+  if (ui != UINT_MAX)
+    return 4;
+
+  if (fuc(-1) != UCHAR_MAX)
+    return 5;
+
+  if (fui(3) != 2U)
+    return 6;
+
+  ui = 1U * -1;
+  if (ui != UINT_MAX)
+    return 7;
+
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "Wconversion-integer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
