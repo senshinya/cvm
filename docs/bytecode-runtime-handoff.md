@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `ea84e79 fix(bytecode): reject va_start outside variadic functions`
+- Latest implementation/coverage commit before this handoff document: `1b95703 feat(runtime): execute va_start externs`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `1b95703 feat(runtime): execute va_start externs`
+  - Registers no-op runtime externs for `__builtin_va_start` and `__builtin_va_end`.
+  - Adds runtime GCC exec coverage for `<stdarg.h>` `va_start`/`va_end` expansion.
+  - This does not change the current header-level `va_arg(ap, type)` placeholder.
 
 - `ea84e79 fix(bytecode): reject va_start outside variadic functions`
   - Threads the current function's variadic flag into bytecode stack validation.
@@ -780,11 +785,11 @@ Complex constant-expression coverage includes automatic and static complex initi
 VLA runtime coverage includes local VLA dynamic object allocation, VLA fields inside local structs and unions, VLA parameter dynamic strides, and nested-function VLA capture cases.
 Integer conversion runtime coverage includes Wconversion-derived signed-to-unsigned conversion, unsigned-char narrowing, conditional conversions, function argument conversions, and Wsign-derived signed/unsigned boundary conversions.
 Scalar floating runtime coverage includes `long double` local arithmetic, `long double` by-value arguments and returns, mixed-width floating compound assignment such as `float += double`, floating assignment and compound-assignment expression results for local slots and addressable fields, floating logical expressions through bool conversion, and floating `++`/`--` for local slots and addressable fields.
-Direct builtin runtime coverage includes `__builtin_pow`, `__builtin_huge_val*`, `__builtin_nan`, `nan`, `__builtin_abort`, allocation helpers `__builtin_malloc`, `__builtin_calloc`, and `__builtin_strdup`, object-size helpers `__builtin_object_size` and `__builtin_dynamic_object_size`, memory operations `__builtin_memcpy`, `__builtin_memmove`, `__builtin_mempcpy`, `__builtin_memset`, and `__builtin_bzero`, checked memory operations `__builtin___memcpy_chk`, `__builtin___memmove_chk`, `__builtin___mempcpy_chk`, and `__builtin___memset_chk`, read-only string helpers `__builtin_strlen`, `__builtin_strchr`, and `__builtin_strstr`, string-writing helpers `__builtin_strcpy`, `__builtin_stpcpy`, `__builtin_strcat`, `__builtin_strncpy`, `__builtin_stpncpy`, and `__builtin_strncat`, checked string-writing helpers `__builtin___strcpy_chk`, `__builtin___stpcpy_chk`, `__builtin___strcat_chk`, `__builtin___strncpy_chk`, `__builtin___stpncpy_chk`, and `__builtin___strncat_chk`, buffer formatting helpers `__builtin_sprintf` and `__builtin_snprintf`, checked buffer formatting helpers `__builtin___sprintf_chk` and `__builtin___snprintf_chk`, stdout/FILE formatting helpers `__builtin_printf`, `__builtin_printf_unlocked`, `__builtin_fprintf`, and `__builtin_fprintf_unlocked`, checked stdout/FILE formatting helpers `__builtin___printf_chk` and `__builtin___fprintf_chk`, and shared formatter coverage for integer/pointer/floating formats such as `%ld`, `%llu`, `%zu`, `%x`, `%X`, `%o`, `%p`, `%f`, `%e`, `%g`, `%a`, and sized `%n`, plus literal/dynamic width, literal/dynamic precision, `-`, `0`, `+`, space, and `#` flags.
+Direct builtin runtime coverage includes `__builtin_pow`, `__builtin_huge_val*`, `__builtin_nan`, `nan`, `__builtin_abort`, `__builtin_va_start`, `__builtin_va_end`, allocation helpers `__builtin_malloc`, `__builtin_calloc`, and `__builtin_strdup`, object-size helpers `__builtin_object_size` and `__builtin_dynamic_object_size`, memory operations `__builtin_memcpy`, `__builtin_memmove`, `__builtin_mempcpy`, `__builtin_memset`, and `__builtin_bzero`, checked memory operations `__builtin___memcpy_chk`, `__builtin___memmove_chk`, `__builtin___mempcpy_chk`, and `__builtin___memset_chk`, read-only string helpers `__builtin_strlen`, `__builtin_strchr`, and `__builtin_strstr`, string-writing helpers `__builtin_strcpy`, `__builtin_stpcpy`, `__builtin_strcat`, `__builtin_strncpy`, `__builtin_stpncpy`, and `__builtin_strncat`, checked string-writing helpers `__builtin___strcpy_chk`, `__builtin___stpcpy_chk`, `__builtin___strcat_chk`, `__builtin___strncpy_chk`, `__builtin___stpncpy_chk`, and `__builtin___strncat_chk`, buffer formatting helpers `__builtin_sprintf` and `__builtin_snprintf`, checked buffer formatting helpers `__builtin___sprintf_chk` and `__builtin___snprintf_chk`, stdout/FILE formatting helpers `__builtin_printf`, `__builtin_printf_unlocked`, `__builtin_fprintf`, and `__builtin_fprintf_unlocked`, checked stdout/FILE formatting helpers `__builtin___printf_chk` and `__builtin___fprintf_chk`, and shared formatter coverage for integer/pointer/floating formats such as `%ld`, `%llu`, `%zu`, `%x`, `%X`, `%o`, `%p`, `%f`, `%e`, `%g`, `%a`, and sized `%n`, plus literal/dynamic width, literal/dynamic precision, `-`, `0`, `+`, space, and `#` flags.
 Bit-field runtime coverage includes simple assignment, compound assignment, and `++`/`--` for integer and `_Bool` bit-fields, including expression values after bit-field truncation/wrapping.
 Pointer runtime coverage includes local and addressable pointer compound assignment, initialized pointer fields updated with `+=` and `-=`, pointer array element compound assignment, pointer `++`/`--` through struct fields and array elements, and static pointer field/array initializers with relocations.
 Function pointer runtime coverage includes indirect calls through local arrays, struct fields, static struct-field initializers, function pointer parameters, returned function pointers, struct returns and struct by-value arguments through function pointers, function designator initialization/assignment/comma expressions, and return conversion from function designators to function pointers.
-Variadic runtime coverage includes direct variadic calls and indirect calls through variadic function pointers with extra arguments, plus first-stage `OpVaStart`/`OpVaArg`/`OpVaEnd` execution for local variadic functions reading extra arguments from a runtime frame cursor.
+Variadic runtime coverage includes direct variadic calls and indirect calls through variadic function pointers with extra arguments, `<stdarg.h>` `va_start`/`va_end` expansion through no-op builtin externs, plus first-stage `OpVaStart`/`OpVaArg`/`OpVaEnd` execution for local variadic functions reading extra arguments from a runtime frame cursor.
 
 ### GNU Nested Functions
 
