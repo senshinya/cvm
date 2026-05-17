@@ -279,6 +279,149 @@ func TestCheckedPrintfExternsWriteFormattedOutput(t *testing.T) {
 	}
 }
 
+func TestVFormatExternsWriteLiteralOutput(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	reg := DefaultExternRegistry(&out, &errOut)
+	mem := NewMemory(bytecode.DefaultTarget())
+
+	fmtAddr := mustAllocBytes(t, mem, "fmt:vprintf", []byte("v%%\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_vprintf")
+	if !ok {
+		t.Fatal("missing __builtin_vprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem, Stdout: &out, Stderr: &errOut}, []Value{
+		ObjectAddrValue(fmtAddr),
+		PtrValue(0),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_vprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 2 || out.String() != "v%" {
+		t.Fatalf("__builtin_vprintf ret=%#v output=%q, want i32 2 and v%%", ret, out.String())
+	}
+
+	stderrAddr, ok := reg.LookupVariable("stderr", mem)
+	if !ok {
+		t.Fatal("missing stderr extern variable")
+	}
+	fmtErrAddr := mustAllocBytes(t, mem, "fmt:vfprintf", []byte("err\x00"), true, blockString)
+	fn, ok = reg.Lookup("__builtin_vfprintf")
+	if !ok {
+		t.Fatal("missing __builtin_vfprintf extern")
+	}
+	ret, exit, callErr = fn(context.Background(), &ExternContext{Memory: mem, Stdout: &out, Stderr: &errOut}, []Value{
+		ObjectAddrValue(stderrAddr),
+		ObjectAddrValue(fmtErrAddr),
+		PtrValue(0),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_vfprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 3 || errOut.String() != "err" {
+		t.Fatalf("__builtin_vfprintf ret=%#v stderr=%q, want i32 3 and err", ret, errOut.String())
+	}
+}
+
+func TestCheckedVFormatExternsWriteLiteralOutput(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	reg := DefaultExternRegistry(&out, &errOut)
+	mem := NewMemory(bytecode.DefaultTarget())
+
+	fmtAddr := mustAllocBytes(t, mem, "fmt:vprintf-chk", []byte("chk\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin___vprintf_chk")
+	if !ok {
+		t.Fatal("missing __builtin___vprintf_chk extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem, Stdout: &out, Stderr: &errOut}, []Value{
+		IntValue(bytecode.TypeI32, 0),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(0),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin___vprintf_chk ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 3 || out.String() != "chk" {
+		t.Fatalf("__builtin___vprintf_chk ret=%#v output=%q, want i32 3 and chk", ret, out.String())
+	}
+
+	stderrAddr, ok := reg.LookupVariable("stderr", mem)
+	if !ok {
+		t.Fatal("missing stderr extern variable")
+	}
+	fmtErrAddr := mustAllocBytes(t, mem, "fmt:vfprintf-chk", []byte("cerr\x00"), true, blockString)
+	fn, ok = reg.Lookup("__builtin___vfprintf_chk")
+	if !ok {
+		t.Fatal("missing __builtin___vfprintf_chk extern")
+	}
+	ret, exit, callErr = fn(context.Background(), &ExternContext{Memory: mem, Stdout: &out, Stderr: &errOut}, []Value{
+		ObjectAddrValue(stderrAddr),
+		IntValue(bytecode.TypeI32, 0),
+		ObjectAddrValue(fmtErrAddr),
+		PtrValue(0),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin___vfprintf_chk ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 4 || errOut.String() != "cerr" {
+		t.Fatalf("__builtin___vfprintf_chk ret=%#v stderr=%q, want i32 4 and cerr", ret, errOut.String())
+	}
+}
+
+func TestCheckedVBufferFormatExternsWriteLiteralOutput(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:vformat-chk", 16, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:vsprintf-chk", []byte("buf%%\x00"), true, blockString)
+
+	fn, ok := reg.Lookup("__builtin___vsprintf_chk")
+	if !ok {
+		t.Fatal("missing __builtin___vsprintf_chk extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU64, 16),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(0),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin___vsprintf_chk ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 4 || got != "buf%" {
+		t.Fatalf("__builtin___vsprintf_chk ret=%#v output=%q, want i32 4 and buf%%", ret, got)
+	}
+
+	fmtNAddr := mustAllocBytes(t, mem, "fmt:vsnprintf-chk", []byte("abcdef\x00"), true, blockString)
+	fn, ok = reg.Lookup("__builtin___vsnprintf_chk")
+	if !ok {
+		t.Fatal("missing __builtin___vsnprintf_chk extern")
+	}
+	ret, exit, callErr = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		UIntValue(bytecode.TypeU64, 4),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU64, 16),
+		ObjectAddrValue(fmtNAddr),
+		PtrValue(0),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin___vsnprintf_chk ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err = mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 6 || got != "abc" {
+		t.Fatalf("__builtin___vsnprintf_chk ret=%#v output=%q, want i32 6 and abc", ret, got)
+	}
+}
+
 func TestFormatExternsSupportIntegerLengthModifiers(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
