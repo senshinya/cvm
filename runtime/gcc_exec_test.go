@@ -722,6 +722,25 @@ int main(void)
 	}
 }
 
+func TestTgmathConjExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  complex float z = __builtin_complex(3.0f, 4.0f);
+  complex float r = conj(z);
+  if (creal(r) != 3.0f)
+    return 1;
+  return cimag(r) == -4.0f ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-conj.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathBinaryRealHelpersExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

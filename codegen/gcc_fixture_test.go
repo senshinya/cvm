@@ -228,6 +228,16 @@ float f(complex float z) { return cimag(z); }
 	}
 }
 
+func TestGCCTgmathConjUsesComplexRank(t *testing.T) {
+	source := `#include <tgmath.h>
+complex float f(complex float z) { return conj(z); }
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-conj-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_conjf") {
+		t.Fatalf("conj(complex float) did not reference complex-float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string
