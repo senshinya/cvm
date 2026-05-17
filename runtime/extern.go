@@ -1391,13 +1391,19 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				return "", err
 			}
 			continue
-		case 'f', 'F', 'e', 'E', 'g', 'G':
+		case 'f', 'F', 'e', 'E', 'g', 'G', 'a', 'A':
 			if !isFloatLike(arg.Type) {
 				return "", fmt.Errorf("%s %%%c expects floating argument", name, format[i])
 			}
 			verb := format[i]
 			if verb == 'F' {
 				verb = 'f'
+			}
+			if verb == 'a' {
+				verb = 'x'
+			}
+			if verb == 'A' {
+				verb = 'X'
 			}
 			floatPrecision := precision
 			if floatPrecision < 0 {
