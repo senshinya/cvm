@@ -750,6 +750,76 @@ int main(void)
 	}
 }
 
+func TestGCCComplexStructConditionalReturnArgumentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+struct pair make_a(void)
+{
+  struct pair p = { 7, __builtin_complex(3.0, 4.0) };
+  return p;
+}
+
+struct pair make_b(void)
+{
+  struct pair p = { 9, __builtin_complex(5.0, 12.0) };
+  return p;
+}
+
+double norm_pair(struct pair p)
+{
+  return p.tag + __builtin_cabs(p.value);
+}
+
+int main(void)
+{
+  int flag = 0;
+  return norm_pair(flag ? make_a() : make_b()) == 22.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-conditional-return-argument-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCNestedComplexStructArgumentIsPassedByValueExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct inner {
+  int tag;
+  __complex__ double value;
+};
+
+struct outer {
+  int prefix;
+  struct inner in;
+};
+
+void mutate(struct outer o)
+{
+  o.prefix = 2;
+  o.in.tag = 9;
+  o.in.value = __builtin_complex(5.0, 12.0);
+}
+
+int main(void)
+{
+  struct outer o = { 1, { 7, __builtin_complex(3.0, 4.0) } };
+  mutate(o);
+  return o.prefix == 1 && o.in.tag == 7 && __builtin_cabs(o.in.value) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "nested-complex-struct-argument-by-value-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexArrayInitializerExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
