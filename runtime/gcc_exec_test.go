@@ -1049,6 +1049,53 @@ int main(void)
 	}
 }
 
+func TestGCCComplexPointerDereferenceReturnExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+__complex__ double load(__complex__ double *q)
+{
+  return *q;
+}
+
+int main(void)
+{
+  struct pair p = { 7, __builtin_complex(5.0, 12.0) };
+  return __builtin_cabs(load(&p.value)) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-pointer-dereference-return-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexPointerDereferenceInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+int main(void)
+{
+  struct pair p = { 7, __builtin_complex(5.0, 12.0) };
+  __complex__ double *q = &p.value;
+  __complex__ double z = *q;
+  return __builtin_cabs(z) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-pointer-dereference-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexExplicitCastNarrowsThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

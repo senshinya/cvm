@@ -1008,6 +1008,7 @@ func (fg *funcGen) emitComplexValueCopy(dst address, src sema.Expr, dstType sema
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, srcAddrSlot))
+	srcAlign := fg.accessAlignForExpr(src, srcRealType)
 	for _, offset := range []int64{0, fg.g.sizeof(srcRealType)} {
 		dstOffset := int64(0)
 		if offset != 0 {
@@ -1020,7 +1021,7 @@ func (fg *funcGen) emitComplexValueCopy(dst address, src sema.Expr, dstType sema
 		if offset != 0 {
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: offset})
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(srcVT, fg.g.alignof(srcRealType), isVolatile(src.GetType())))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(srcVT, srcAlign, isVolatile(src.GetType())))
 		fg.emitCast(srcVT, dstVT, sema.UsualArithmetic)
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(dstVT, savedDst.accessAlign(fg.g.alignof(dstRealType)), isVolatile(dstType)))
 	}
