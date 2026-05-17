@@ -1047,6 +1047,29 @@ int main(void)
 	}
 }
 
+func TestCtypeCaseConversionExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <ctype.h>
+
+int main(void)
+{
+  if (tolower('A') != 'a')
+    return 1;
+  if (tolower('z') != 'z')
+    return 2;
+  if (toupper('q') != 'Q')
+    return 3;
+  if (toupper('!') != '!')
+    return 4;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "ctype-case-conversion-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

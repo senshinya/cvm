@@ -118,6 +118,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("atol", atoiExtern("atol", bytecode.TypeI64))
 	r.Register("atoll", atoiExtern("atoll", bytecode.TypeI64))
 	registerCtypeClassificationExterns(r)
+	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("strcmp expects 2 arguments")
@@ -576,6 +577,37 @@ func ctypeClassificationExtern(name string, pred func(byte) bool) ExternFunc {
 			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func registerCtypeCaseExterns(r *ExternRegistry) {
+	r.Register("tolower", ctypeCaseExtern("tolower", func(ch byte) byte {
+		if ch >= 'A' && ch <= 'Z' {
+			return ch + ('a' - 'A')
+		}
+		return ch
+	}))
+	r.Register("toupper", ctypeCaseExtern("toupper", func(ch byte) byte {
+		if ch >= 'a' && ch <= 'z' {
+			return ch - ('a' - 'A')
+		}
+		return ch
+	}))
+}
+
+func ctypeCaseExtern(name string, convert func(byte) byte) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
+		}
+		ch := signedInt(args[0])
+		if ch < 0 || ch > 255 {
+			return IntValue(bytecode.TypeI32, ch), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, int64(convert(byte(ch)))), nil, nil
 	}
 }
 

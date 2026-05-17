@@ -137,6 +137,8 @@ int islower(int);
 int isupper(int);
 int isxdigit(int);
 int isprint(int);
+int tolower(int);
+int toupper(int);
 #endif
 `
 }
