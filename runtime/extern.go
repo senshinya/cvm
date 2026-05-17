@@ -216,6 +216,11 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathLongExterns(r, "__cvm_tgmath_llround", math.Round)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_pow", math.Pow)
 	r.Register("__builtin_pow", mathBinaryFloatExtern("__builtin_pow", bytecode.TypeF64, math.Pow))
+	r.Register("__builtin_huge_valf", mathConstantFloatExtern("__builtin_huge_valf", bytecode.TypeF32, math.Inf(1)))
+	r.Register("__builtin_huge_val", mathConstantFloatExtern("__builtin_huge_val", bytecode.TypeF64, math.Inf(1)))
+	r.Register("__builtin_huge_vall", mathConstantFloatExtern("__builtin_huge_vall", bytecode.TypeFLong, math.Inf(1)))
+	r.Register("__builtin_nan", mathNanExtern("__builtin_nan"))
+	r.Register("nan", mathNanExtern("nan"))
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_atan2", math.Atan2)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_hypot", math.Hypot)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_fdim", math.Dim)
@@ -485,6 +490,27 @@ func mathUnaryLongExtern(name string, fn func(float64) float64) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s expects floating argument", name)
 		}
 		return IntValue(bytecode.TypeI64, int64(fn(cvmFloat(args[0])))), nil, nil
+	}
+}
+
+func mathConstantFloatExtern(name string, ret bytecode.ValueType, value float64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 0 {
+			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
+		}
+		return floatResult(ret, value), nil, nil
+	}
+}
+
+func mathNanExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string argument", name)
+		}
+		return FloatValue(bytecode.TypeF64, math.NaN()), nil, nil
 	}
 }
 

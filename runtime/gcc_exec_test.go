@@ -701,6 +701,36 @@ int main(void)
 	}
 }
 
+func TestBuiltinFloatingConstantsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+double nan(const char *);
+
+int main(void)
+{
+  float hf = __builtin_huge_valf();
+  double h = __builtin_huge_val();
+  long double hl = __builtin_huge_vall();
+  double n = __builtin_nan("");
+  double m = nan("");
+
+  if (!(hf > 1e30f))
+    return 1;
+  if (!(h > 1e300))
+    return 2;
+  if (!(hl > 1e300L))
+    return 3;
+  if (!(n != n))
+    return 4;
+  return m != m ? 0 : 5;
+}
+`
+	st := runGCCExecFixture(t, "builtin-floating-constants-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathFabsExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
