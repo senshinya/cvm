@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `ea00552 fix(codegen): lower complex equality`
+- Latest implementation/coverage commit before this handoff document: `8224ea3 fix(codegen): lower explicit casts to complex`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,10 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `8224ea3 fix(codegen): lower explicit casts to complex`
+  - Treats explicit scalar-to-complex casts as object-backed complex rvalues.
+  - Adds runtime coverage for `(__complex__ double)3.0`.
 
 - `ea00552 fix(codegen): lower complex equality`
   - Lowers complex `==` and `!=` by comparing real and imaginary components.
@@ -241,6 +245,7 @@ The current codegen support includes:
 - real scalar to complex initialization
 - `__builtin_complex(real, imag)` local/static initialization
 - complex to complex assignment/copy with real/imag component casts
+- explicit scalar-to-complex casts
 - complex tgmath extern dispatch
 
 Runtime execution of complex arithmetic is still incomplete. Current runtime support includes `__builtin_cabs*` externs for object-address complex arguments.
