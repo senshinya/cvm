@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `e185413 fix(codegen): lower bit-field compound updates`
+- Latest implementation/coverage commit before this handoff document: `0358faa fix(codegen): return stored bit-field expression values`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `0358faa fix(codegen): return stored bit-field expression values`
+  - Reloads bit-fields after assignment and compound assignment so expression values reflect stored bit-field values.
+  - Reloads pre-increment/pre-decrement bit-fields after storage so truncated/wrapped values are returned.
+  - Adds runtime coverage for unsigned bit-field truncation through assignment, compound assignment, and pre-increment.
 
 - `e185413 fix(codegen): lower bit-field compound updates`
   - Adds bit-field-specific compound-assignment lowering using `BitFieldLoad` and `BitFieldStore`.
@@ -411,7 +416,7 @@ Complex constant-expression coverage includes automatic and static complex initi
 VLA runtime coverage includes local VLA dynamic object allocation, VLA fields inside local structs and unions, VLA parameter dynamic strides, and nested-function VLA capture cases.
 Integer conversion runtime coverage includes Wconversion-derived signed-to-unsigned conversion, unsigned-char narrowing, conditional conversions, and function argument conversions.
 Scalar floating runtime coverage includes `long double` local arithmetic, `long double` by-value arguments and returns, mixed-width floating compound assignment such as `float += double`, floating assignment and compound-assignment expression results for local slots and addressable fields, floating logical expressions through bool conversion, and floating `++`/`--` for local slots and addressable fields.
-Bit-field runtime coverage includes simple assignment, compound assignment, and `++`/`--` for integer and `_Bool` bit-fields.
+Bit-field runtime coverage includes simple assignment, compound assignment, and `++`/`--` for integer and `_Bool` bit-fields, including expression values after bit-field truncation/wrapping.
 
 ### GNU Nested Functions
 
