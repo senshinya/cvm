@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/cmplx"
 	"os"
+	"strconv"
 	"strings"
 
 	"shinya.click/cvm/bytecode"
@@ -212,6 +213,12 @@ func registerMemoryExterns(r *ExternRegistry) {
 		r.Register(name, stringCheckedNCopyExtern(name, name == "__builtin___stpncpy_chk"))
 	}
 	r.Register("__builtin___strncat_chk", stringCheckedNConcatExtern("__builtin___strncat_chk"))
+	for _, name := range []string{"__builtin_sprintf", "sprintf"} {
+		r.Register(name, sprintfExtern(name))
+	}
+	for _, name := range []string{"__builtin_snprintf", "snprintf"} {
+		r.Register(name, snprintfExtern(name))
+	}
 }
 
 func registerMathExterns(r *ExternRegistry) {
@@ -949,6 +956,119 @@ func writeMemoryBytes(mem *Memory, addr uint64, data []byte) error {
 	}
 	copy(block.data[off:off+len(data)], data)
 	return nil
+}
+
+func sprintfExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 2 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination and format pointers", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatCString(name, ec.Memory, args[1].Int, args[2:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := writeMemoryBytes(ec.Memory, args[0].Int, append([]byte(out), 0)); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func snprintfExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 3 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, size, and format arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatCString(name, ec.Memory, args[2].Int, args[3:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		size, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if size > 0 {
+			n := len(out)
+			if n > int(size)-1 {
+				n = int(size) - 1
+			}
+			data := make([]byte, n+1)
+			copy(data, out[:n])
+			if err := writeMemoryBytes(ec.Memory, args[0].Int, data); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (string, error) {
+	format, err := mem.ReadCString(formatAddr)
+	if err != nil {
+		return "", err
+	}
+	var out strings.Builder
+	argIndex := 0
+	for i := 0; i < len(format); i++ {
+		if format[i] != '%' {
+			out.WriteByte(format[i])
+			continue
+		}
+		i++
+		if i >= len(format) {
+			return "", fmt.Errorf("%s has trailing %% in format", name)
+		}
+		if format[i] == '%' {
+			out.WriteByte('%')
+			continue
+		}
+		if argIndex >= len(args) {
+			return "", fmt.Errorf("%s format needs more arguments", name)
+		}
+		arg := args[argIndex]
+		argIndex++
+		switch format[i] {
+		case 's':
+			if !isPointerType(arg.Type) {
+				return "", fmt.Errorf("%s %%s expects pointer argument", name)
+			}
+			s, err := mem.ReadCString(arg.Int)
+			if err != nil {
+				return "", err
+			}
+			out.WriteString(s)
+		case 'd', 'i':
+			if !isIntegerLike(arg.Type) {
+				return "", fmt.Errorf("%s %%%c expects integer argument", name, format[i])
+			}
+			out.WriteString(strconv.FormatInt(signedInt(arg), 10))
+		case 'u':
+			if !isIntegerLike(arg.Type) {
+				return "", fmt.Errorf("%s %%u expects integer argument", name)
+			}
+			out.WriteString(strconv.FormatUint(unsignedInt(arg), 10))
+		case 'c':
+			if !isIntegerLike(arg.Type) {
+				return "", fmt.Errorf("%s %%c expects integer argument", name)
+			}
+			out.WriteByte(byte(unsignedInt(arg)))
+		default:
+			return "", fmt.Errorf("%s unsupported format %%%c", name, format[i])
+		}
+	}
+	return out.String(), nil
 }
 
 func complexAbsExtern(name string, realType bytecode.ValueType, realSize uint64) ExternFunc {

@@ -786,6 +786,33 @@ int main(void)
 	}
 }
 
+func TestBuiltinSprintfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int strcmp(const char *, const char *);
+
+int main(void)
+{
+  char buf[32];
+  int n = __builtin_sprintf(buf, "x=%d %s %c %%", -7, "ok", '!');
+  if (n != 11)
+    return 1;
+  if (strcmp(buf, "x=-7 ok ! %") != 0)
+    return 2;
+
+  char small[5];
+  n = __builtin_snprintf(small, 5, "%s-%u", "abcdef", 3U);
+  if (n != 8)
+    return 3;
+  return strcmp(small, "abcd") == 0 ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "builtin-sprintf-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
