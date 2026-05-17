@@ -711,8 +711,12 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, 
 			return nil, fmt.Errorf("%v stack underflow", ins.Op)
 		}
 		push(stack[len(stack)-1])
-	case OpVaStart, OpVaArg, OpVaEnd:
-		return nil, fmt.Errorf("unsupported opcode %v", ins.Op)
+	case OpVaStart, OpVaEnd:
+		if ins.Slot < 0 {
+			return nil, fmt.Errorf("%v references negative va_list slot %d", ins.Op, ins.Slot)
+		}
+	case OpVaArg:
+		push(ins.Type)
 	default:
 		return nil, fmt.Errorf("unsupported opcode %v", ins.Op)
 	}

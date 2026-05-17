@@ -24,6 +24,10 @@ type frame struct {
 	fn             *bytecode.Function
 	pc             int
 	locals         []Value
+	variadicArgs   []Value
+	vaLists        map[int]int
+	activeVaList   int
+	hasActiveVa    bool
 	labels         map[int]int
 	localObjects   map[int]uint64
 	dynamicObjects map[int]uint64
@@ -95,15 +99,23 @@ func (vm *VM) pushFrame(funcID int, args []Value) error {
 	for _, local := range fn.Locals {
 		locals[local.ID] = zeroValue(local.Type)
 	}
-	if len(args) != len(fn.Params) {
+	sig := vm.program.module.Sigs[fn.Sig]
+	if !sig.Variadic && len(args) != len(fn.Params) {
 		return vm.trap(fmt.Sprintf("function %s expects %d args, got %d", fn.Name, len(fn.Params), len(args)))
 	}
-	for i, arg := range args {
+	if sig.Variadic && len(args) < len(fn.Params) {
+		return vm.trap(fmt.Sprintf("variadic function %s expects at least %d args, got %d", fn.Name, len(fn.Params), len(args)))
+	}
+	for i, arg := range args[:len(fn.Params)] {
 		param := fn.Params[i]
 		if arg.Type != param.Type {
 			return vm.trap(fmt.Sprintf("argument %d has type %s, want %s", i, arg.Type, param.Type))
 		}
 		locals[param.Slot] = arg
+	}
+	var variadicArgs []Value
+	if sig.Variadic {
+		variadicArgs = append([]Value(nil), args[len(fn.Params):]...)
 	}
 
 	labels := make(map[int]int)
@@ -128,6 +140,9 @@ func (vm *VM) pushFrame(funcID int, args []Value) error {
 	vm.frames = append(vm.frames, frame{
 		fn:             fn,
 		locals:         locals,
+		variadicArgs:   variadicArgs,
+		vaLists:        make(map[int]int),
+		activeVaList:   -1,
 		labels:         labels,
 		localObjects:   localObjects,
 		dynamicObjects: make(map[int]uint64),
@@ -553,8 +568,33 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		vm.stack = append(vm.stack, ObjectAddrValue(retAddr))
 	case bytecode.OpUnreachable:
 		return ExitStatus{}, true, vm.trap("unreachable")
-	case bytecode.OpVaStart, bytecode.OpVaArg, bytecode.OpVaEnd:
-		return ExitStatus{}, true, vm.trap(fmt.Sprintf("unsupported opcode %s", ins.Op))
+	case bytecode.OpVaStart:
+		if !vm.program.module.Sigs[fr.fn.Sig].Variadic {
+			return ExitStatus{}, true, vm.trap("va_start in non-variadic function")
+		}
+		fr.vaLists[ins.Slot] = 0
+		fr.activeVaList = ins.Slot
+		fr.hasActiveVa = true
+	case bytecode.OpVaArg:
+		if !fr.hasActiveVa {
+			return ExitStatus{}, true, vm.trap("va_arg without active va_list")
+		}
+		cursor := fr.vaLists[fr.activeVaList]
+		if cursor < 0 || cursor >= len(fr.variadicArgs) {
+			return ExitStatus{}, true, vm.trap("va_arg past end of arguments")
+		}
+		v := fr.variadicArgs[cursor]
+		if v.Type != ins.Type {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("va_arg has type %s, want %s", v.Type, ins.Type))
+		}
+		fr.vaLists[fr.activeVaList] = cursor + 1
+		vm.stack = append(vm.stack, v)
+	case bytecode.OpVaEnd:
+		delete(fr.vaLists, ins.Slot)
+		if fr.hasActiveVa && fr.activeVaList == ins.Slot {
+			fr.activeVaList = -1
+			fr.hasActiveVa = false
+		}
 	case bytecode.OpLabel:
 		// Labels are markers for control-flow instructions; execution falls through.
 	default:
@@ -690,12 +730,7 @@ func (vm *VM) invokeGlobal(ctx context.Context, globalID, sigID int, args []Valu
 		if vm.program.module.Functions[g.Func].Sig != sigID {
 			return ExitStatus{}, true, vm.trap(fmt.Sprintf("call signature %d does not match function %d signature %d", sigID, g.Func, vm.program.module.Functions[g.Func].Sig))
 		}
-		sig := vm.program.module.Sigs[sigID]
-		fixedArgs := args
-		if sig.Variadic {
-			fixedArgs = args[:len(sig.Params)]
-		}
-		if err := vm.pushFrame(g.Func, fixedArgs); err != nil {
+		if err := vm.pushFrame(g.Func, args); err != nil {
 			return ExitStatus{}, true, err
 		}
 		return ExitStatus{}, false, nil

@@ -563,6 +563,20 @@ func TestValidateModuleRejectsReturnWithLeftoverStack(t *testing.T) {
 	}
 }
 
+func TestValidateModuleAcceptsVaOpcodes(t *testing.T) {
+	mod := minimalModule()
+	mod.Functions[0].Instrs = []Instr{
+		{Op: OpVaStart, Slot: 1},
+		{Op: OpVaArg, Type: TypeI32},
+		{Op: OpVaEnd, Slot: 1},
+		Return(TypeI32),
+	}
+
+	if err := ValidateModule(mod); err != nil {
+		t.Fatalf("ValidateModule rejected va opcodes: %v", err)
+	}
+}
+
 func TestValidateModuleRejectsUnhandledOpcode(t *testing.T) {
 	t.Run("known unsupported opcode", func(t *testing.T) {
 		mod := minimalModule()

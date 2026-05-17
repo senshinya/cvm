@@ -117,6 +117,42 @@ func TestRunVariadicDirectCallConsumesExtraArgs(t *testing.T) {
 	}
 }
 
+func TestRunVariadicVaArgReadsExtraArgs(t *testing.T) {
+	mod := testMainModule(
+		bytecode.I32Const(7),
+		bytecode.I32Const(9),
+		bytecode.I32Const(11),
+		bytecode.Call(1, 1, 3),
+		bytecode.Return(bytecode.TypeI32),
+	)
+	mod.Sigs = append(mod.Sigs, bytecode.FuncSig{ID: 1, Ret: bytecode.TypeI32, Params: []bytecode.ValueType{bytecode.TypeI32}, Variadic: true})
+	mod.Globals = append(mod.Globals, bytecode.Global{ID: 1, Name: "first_extra", Kind: bytecode.GlobalFunc, Func: 1, Sig: 1})
+	mod.Functions = append(mod.Functions, bytecode.Function{
+		ID:       1,
+		GlobalID: 1,
+		Name:     "first_extra",
+		Sig:      1,
+		Params: []bytecode.Param{
+			{Name: "a", Type: bytecode.TypeI32, Slot: 0},
+		},
+		Instrs: []bytecode.Instr{
+			{Op: bytecode.OpVaStart, Slot: 1},
+			{Op: bytecode.OpVaArg, Type: bytecode.TypeI32},
+			{Op: bytecode.OpVaEnd, Slot: 1},
+			bytecode.Return(bytecode.TypeI32),
+		},
+		MaxStack: 1,
+	})
+
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 9 {
+		t.Fatalf("exit code = %d, want 9", st.Code)
+	}
+}
+
 func TestRunFloatDivision(t *testing.T) {
 	t.Run("finite", func(t *testing.T) {
 		mod := testMainModule(
@@ -1333,9 +1369,7 @@ func TestRunUnsupportedOpcodeTrap(t *testing.T) {
 		ins  bytecode.Instr
 		want string
 	}{
-		{name: "va start", ins: bytecode.Instr{Op: bytecode.OpVaStart, Slot: 0}, want: "unsupported opcode OpVaStart"},
-		{name: "va arg", ins: bytecode.Instr{Op: bytecode.OpVaArg, Type: bytecode.TypeI32}, want: "unsupported opcode OpVaArg"},
-		{name: "va end", ins: bytecode.Instr{Op: bytecode.OpVaEnd, Slot: 0}, want: "unsupported opcode OpVaEnd"},
+		{name: "invalid opcode", ins: bytecode.Instr{Op: bytecode.Opcode(999)}, want: "unsupported opcode Opcode(999)"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
