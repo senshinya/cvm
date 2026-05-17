@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `093d8bc fix(codegen): copy object parameters by value`
+- Latest implementation/coverage commit before this handoff document: `ef0e77f fix(codegen): initialize aggregate return values`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `ef0e77f fix(codegen): initialize aggregate return values`
+  - Keeps aggregate expression initializers as whole-object initializers instead of first-field scalar initialization.
+  - Copies rvalue aggregate initializer sources by value during object initialization.
+  - Adds runtime coverage for struct by-value parameters and struct returns containing complex fields.
 
 - `093d8bc fix(codegen): copy object parameters by value`
   - Creates local objects for `TypeObjectAddr` parameters and copies argument object contents at function entry.
@@ -328,7 +333,7 @@ The current codegen support includes:
 - complex tgmath extern dispatch
 
 Runtime execution of complex arithmetic is still incomplete. Current runtime support includes `__builtin_cabs*` externs for object-address complex arguments.
-Runtime integration coverage now includes local/static `__builtin_complex` initialization, local/static complex array and struct-field initialization including designated and nested struct fields, complex struct field assignment and compound assignment through `.` and `->`, direct `__builtin_complex` arguments, user-defined complex by-value parameters and returns with mutation isolation, complex `+`, `-`, `*`, `/`, `==`, `!=`, `*=`, `+=`, `-=`, `/=`, scalar RHS complex compound assignment, complex assignment and comma expressions consumed as values, object-return copy-out, double-to-float complex copy, complex float return promoted to complex double, complex conditional returns and local initialization, `__builtin_cabs`, `__builtin_cabsf`, `__builtin_cabsl`, complex tgmath `sin`, complex tgmath `exp`, complex long double tgmath `exp`, complex tgmath `pow`, and complex long double tgmath `pow`.
+Runtime integration coverage now includes local/static `__builtin_complex` initialization, local/static complex array and struct-field initialization including designated and nested struct fields, complex struct field assignment and compound assignment through `.` and `->`, direct `__builtin_complex` arguments, user-defined complex by-value parameters and returns with mutation isolation, struct by-value parameters and returns containing complex fields, complex `+`, `-`, `*`, `/`, `==`, `!=`, `*=`, `+=`, `-=`, `/=`, scalar RHS complex compound assignment, complex assignment and comma expressions consumed as values, object-return copy-out, double-to-float complex copy, complex float return promoted to complex double, complex conditional returns and local initialization, `__builtin_cabs`, `__builtin_cabsf`, `__builtin_cabsl`, complex tgmath `sin`, complex tgmath `exp`, complex long double tgmath `exp`, complex tgmath `pow`, and complex long double tgmath `pow`.
 GCC-derived complex runtime coverage also includes imaginary floating constants such as `-1.0i` and integer imaginary constants such as `1i`.
 Complex-to-scalar runtime coverage includes local initialization from imaginary literals, where the real component is selected.
 Complex constant-expression coverage includes automatic and static complex initializers with arithmetic over imaginary literals and static conditional initializers selecting `__builtin_complex`.
