@@ -67,7 +67,7 @@ go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -cou
   - `feat(runtime): add stdio unlocked vformat aliases`
   - `docs: record stdio unlocked vformat aliases`
 
-## Plan 3: `setbuf` And `setvbuf`
+## Plan 3: `setbuf` And `setvbuf` - Completed
 
 Add no-op buffering controls for known host stream handles.
 
