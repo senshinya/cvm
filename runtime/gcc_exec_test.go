@@ -561,7 +561,9 @@ int main(void)
     return 3;
   if (fmod(5.0L, 2.0L) != 1.0L)
     return 4;
-  return remainder(4.0f, 2.0f) == 0.0f ? 0 : 5;
+  if (remainder(4.0f, 2.0f) != 0.0f)
+    return 5;
+  return copysign(2.0L, -1.0L) == -2.0L ? 0 : 6;
 }
 `
 	st := runGCCExecFixture(t, "tgmath-binary-real-helpers.c", source)

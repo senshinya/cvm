@@ -307,6 +307,7 @@ double __cvm_tgmath_fmax();
 double __cvm_tgmath_fmin();
 double __cvm_tgmath_fmod();
 double __cvm_tgmath_remainder();
+double __cvm_tgmath_copysign();
 #endif
 `
 }

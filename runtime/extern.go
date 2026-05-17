@@ -206,6 +206,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_fmin", math.Min)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_fmod", math.Mod)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_remainder", math.Remainder)
+	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_copysign", math.Copysign)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csin", cmplx.Sin)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cexp", cmplx.Exp)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csqrt", cmplx.Sqrt)
