@@ -292,7 +292,7 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 	objectMap := map[*sema.Symbol]int{}
 	for _, p := range f.Params {
 		seenSlots[p.Slot] = true
-		if pd := paramDeclsBySlot[p.Slot]; pd != nil && (addressTaken[pd.Sym] || isVolatile(pd.T)) {
+		if pd := paramDeclsBySlot[p.Slot]; pd != nil && (p.Type == bytecode.TypeObjectAddr || addressTaken[pd.Sym] || isVolatile(pd.T)) {
 			layout, err := g.lowerLayout(pd.T)
 			if err != nil {
 				return err
@@ -365,11 +365,12 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		if err != nil {
 			return err
 		}
-		fg.out.Instrs = append(fg.out.Instrs,
-			bytecode.AddrLocalObject(objectID),
-			bytecode.LoadLocal(vt, p.Sym.SlotID),
-			bytecode.Store(vt, g.alignof(p.T), isVolatile(p.T)),
-		)
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(objectID), bytecode.LoadLocal(vt, p.Sym.SlotID))
+		if vt == bytecode.TypeObjectAddr {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: g.sizeof(p.T), Align: 1, Volatile: isVolatile(p.T)})
+			continue
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, g.alignof(p.T), isVolatile(p.T)))
 	}
 	for _, p := range fn.Params {
 		if p != nil && p.T != nil && typeHasVariablyModifiedType(p.T) {

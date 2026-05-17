@@ -284,6 +284,9 @@ func (fg *funcGen) emitCompoundAssign(x *sema.CompoundAssign) error {
 	if st.kind != storageLocalSlot {
 		return fg.emitAddressableCompoundAssign(x)
 	}
+	if st.typ == bytecode.TypeObjectAddr && isComplexType(x.L.GetType()) {
+		return fg.emitComplexCompoundAssign(x)
+	}
 	if isPointerType(st.typ) {
 		return fg.emitLocalSlotPointerCompoundAssign(x, st)
 	}

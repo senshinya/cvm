@@ -491,6 +491,53 @@ int main(void)
 	}
 }
 
+func TestGCCComplexArgumentIsPassedByValueExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+void mutate(__complex__ double z)
+{
+  z += 2.0;
+}
+
+int main(void)
+{
+  __complex__ double z = __builtin_complex(3.0, 4.0);
+  mutate(z);
+  return __builtin_cabs(z) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-argument-by-value-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexFieldArgumentIsPassedByValueExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+void mutate(__complex__ double z)
+{
+  z += 2.0;
+}
+
+int main(void)
+{
+  struct pair p = { 7, __builtin_complex(3.0, 4.0) };
+  mutate(p.value);
+  return p.tag == 7 && __builtin_cabs(p.value) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-field-argument-by-value-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexArrayInitializerExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
