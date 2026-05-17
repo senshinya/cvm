@@ -326,6 +326,9 @@ func (fg *funcGen) emitAddressableCompoundAssign(x *sema.CompoundAssign) error {
 	if vt == bytecode.TypeObjectAddr && isComplexType(x.L.GetType()) {
 		return fg.emitComplexCompoundAssign(x)
 	}
+	if isPointerType(vt) {
+		return fg.emitAddressablePointerCompoundAssign(x, vt)
+	}
 	rt, err := fg.g.lowerValueType(x.R.GetType())
 	if err != nil {
 		return err
@@ -382,6 +385,41 @@ func (fg *funcGen) emitLocalSlotPointerCompoundAssign(x *sema.CompoundAssign, st
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(st.typ, st.slot))
+	return nil
+}
+
+func (fg *funcGen) emitAddressablePointerCompoundAssign(x *sema.CompoundAssign, vt bytecode.ValueType) error {
+	if x.Op != sema.OpAdd && x.Op != sema.OpSub {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "pointer compound assignment is only implemented for addition and subtraction"}
+	}
+	addrSlot := fg.allocSyntheticSlot(".ptr.compound.addr", bytecode.TypeObjectAddr)
+	valueSlot := fg.allocSyntheticSlot(".ptr.compound.value", vt)
+	if err := fg.emitAddress(x.L); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Load(vt, fg.loadStoreAlign(x.L, x.L.GetType()), isVolatile(x.L.GetType())),
+	)
+	idxType, err := fg.emitPtrIndexValue(x.R)
+	if err != nil {
+		return err
+	}
+	if x.Op == sema.OpSub {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: idxType, Unary: bytecode.UnaryNeg})
+	}
+	if err := fg.emitPtrAddForExpr(x.L, x.L.GetType()); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.Instr{Op: bytecode.OpDup},
+		bytecode.StoreLocal(vt, valueSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Store(vt, fg.loadStoreAlign(x.L, x.L.GetType()), isVolatile(x.L.GetType())),
+		bytecode.LoadLocal(vt, valueSlot),
+	)
 	return nil
 }
 

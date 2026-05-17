@@ -681,6 +681,34 @@ int main(void)
 	}
 }
 
+func TestGCCPointerFieldCompoundAssignmentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct box {
+  int *p;
+};
+
+int main(void)
+{
+  int values[3] = { 10, 20, 30 };
+  struct box b;
+  b.p = values;
+
+  if (*(b.p += 1) != 20)
+    return 1;
+  if (*b.p != 20)
+    return 2;
+  if (*(b.p -= 1) != 10)
+    return 3;
+  return b.p == values ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "pointer-field-compound-assignment-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
