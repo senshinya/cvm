@@ -603,6 +603,48 @@ func TestFreadEmptyInputWritesNothing(t *testing.T) {
 	}
 }
 
+func TestFreadReadsUngetcPushback(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	buf := mustAllocBytes(t, mem, "fread:buf", []byte{0, 0, 0, 0}, false, blockLocal)
+	ungetcFn, ok := reg.Lookup("ungetc")
+	if !ok {
+		t.Fatal("missing ungetc extern")
+	}
+	for _, ch := range []rune{'C', 'B', 'A'} {
+		if _, exit, err := ungetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, int64(ch)), PtrValue(stdin)}); err != nil || exit != nil {
+			t.Fatalf("ungetc %q exit=%#v err=%v", ch, exit, err)
+		}
+	}
+	fn, ok := reg.Lookup("fread")
+	if !ok {
+		t.Fatal("missing fread extern")
+	}
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(buf),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 3),
+		PtrValue(stdin),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("fread ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 3 {
+		t.Fatalf("fread ret=%#v, want u64 3", ret)
+	}
+	block, off, err := mem.rangeAccess(buf, 3, false)
+	if err != nil {
+		t.Fatalf("rangeAccess: %v", err)
+	}
+	if got := string(block.data[off : off+3]); got != "ABC" {
+		t.Fatalf("fread bytes = %q, want ABC", got)
+	}
+}
+
 func TestFputsWritesCStringToStderrHostHandle(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

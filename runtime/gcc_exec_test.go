@@ -956,6 +956,33 @@ int main(void)
 	}
 }
 
+func TestStdioFreadPushbackExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[4] = { 0 };
+  ungetc('C', stdin);
+  ungetc('B', stdin);
+  ungetc('A', stdin);
+  if (fread(buf, 1, 3, stdin) != 3)
+    return 1;
+  if (buf[0] != 'A' || buf[1] != 'B' || buf[2] != 'C' || buf[3] != 0)
+    return 2;
+  if (fread(buf, 1, 1, stdin) != 0)
+    return 3;
+  if (feof(stdin) == 0)
+    return 4;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-fread-pushback-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioGetcharFgetcEmptyInputExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

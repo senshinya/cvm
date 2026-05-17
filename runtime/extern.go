@@ -420,6 +420,9 @@ func freadExtern(name string, r *ExternRegistry) ExternFunc {
 		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) || !isPointerType(args[3].Type) {
 			return Value{}, nil, fmt.Errorf("%s expects buffer, size, count, and stream arguments", name)
 		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
 		if _, ok := r.lookupHostWriter(args[3].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[3].Int)
 		}
@@ -431,10 +434,30 @@ func freadExtern(name string, r *ExternRegistry) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		if size != 0 && count != 0 {
+		if size == 0 || count == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		if size > int64(maxInt())/count {
+			return Value{}, nil, fmt.Errorf("%s byte count overflows", name)
+		}
+		total := size * count
+		block, off, err := ec.Memory.rangeAccess(args[0].Int, total, true)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		read := int64(0)
+		for read < total {
+			ch, ok := r.readHostChar(args[3].Int)
+			if !ok {
+				break
+			}
+			block.data[off+int(read)] = ch
+			read++
+		}
+		if read < total {
 			r.hostEOF[args[3].Int] = true
 		}
-		return UIntValue(bytecode.TypeU64, 0), nil, nil
+		return UIntValue(bytecode.TypeU64, uint64(read/size)), nil, nil
 	}
 }
 
