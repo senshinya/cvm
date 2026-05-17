@@ -1023,6 +1023,14 @@ func (fg *funcGen) emitComplexSourceAddress(src sema.Expr) error {
 	switch x := src.(type) {
 	case *sema.BinOp:
 		return fg.emitValue(src)
+	case *sema.CommaExpr:
+		if err := fg.emitValue(x.L); err != nil {
+			return err
+		}
+		if exprLeavesValue(x.L) {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
+		}
+		return fg.emitComplexSourceAddress(x.R)
 	case *sema.ImagLit:
 		return fg.emitComplexRValueAddress(src)
 	case *sema.UnOp:
