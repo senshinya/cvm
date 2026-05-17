@@ -415,9 +415,16 @@ func TestTgmathFloatExterns(t *testing.T) {
 
 func TestAbortReturnsTrap(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	fn, _ := reg.Lookup("abort")
-	_, _, err := fn(context.Background(), &ExternContext{Memory: NewMemory(bytecode.DefaultTarget())}, nil)
-	if err == nil || !strings.Contains(err.Error(), "abort") {
-		t.Fatalf("abort err = %v, want abort trap", err)
+	for _, name := range []string{"abort", "__builtin_abort"} {
+		t.Run(name, func(t *testing.T) {
+			fn, ok := reg.Lookup(name)
+			if !ok {
+				t.Fatalf("missing %s extern", name)
+			}
+			_, _, err := fn(context.Background(), &ExternContext{Memory: NewMemory(bytecode.DefaultTarget())}, nil)
+			if err == nil || !strings.Contains(err.Error(), "abort") {
+				t.Fatalf("%s err = %v, want abort trap", name, err)
+			}
+		})
 	}
 }

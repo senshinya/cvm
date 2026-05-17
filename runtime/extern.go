@@ -53,9 +53,8 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		}
 		return Value{}, &ExitStatus{Code: code}, nil
 	})
-	r.Register("abort", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
-		return Value{}, nil, &TrapError{Reason: "abort"}
-	})
+	r.Register("abort", abortExtern())
+	r.Register("__builtin_abort", abortExtern())
 	r.Register("puts", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("puts expects 1 argument")
@@ -267,6 +266,12 @@ func registerMathExterns(r *ExternRegistry) {
 		}
 		return IntValue(bytecode.TypeI32, boolInt(math.IsNaN(cvmFloat(args[0])) || math.IsNaN(cvmFloat(args[1])))), nil, nil
 	})
+}
+
+func abortExtern() ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		return Value{}, nil, &TrapError{Reason: "abort"}
+	}
 }
 
 func complexAbsExtern(name string, realType bytecode.ValueType, realSize uint64) ExternFunc {
