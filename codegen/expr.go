@@ -1143,6 +1143,11 @@ func (fg *funcGen) explicitAccessAlignForExpr(e sema.Expr, accessType sema.Type)
 			return 1
 		}
 	}
+	if un, ok := e.(*sema.UnOp); ok && un.Op == sema.UnDeref {
+		if align := fg.g.alignof(accessType); align > 1 {
+			return 1
+		}
+	}
 	return 0
 }
 
