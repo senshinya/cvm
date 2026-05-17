@@ -157,6 +157,8 @@ func registerAllocationExterns(r *ExternRegistry) {
 	r.Register("__builtin_malloc", mallocExtern("__builtin_malloc"))
 	r.Register("__builtin_calloc", callocExtern("__builtin_calloc"))
 	r.Register("__builtin_strdup", strdupExtern("__builtin_strdup"))
+	r.Register("__builtin_object_size", objectSizeExtern("__builtin_object_size"))
+	r.Register("__builtin_dynamic_object_size", objectSizeExtern("__builtin_dynamic_object_size"))
 }
 
 func registerMemoryExterns(r *ExternRegistry) {
@@ -419,6 +421,23 @@ func nonzeroAllocSize(size int64) int64 {
 		return 1
 	}
 	return size
+}
+
+func objectSizeExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer and type arguments", name)
+		}
+		switch signedInt(args[1]) & 3 {
+		case 2, 3:
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		default:
+			return UIntValue(bytecode.TypeU64, ^uint64(0)), nil, nil
+		}
+	}
 }
 
 func memoryCopyExtern(name string, returnEnd bool) ExternFunc {

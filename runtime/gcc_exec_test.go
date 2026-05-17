@@ -765,6 +765,27 @@ int main(void)
 	}
 }
 
+func TestBuiltinObjectSizeExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  char *p = __builtin_malloc(4);
+  if (__builtin_object_size(p, 0) != (unsigned long)-1)
+    return 1;
+  if (__builtin_object_size(p, 2) != 0)
+    return 2;
+  if (__builtin_dynamic_object_size(p, 1) != (unsigned long)-1)
+    return 3;
+  return __builtin_dynamic_object_size(p, 3) == 0 ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "builtin-object-size-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
