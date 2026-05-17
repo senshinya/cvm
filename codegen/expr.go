@@ -290,18 +290,18 @@ func (fg *funcGen) emitCompoundAssign(x *sema.CompoundAssign) error {
 	if isPointerType(st.typ) {
 		return fg.emitLocalSlotPointerCompoundAssign(x, st)
 	}
-	if !isIntegerType(st.typ) {
+	rt, err := fg.g.lowerValueType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	computeType, ok := compoundArithmeticType(st.typ, rt)
+	if !ok {
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("compound assignment lowering is not implemented for %s", st.typ)}
 	}
 
-	computeType := compoundIntegerType(st.typ)
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(st.typ, st.slot))
 	fg.emitCast(st.typ, computeType, sema.IntegralConversion)
 	if err := fg.emitValue(x.R); err != nil {
-		return err
-	}
-	rt, err := fg.g.lowerValueType(x.R.GetType())
-	if err != nil {
 		return err
 	}
 	fg.emitCast(rt, computeType, sema.IntegralConversion)
@@ -323,10 +323,14 @@ func (fg *funcGen) emitAddressableCompoundAssign(x *sema.CompoundAssign) error {
 	if vt == bytecode.TypeObjectAddr && isComplexType(x.L.GetType()) {
 		return fg.emitComplexCompoundAssign(x)
 	}
-	if !isIntegerType(vt) {
+	rt, err := fg.g.lowerValueType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	computeType, ok := compoundArithmeticType(vt, rt)
+	if !ok {
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("compound assignment lowering is not implemented for %s", vt)}
 	}
-	computeType := compoundIntegerType(vt)
 	addrSlot := fg.allocSyntheticSlot(".compound.assign.addr", bytecode.TypeObjectAddr)
 	valueSlot := fg.allocSyntheticSlot(".compound.assign.value", vt)
 	if err := fg.emitAddress(x.L); err != nil {
@@ -339,10 +343,6 @@ func (fg *funcGen) emitAddressableCompoundAssign(x *sema.CompoundAssign) error {
 	)
 	fg.emitCast(vt, computeType, sema.IntegralConversion)
 	if err := fg.emitValue(x.R); err != nil {
-		return err
-	}
-	rt, err := fg.g.lowerValueType(x.R.GetType())
-	if err != nil {
 		return err
 	}
 	fg.emitCast(rt, computeType, sema.IntegralConversion)
@@ -550,6 +550,25 @@ func compoundIntegerType(t bytecode.ValueType) bytecode.ValueType {
 	default:
 		return t
 	}
+}
+
+func compoundArithmeticType(lhs, rhs bytecode.ValueType) (bytecode.ValueType, bool) {
+	if isFloatType(lhs) || isFloatType(rhs) {
+		switch {
+		case lhs == bytecode.TypeFLong || rhs == bytecode.TypeFLong:
+			return bytecode.TypeFLong, true
+		case lhs == bytecode.TypeF64 || rhs == bytecode.TypeF64:
+			return bytecode.TypeF64, true
+		case lhs == bytecode.TypeF32 || rhs == bytecode.TypeF32:
+			return bytecode.TypeF32, true
+		default:
+			return 0, false
+		}
+	}
+	if isIntegerType(lhs) && isIntegerType(rhs) {
+		return compoundIntegerType(lhs), true
+	}
+	return 0, false
 }
 
 func (fg *funcGen) emitCondExpr(x *sema.CondExpr) error {

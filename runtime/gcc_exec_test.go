@@ -448,6 +448,60 @@ int main(void)
 	}
 }
 
+func TestGCCLongDoubleArithmeticExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  volatile long double x = 1.25L;
+  long double y = x + 2.75L;
+  y *= 2.0L;
+  y /= 4.0L;
+  return y == 2.0L ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "long-double-arithmetic-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCLongDoubleArgumentReturnExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+long double add(long double x, long double y)
+{
+  return x + y;
+}
+
+int main(void)
+{
+  long double z = add(1.25L, 2.75L);
+  return z == 4.0L ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "long-double-argument-return-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCFloatCompoundDoubleRHSExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  float f = 1.25f;
+  f += 2.25;
+  return f == 3.5f ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "float-compound-double-rhs-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
