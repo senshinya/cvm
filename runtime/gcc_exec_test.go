@@ -1143,6 +1143,52 @@ int main(void)
 	}
 }
 
+func TestTgmathComplexPointerDereferenceExpExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+struct pair {
+  int tag;
+  complex double value;
+};
+
+int main(void)
+{
+  struct pair p = { 7, __builtin_complex(0.0, 0.0) };
+  complex double *q = &p.value;
+  complex double r = exp(*q);
+  return __builtin_cabs(r) == 1.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-complex-pointer-dereference-exp-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestTgmathComplexPointerDereferencePowExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+struct pair {
+  int tag;
+  complex double value;
+};
+
+int main(void)
+{
+  struct pair p = { 7, __builtin_complex(2.0, 0.0) };
+  complex double *q = &p.value;
+  complex double r = pow(*q, 3.0);
+  return __builtin_cabs(r) == 8.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-complex-pointer-dereference-pow-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexPointerDereferenceBinaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
