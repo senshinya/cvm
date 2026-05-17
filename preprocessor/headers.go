@@ -329,6 +329,7 @@ double __cvm_tgmath_carg();
 double __cvm_tgmath_cimag();
 double __cvm_tgmath_creal();
 double __cvm_tgmath_conj();
+double __cvm_tgmath_cproj();
 long __cvm_tgmath_lrint();
 long __cvm_tgmath_lround();
 long long __cvm_tgmath_llrint();

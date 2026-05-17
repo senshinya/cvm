@@ -235,6 +235,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathComplexRealExterns(r, "__cvm_tgmath_creal", func(z complex128) float64 { return real(z) })
 	registerTgmathRealTernaryExterns(r, "__cvm_tgmath_fma", math.FMA)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_conj", cmplx.Conj)
+	registerTgmathComplexExterns(r, "__cvm_tgmath_cproj", cvmComplexProject)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csin", cmplx.Sin)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cexp", cmplx.Exp)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csqrt", cmplx.Sqrt)
@@ -393,6 +394,13 @@ func storeComplexResult(name string, ec *ExternContext, realType bytecode.ValueT
 		return 0, err
 	}
 	return addr, nil
+}
+
+func cvmComplexProject(z complex128) complex128 {
+	if math.IsInf(real(z), 0) || math.IsInf(imag(z), 0) {
+		return complex(math.Inf(1), math.Copysign(0, imag(z)))
+	}
+	return z
 }
 
 func registerTgmathRealExterns(r *ExternRegistry, base string, fn func(float64) float64) {

@@ -248,6 +248,16 @@ float f(complex float z) { return carg(z); }
 	}
 }
 
+func TestGCCTgmathCprojUsesComplexRank(t *testing.T) {
+	source := `#include <tgmath.h>
+complex float f(complex float z) { return cproj(z); }
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-cproj-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_cprojf") {
+		t.Fatalf("cproj(complex float) did not reference complex-float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string
