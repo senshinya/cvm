@@ -219,6 +219,8 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_copysign", math.Copysign)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_nextafter", math.Nextafter)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_nexttoward", math.Nextafter)
+	registerTgmathRealIntBinaryExterns(r, "__cvm_tgmath_scalbn", math.Ldexp)
+	registerTgmathRealIntBinaryExterns(r, "__cvm_tgmath_scalbln", math.Ldexp)
 	registerTgmathRealTernaryExterns(r, "__cvm_tgmath_fma", math.FMA)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csin", cmplx.Sin)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cexp", cmplx.Exp)
@@ -373,6 +375,12 @@ func registerTgmathRealBinaryExterns(r *ExternRegistry, base string, fn func(flo
 	r.Register(base+"l", mathBinaryFloatExtern(base+"l", bytecode.TypeFLong, fn))
 }
 
+func registerTgmathRealIntBinaryExterns(r *ExternRegistry, base string, fn func(float64, int) float64) {
+	r.Register(base+"f", mathFloatIntExtern(base+"f", bytecode.TypeF32, fn))
+	r.Register(base, mathFloatIntExtern(base, bytecode.TypeF64, fn))
+	r.Register(base+"l", mathFloatIntExtern(base+"l", bytecode.TypeFLong, fn))
+}
+
 func registerTgmathRealTernaryExterns(r *ExternRegistry, base string, fn func(float64, float64, float64) float64) {
 	r.Register(base+"f", mathTernaryFloatExtern(base+"f", bytecode.TypeF32, fn))
 	r.Register(base, mathTernaryFloatExtern(base, bytecode.TypeF64, fn))
@@ -400,6 +408,22 @@ func mathBinaryFloatExtern(name string, ret bytecode.ValueType, fn func(float64,
 			return Value{}, nil, fmt.Errorf("%s expects floating arguments", name)
 		}
 		return floatResult(ret, fn(cvmFloat(args[0]), cvmFloat(args[1]))), nil, nil
+	}
+}
+
+func mathFloatIntExtern(name string, ret bytecode.ValueType, fn func(float64, int) float64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isFloatType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects floating and integer arguments", name)
+		}
+		exp := signedInt(args[1])
+		if int64(int(exp)) != exp {
+			return Value{}, nil, fmt.Errorf("%s exponent %d exceeds int range", name, exp)
+		}
+		return floatResult(ret, fn(cvmFloat(args[0]), int(exp))), nil, nil
 	}
 }
 

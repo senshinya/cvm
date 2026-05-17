@@ -877,7 +877,7 @@ func tgmathPseudoCallName(e sema.Expr) string {
 		return ""
 	}
 	switch vr.Sym.Name {
-	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow", "__cvm_tgmath_sqrt", "__cvm_tgmath_cos", "__cvm_tgmath_tan", "__cvm_tgmath_log", "__cvm_tgmath_sinh", "__cvm_tgmath_cosh", "__cvm_tgmath_tanh", "__cvm_tgmath_asin", "__cvm_tgmath_acos", "__cvm_tgmath_atan", "__cvm_tgmath_asinh", "__cvm_tgmath_acosh", "__cvm_tgmath_atanh", "__cvm_tgmath_atan2", "__cvm_tgmath_hypot", "__cvm_tgmath_cbrt", "__cvm_tgmath_ceil", "__cvm_tgmath_floor", "__cvm_tgmath_trunc", "__cvm_tgmath_round", "__cvm_tgmath_exp2", "__cvm_tgmath_expm1", "__cvm_tgmath_log10", "__cvm_tgmath_log1p", "__cvm_tgmath_log2", "__cvm_tgmath_fdim", "__cvm_tgmath_fmax", "__cvm_tgmath_fmin", "__cvm_tgmath_fmod", "__cvm_tgmath_remainder", "__cvm_tgmath_copysign", "__cvm_tgmath_fma", "__cvm_tgmath_nextafter", "__cvm_tgmath_nexttoward", "__cvm_tgmath_erf", "__cvm_tgmath_erfc", "__cvm_tgmath_tgamma", "__cvm_tgmath_lgamma", "__cvm_tgmath_nearbyint", "__cvm_tgmath_rint", "__cvm_tgmath_logb":
+	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow", "__cvm_tgmath_sqrt", "__cvm_tgmath_cos", "__cvm_tgmath_tan", "__cvm_tgmath_log", "__cvm_tgmath_sinh", "__cvm_tgmath_cosh", "__cvm_tgmath_tanh", "__cvm_tgmath_asin", "__cvm_tgmath_acos", "__cvm_tgmath_atan", "__cvm_tgmath_asinh", "__cvm_tgmath_acosh", "__cvm_tgmath_atanh", "__cvm_tgmath_atan2", "__cvm_tgmath_hypot", "__cvm_tgmath_cbrt", "__cvm_tgmath_ceil", "__cvm_tgmath_floor", "__cvm_tgmath_trunc", "__cvm_tgmath_round", "__cvm_tgmath_exp2", "__cvm_tgmath_expm1", "__cvm_tgmath_log10", "__cvm_tgmath_log1p", "__cvm_tgmath_log2", "__cvm_tgmath_fdim", "__cvm_tgmath_fmax", "__cvm_tgmath_fmin", "__cvm_tgmath_fmod", "__cvm_tgmath_remainder", "__cvm_tgmath_copysign", "__cvm_tgmath_fma", "__cvm_tgmath_nextafter", "__cvm_tgmath_nexttoward", "__cvm_tgmath_erf", "__cvm_tgmath_erfc", "__cvm_tgmath_tgamma", "__cvm_tgmath_lgamma", "__cvm_tgmath_nearbyint", "__cvm_tgmath_rint", "__cvm_tgmath_logb", "__cvm_tgmath_scalbn", "__cvm_tgmath_scalbln":
 		return vr.Sym.Name
 	default:
 		return ""
@@ -933,7 +933,7 @@ func tgmathExternName(pseudo string, x *sema.CallExpr) string {
 }
 
 func tgmathCallRankForPseudo(pseudo string, x *sema.CallExpr) sema.BuiltinKind {
-	if pseudo == "__cvm_tgmath_nexttoward" && len(x.Args) > 0 {
+	if tgmathUsesFirstArgRank(pseudo) && len(x.Args) > 0 {
 		if bt, ok := sema.Unqual(x.Args[0].GetType()).(*sema.BuiltinType); ok {
 			switch bt.Kind {
 			case sema.Float, sema.FloatComplex, sema.Double, sema.DoubleComplex, sema.LongDouble, sema.LongDoubleComplex:
@@ -943,6 +943,15 @@ func tgmathCallRankForPseudo(pseudo string, x *sema.CallExpr) sema.BuiltinKind {
 		return sema.Double
 	}
 	return tgmathCallRank(x)
+}
+
+func tgmathUsesFirstArgRank(pseudo string) bool {
+	switch pseudo {
+	case "__cvm_tgmath_nexttoward", "__cvm_tgmath_scalbn", "__cvm_tgmath_scalbln":
+		return true
+	default:
+		return false
+	}
 }
 
 func tgmathCallIsComplex(x *sema.CallExpr) bool {

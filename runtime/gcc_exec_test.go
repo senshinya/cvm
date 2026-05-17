@@ -674,6 +674,23 @@ int main(void)
 	}
 }
 
+func TestTgmathScalbnHelpersExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (scalbn(2.0f, 3) != 16.0f)
+    return 1;
+  return scalbln(3.0L, 2L) == 12.0L ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-scalbn-real.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathComplexSinExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

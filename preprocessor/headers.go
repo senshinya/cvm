@@ -318,6 +318,8 @@ double __cvm_tgmath_lgamma();
 double __cvm_tgmath_nearbyint();
 double __cvm_tgmath_rint();
 double __cvm_tgmath_logb();
+double __cvm_tgmath_scalbn();
+double __cvm_tgmath_scalbln();
 #endif
 `
 }
