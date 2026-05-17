@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `2a0c35a feat(runtime): execute va_arg opcodes`
+- Latest implementation/coverage commit before this handoff document: `ea84e79 fix(bytecode): reject va_start outside variadic functions`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `ea84e79 fix(bytecode): reject va_start outside variadic functions`
+  - Threads the current function's variadic flag into bytecode stack validation.
+  - Keeps `OpVaStart` legal only in variadic functions.
+  - Adds validator coverage for accepted variadic va opcodes and rejected non-variadic `va_start`.
 
 - `2a0c35a feat(runtime): execute va_arg opcodes`
   - Allows `OpVaStart`, `OpVaArg`, and `OpVaEnd` through bytecode validation.
