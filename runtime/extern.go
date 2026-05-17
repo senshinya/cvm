@@ -135,6 +135,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		right := rightBlock.data[rightOff : rightOff+int(n)]
 		return IntValue(bytecode.TypeI32, int64(memcmpResult(left, right))), nil, nil
 	})
+	registerAllocationExterns(r)
 	registerMemoryExterns(r)
 	r.Register("feclearexcept", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
@@ -150,6 +151,12 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	})
 	registerMathExterns(r)
 	return r
+}
+
+func registerAllocationExterns(r *ExternRegistry) {
+	r.Register("__builtin_malloc", mallocExtern("__builtin_malloc"))
+	r.Register("__builtin_calloc", callocExtern("__builtin_calloc"))
+	r.Register("__builtin_strdup", strdupExtern("__builtin_strdup"))
 }
 
 func registerMemoryExterns(r *ExternRegistry) {
@@ -327,6 +334,91 @@ func abortExtern() ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		return Value{}, nil, &TrapError{Reason: "abort"}
 	}
+}
+
+func mallocExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects size argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[0])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		addr, err := ec.Memory.TryAlloc("extern:"+name, nonzeroAllocSize(size), ec.Memory.target.PointerAlign, false, blockGlobal)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
+func callocExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects count and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count := unsignedInt(args[0])
+		size := unsignedInt(args[1])
+		if count != 0 && size > uint64(maxInt())/count {
+			return Value{}, nil, fmt.Errorf("%s allocation size overflows", name)
+		}
+		total := count * size
+		if total > uint64(maxInt()) {
+			return Value{}, nil, fmt.Errorf("%s allocation size %d exceeds int range", name, total)
+		}
+		addr, err := ec.Memory.TryAlloc("extern:"+name, nonzeroAllocSize(int64(total)), ec.Memory.target.PointerAlign, false, blockGlobal)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
+func strdupExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		src, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		data := append([]byte(src), 0)
+		addr, err := ec.Memory.TryAlloc("extern:"+name, int64(len(data)), 1, false, blockGlobal)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := writeMemoryBytes(ec.Memory, addr, data); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
+func nonzeroAllocSize(size int64) int64 {
+	if size == 0 {
+		return 1
+	}
+	return size
 }
 
 func memoryCopyExtern(name string, returnEnd bool) ExternFunc {
