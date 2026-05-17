@@ -1114,7 +1114,7 @@ func tgmathPseudoName(e Expr) string {
 		return ""
 	}
 	switch vr.Sym.Name {
-	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow", "__cvm_tgmath_sqrt", "__cvm_tgmath_cos", "__cvm_tgmath_tan", "__cvm_tgmath_log":
+	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow", "__cvm_tgmath_sqrt", "__cvm_tgmath_cos", "__cvm_tgmath_tan", "__cvm_tgmath_log", "__cvm_tgmath_sinh":
 		return vr.Sym.Name
 	default:
 		return ""
