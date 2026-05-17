@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `1b95703 feat(runtime): execute va_start externs`
+- Latest implementation/coverage commit before this handoff document: `732ea7e feat(runtime): support no-arg vformat externs`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,12 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `732ea7e feat(runtime): support no-arg vformat externs`
+  - Registers `vprintf`/`vfprintf`/`vsprintf`/`vsnprintf` plain and builtin externs, plus checked builtin variants.
+  - Executes v-format calls when the format string does not consume `va_list` values, using the shared formatter with an empty argument list.
+  - Adds runtime GCC exec coverage for `<stdio.h>` + `<stdarg.h>` `vsprintf`/`vsnprintf` literal formatting.
+  - Adds `stdin` extern variable allocation and `fputs_unlocked` output alias support for the builtin `<stdio.h>` header surface.
 
 - `1b95703 feat(runtime): execute va_start externs`
   - Registers no-op runtime externs for `__builtin_va_start` and `__builtin_va_end`.
@@ -785,11 +791,11 @@ Complex constant-expression coverage includes automatic and static complex initi
 VLA runtime coverage includes local VLA dynamic object allocation, VLA fields inside local structs and unions, VLA parameter dynamic strides, and nested-function VLA capture cases.
 Integer conversion runtime coverage includes Wconversion-derived signed-to-unsigned conversion, unsigned-char narrowing, conditional conversions, function argument conversions, and Wsign-derived signed/unsigned boundary conversions.
 Scalar floating runtime coverage includes `long double` local arithmetic, `long double` by-value arguments and returns, mixed-width floating compound assignment such as `float += double`, floating assignment and compound-assignment expression results for local slots and addressable fields, floating logical expressions through bool conversion, and floating `++`/`--` for local slots and addressable fields.
-Direct builtin runtime coverage includes `__builtin_pow`, `__builtin_huge_val*`, `__builtin_nan`, `nan`, `__builtin_abort`, `__builtin_va_start`, `__builtin_va_end`, allocation helpers `__builtin_malloc`, `__builtin_calloc`, and `__builtin_strdup`, object-size helpers `__builtin_object_size` and `__builtin_dynamic_object_size`, memory operations `__builtin_memcpy`, `__builtin_memmove`, `__builtin_mempcpy`, `__builtin_memset`, and `__builtin_bzero`, checked memory operations `__builtin___memcpy_chk`, `__builtin___memmove_chk`, `__builtin___mempcpy_chk`, and `__builtin___memset_chk`, read-only string helpers `__builtin_strlen`, `__builtin_strchr`, and `__builtin_strstr`, string-writing helpers `__builtin_strcpy`, `__builtin_stpcpy`, `__builtin_strcat`, `__builtin_strncpy`, `__builtin_stpncpy`, and `__builtin_strncat`, checked string-writing helpers `__builtin___strcpy_chk`, `__builtin___stpcpy_chk`, `__builtin___strcat_chk`, `__builtin___strncpy_chk`, `__builtin___stpncpy_chk`, and `__builtin___strncat_chk`, buffer formatting helpers `__builtin_sprintf` and `__builtin_snprintf`, checked buffer formatting helpers `__builtin___sprintf_chk` and `__builtin___snprintf_chk`, stdout/FILE formatting helpers `__builtin_printf`, `__builtin_printf_unlocked`, `__builtin_fprintf`, and `__builtin_fprintf_unlocked`, checked stdout/FILE formatting helpers `__builtin___printf_chk` and `__builtin___fprintf_chk`, and shared formatter coverage for integer/pointer/floating formats such as `%ld`, `%llu`, `%zu`, `%x`, `%X`, `%o`, `%p`, `%f`, `%e`, `%g`, `%a`, and sized `%n`, plus literal/dynamic width, literal/dynamic precision, `-`, `0`, `+`, space, and `#` flags.
+Direct builtin runtime coverage includes `__builtin_pow`, `__builtin_huge_val*`, `__builtin_nan`, `nan`, `__builtin_abort`, `__builtin_va_start`, `__builtin_va_end`, allocation helpers `__builtin_malloc`, `__builtin_calloc`, and `__builtin_strdup`, object-size helpers `__builtin_object_size` and `__builtin_dynamic_object_size`, memory operations `__builtin_memcpy`, `__builtin_memmove`, `__builtin_mempcpy`, `__builtin_memset`, and `__builtin_bzero`, checked memory operations `__builtin___memcpy_chk`, `__builtin___memmove_chk`, `__builtin___mempcpy_chk`, and `__builtin___memset_chk`, read-only string helpers `__builtin_strlen`, `__builtin_strchr`, and `__builtin_strstr`, string-writing helpers `__builtin_strcpy`, `__builtin_stpcpy`, `__builtin_strcat`, `__builtin_strncpy`, `__builtin_stpncpy`, and `__builtin_strncat`, checked string-writing helpers `__builtin___strcpy_chk`, `__builtin___stpcpy_chk`, `__builtin___strcat_chk`, `__builtin___strncpy_chk`, `__builtin___stpncpy_chk`, and `__builtin___strncat_chk`, buffer formatting helpers `__builtin_sprintf`, `__builtin_snprintf`, `__builtin_vsprintf`, and `__builtin_vsnprintf`, checked buffer formatting helpers `__builtin___sprintf_chk`, `__builtin___snprintf_chk`, `__builtin___vsprintf_chk`, and `__builtin___vsnprintf_chk`, stdout/FILE formatting helpers `__builtin_printf`, `__builtin_printf_unlocked`, `__builtin_fprintf`, `__builtin_fprintf_unlocked`, `__builtin_vprintf`, and `__builtin_vfprintf`, checked stdout/FILE formatting helpers `__builtin___printf_chk`, `__builtin___fprintf_chk`, `__builtin___vprintf_chk`, and `__builtin___vfprintf_chk`, and shared formatter coverage for integer/pointer/floating formats such as `%ld`, `%llu`, `%zu`, `%x`, `%X`, `%o`, `%p`, `%f`, `%e`, `%g`, `%a`, and sized `%n`, plus literal/dynamic width, literal/dynamic precision, `-`, `0`, `+`, space, and `#` flags. The v-format externs currently only execute formats that do not consume `va_list` values.
 Bit-field runtime coverage includes simple assignment, compound assignment, and `++`/`--` for integer and `_Bool` bit-fields, including expression values after bit-field truncation/wrapping.
 Pointer runtime coverage includes local and addressable pointer compound assignment, initialized pointer fields updated with `+=` and `-=`, pointer array element compound assignment, pointer `++`/`--` through struct fields and array elements, and static pointer field/array initializers with relocations.
 Function pointer runtime coverage includes indirect calls through local arrays, struct fields, static struct-field initializers, function pointer parameters, returned function pointers, struct returns and struct by-value arguments through function pointers, function designator initialization/assignment/comma expressions, and return conversion from function designators to function pointers.
-Variadic runtime coverage includes direct variadic calls and indirect calls through variadic function pointers with extra arguments, `<stdarg.h>` `va_start`/`va_end` expansion through no-op builtin externs, plus first-stage `OpVaStart`/`OpVaArg`/`OpVaEnd` execution for local variadic functions reading extra arguments from a runtime frame cursor.
+Variadic runtime coverage includes direct variadic calls and indirect calls through variadic function pointers with extra arguments, `<stdarg.h>` `va_start`/`va_end` expansion through no-op builtin externs, v-format literal output that does not consume `va_list` values, plus first-stage `OpVaStart`/`OpVaArg`/`OpVaEnd` execution for local variadic functions reading extra arguments from a runtime frame cursor.
 
 ### GNU Nested Functions
 
@@ -885,7 +891,7 @@ Runtime support exists for real math externs and for the currently covered compl
 - Bytecode design is intended to be complete enough for the compiler artifact, but execution support is still catching up.
 - Complex runtime execution is not complete.
 - Long double runtime memory/operations are still limited in places.
-- `va_list` execution currently uses an interpreter-internal frame cursor for bytecode `OpVa*`; it is not yet a memory-backed C ABI object and does not yet enable `vprintf`/`vsprintf` extern families.
+- `va_list` execution currently uses an interpreter-internal frame cursor for bytecode `OpVa*`; it is not yet a memory-backed C ABI object. The v-format extern families are registered, but only support formats that do not consume `va_list` values.
 - The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation, but runtime execution coverage is still much smaller.
 - Static-chain support is deliberately narrow and rejects escaping capturing nested functions instead of modeling trampolines.
 
