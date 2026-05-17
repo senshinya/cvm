@@ -653,6 +653,34 @@ int main(void)
 	}
 }
 
+func TestGCCBitFieldExpressionValuesAreStoredValuesExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct bits {
+  unsigned int a : 3;
+};
+
+int main(void)
+{
+  struct bits s = { 0 };
+  if ((s.a = 9) != 1)
+    return 1;
+  if ((s.a += 8) != 1)
+    return 2;
+  s.a = 7;
+  if (++s.a != 0)
+    return 3;
+  if (s.a != 0)
+    return 4;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "bit-field-expression-stored-values-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
