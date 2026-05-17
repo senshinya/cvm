@@ -983,6 +983,36 @@ int main(void)
 	}
 }
 
+func TestStdioUnlockedBlockIOAliasesExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[4] = { 0 };
+  ungetc('Y', stdin);
+  ungetc('X', stdin);
+  if (fread_unlocked(buf, 1, 2, stdin) != 2)
+    return 1;
+  if (buf[0] != 'X' || buf[1] != 'Y')
+    return 2;
+  if (fwrite_unlocked(buf, 1, 2, stdout) != 2)
+    return 3;
+  ungetc('\n', stdin);
+  ungetc('Z', stdin);
+  if (fgets_unlocked(buf, sizeof buf, stdin) != buf)
+    return 4;
+  if (buf[0] != 'Z' || buf[1] != '\n' || buf[2] != 0)
+    return 5;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-unlocked-block-io-aliases-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioGetcharFgetcEmptyInputExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

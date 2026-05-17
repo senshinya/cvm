@@ -92,14 +92,20 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		r.Register(name, fgetcExtern(name, r))
 	}
 	r.Register("ungetc", ungetcExtern("ungetc", r))
-	r.Register("fgets", fgetsExtern("fgets", r))
+	for _, name := range []string{"fgets", "fgets_unlocked"} {
+		r.Register(name, fgetsExtern(name, r))
+	}
 	for _, name := range []string{"fputs", "fputs_unlocked"} {
 		r.Register(name, fputsExtern(name, r))
 	}
 	r.Register("fflush", fflushExtern("fflush", r))
 	r.Register("fclose", fcloseExtern("fclose", r))
-	r.Register("fwrite", fwriteExtern("fwrite", r))
-	r.Register("fread", freadExtern("fread", r))
+	for _, name := range []string{"fwrite", "fwrite_unlocked"} {
+		r.Register(name, fwriteExtern(name, r))
+	}
+	for _, name := range []string{"fread", "fread_unlocked"} {
+		r.Register(name, freadExtern(name, r))
+	}
 	for _, name := range []string{"ferror", "feof"} {
 		r.Register(name, streamStatusExtern(name, r))
 	}
