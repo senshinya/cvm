@@ -930,6 +930,35 @@ int main(void)
 	}
 }
 
+func TestGCCFunctionDesignatorReturnConvertsToPointerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int inc(int x)
+{
+  return x + 1;
+}
+
+int dec(int x)
+{
+  return x - 1;
+}
+
+int (*choose(int flag))(int)
+{
+  return flag ? inc : dec;
+}
+
+int main(void)
+{
+  return choose(1)(41) == 42 && choose(0)(43) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "function-designator-return-pointer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCFunctionPointerArgumentCallExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

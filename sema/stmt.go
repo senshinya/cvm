@@ -590,7 +590,7 @@ func (s *Sema) typeJump(node *entity.AstNode, scope *Scope, ctx *funcCtx) Stmt {
 	case node.ReducedBy(parser.JumpStatement, 4):
 		return &ReturnStmt{Range: node.SourceRange}
 	case node.ReducedBy(parser.JumpStatement, 5):
-		expr := s.castArrayDecay(s.castLValueToRValue(s.typeExpr(node.Children[1], scope)))
+		expr := s.castFunctionDecay(s.castArrayDecay(s.castLValueToRValue(s.typeExpr(node.Children[1], scope))))
 		if ctx != nil && ctx.def != nil && ctx.def.T != nil {
 			expr = s.assignmentConversion(expr, ctx.def.T.Ret, node.SourceStart)
 		}

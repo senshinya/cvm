@@ -813,17 +813,17 @@ func (s *Sema) typeConditional(node *entity.AstNode, scope *Scope) Expr {
 		return s.typeExpr(node.Children[0], scope)
 	case node.ReducedBy(parser.ConditionalExpression, 2):
 		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[0], scope)))
-		then := s.castLValueToRValue(s.typeExpr(node.Children[2], scope))
-		els := s.castLValueToRValue(s.typeExpr(node.Children[4], scope))
+		then := s.castFunctionDecay(s.castLValueToRValue(s.typeExpr(node.Children[2], scope)))
+		els := s.castFunctionDecay(s.castLValueToRValue(s.typeExpr(node.Children[4], scope)))
 		then, els, common := s.balanceConditionalOperands(then, els, node.SourceStart)
 		return &CondExpr{Cond: cond, Then: then, Else: els, T: common, Range: node.SourceRange}
 	case node.ReducedBy(parser.ConditionalExpression, 3):
 		if !s.Options.GNUExtensions || s.Options.PedanticErrors {
 			s.report(InvalidTypeSpec(node.SourceStart, "omitted middle operand requires GNU C mode"))
 		}
-		then := s.castLValueToRValue(s.typeExpr(node.Children[0], scope))
+		then := s.castFunctionDecay(s.castLValueToRValue(s.typeExpr(node.Children[0], scope)))
 		cond := s.castBoolConversion(then)
-		els := s.castLValueToRValue(s.typeExpr(node.Children[3], scope))
+		els := s.castFunctionDecay(s.castLValueToRValue(s.typeExpr(node.Children[3], scope)))
 		then, els, common := s.balanceConditionalOperands(then, els, node.SourceStart)
 		return &CondExpr{Cond: cond, Then: then, Else: els, T: common, Range: node.SourceRange}
 	}
