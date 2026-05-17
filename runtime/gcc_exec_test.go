@@ -568,6 +568,23 @@ int main(void)
 	}
 }
 
+func TestTgmathRintHelpersExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (nearbyint(2.0f) != 2.0f)
+    return 1;
+  return rint(3.0L) == 3.0L ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-rint-helpers.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathBinaryRealHelpersExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

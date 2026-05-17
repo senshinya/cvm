@@ -205,6 +205,8 @@ func registerMathExterns(r *ExternRegistry) {
 		r, _ := math.Lgamma(v)
 		return r
 	})
+	registerTgmathRealExterns(r, "__cvm_tgmath_nearbyint", math.RoundToEven)
+	registerTgmathRealExterns(r, "__cvm_tgmath_rint", math.RoundToEven)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_pow", math.Pow)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_atan2", math.Atan2)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_hypot", math.Hypot)

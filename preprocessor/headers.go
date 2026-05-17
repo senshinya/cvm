@@ -314,6 +314,8 @@ double __cvm_tgmath_erf();
 double __cvm_tgmath_erfc();
 double __cvm_tgmath_tgamma();
 double __cvm_tgmath_lgamma();
+double __cvm_tgmath_nearbyint();
+double __cvm_tgmath_rint();
 #endif
 `
 }
