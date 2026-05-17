@@ -610,6 +610,56 @@ int main(void)
 	}
 }
 
+func TestGCCNestedComplexStructInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct inner {
+  int tag;
+  __complex__ double value;
+};
+
+struct outer {
+  int prefix;
+  struct inner in;
+};
+
+int main(void)
+{
+  struct outer o = { 1, { 7, __builtin_complex(5.0, 12.0) } };
+  return o.prefix == 1 && o.in.tag == 7 && __builtin_cabs(o.in.value) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "nested-complex-struct-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCNestedComplexStructDesignatedInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct inner {
+  int tag;
+  __complex__ double value;
+};
+
+struct outer {
+  int prefix;
+  struct inner in;
+};
+
+int main(void)
+{
+  struct outer o = { .in.value = __builtin_complex(5.0, 12.0), .in.tag = 7, .prefix = 1 };
+  return o.prefix == 1 && o.in.tag == 7 && __builtin_cabs(o.in.value) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "nested-complex-struct-designated-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexExplicitCastNarrowsThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
