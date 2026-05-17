@@ -111,6 +111,20 @@ func TestGCCTgmathComplexPowFloatUsesComplexFloatExtern(t *testing.T) {
 	}
 }
 
+func TestGCCTgmathNexttowardUsesFirstArgumentRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(void) {
+  float x = 1.0f;
+  long double y = 2.0L;
+  return nexttoward(x, y);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-nexttoward-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_nexttowardf") {
+		t.Fatalf("nexttoward(float, long double) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string

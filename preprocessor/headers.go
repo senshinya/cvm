@@ -310,6 +310,7 @@ double __cvm_tgmath_remainder();
 double __cvm_tgmath_copysign();
 double __cvm_tgmath_fma();
 double __cvm_tgmath_nextafter();
+double __cvm_tgmath_nexttoward();
 double __cvm_tgmath_erf();
 double __cvm_tgmath_erfc();
 double __cvm_tgmath_tgamma();
