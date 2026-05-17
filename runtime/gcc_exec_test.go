@@ -769,6 +769,32 @@ int main(void)
 	}
 }
 
+func TestBuiltinStringSearchExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  char text[8] = "abcdef";
+
+  if (__builtin_strlen(text) != 6)
+    return 1;
+  if (__builtin_strchr(text, 'd') != text + 3)
+    return 2;
+  if (__builtin_strchr(text, 'z') != 0)
+    return 3;
+  if (__builtin_strchr(text, 0) != text + 6)
+    return 4;
+  if (__builtin_strstr(text, "cd") != text + 2)
+    return 5;
+  return __builtin_strstr(text, "gh") == 0 ? 0 : 6;
+}
+`
+	st := runGCCExecFixture(t, "builtin-string-search-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathFabsExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/cmplx"
 	"os"
+	"strings"
 
 	"shinya.click/cvm/bytecode"
 )
@@ -162,6 +163,15 @@ func registerMemoryExterns(r *ExternRegistry) {
 		r.Register(name, memorySetExtern(name))
 	}
 	r.Register("__builtin_bzero", memoryBzeroExtern("__builtin_bzero"))
+	for _, name := range []string{"__builtin_strlen", "strlen"} {
+		r.Register(name, stringLengthExtern(name))
+	}
+	for _, name := range []string{"__builtin_strchr", "strchr"} {
+		r.Register(name, stringCharSearchExtern(name))
+	}
+	for _, name := range []string{"__builtin_strstr", "strstr"} {
+		r.Register(name, stringSearchExtern(name))
+	}
 }
 
 func registerMathExterns(r *ExternRegistry) {
@@ -364,6 +374,79 @@ func memorySizeArg(name string, arg Value) (int64, error) {
 		return 0, fmt.Errorf("%s size %d exceeds int range", name, size)
 	}
 	return int64(size), nil
+}
+
+func stringLengthExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, uint64(len(s))), nil, nil
+	}
+}
+
+func stringCharSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string and integer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		ch := byte(unsignedInt(args[1]))
+		if ch == 0 {
+			return PtrValue(args[0].Int + uint64(len(s))), nil, nil
+		}
+		idx := strings.IndexByte(s, ch)
+		if idx < 0 {
+			return PtrValue(0), nil, nil
+		}
+		return PtrValue(args[0].Int + uint64(idx)), nil, nil
+	}
+}
+
+func stringSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		haystack, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		needle, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		idx := strings.Index(haystack, needle)
+		if idx < 0 {
+			return PtrValue(0), nil, nil
+		}
+		return PtrValue(args[0].Int + uint64(idx)), nil, nil
+	}
 }
 
 func complexAbsExtern(name string, realType bytecode.ValueType, realSize uint64) ExternFunc {
