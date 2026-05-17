@@ -1081,6 +1081,27 @@ int main(void)
 	}
 }
 
+func TestStdioOutputUnlockedAliasesExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (putc('P', stdout) != 'P')
+    return 1;
+  if (putc_unlocked('U', stdout) != 'U')
+    return 2;
+  if (putchar_unlocked('H') != 'H')
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-output-unlocked-aliases-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
