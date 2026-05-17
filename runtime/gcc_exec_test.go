@@ -286,16 +286,16 @@ func TestTgmathComplexFloatPowExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
 
+complex double foo(complex float x, float y)
+{
+  return pow(x, y);
+}
+
 int main(void)
 {
   complex float z = __builtin_complex(2.0f, 0.0f);
-  return foo(z, 3.0f);
-}
-
-int foo(complex float x, float y)
-{
-  complex float r = pow(x, y);
-  return __builtin_cabsf(r) == 8.0f ? 0 : 1;
+  complex double r = foo(z, 3.0f);
+  return __builtin_cabs(r) == 8.0 ? 0 : 1;
 }
 `
 	st := runGCCExecFixture(t, "tgmath-complex-float-pow.c", source)
