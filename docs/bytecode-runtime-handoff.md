@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `6f433ef feat(runtime): support stdio fgets pushback`
+- Latest implementation/coverage commit before this handoff document: `ced51f2 feat(runtime): track stdio EOF status`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,12 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `ced51f2 feat(runtime): track stdio EOF status`
+  - Tracks per-host-handle EOF status for empty `fgetc`, `fgets`, `getchar`, and nonzero-sized empty `fread`.
+  - Teaches `feof` to report the tracked EOF bit.
+  - Teaches `clearerr` and successful `ungetc` to clear the EOF bit.
+  - Adds direct extern coverage and GCC runtime execution coverage for EOF status transitions.
 
 - `6f433ef feat(runtime): support stdio fgets pushback`
   - Adds first-stage `fgets` runtime extern support over interpreter-local `ungetc` pushback.
@@ -958,7 +964,7 @@ Runtime support exists for real math externs and for the currently covered compl
 - Long double runtime memory/operations are still limited in places.
 - `va_list` execution currently uses an interpreter-internal frame cursor for bytecode `OpVa*`; it is not yet a memory-backed C ABI object. The v-format extern families are registered, but only support formats that do not consume `va_list` values.
 - `fread` is currently an empty-input skeleton: it validates known stream handles, returns zero elements, and does not populate the destination buffer.
-- `getchar`, `fgetc`, and `fgets` currently consume interpreter-local `ungetc` pushback and otherwise return `EOF`/null; they do not read from a host input stream. `feof` still returns zero in the current status skeleton.
+- `getchar`, `fgetc`, and `fgets` currently consume interpreter-local `ungetc` pushback and otherwise return `EOF`/null; they do not read from a host input stream.
 - `fclose` currently validates known host stream handles and returns zero, but does not model stream lifetime or prevent later use of that stream handle.
 - The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation, but runtime execution coverage is still much smaller.
 - Static-chain support is deliberately narrow and rejects escaping capturing nested functions instead of modeling trampolines.
