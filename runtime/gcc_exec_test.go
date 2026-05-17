@@ -2324,6 +2324,40 @@ int main(void)
 	}
 }
 
+func TestGCCVFormatNoArgumentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+#include <stdio.h>
+
+int fill(int n, ...)
+{
+  char buf[16];
+  va_list ap = 0;
+  va_start(ap, n);
+  int a = vsprintf(buf, "ok%%", ap);
+  int b = vsnprintf(buf + 3, 4, "xy", ap);
+  va_end(ap);
+
+  if (a != 3 || b != 2)
+    return 1;
+  if (buf[0] != 'o' || buf[1] != 'k' || buf[2] != '%')
+    return 2;
+  if (buf[3] != 'x' || buf[4] != 'y' || buf[5] != 0)
+    return 3;
+  return 0;
+}
+
+int main(void)
+{
+  return fill(1, 2);
+}
+`
+	st := runGCCExecFixture(t, "vformat-no-argument-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCFunctionPointerStructReturnExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

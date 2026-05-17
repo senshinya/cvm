@@ -74,26 +74,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		}
 		return IntValue(bytecode.TypeI32, int64(len(s)+1)), nil, nil
 	})
-	r.Register("fputs", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
-		if len(args) != 2 {
-			return Value{}, nil, fmt.Errorf("fputs expects 2 arguments")
-		}
-		if ec == nil || ec.Memory == nil {
-			return Value{}, nil, fmt.Errorf("fputs requires memory")
-		}
-		s, err := ec.Memory.ReadCString(args[0].Int)
-		if err != nil {
-			return Value{}, nil, err
-		}
-		w, ok := r.lookupHostWriter(args[1].Int)
-		if !ok {
-			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
-		}
-		if _, err := fmt.Fprint(w, s); err != nil {
-			return Value{}, nil, err
-		}
-		return IntValue(bytecode.TypeI32, int64(len(s))), nil, nil
-	})
+	for _, name := range []string{"fputs", "fputs_unlocked"} {
+		r.Register(name, fputsExtern(name, r))
+	}
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("strcmp expects 2 arguments")
@@ -171,6 +154,29 @@ func registerVaListExterns(r *ExternRegistry) {
 	})
 }
 
+func fputsExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		w, ok := r.lookupHostWriter(args[1].Int)
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
+		}
+		if _, err := fmt.Fprint(w, s); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(s))), nil, nil
+	}
+}
+
 func registerAllocationExterns(r *ExternRegistry) {
 	r.Register("__builtin_malloc", mallocExtern("__builtin_malloc"))
 	r.Register("__builtin_calloc", callocExtern("__builtin_calloc"))
@@ -236,8 +242,16 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_snprintf", "snprintf"} {
 		r.Register(name, snprintfExtern(name))
 	}
+	for _, name := range []string{"__builtin_vsprintf", "vsprintf"} {
+		r.Register(name, vsprintfExtern(name))
+	}
+	for _, name := range []string{"__builtin_vsnprintf", "vsnprintf"} {
+		r.Register(name, vsnprintfExtern(name))
+	}
 	r.Register("__builtin___sprintf_chk", sprintfCheckedExtern("__builtin___sprintf_chk"))
 	r.Register("__builtin___snprintf_chk", snprintfCheckedExtern("__builtin___snprintf_chk"))
+	r.Register("__builtin___vsprintf_chk", vsprintfCheckedExtern("__builtin___vsprintf_chk"))
+	r.Register("__builtin___vsnprintf_chk", vsnprintfCheckedExtern("__builtin___vsnprintf_chk"))
 }
 
 func registerOutputFormatExterns(r *ExternRegistry) {
@@ -247,8 +261,16 @@ func registerOutputFormatExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked"} {
 		r.Register(name, fprintfExtern(name, r))
 	}
+	for _, name := range []string{"__builtin_vprintf", "vprintf"} {
+		r.Register(name, vprintfExtern(name, r))
+	}
+	for _, name := range []string{"__builtin_vfprintf", "vfprintf"} {
+		r.Register(name, vfprintfExtern(name, r))
+	}
 	r.Register("__builtin___printf_chk", printfCheckedExtern("__builtin___printf_chk", r))
 	r.Register("__builtin___fprintf_chk", fprintfCheckedExtern("__builtin___fprintf_chk", r))
+	r.Register("__builtin___vprintf_chk", vprintfCheckedExtern("__builtin___vprintf_chk", r))
+	r.Register("__builtin___vfprintf_chk", vfprintfCheckedExtern("__builtin___vfprintf_chk", r))
 }
 
 func registerMathExterns(r *ExternRegistry) {
@@ -1044,6 +1066,62 @@ func snprintfExtern(name string) ExternFunc {
 	}
 }
 
+func vsprintfExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, format, and va_list pointers", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatCString(name, ec.Memory, args[1].Int, nil)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := writeMemoryBytes(ec.Memory, args[0].Int, append([]byte(out), 0)); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func vsnprintfExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isPointerType(args[2].Type) || !isPointerType(args[3].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, size, format, and va_list arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatCString(name, ec.Memory, args[2].Int, nil)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		size, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if size > 0 {
+			n := len(out)
+			if n > int(size)-1 {
+				n = int(size) - 1
+			}
+			data := make([]byte, n+1)
+			copy(data, out[:n])
+			if err := writeMemoryBytes(ec.Memory, args[0].Int, data); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
 func sprintfCheckedExtern(name string) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) < 4 {
@@ -1106,6 +1184,68 @@ func snprintfCheckedExtern(name string) ExternFunc {
 	}
 }
 
+func vsprintfCheckedExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 5 {
+			return Value{}, nil, fmt.Errorf("%s expects 5 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) || !isPointerType(args[3].Type) || !isPointerType(args[4].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, flag, object-size, format, and va_list arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatCString(name, ec.Memory, args[3].Int, nil)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := checkObjectSize(name, uint64(len(out)+1), args[2]); err != nil {
+			return Value{}, nil, err
+		}
+		if err := writeMemoryBytes(ec.Memory, args[0].Int, append([]byte(out), 0)); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func vsnprintfCheckedExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 6 {
+			return Value{}, nil, fmt.Errorf("%s expects 6 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) || !isIntegerLike(args[3].Type) || !isPointerType(args[4].Type) || !isPointerType(args[5].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, size, flag, object-size, format, and va_list arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := checkObjectSize(name, uint64(size), args[3]); err != nil {
+			return Value{}, nil, err
+		}
+		out, err := formatCString(name, ec.Memory, args[4].Int, nil)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if size > 0 {
+			n := len(out)
+			if n > int(size)-1 {
+				n = int(size) - 1
+			}
+			data := make([]byte, n+1)
+			copy(data, out[:n])
+			if err := writeMemoryBytes(ec.Memory, args[0].Int, data); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
 func printfExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) < 1 {
@@ -1118,6 +1258,28 @@ func printfExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
 		out, err := formatCString(name, ec.Memory, args[0].Int, args[1:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := fmt.Fprint(r.externStdout(ec), out); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func vprintfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects format and va_list pointers", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatCString(name, ec.Memory, args[0].Int, nil)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -1154,6 +1316,32 @@ func fprintfExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
+func vfprintfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream, format, and va_list pointers", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		w, ok := r.lookupHostWriter(args[0].Int)
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		out, err := formatCString(name, ec.Memory, args[1].Int, nil)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := fmt.Fprint(w, out); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
 func printfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) < 2 {
@@ -1166,6 +1354,28 @@ func printfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
 		out, err := formatCString(name, ec.Memory, args[1].Int, args[2:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := fmt.Fprint(r.externStdout(ec), out); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func vprintfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isPointerType(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects flag, format, and va_list arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatCString(name, ec.Memory, args[1].Int, nil)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -1192,6 +1402,32 @@ func fprintfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
 		out, err := formatCString(name, ec.Memory, args[2].Int, args[3:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := fmt.Fprint(w, out); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func vfprintfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isPointerType(args[2].Type) || !isPointerType(args[3].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream, flag, format, and va_list arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		w, ok := r.lookupHostWriter(args[0].Int)
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		out, err := formatCString(name, ec.Memory, args[2].Int, nil)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -1980,6 +2216,9 @@ func (r *ExternRegistry) LookupVariable(name string, mem *Memory) (uint64, bool)
 
 func (r *ExternRegistry) LookupVariableAddr(name string, mem *Memory) (uint64, bool, error) {
 	switch name {
+	case "stdin":
+		addr, err := r.allocHostWriter(name, mem, io.Discard)
+		return addr, true, err
 	case "stdout":
 		addr, err := r.allocHostWriter(name, mem, r.stdout)
 		return addr, true, err
