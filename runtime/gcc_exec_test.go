@@ -568,6 +568,22 @@ int main(void)
 	}
 }
 
+func TestGCCStaticComplexConditionalConstantInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+const __complex__ double z = 1 ? __builtin_complex(3.0, 4.0) : __builtin_complex(6.0, 8.0);
+
+int main(void)
+{
+  return __builtin_cabs(z) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "static-complex-conditional-constant-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCBuiltinCabslExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

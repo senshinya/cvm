@@ -750,6 +750,15 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 		case x.Op == OpAdd && l.Kind == ConstInt && r.Kind == ConstAddress:
 			return ConstValue{Kind: ConstAddress, Addr: ConstValueAddr{Sym: r.Addr.Sym, Offset: r.Addr.Offset + l.Int*scale}, T: x.T}, true
 		}
+	case *CondExpr:
+		c, ok := e.EvalC99ArithmeticConstantExpression(x.Cond)
+		if !ok {
+			return ConstValue{}, false
+		}
+		if constNonZero(c) {
+			return e.EvalConstant(x.Then)
+		}
+		return e.EvalConstant(x.Else)
 	case *ImplicitCast:
 		if x.Kind == ArrayDecay {
 			if cv, ok := e.staticAddressConstant(x.X, x.To); ok {

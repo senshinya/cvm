@@ -371,6 +371,12 @@ func (g *generator) writeStaticScalarInitializer(buf []byte, relocs *[]bytecode.
 				return g.writeStaticComplexConstant(buf, offset, cv, typ)
 			}
 		}
+	case *sema.CondExpr:
+		if isComplexType(typ) {
+			if cv, ok := sema.NewEvaluator(nil).EvalConstant(x); ok && cv.Kind == sema.ConstComplex {
+				return g.writeStaticComplexConstant(buf, offset, cv, typ)
+			}
+		}
 	case *sema.ImagLit:
 		if isComplexType(typ) {
 			return g.writeStaticImaginaryComplex(buf, offset, x, typ)
