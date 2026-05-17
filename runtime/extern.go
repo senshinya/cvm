@@ -22,10 +22,12 @@ type ExternContext struct {
 }
 
 type ExternRegistry struct {
-	funcs       map[string]ExternFunc
-	stdout      io.Writer
-	stderr      io.Writer
-	hostWriters map[uint64]io.Writer
+	funcs        map[string]ExternFunc
+	stdout       io.Writer
+	stderr       io.Writer
+	hostWriters  map[uint64]io.Writer
+	hostPushback map[uint64][]byte
+	stdinHandle  uint64
 }
 
 func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
@@ -36,10 +38,11 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		stderr = os.Stderr
 	}
 	return &ExternRegistry{
-		funcs:       make(map[string]ExternFunc),
-		stdout:      stdout,
-		stderr:      stderr,
-		hostWriters: make(map[uint64]io.Writer),
+		funcs:        make(map[string]ExternFunc),
+		stdout:       stdout,
+		stderr:       stderr,
+		hostWriters:  make(map[uint64]io.Writer),
+		hostPushback: make(map[uint64][]byte),
 	}
 }
 
@@ -75,11 +78,12 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		return IntValue(bytecode.TypeI32, int64(len(s)+1)), nil, nil
 	})
 	r.Register("putchar", putcharExtern("putchar", r))
-	r.Register("getchar", getcharExtern("getchar"))
+	r.Register("getchar", getcharExtern("getchar", r))
 	for _, name := range []string{"fputc", "fputc_unlocked"} {
 		r.Register(name, fputcExtern(name, r))
 	}
 	r.Register("fgetc", fgetcExtern("fgetc", r))
+	r.Register("ungetc", ungetcExtern("ungetc", r))
 	for _, name := range []string{"fputs", "fputs_unlocked"} {
 		r.Register(name, fputsExtern(name, r))
 	}
@@ -184,10 +188,13 @@ func putcharExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
-func getcharExtern(name string) ExternFunc {
+func getcharExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 0 {
 			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
+		}
+		if ch, ok := r.readHostChar(r.stdinHandle); ok {
+			return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, -1), nil, nil
 	}
@@ -224,7 +231,31 @@ func fgetcExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		if ch, ok := r.readHostChar(args[0].Int); ok {
+			return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
+		}
 		return IntValue(bytecode.TypeI32, -1), nil, nil
+	}
+}
+
+func ungetcExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects character and stream arguments", name)
+		}
+		ch := int32(args[0].Int)
+		if ch == -1 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		if _, ok := r.lookupHostWriter(args[1].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
+		}
+		b := byte(ch)
+		r.hostPushback[args[1].Int] = append(r.hostPushback[args[1].Int], b)
+		return IntValue(bytecode.TypeI32, int64(b)), nil, nil
 	}
 }
 
@@ -2416,6 +2447,9 @@ func (r *ExternRegistry) LookupVariableAddr(name string, mem *Memory) (uint64, b
 	switch name {
 	case "stdin":
 		addr, err := r.allocHostWriter(name, mem, io.Discard)
+		if err == nil {
+			r.stdinHandle = addr
+		}
 		return addr, true, err
 	case "stdout":
 		addr, err := r.allocHostWriter(name, mem, r.stdout)
@@ -2442,6 +2476,21 @@ func (r *ExternRegistry) externStdout(ec *ExternContext) io.Writer {
 func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {
 	w, ok := r.hostWriters[addr]
 	return w, ok
+}
+
+func (r *ExternRegistry) readHostChar(addr uint64) (byte, bool) {
+	buf := r.hostPushback[addr]
+	if len(buf) == 0 {
+		return 0, false
+	}
+	ch := buf[len(buf)-1]
+	buf = buf[:len(buf)-1]
+	if len(buf) == 0 {
+		delete(r.hostPushback, addr)
+	} else {
+		r.hostPushback[addr] = buf
+	}
+	return ch, true
 }
 
 func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer) (uint64, error) {

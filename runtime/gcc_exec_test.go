@@ -975,6 +975,31 @@ int main(void)
 	}
 }
 
+func TestStdioUngetcExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (ungetc('R', stdin) != 'R')
+    return 1;
+  if (fgetc(stdin) != 'R')
+    return 2;
+  if (fgetc(stdin) != EOF)
+    return 3;
+  if (ungetc('S', stdin) != 'S')
+    return 4;
+  if (getchar() != 'S')
+    return 5;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-ungetc-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
