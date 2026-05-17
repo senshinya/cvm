@@ -134,6 +134,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		right := rightBlock.data[rightOff : rightOff+int(n)]
 		return IntValue(bytecode.TypeI32, int64(memcmpResult(left, right))), nil, nil
 	})
+	registerMemoryExterns(r)
 	r.Register("feclearexcept", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("feclearexcept expects 1 argument")
@@ -148,6 +149,19 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	})
 	registerMathExterns(r)
 	return r
+}
+
+func registerMemoryExterns(r *ExternRegistry) {
+	for _, name := range []string{"__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove"} {
+		r.Register(name, memoryCopyExtern(name, false))
+	}
+	for _, name := range []string{"__builtin_mempcpy", "mempcpy"} {
+		r.Register(name, memoryCopyExtern(name, true))
+	}
+	for _, name := range []string{"__builtin_memset", "memset"} {
+		r.Register(name, memorySetExtern(name))
+	}
+	r.Register("__builtin_bzero", memoryBzeroExtern("__builtin_bzero"))
 }
 
 func registerMathExterns(r *ExternRegistry) {
@@ -272,6 +286,84 @@ func abortExtern() ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		return Value{}, nil, &TrapError{Reason: "abort"}
 	}
+}
+
+func memoryCopyExtern(name string, returnEnd bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, pointer, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := ec.Memory.Copy(args[0].Int, args[1].Int, size); err != nil {
+			return Value{}, nil, err
+		}
+		addr := args[0].Int
+		if returnEnd {
+			addr += uint64(size)
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
+func memorySetExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, integer, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := ec.Memory.Set(args[0].Int, byte(unsignedInt(args[1])), size); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
+func memoryBzeroExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := ec.Memory.Set(args[0].Int, 0, size); err != nil {
+			return Value{}, nil, err
+		}
+		return Value{}, nil, nil
+	}
+}
+
+func memorySizeArg(name string, arg Value) (int64, error) {
+	size := unsignedInt(arg)
+	if size > uint64(maxInt()) {
+		return 0, fmt.Errorf("%s size %d exceeds int range", name, size)
+	}
+	return int64(size), nil
 }
 
 func complexAbsExtern(name string, realType bytecode.ValueType, realSize uint64) ExternFunc {

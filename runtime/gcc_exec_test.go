@@ -731,6 +731,44 @@ int main(void)
 	}
 }
 
+func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  char dst[8] = "abcdef";
+  char src[4] = "XYZ";
+
+  if (__builtin_memcpy(dst, src, 3) != dst)
+    return 1;
+  if (dst[0] != 'X' || dst[1] != 'Y' || dst[2] != 'Z')
+    return 2;
+
+  if (__builtin_memmove(dst + 1, dst, 4) != dst + 1)
+    return 3;
+  if (dst[0] != 'X' || dst[1] != 'X' || dst[2] != 'Y' || dst[3] != 'Z' || dst[4] != 'd')
+    return 4;
+
+  if (__builtin_mempcpy(dst + 2, "pq", 2) != dst + 4)
+    return 5;
+  if (dst[2] != 'p' || dst[3] != 'q')
+    return 6;
+
+  if (__builtin_memset(dst + 4, 'r', 2) != dst + 4)
+    return 7;
+  if (dst[4] != 'r' || dst[5] != 'r')
+    return 8;
+
+  __builtin_bzero(dst + 5, 2);
+  return dst[5] == 0 && dst[6] == 0 ? 0 : 9;
+}
+`
+	st := runGCCExecFixture(t, "builtin-memory-ops-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathFabsExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
