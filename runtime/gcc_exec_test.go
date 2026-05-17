@@ -1053,6 +1053,62 @@ int main(void)
 	}
 }
 
+func TestGCCFunctionPointerStructReturnExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+struct pair make(void)
+{
+  struct pair p = { 7, __builtin_complex(3.0, 4.0) };
+  return p;
+}
+
+int main(void)
+{
+  struct pair (*fn)(void) = make;
+  struct pair p = fn();
+  return p.tag == 7 && __builtin_cabs(p.value) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "function-pointer-struct-return-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCFunctionPointerStructArgumentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+double norm_pair(struct pair p)
+{
+  p.tag = 99;
+  return __builtin_cabs(p.value);
+}
+
+int main(void)
+{
+  double (*fn)(struct pair) = norm_pair;
+  struct pair p = { 7, __builtin_complex(3.0, 4.0) };
+  if (fn(p) != 5.0)
+    return 1;
+  return p.tag == 7 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "function-pointer-struct-argument-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCFunctionPointerArgumentCallExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
