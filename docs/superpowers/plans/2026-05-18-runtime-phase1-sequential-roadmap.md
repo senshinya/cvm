@@ -132,7 +132,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib atoi externs`
   - `docs: record stdlib atoi externs`
 
-## Plan 7: `ctype.h` Classification Helpers
+## Plan 7: `ctype.h` Classification Helpers - Completed
 
 Add builtin `<ctype.h>` and classification externs: `isdigit`, `isalpha`, `isalnum`, `isspace`, `islower`, `isupper`, `isxdigit`, `isprint`.
 
