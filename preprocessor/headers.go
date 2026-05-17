@@ -320,6 +320,7 @@ double __cvm_tgmath_rint();
 double __cvm_tgmath_logb();
 double __cvm_tgmath_scalbn();
 double __cvm_tgmath_scalbln();
+int __cvm_tgmath_ilogb();
 #endif
 `
 }

@@ -138,6 +138,19 @@ float f(int n) {
 	}
 }
 
+func TestGCCTgmathIlogbUsesFloatExtern(t *testing.T) {
+	source := `#include <tgmath.h>
+int f(void) {
+  float x = 8.0f;
+  return ilogb(x);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-ilogb-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_ilogbf") {
+		t.Fatalf("ilogb(float) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string
