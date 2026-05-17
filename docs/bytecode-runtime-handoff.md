@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `7873756 test(runtime): cover struct function pointer calls`
+- Latest implementation/coverage commit before this handoff document: `038471a test(runtime): cover signed unsigned conversions`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `038471a test(runtime): cover signed unsigned conversions`
+  - Adds runtime coverage derived from `Wsign-conversion.c`.
+  - Covers signed/unsigned conditional conversions involving `SCHAR_MIN`, `INT_MIN`, and unsigned branches.
+  - Covers signed/unsigned boundary conversions through local assignments and function arguments.
 
 - `7873756 test(runtime): cover struct function pointer calls`
   - Adds runtime coverage for calling a function pointer that returns a struct containing a complex field.
@@ -458,11 +463,11 @@ GCC-derived complex runtime coverage also includes imaginary floating constants 
 Complex-to-scalar runtime coverage includes local initialization from imaginary literals, where the real component is selected.
 Complex constant-expression coverage includes automatic and static complex initializers with arithmetic over imaginary literals and static conditional initializers selecting `__builtin_complex`.
 VLA runtime coverage includes local VLA dynamic object allocation, VLA fields inside local structs and unions, VLA parameter dynamic strides, and nested-function VLA capture cases.
-Integer conversion runtime coverage includes Wconversion-derived signed-to-unsigned conversion, unsigned-char narrowing, conditional conversions, and function argument conversions.
+Integer conversion runtime coverage includes Wconversion-derived signed-to-unsigned conversion, unsigned-char narrowing, conditional conversions, function argument conversions, and Wsign-derived signed/unsigned boundary conversions.
 Scalar floating runtime coverage includes `long double` local arithmetic, `long double` by-value arguments and returns, mixed-width floating compound assignment such as `float += double`, floating assignment and compound-assignment expression results for local slots and addressable fields, floating logical expressions through bool conversion, and floating `++`/`--` for local slots and addressable fields.
 Bit-field runtime coverage includes simple assignment, compound assignment, and `++`/`--` for integer and `_Bool` bit-fields, including expression values after bit-field truncation/wrapping.
 Pointer runtime coverage includes local and addressable pointer compound assignment, initialized pointer fields updated with `+=` and `-=`, pointer array element compound assignment, pointer `++`/`--` through struct fields and array elements, and static pointer field/array initializers with relocations.
-Function pointer runtime coverage includes indirect calls through local arrays, struct fields, static struct-field initializers, function pointer parameters, returned function pointers, function designator initialization/assignment/comma expressions, and return conversion from function designators to function pointers.
+Function pointer runtime coverage includes indirect calls through local arrays, struct fields, static struct-field initializers, function pointer parameters, returned function pointers, struct returns and struct by-value arguments through function pointers, function designator initialization/assignment/comma expressions, and return conversion from function designators to function pointers.
 Variadic runtime coverage includes direct variadic calls and indirect calls through variadic function pointers with extra arguments.
 
 ### GNU Nested Functions
