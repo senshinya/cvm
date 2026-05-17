@@ -2301,6 +2301,29 @@ int main(void)
 	}
 }
 
+func TestGCCBuiltinVaStartEndExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+int first(int n, ...)
+{
+  va_list ap;
+  va_start(ap, n);
+  va_end(ap);
+  return n;
+}
+
+int main(void)
+{
+  return first(7, 9) == 7 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "builtin-va-start-end-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCFunctionPointerStructReturnExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

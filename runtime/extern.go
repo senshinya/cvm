@@ -57,6 +57,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	})
 	r.Register("abort", abortExtern())
 	r.Register("__builtin_abort", abortExtern())
+	registerVaListExterns(r)
 	r.Register("puts", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("puts expects 1 argument")
@@ -153,6 +154,21 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	})
 	registerMathExterns(r)
 	return r
+}
+
+func registerVaListExterns(r *ExternRegistry) {
+	r.Register("__builtin_va_start", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("__builtin_va_start expects 2 arguments")
+		}
+		return Value{}, nil, nil
+	})
+	r.Register("__builtin_va_end", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("__builtin_va_end expects 1 argument")
+		}
+		return Value{}, nil, nil
+	})
 }
 
 func registerAllocationExterns(r *ExternRegistry) {
