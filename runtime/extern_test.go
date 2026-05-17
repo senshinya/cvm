@@ -332,6 +332,32 @@ func TestFormatExternsSupportIntegerRadixFormats(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportPointerFormat(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-pointer", 32, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-pointer", []byte("%p\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(0x1234),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 6 || got != "0x1234" {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q, want i32 6 and 0x1234", ret, got)
+	}
+}
+
 func TestFenvExternsAreNoOps(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	for _, name := range []string{"feclearexcept", "fetestexcept"} {

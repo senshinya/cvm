@@ -1264,6 +1264,12 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				return "", fmt.Errorf("%s %%o expects integer argument", name)
 			}
 			out.WriteString(strconv.FormatUint(unsignedInt(arg), 8))
+		case 'p':
+			if !isPointerType(arg.Type) {
+				return "", fmt.Errorf("%s %%p expects pointer argument", name)
+			}
+			out.WriteString("0x")
+			out.WriteString(strconv.FormatUint(arg.Int, 16))
 		case 'c':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%c expects integer argument", name)
