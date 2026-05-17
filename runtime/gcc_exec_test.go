@@ -469,6 +469,23 @@ int main(void)
 	}
 }
 
+func TestTgmathHypotExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (hypot(3.0f, 4.0f) != 5.0f)
+    return 1;
+  return hypot(3.0L, 4.0L) == 5.0L ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-hypot-real.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathComplexSinExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
