@@ -1234,20 +1234,50 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 		}
 	width:
 		width := 0
-		for i < len(format) && format[i] >= '0' && format[i] <= '9' {
-			width = width*10 + int(format[i]-'0')
+		if i < len(format) && format[i] == '*' {
+			if argIndex >= len(args) {
+				return "", fmt.Errorf("%s format needs more arguments", name)
+			}
+			dynamicWidth, err := formatIntArg(name, "dynamic width", args[argIndex])
+			if err != nil {
+				return "", err
+			}
+			argIndex++
+			if dynamicWidth < 0 {
+				leftAlign = true
+				width = -dynamicWidth
+			} else {
+				width = dynamicWidth
+			}
 			i++
+		} else {
+			for i < len(format) && format[i] >= '0' && format[i] <= '9' {
+				width = width*10 + int(format[i]-'0')
+				i++
+			}
 		}
 		precision := -1
 		if i < len(format) && format[i] == '.' {
 			i++
 			if i < len(format) && format[i] == '*' {
-				return "", fmt.Errorf("%s unsupported dynamic precision in format", name)
-			}
-			precision = 0
-			for i < len(format) && format[i] >= '0' && format[i] <= '9' {
-				precision = precision*10 + int(format[i]-'0')
+				if argIndex >= len(args) {
+					return "", fmt.Errorf("%s format needs more arguments", name)
+				}
+				dynamicPrecision, err := formatIntArg(name, "dynamic precision", args[argIndex])
+				if err != nil {
+					return "", err
+				}
+				argIndex++
+				if dynamicPrecision >= 0 {
+					precision = dynamicPrecision
+				}
 				i++
+			} else {
+				precision = 0
+				for i < len(format) && format[i] >= '0' && format[i] <= '9' {
+					precision = precision*10 + int(format[i]-'0')
+					i++
+				}
 			}
 		}
 		for i < len(format) {
@@ -1394,6 +1424,17 @@ func applyIntegerPrecision(piece string, precision int) string {
 		digits = strings.Repeat("0", precision-len(digits)) + digits
 	}
 	return prefix + digits
+}
+
+func formatIntArg(name, what string, v Value) (int, error) {
+	if !isIntegerLike(v.Type) {
+		return 0, fmt.Errorf("%s %s expects integer argument", name, what)
+	}
+	n := signedInt(v)
+	if n > int64(maxInt()) || n < -int64(maxInt()) {
+		return 0, fmt.Errorf("%s %s %d exceeds int range", name, what, n)
+	}
+	return int(n), nil
 }
 
 func isFloatLike(t bytecode.ValueType) bool {
