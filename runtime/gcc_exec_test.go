@@ -1096,6 +1096,53 @@ int main(void)
 	}
 }
 
+func TestGCCComplexPointerDereferenceAbsExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+int main(void)
+{
+  struct pair p = { 7, __builtin_complex(5.0, 12.0) };
+  __complex__ double *q = &p.value;
+  return __builtin_cabs(*q) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-pointer-dereference-abs-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexPointerDereferenceArgumentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+double norm(__complex__ double z)
+{
+  return __builtin_cabs(z);
+}
+
+int main(void)
+{
+  struct pair p = { 7, __builtin_complex(5.0, 12.0) };
+  __complex__ double *q = &p.value;
+  return norm(*q) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-pointer-dereference-argument-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexPointerDereferenceBinaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
