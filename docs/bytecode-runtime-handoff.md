@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `30760f0 feat(runtime): execute builtin string search`
+- Latest implementation/coverage commit before this handoff document: `7461104 feat(runtime): execute builtin string writes`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `7461104 feat(runtime): execute builtin string writes`
+  - Registers string-writing externs for `__builtin_strcpy`, `__builtin_stpcpy`, `__builtin_strcat`, `__builtin_strncpy`, `__builtin_stpncpy`, and `__builtin_strncat`.
+  - Adds shared runtime helpers for writing byte slices into VM memory.
+  - Adds runtime coverage for copy, copy-end pointer returns, concatenation, bounded copy padding, bounded copy return pointers, and bounded concatenation.
 
 - `30760f0 feat(runtime): execute builtin string search`
   - Registers read-only string externs for `__builtin_strlen`, `__builtin_strchr`, and `__builtin_strstr`.
@@ -673,7 +678,7 @@ Complex constant-expression coverage includes automatic and static complex initi
 VLA runtime coverage includes local VLA dynamic object allocation, VLA fields inside local structs and unions, VLA parameter dynamic strides, and nested-function VLA capture cases.
 Integer conversion runtime coverage includes Wconversion-derived signed-to-unsigned conversion, unsigned-char narrowing, conditional conversions, function argument conversions, and Wsign-derived signed/unsigned boundary conversions.
 Scalar floating runtime coverage includes `long double` local arithmetic, `long double` by-value arguments and returns, mixed-width floating compound assignment such as `float += double`, floating assignment and compound-assignment expression results for local slots and addressable fields, floating logical expressions through bool conversion, and floating `++`/`--` for local slots and addressable fields.
-Direct builtin runtime coverage includes `__builtin_pow`, `__builtin_huge_val*`, `__builtin_nan`, `nan`, `__builtin_abort`, memory operations `__builtin_memcpy`, `__builtin_memmove`, `__builtin_mempcpy`, `__builtin_memset`, and `__builtin_bzero`, plus read-only string helpers `__builtin_strlen`, `__builtin_strchr`, and `__builtin_strstr`.
+Direct builtin runtime coverage includes `__builtin_pow`, `__builtin_huge_val*`, `__builtin_nan`, `nan`, `__builtin_abort`, memory operations `__builtin_memcpy`, `__builtin_memmove`, `__builtin_mempcpy`, `__builtin_memset`, and `__builtin_bzero`, read-only string helpers `__builtin_strlen`, `__builtin_strchr`, and `__builtin_strstr`, and string-writing helpers `__builtin_strcpy`, `__builtin_stpcpy`, `__builtin_strcat`, `__builtin_strncpy`, `__builtin_stpncpy`, and `__builtin_strncat`.
 Bit-field runtime coverage includes simple assignment, compound assignment, and `++`/`--` for integer and `_Bool` bit-fields, including expression values after bit-field truncation/wrapping.
 Pointer runtime coverage includes local and addressable pointer compound assignment, initialized pointer fields updated with `+=` and `-=`, pointer array element compound assignment, pointer `++`/`--` through struct fields and array elements, and static pointer field/array initializers with relocations.
 Function pointer runtime coverage includes indirect calls through local arrays, struct fields, static struct-field initializers, function pointer parameters, returned function pointers, struct returns and struct by-value arguments through function pointers, function designator initialization/assignment/comma expressions, and return conversion from function designators to function pointers.
