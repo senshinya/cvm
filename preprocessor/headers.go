@@ -64,6 +64,8 @@ int getchar_unlocked(void);
 int fflush(FILE *);
 int fflush_unlocked(FILE *);
 int fclose(FILE *);
+int fileno(FILE *);
+int fileno_unlocked(FILE *);
 int ferror(FILE *);
 int ferror_unlocked(FILE *);
 void clearerr(FILE *);

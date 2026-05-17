@@ -26,6 +26,7 @@ type ExternRegistry struct {
 	stdout       io.Writer
 	stderr       io.Writer
 	hostWriters  map[uint64]io.Writer
+	hostFDs      map[uint64]int32
 	hostPushback map[uint64][]byte
 	hostEOF      map[uint64]bool
 	stdinHandle  uint64
@@ -43,6 +44,7 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		stdout:       stdout,
 		stderr:       stderr,
 		hostWriters:  make(map[uint64]io.Writer),
+		hostFDs:      make(map[uint64]int32),
 		hostPushback: make(map[uint64][]byte),
 		hostEOF:      make(map[uint64]bool),
 	}
@@ -102,6 +104,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		r.Register(name, fflushExtern(name, r))
 	}
 	r.Register("fclose", fcloseExtern("fclose", r))
+	for _, name := range []string{"fileno", "fileno_unlocked"} {
+		r.Register(name, filenoExtern(name, r))
+	}
 	for _, name := range []string{"fwrite", "fwrite_unlocked"} {
 		r.Register(name, fwriteExtern(name, r))
 	}
@@ -378,6 +383,22 @@ func fcloseExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
+	}
+}
+
+func filenoExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream pointer", name)
+		}
+		fd, ok := r.hostFDs[args[0].Int]
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		return IntValue(bytecode.TypeI32, int64(fd)), nil, nil
 	}
 }
 
@@ -2545,16 +2566,16 @@ func (r *ExternRegistry) LookupVariable(name string, mem *Memory) (uint64, bool)
 func (r *ExternRegistry) LookupVariableAddr(name string, mem *Memory) (uint64, bool, error) {
 	switch name {
 	case "stdin":
-		addr, err := r.allocHostWriter(name, mem, io.Discard)
+		addr, err := r.allocHostWriter(name, mem, io.Discard, 0)
 		if err == nil {
 			r.stdinHandle = addr
 		}
 		return addr, true, err
 	case "stdout":
-		addr, err := r.allocHostWriter(name, mem, r.stdout)
+		addr, err := r.allocHostWriter(name, mem, r.stdout, 1)
 		return addr, true, err
 	case "stderr":
-		addr, err := r.allocHostWriter(name, mem, r.stderr)
+		addr, err := r.allocHostWriter(name, mem, r.stderr, 2)
 		return addr, true, err
 	default:
 		return 0, false, nil
@@ -2592,7 +2613,7 @@ func (r *ExternRegistry) readHostChar(addr uint64) (byte, bool) {
 	return ch, true
 }
 
-func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer) (uint64, error) {
+func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer, fd int32) (uint64, error) {
 	if mem == nil {
 		return 0, fmt.Errorf("memory is nil")
 	}
@@ -2607,5 +2628,6 @@ func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer) 
 		b.readonly = true
 	}
 	r.hostWriters[addr] = w
+	r.hostFDs[addr] = fd
 	return addr, nil
 }

@@ -904,6 +904,27 @@ int main(void)
 	}
 }
 
+func TestStdioFilenoExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (fileno(stdin) != 0)
+    return 1;
+  if (fileno(stdout) != 1)
+    return 2;
+  if (fileno_unlocked(stderr) != 2)
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-fileno-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
