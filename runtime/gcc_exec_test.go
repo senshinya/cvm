@@ -870,6 +870,23 @@ int main(void)
 	}
 }
 
+func TestStdioFflushExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (fputc('C', stdout) != 'C')
+    return 1;
+  return fflush(stdout) == 0 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "stdio-fflush-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

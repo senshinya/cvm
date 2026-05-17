@@ -55,6 +55,7 @@ int fputc(int, FILE *);
 int fputc_unlocked(int, FILE *);
 int puts(const char *);
 int putchar(int);
+int fflush(FILE *);
 int printf(const char *, ...);
 int printf_unlocked(const char *, ...);
 int fprintf(FILE *, const char *, ...);
