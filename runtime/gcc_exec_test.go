@@ -1014,6 +1014,45 @@ int main(void)
 	}
 }
 
+func TestGCCVariadicDirectCallExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int first(int n, ...)
+{
+  return n;
+}
+
+int main(void)
+{
+  return first(42, 7, 8) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "variadic-direct-call-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCVariadicFunctionPointerCallExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int first(int n, ...)
+{
+  return n;
+}
+
+int main(void)
+{
+  int (*fn)(int, ...) = first;
+  return fn(42, 7, 8) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "variadic-function-pointer-call-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCFunctionPointerArgumentCallExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
