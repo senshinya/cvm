@@ -1280,15 +1280,19 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				}
 			}
 		}
+		lengthMod := ""
 		for i < len(format) {
 			switch format[i] {
 			case 'h', 'l':
+				lengthMod = string(format[i])
 				if i+1 < len(format) && format[i+1] == format[i] {
+					lengthMod += string(format[i])
 					i += 2
 				} else {
 					i++
 				}
 			case 'j', 'z', 't', 'L':
+				lengthMod = string(format[i])
 				i++
 			default:
 				goto verb
@@ -1387,7 +1391,8 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			if leftAlign || zeroPad || showSign || leadingSpace || alternate || width != 0 || precision >= 0 {
 				return "", fmt.Errorf("%s %%n does not support flags, width, or precision", name)
 			}
-			if err := mem.Store(arg.Int, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(out.Len()))); err != nil {
+			countType, countAlign := writeCountType(lengthMod)
+			if err := mem.Store(arg.Int, countType, countAlign, IntValue(countType, int64(out.Len()))); err != nil {
 				return "", err
 			}
 			continue
@@ -1452,6 +1457,19 @@ func formatIntArg(name, what string, v Value) (int, error) {
 		return 0, fmt.Errorf("%s %s %d exceeds int range", name, what, n)
 	}
 	return int(n), nil
+}
+
+func writeCountType(lengthMod string) (bytecode.ValueType, int64) {
+	switch lengthMod {
+	case "hh":
+		return bytecode.TypeI8, 1
+	case "h":
+		return bytecode.TypeI16, 2
+	case "l", "ll", "j", "z", "t":
+		return bytecode.TypeI64, 8
+	default:
+		return bytecode.TypeI32, 4
+	}
 }
 
 func isFloatLike(t bytecode.ValueType) bool {

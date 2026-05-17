@@ -564,6 +564,49 @@ func TestFormatExternsSupportWriteCount(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportSizedWriteCount(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-sized-count", 16, 1, false, blockLocal)
+	count8 := mustAlloc(t, mem, "count8:format-sized-count", 1, 1, false, blockLocal)
+	count16 := mustAlloc(t, mem, "count16:format-sized-count", 2, 2, false, blockLocal)
+	count64 := mustAlloc(t, mem, "count64:format-sized-count", 8, 8, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-sized-count", []byte("a%hhnb%hnc%lln\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(count8),
+		PtrValue(count16),
+		PtrValue(count64),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	v8, err := mem.Load(count8, bytecode.TypeI8, 1)
+	if err != nil {
+		t.Fatalf("Load count8: %v", err)
+	}
+	v16, err := mem.Load(count16, bytecode.TypeI16, 2)
+	if err != nil {
+		t.Fatalf("Load count16: %v", err)
+	}
+	v64, err := mem.Load(count64, bytecode.TypeI64, 8)
+	if err != nil {
+		t.Fatalf("Load count64: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 3 || got != "abc" || v8.Int != 1 || v16.Int != 2 || v64.Int != 3 {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q counts=%#v/%#v/%#v, want abc and 1/2/3", ret, got, v8, v16, v64)
+	}
+}
+
 func TestFenvExternsAreNoOps(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	for _, name := range []string{"feclearexcept", "fetestexcept"} {
