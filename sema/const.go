@@ -23,6 +23,7 @@ type ConstValue struct {
 	Int   int64
 	Uint  uint64
 	Float float64
+	Imag  float64
 	Addr  ConstValueAddr
 	T     Type
 }
@@ -314,6 +315,8 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, al
 	switch x := expr.(type) {
 	case *FloatLit:
 		return ConstValue{Kind: ConstFloat, Float: x.Value, T: x.T}, true
+	case *ImagLit:
+		return ConstValue{Kind: ConstComplex, Imag: x.Value, T: x.T}, true
 	case *ExplicitCast:
 		if !isArithmetic(x.To) {
 			return ConstValue{}, false
@@ -339,11 +342,17 @@ func (e *Evaluator) evalC99CastArithmeticConstant(expr Expr, allowUnaryFloat, al
 		}
 		switch x.Op {
 		case UnPlus:
-			if cv.Kind == ConstFloat && !allowUnaryFloat {
+			if (cv.Kind == ConstFloat || cv.Kind == ConstComplex) && !allowUnaryFloat {
 				return ConstValue{}, false
 			}
 			return cv, true
 		case UnMinus:
+			if cv.Kind == ConstComplex {
+				if !allowUnaryFloat {
+					return ConstValue{}, false
+				}
+				return ConstValue{Kind: ConstComplex, Float: -cv.Float, Imag: -cv.Imag, T: x.T}, true
+			}
 			if cv.Kind == ConstFloat {
 				if !allowUnaryFloat {
 					return ConstValue{}, false
@@ -423,6 +432,12 @@ func (e *Evaluator) evalC99ArithmeticBinOp(x *BinOp, allowUnaryFloat, allowFloat
 	if !rok {
 		return ConstValue{}, false
 	}
+	if l.Kind == ConstComplex || r.Kind == ConstComplex || isComplexType(x.T) {
+		if !allowFloatBinOp {
+			return ConstValue{}, false
+		}
+		return evalC99ComplexArithmeticBinOp(x.Op, l, r, x.T)
+	}
 	if l.Kind == ConstFloat || r.Kind == ConstFloat {
 		if !allowFloatBinOp {
 			return ConstValue{}, false
@@ -478,6 +493,17 @@ func castC99ArithmeticConstant(cv ConstValue, to Type) (ConstValue, bool) {
 	if !isArithmetic(to) {
 		return ConstValue{}, false
 	}
+	if isComplexType(to) {
+		real, imag := constToComplex(cv)
+		return ConstValue{Kind: ConstComplex, Float: real, Imag: imag, T: to}, true
+	}
+	if cv.Kind == ConstComplex {
+		if isInteger(to) {
+			v := int64(cv.Float)
+			return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: to}, true
+		}
+		return ConstValue{Kind: ConstFloat, Float: cv.Float, T: to}, true
+	}
 	if isInteger(to) {
 		if cv.Kind == ConstFloat {
 			v := int64(cv.Float)
@@ -489,6 +515,32 @@ func castC99ArithmeticConstant(cv ConstValue, to Type) (ConstValue, bool) {
 		return ConstValue{Kind: ConstFloat, Float: cv.Float, T: to}, true
 	}
 	return ConstValue{Kind: ConstFloat, Float: float64(cv.Int), T: to}, true
+}
+
+func evalC99ComplexArithmeticBinOp(op BinaryOp, l, r ConstValue, t Type) (ConstValue, bool) {
+	lr, li := constToComplex(l)
+	rr, ri := constToComplex(r)
+	switch op {
+	case OpAdd:
+		return ConstValue{Kind: ConstComplex, Float: lr + rr, Imag: li + ri, T: t}, true
+	case OpSub:
+		return ConstValue{Kind: ConstComplex, Float: lr - rr, Imag: li - ri, T: t}, true
+	case OpMul:
+		return ConstValue{Kind: ConstComplex, Float: lr*rr - li*ri, Imag: lr*ri + li*rr, T: t}, true
+	case OpDiv:
+		denom := rr*rr + ri*ri
+		if denom == 0 {
+			return ConstValue{}, false
+		}
+		return ConstValue{Kind: ConstComplex, Float: (lr*rr + li*ri) / denom, Imag: (li*rr - lr*ri) / denom, T: t}, true
+	case OpEq:
+		v := boolToInt(lr == rr && li == ri)
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: t}, true
+	case OpNe:
+		v := boolToInt(lr != rr || li != ri)
+		return ConstValue{Kind: ConstInt, Int: v, Uint: uint64(v), T: t}, true
+	}
+	return ConstValue{}, false
 }
 
 func evalC99FloatArithmeticBinOp(op BinaryOp, l, r float64, t Type) (ConstValue, bool) {
@@ -527,13 +579,27 @@ func evalC99FloatArithmeticBinOp(op BinaryOp, l, r float64, t Type) (ConstValue,
 }
 
 func constToFloat(cv ConstValue) float64 {
-	if cv.Kind == ConstFloat {
+	if cv.Kind == ConstFloat || cv.Kind == ConstComplex {
 		return cv.Float
 	}
 	return float64(cv.Int)
 }
 
+func constToComplex(cv ConstValue) (float64, float64) {
+	switch cv.Kind {
+	case ConstComplex:
+		return cv.Float, cv.Imag
+	case ConstFloat:
+		return cv.Float, 0
+	default:
+		return float64(cv.Int), 0
+	}
+}
+
 func constNonZero(cv ConstValue) bool {
+	if cv.Kind == ConstComplex {
+		return cv.Float != 0 || cv.Imag != 0
+	}
 	if cv.Kind == ConstFloat {
 		return cv.Float != 0
 	}
@@ -647,7 +713,7 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 	case *FloatLit:
 		return ConstValue{Kind: ConstFloat, Float: x.Value, T: x.T}, true
 	case *ImagLit:
-		return ConstValue{Kind: ConstComplex, T: x.T}, true
+		return ConstValue{Kind: ConstComplex, Imag: x.Value, T: x.T}, true
 	case *StringLit:
 		return ConstValue{Kind: ConstString, T: x.T}, true
 	case *UnOp:
@@ -747,12 +813,20 @@ func (e *Evaluator) evalBuiltinConstantCall(call *CallExpr) (ConstValue, bool) {
 		if len(call.Args) != 2 {
 			return ConstValue{}, false
 		}
-		for _, arg := range call.Args {
-			if _, ok := e.EvalConstant(arg); !ok {
+		real, ok := e.EvalConstant(call.Args[0])
+		if !ok {
+			return ConstValue{}, false
+		}
+		imag, ok := e.EvalConstant(call.Args[1])
+		if !ok {
+			return ConstValue{}, false
+		}
+		for _, cv := range []ConstValue{real, imag} {
+			if cv.Kind == ConstComplex {
 				return ConstValue{}, false
 			}
 		}
-		return ConstValue{Kind: ConstComplex, T: call.T}, true
+		return ConstValue{Kind: ConstComplex, Float: constToFloat(real), Imag: constToFloat(imag), T: call.T}, true
 	}
 	return ConstValue{}, false
 }

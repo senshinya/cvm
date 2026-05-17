@@ -354,11 +354,22 @@ func (g *generator) writeStaticScalarInitializer(buf []byte, relocs *[]bytecode.
 				return g.writeStaticCompoundLiteralPointer(relocs, offset, cl)
 			}
 		}
+		if isComplexType(typ) {
+			if cv, ok := sema.NewEvaluator(nil).EvalConstant(x); ok && cv.Kind == sema.ConstComplex {
+				return g.writeStaticComplexConstant(buf, offset, cv, typ)
+			}
+		}
 	case *sema.CompoundLit:
 		return g.writeStaticInitializer(buf, relocs, offset, x.Init, typ)
 	case *sema.CallExpr:
 		if ok, err := g.writeStaticBuiltinComplex(buf, offset, x, typ); ok || err != nil {
 			return err
+		}
+	case *sema.BinOp:
+		if isComplexType(typ) {
+			if cv, ok := sema.NewEvaluator(nil).EvalConstant(x); ok && cv.Kind == sema.ConstComplex {
+				return g.writeStaticComplexConstant(buf, offset, cv, typ)
+			}
 		}
 	case *sema.ImagLit:
 		if isComplexType(typ) {
@@ -423,14 +434,22 @@ func (g *generator) writeStaticBuiltinComplex(buf []byte, offset int64, call *se
 }
 
 func (g *generator) writeStaticImaginaryComplex(buf []byte, offset int64, lit *sema.ImagLit, typ sema.Type) error {
+	return g.writeStaticComplexParts(buf, offset, typ, 0, lit.Value)
+}
+
+func (g *generator) writeStaticComplexConstant(buf []byte, offset int64, cv sema.ConstValue, typ sema.Type) error {
+	return g.writeStaticComplexParts(buf, offset, typ, cv.Float, cv.Imag)
+}
+
+func (g *generator) writeStaticComplexParts(buf []byte, offset int64, typ sema.Type, realValue, imagValue float64) error {
 	realType, err := complexRealType(typ)
 	if err != nil {
 		return err
 	}
-	if err := g.writeStaticFloat(buf, offset, realType, 0); err != nil {
+	if err := g.writeStaticFloat(buf, offset, realType, realValue); err != nil {
 		return err
 	}
-	return g.writeStaticFloat(buf, offset+g.sizeof(realType), realType, lit.Value)
+	return g.writeStaticFloat(buf, offset+g.sizeof(realType), realType, imagValue)
 }
 
 func staticCompoundLiteralAddressOperand(e sema.Expr) *sema.CompoundLit {

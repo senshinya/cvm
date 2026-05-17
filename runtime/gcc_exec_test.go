@@ -494,6 +494,41 @@ int main(void)
 	}
 }
 
+func TestGCCComplexConstantExpressionInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+#define I (__extension__ 1.0iF)
+
+int main(void)
+{
+  const __complex__ double z = 3.0 + 4.0 * I;
+  return __builtin_cabs(z) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-constant-expression-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStaticComplexConstantExpressionInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+#define I (__extension__ 1.0iF)
+
+const __complex__ double z = 3.0 + 4.0 * I;
+
+int main(void)
+{
+  return __builtin_cabs(z) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "static-complex-constant-expression-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)
