@@ -492,11 +492,33 @@ func TestGCCFloatCompoundDoubleRHSExecutesThroughRuntime(t *testing.T) {
 int main(void)
 {
   float f = 1.25f;
-  f += 2.25;
+  if ((f += 2.25) != 3.5f)
+    return 1;
   return f == 3.5f ? 0 : 1;
 }
 `
 	st := runGCCExecFixture(t, "float-compound-double-rhs-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCLongDoubleFieldCompoundExpressionExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct box {
+  long double x;
+};
+
+int main(void)
+{
+  struct box b = { 1.25L };
+  if ((b.x += 2.75L) != 4.0L)
+    return 1;
+  return b.x == 4.0L ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "long-double-field-compound-expression-runtime.c", source)
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
