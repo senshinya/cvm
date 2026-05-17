@@ -502,6 +502,52 @@ int main(void)
 	}
 }
 
+func TestGCCFloatIncDecExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  float f = 1.5f;
+  if (f++ != 1.5f)
+    return 1;
+  if (f != 2.5f)
+    return 2;
+  if (++f != 3.5f)
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "float-incdec-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCLongDoubleFieldIncDecExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct box {
+  long double x;
+};
+
+int main(void)
+{
+  struct box b = { 4.0L };
+  if (b.x-- != 4.0L)
+    return 1;
+  if (b.x != 3.0L)
+    return 2;
+  if (--b.x != 2.0L)
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "long-double-field-incdec-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

@@ -652,32 +652,12 @@ func (fg *funcGen) emitIncDec(x *sema.UnOp) error {
 
 func (fg *funcGen) emitLocalSlotIncDec(x *sema.UnOp, st storage) error {
 	post := x.Op == sema.UnIncPost || x.Op == sema.UnDecPost
-	dec := x.Op == sema.UnDecPre || x.Op == sema.UnDecPost
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(st.typ, st.slot))
 	if post {
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup})
 	}
-	if isPointerType(st.typ) {
-		step := int64(1)
-		if dec {
-			step = -1
-		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(bytecode.TypeI32, step))
-		if err := fg.emitPtrAddForExpr(x.X, x.X.GetType()); err != nil {
-			return err
-		}
-	} else if isIntegerType(st.typ) {
-		computeType := compoundIntegerType(st.typ)
-		fg.emitCast(st.typ, computeType, sema.IntegralConversion)
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(computeType, 1))
-		op := bytecode.BinAdd
-		if dec {
-			op = bytecode.BinSub
-		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
-		fg.emitCast(computeType, st.typ, sema.IntegralConversion)
-	} else {
-		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("++/-- lowering is not implemented for %s", st.typ)}
+	if err := fg.emitIncDecOperation(x, st.typ); err != nil {
+		return err
 	}
 	if !post {
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup})
@@ -691,7 +671,7 @@ func (fg *funcGen) emitAddressableIncDec(x *sema.UnOp) error {
 	if err != nil {
 		return err
 	}
-	if !isIntegerType(vt) && !isPointerType(vt) {
+	if !isIntegerType(vt) && !isFloatType(vt) && !isPointerType(vt) {
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("++/-- lowering is not implemented for %s", vt)}
 	}
 	addrSlot := fg.allocSyntheticSlot(".incdec.addr", bytecode.TypeObjectAddr)
@@ -741,6 +721,15 @@ func (fg *funcGen) emitIncDecOperation(x *sema.UnOp, typ bytecode.ValueType) err
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
 		fg.emitCast(computeType, typ, sema.IntegralConversion)
+		return nil
+	}
+	if isFloatType(typ) {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpConst, Type: typ, Float: 1})
+		op := bytecode.BinAdd
+		if dec {
+			op = bytecode.BinSub
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(typ, op))
 		return nil
 	}
 	return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("++/-- lowering is not implemented for %s", typ)}
