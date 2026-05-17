@@ -887,6 +887,26 @@ int main(void)
 	}
 }
 
+func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (ferror(stdout) != 0)
+    return 1;
+  clearerr(stdout);
+  if (feof(stdout) != 0)
+    return 2;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-status-functions-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
