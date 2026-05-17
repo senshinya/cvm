@@ -474,6 +474,40 @@ int main(void)
 	}
 }
 
+func TestGCCComplexAssignmentExpressionExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  __complex__ double z = __builtin_complex(0.0, 0.0);
+  if (__builtin_cabs(z = __builtin_complex(3.0, 4.0)) != 5.0)
+    return 1;
+  return __builtin_cabs(z) == 5.0 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "complex-assignment-expression-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexCompoundAssignmentExpressionExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  __complex__ double z = __builtin_complex(1.0, 4.0);
+  if (__builtin_cabs(z += 2.0) != 5.0)
+    return 1;
+  return __builtin_cabs(z) == 5.0 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "complex-compound-assignment-expression-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCScalarReturnConvertsToComplexExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
