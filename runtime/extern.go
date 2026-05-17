@@ -189,6 +189,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealExterns(r, "__cvm_tgmath_acosh", math.Acosh)
 	registerTgmathRealExterns(r, "__cvm_tgmath_atanh", math.Atanh)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_pow", math.Pow)
+	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_atan2", math.Atan2)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csin", cmplx.Sin)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cexp", cmplx.Exp)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csqrt", cmplx.Sqrt)

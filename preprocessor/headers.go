@@ -290,6 +290,7 @@ double __cvm_tgmath_atan();
 double __cvm_tgmath_asinh();
 double __cvm_tgmath_acosh();
 double __cvm_tgmath_atanh();
+double __cvm_tgmath_atan2();
 #endif
 `
 }
