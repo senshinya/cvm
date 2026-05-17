@@ -572,6 +572,23 @@ int main(void)
 	}
 }
 
+func TestTgmathFMAExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (fma(2.0f, 3.0f, 4.0f) != 10.0f)
+    return 1;
+  return fma(2.0L, 3.0L, -4.0L) == 2.0L ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-fma-real.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathComplexSinExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

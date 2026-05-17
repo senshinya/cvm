@@ -207,6 +207,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_fmod", math.Mod)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_remainder", math.Remainder)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_copysign", math.Copysign)
+	registerTgmathRealTernaryExterns(r, "__cvm_tgmath_fma", math.FMA)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csin", cmplx.Sin)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cexp", cmplx.Exp)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csqrt", cmplx.Sqrt)
@@ -360,6 +361,12 @@ func registerTgmathRealBinaryExterns(r *ExternRegistry, base string, fn func(flo
 	r.Register(base+"l", mathBinaryFloatExtern(base+"l", bytecode.TypeFLong, fn))
 }
 
+func registerTgmathRealTernaryExterns(r *ExternRegistry, base string, fn func(float64, float64, float64) float64) {
+	r.Register(base+"f", mathTernaryFloatExtern(base+"f", bytecode.TypeF32, fn))
+	r.Register(base, mathTernaryFloatExtern(base, bytecode.TypeF64, fn))
+	r.Register(base+"l", mathTernaryFloatExtern(base+"l", bytecode.TypeFLong, fn))
+}
+
 func mathUnaryFloatExtern(name string, ret bytecode.ValueType, fn func(float64) float64) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
@@ -381,6 +388,18 @@ func mathBinaryFloatExtern(name string, ret bytecode.ValueType, fn func(float64,
 			return Value{}, nil, fmt.Errorf("%s expects floating arguments", name)
 		}
 		return floatResult(ret, fn(cvmFloat(args[0]), cvmFloat(args[1]))), nil, nil
+	}
+}
+
+func mathTernaryFloatExtern(name string, ret bytecode.ValueType, fn func(float64, float64, float64) float64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isFloatType(args[0].Type) || !isFloatType(args[1].Type) || !isFloatType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects floating arguments", name)
+		}
+		return floatResult(ret, fn(cvmFloat(args[0]), cvmFloat(args[1]), cvmFloat(args[2]))), nil, nil
 	}
 }
 
