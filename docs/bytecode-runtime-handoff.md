@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `08876db test(runtime): cover function designator expressions`
+- Latest implementation/coverage commit before this handoff document: `e5784fa test(runtime): cover variadic function calls`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,10 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `e5784fa test(runtime): cover variadic function calls`
+  - Adds runtime coverage for direct variadic function calls with extra arguments.
+  - Adds runtime coverage for indirect calls through variadic function pointers.
 
 - `08876db test(runtime): cover function designator expressions`
   - Adds runtime coverage for conditional function designators used to initialize function pointers.
@@ -454,6 +458,7 @@ Scalar floating runtime coverage includes `long double` local arithmetic, `long 
 Bit-field runtime coverage includes simple assignment, compound assignment, and `++`/`--` for integer and `_Bool` bit-fields, including expression values after bit-field truncation/wrapping.
 Pointer runtime coverage includes local and addressable pointer compound assignment, initialized pointer fields updated with `+=` and `-=`, pointer array element compound assignment, pointer `++`/`--` through struct fields and array elements, and static pointer field/array initializers with relocations.
 Function pointer runtime coverage includes indirect calls through local arrays, struct fields, static struct-field initializers, function pointer parameters, returned function pointers, function designator initialization/assignment/comma expressions, and return conversion from function designators to function pointers.
+Variadic runtime coverage includes direct variadic calls and indirect calls through variadic function pointers with extra arguments.
 
 ### GNU Nested Functions
 
