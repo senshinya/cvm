@@ -589,6 +589,23 @@ int main(void)
 	}
 }
 
+func TestTgmathNextafterExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (nextafter(1.0f, 1.0f) != 1.0f)
+    return 1;
+  return nextafter(1.0L, 1.0L) == 1.0L ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-nextafter-real.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathComplexSinExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
