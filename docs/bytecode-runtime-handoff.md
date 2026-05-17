@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `521f2d0 fix(sema): decay function designators in returns`
+- Latest implementation/coverage commit before this handoff document: `08876db test(runtime): cover function designator expressions`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,10 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `08876db test(runtime): cover function designator expressions`
+  - Adds runtime coverage for conditional function designators used to initialize function pointers.
+  - Adds runtime coverage for function designator assignment and comma expressions consumed as function pointers.
 
 - `521f2d0 fix(sema): decay function designators in returns`
   - Applies function designator decay to conditional operands.
@@ -449,7 +453,7 @@ Integer conversion runtime coverage includes Wconversion-derived signed-to-unsig
 Scalar floating runtime coverage includes `long double` local arithmetic, `long double` by-value arguments and returns, mixed-width floating compound assignment such as `float += double`, floating assignment and compound-assignment expression results for local slots and addressable fields, floating logical expressions through bool conversion, and floating `++`/`--` for local slots and addressable fields.
 Bit-field runtime coverage includes simple assignment, compound assignment, and `++`/`--` for integer and `_Bool` bit-fields, including expression values after bit-field truncation/wrapping.
 Pointer runtime coverage includes local and addressable pointer compound assignment, initialized pointer fields updated with `+=` and `-=`, pointer array element compound assignment, pointer `++`/`--` through struct fields and array elements, and static pointer field/array initializers with relocations.
-Function pointer runtime coverage includes indirect calls through local arrays, struct fields, static struct-field initializers, function pointer parameters, returned function pointers, and return conversion from function designators to function pointers.
+Function pointer runtime coverage includes indirect calls through local arrays, struct fields, static struct-field initializers, function pointer parameters, returned function pointers, function designator initialization/assignment/comma expressions, and return conversion from function designators to function pointers.
 
 ### GNU Nested Functions
 
