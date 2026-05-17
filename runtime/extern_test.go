@@ -12,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "strcmp", "memcmp", "__builtin_malloc", "__builtin_calloc", "__builtin_strdup", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy", "__builtin_memset", "__builtin_bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "__builtin_strchr", "__builtin_strstr", "__builtin_strcpy", "__builtin_stpcpy", "__builtin_strcat", "__builtin_strncpy", "__builtin_stpncpy", "__builtin_strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
+	for _, name := range []string{"exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "strcmp", "memcmp", "__builtin_malloc", "__builtin_calloc", "__builtin_strdup", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy", "__builtin_memset", "__builtin_bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "__builtin_strchr", "__builtin_strstr", "__builtin_strcpy", "__builtin_stpcpy", "__builtin_strcat", "__builtin_strncpy", "__builtin_stpncpy", "__builtin_strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -627,6 +627,38 @@ func TestFilenoReturnsStandardStreamDescriptors(t *testing.T) {
 		if ret.Type != bytecode.TypeI32 || ret.Int != uint64(tt.fd) {
 			t.Fatalf("%s(%s) = %#v, want i32 %d", tt.fn, tt.variable, ret, tt.fd)
 		}
+	}
+}
+
+func TestStdioBufferControls(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdout, ok := reg.LookupVariable("stdout", mem)
+	if !ok {
+		t.Fatal("missing stdout extern variable")
+	}
+	setbufFn, ok := reg.Lookup("setbuf")
+	if !ok {
+		t.Fatal("missing setbuf extern")
+	}
+	if ret, exit, err := setbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), PtrValue(0)}); err != nil || exit != nil || ret.Type != 0 {
+		t.Fatalf("setbuf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	setvbufFn, ok := reg.Lookup("setvbuf")
+	if !ok {
+		t.Fatal("missing setvbuf extern")
+	}
+	ret, exit, err := setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(stdout),
+		PtrValue(0),
+		IntValue(bytecode.TypeI32, 2),
+		UIntValue(bytecode.TypeU64, 0),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("setvbuf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("setvbuf ret=%#v, want i32 0", ret)
 	}
 }
 

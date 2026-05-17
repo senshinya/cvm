@@ -47,6 +47,10 @@ func stdioHeader() string {
 typedef __SIZE_TYPE__ size_t;
 typedef struct __cvm_FILE FILE;
 #define EOF (-1)
+#define _IOFBF 0
+#define _IOLBF 1
+#define _IONBF 2
+#define BUFSIZ 8192
 extern FILE *stdin;
 extern FILE *stdout;
 extern FILE *stderr;
@@ -67,6 +71,8 @@ int fflush_unlocked(FILE *);
 int fclose(FILE *);
 int fileno(FILE *);
 int fileno_unlocked(FILE *);
+void setbuf(FILE * restrict, char * restrict);
+int setvbuf(FILE * restrict, char * restrict, int, size_t);
 int ferror(FILE *);
 int ferror_unlocked(FILE *);
 void clearerr(FILE *);

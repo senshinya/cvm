@@ -940,6 +940,25 @@ int main(void)
 	}
 }
 
+func TestStdioBufferControlsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[BUFSIZ];
+  setbuf(stdout, buf);
+  if (setvbuf(stdout, 0, _IONBF, 0) != 0)
+    return 1;
+  return fputc('S', stdout) == 'S' ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "stdio-buffer-controls-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
