@@ -293,7 +293,8 @@ func validateFunction(m *Module, index int, f *Function) error {
 		}
 		dynamicObjects[o.ID] = o
 	}
-	ret := m.Sigs[f.Sig].Ret
+	sig := m.Sigs[f.Sig]
+	ret := sig.Ret
 	stack := []ValueType{}
 	terminalReturn := false
 	for pc, ins := range f.Instrs {
@@ -312,7 +313,7 @@ func validateFunction(m *Module, index int, f *Function) error {
 			}
 			terminalReturn = false
 		}
-		next, err := validateInstrStack(m, stack, ins, ret, labels)
+		next, err := validateInstrStack(m, stack, ins, ret, sig.Variadic, labels)
 		if err != nil {
 			return fmt.Errorf("function %q pc %d: %w", f.Name, pc, err)
 		}
@@ -455,7 +456,7 @@ func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, labelPCs map[
 	return nil
 }
 
-func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, labels map[int]Label) ([]ValueType, error) {
+func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, variadic bool, labels map[int]Label) ([]ValueType, error) {
 	pop := func(want ValueType) error {
 		if len(stack) == 0 {
 			return fmt.Errorf("%v stack underflow", ins.Op)
@@ -714,6 +715,9 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, 
 	case OpVaStart, OpVaEnd:
 		if ins.Slot < 0 {
 			return nil, fmt.Errorf("%v references negative va_list slot %d", ins.Op, ins.Slot)
+		}
+		if ins.Op == OpVaStart && !variadic {
+			return nil, fmt.Errorf("%v in non-variadic function", ins.Op)
 		}
 	case OpVaArg:
 		push(ins.Type)

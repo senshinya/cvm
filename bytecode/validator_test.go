@@ -565,6 +565,7 @@ func TestValidateModuleRejectsReturnWithLeftoverStack(t *testing.T) {
 
 func TestValidateModuleAcceptsVaOpcodes(t *testing.T) {
 	mod := minimalModule()
+	mod.Sigs[0].Variadic = true
 	mod.Functions[0].Instrs = []Instr{
 		{Op: OpVaStart, Slot: 1},
 		{Op: OpVaArg, Type: TypeI32},
@@ -574,6 +575,19 @@ func TestValidateModuleAcceptsVaOpcodes(t *testing.T) {
 
 	if err := ValidateModule(mod); err != nil {
 		t.Fatalf("ValidateModule rejected va opcodes: %v", err)
+	}
+}
+
+func TestValidateModuleRejectsVaStartInNonVariadicFunction(t *testing.T) {
+	mod := minimalModule()
+	mod.Functions[0].Instrs = []Instr{
+		{Op: OpVaStart, Slot: 1},
+		I32Const(0),
+		Return(TypeI32),
+	}
+
+	if err := ValidateModule(mod); err == nil {
+		t.Fatal("ValidateModule accepted va_start in a non-variadic function")
 	}
 }
 
