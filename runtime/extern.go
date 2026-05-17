@@ -172,6 +172,24 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_strstr", "strstr"} {
 		r.Register(name, stringSearchExtern(name))
 	}
+	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
+		r.Register(name, stringCopyExtern(name, false))
+	}
+	for _, name := range []string{"__builtin_stpcpy", "stpcpy"} {
+		r.Register(name, stringCopyExtern(name, true))
+	}
+	for _, name := range []string{"__builtin_strcat", "strcat"} {
+		r.Register(name, stringConcatExtern(name))
+	}
+	for _, name := range []string{"__builtin_strncpy", "strncpy"} {
+		r.Register(name, stringNCopyExtern(name, false))
+	}
+	for _, name := range []string{"__builtin_stpncpy", "stpncpy"} {
+		r.Register(name, stringNCopyExtern(name, true))
+	}
+	for _, name := range []string{"__builtin_strncat", "strncat"} {
+		r.Register(name, stringNConcatExtern(name))
+	}
 }
 
 func registerMathExterns(r *ExternRegistry) {
@@ -447,6 +465,156 @@ func stringSearchExtern(name string) ExternFunc {
 		}
 		return PtrValue(args[0].Int + uint64(idx)), nil, nil
 	}
+}
+
+func stringCopyExtern(name string, returnEnd bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		src, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		data := append([]byte(src), 0)
+		if err := writeMemoryBytes(ec.Memory, args[0].Int, data); err != nil {
+			return Value{}, nil, err
+		}
+		addr := args[0].Int
+		if returnEnd {
+			addr, err = addSignedOffset(args[0].Int, int64(len(src)))
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
+func stringConcatExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		dst, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		src, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		start, err := addSignedOffset(args[0].Int, int64(len(dst)))
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := writeMemoryBytes(ec.Memory, start, append([]byte(src), 0)); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
+func stringNCopyExtern(name string, returnEnd bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string, string, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		src, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		data := make([]byte, int(size))
+		copied := copy(data, []byte(src))
+		if err := writeMemoryBytes(ec.Memory, args[0].Int, data); err != nil {
+			return Value{}, nil, err
+		}
+		addr := args[0].Int
+		if returnEnd {
+			offset := size
+			if copied < int(size) {
+				offset = int64(copied)
+			}
+			addr, err = addSignedOffset(args[0].Int, offset)
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
+func stringNConcatExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string, string, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		dst, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		src, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		count := len(src)
+		if int64(count) > size {
+			count = int(size)
+		}
+		start, err := addSignedOffset(args[0].Int, int64(len(dst)))
+		if err != nil {
+			return Value{}, nil, err
+		}
+		data := append([]byte(src[:count]), 0)
+		if err := writeMemoryBytes(ec.Memory, start, data); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
+func writeMemoryBytes(mem *Memory, addr uint64, data []byte) error {
+	if len(data) == 0 {
+		return nil
+	}
+	block, off, err := mem.rangeAccess(addr, int64(len(data)), true)
+	if err != nil {
+		return err
+	}
+	copy(block.data[off:off+len(data)], data)
+	return nil
 }
 
 func complexAbsExtern(name string, realType bytecode.ValueType, realSize uint64) ExternFunc {

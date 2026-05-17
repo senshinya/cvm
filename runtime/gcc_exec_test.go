@@ -795,6 +795,50 @@ int main(void)
 	}
 }
 
+func TestBuiltinStringWritesExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  char buf[12];
+
+  if (__builtin_strcpy(buf, "ab") != buf)
+    return 1;
+  if (buf[0] != 'a' || buf[1] != 'b' || buf[2] != 0)
+    return 2;
+
+  if (__builtin_stpcpy(buf + 2, "cd") != buf + 4)
+    return 3;
+  if (buf[0] != 'a' || buf[1] != 'b' || buf[2] != 'c' || buf[3] != 'd' || buf[4] != 0)
+    return 4;
+
+  if (__builtin_strcat(buf, "ef") != buf)
+    return 5;
+  if (buf[4] != 'e' || buf[5] != 'f' || buf[6] != 0)
+    return 6;
+
+  if (__builtin_strncpy(buf, "xy", 4) != buf)
+    return 7;
+  if (buf[0] != 'x' || buf[1] != 'y' || buf[2] != 0 || buf[3] != 0)
+    return 8;
+
+  if (__builtin_stpncpy(buf, "pqrs", 2) != buf + 2)
+    return 9;
+  if (buf[0] != 'p' || buf[1] != 'q')
+    return 10;
+
+  buf[0] = 0;
+  if (__builtin_strncat(buf, "uvwx", 2) != buf)
+    return 11;
+  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 12;
+}
+`
+	st := runGCCExecFixture(t, "builtin-string-writes-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathFabsExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
