@@ -1380,6 +1380,17 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				return "", fmt.Errorf("%s %%c does not support precision", name)
 			}
 			piece = string([]byte{byte(unsignedInt(arg))})
+		case 'n':
+			if !isPointerType(arg.Type) {
+				return "", fmt.Errorf("%s %%n expects pointer argument", name)
+			}
+			if leftAlign || zeroPad || showSign || leadingSpace || alternate || width != 0 || precision >= 0 {
+				return "", fmt.Errorf("%s %%n does not support flags, width, or precision", name)
+			}
+			if err := mem.Store(arg.Int, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(out.Len()))); err != nil {
+				return "", err
+			}
+			continue
 		case 'f', 'F', 'e', 'E', 'g', 'G':
 			if !isFloatLike(arg.Type) {
 				return "", fmt.Errorf("%s %%%c expects floating argument", name, format[i])

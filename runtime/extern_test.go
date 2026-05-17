@@ -506,6 +506,37 @@ func TestFormatExternsSupportDynamicWidthAndPrecision(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportWriteCount(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-count", 16, 1, false, blockLocal)
+	countAddr := mustAlloc(t, mem, "count:format-count", 4, 4, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-count", []byte("ab%ncd\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(countAddr),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	count, err := mem.Load(countAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("Load count: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 4 || got != "abcd" || int32(count.Int) != 2 {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q count=%#v, want i32 4 abcd and count 2", ret, got, count)
+	}
+}
+
 func TestFenvExternsAreNoOps(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	for _, name := range []string{"feclearexcept", "fetestexcept"} {
