@@ -702,6 +702,50 @@ int main(void)
 	}
 }
 
+func TestGCCComplexStructArrowFieldAssignmentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+int main(void)
+{
+  struct pair p = { 7, __builtin_complex(0.0, 0.0) };
+  struct pair *q = &p;
+  q->value = __builtin_complex(5.0, 12.0);
+  return q->tag == 7 && __builtin_cabs(q->value) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-arrow-field-assignment-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexStructArrowFieldCompoundAssignmentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+int main(void)
+{
+  struct pair p = { 7, __builtin_complex(1.0, 4.0) };
+  struct pair *q = &p;
+  q->value += 2.0;
+  return q->tag == 7 && __builtin_cabs(q->value) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-arrow-field-compound-assignment-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexExplicitCastNarrowsThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
