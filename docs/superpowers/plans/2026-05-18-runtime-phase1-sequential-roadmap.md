@@ -180,7 +180,7 @@ go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -coun
   - `feat(preprocessor): declare string read-only helpers`
   - `docs: record string read-only helper header`
 
-## Plan 10: Plain Memory Operation Aliases
+## Plan 10: Plain Memory Operation Aliases - Completed
 
 Add plain runtime aliases and header declarations for `memcpy`, `memmove`, `mempcpy`, `memset`, and `bzero`, reusing existing builtin memory extern helpers.
 
