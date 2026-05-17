@@ -359,6 +359,21 @@ int main(void)
 	}
 }
 
+func TestGCCIntegerImaginaryExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  __complex__ double z = 1i;
+  return __builtin_cabs(z - __builtin_complex(0.0, 1.0)) == 0.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "integer-imaginary-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)

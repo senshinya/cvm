@@ -74,6 +74,9 @@ func (s *Sema) makeIntLit(node *entity.AstNode) Expr {
 		s.report(InvalidTypeSpec(node.SourceStart, "integer constant is too large for signed type"))
 	}
 	s.validateIntegerLiteralPrefix(lexeme, node.SourceStart)
+	if isImaginaryIntegerSuffix(lexeme) {
+		return &ImagLit{Value: parseImaginaryIntegerLiteral(lexeme), T: s.Types.Builtin(DoubleComplex), Range: node.SourceRange}
+	}
 	return &IntLit{Value: parseIntLiteral(lexeme), T: integerLiteralType(s, lexeme), Range: node.SourceRange}
 }
 
@@ -204,6 +207,29 @@ func parseIntLiteral(lexeme string) int64 {
 	body := integerLiteralBody(lexeme)
 	v, _ := parseBasedIntLiteral(body)
 	return int64(v)
+}
+
+func parseImaginaryIntegerLiteral(lexeme string) float64 {
+	body := lexeme[:len(lexeme)-len(imaginaryIntegerSuffix(lexeme))]
+	v, _ := parseBasedIntLiteral(body)
+	return float64(v)
+}
+
+func isImaginaryIntegerSuffix(lexeme string) bool {
+	return strings.ContainsAny(imaginaryIntegerSuffix(lexeme), "ij")
+}
+
+func imaginaryIntegerSuffix(lexeme string) string {
+	i := len(lexeme)
+	for i > 0 {
+		switch lexeme[i-1] {
+		case 'u', 'U', 'l', 'L', 'i', 'I', 'j', 'J':
+			i--
+			continue
+		}
+		break
+	}
+	return strings.ToLower(lexeme[i:])
 }
 
 func integerLiteralType(s *Sema, lexeme string) Type {
