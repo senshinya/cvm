@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `9ab00f8 fix(codegen): convert complex values to scalars`
+- Latest implementation/coverage commit before this handoff document: `123312f test(runtime): cover imaginary complex bool conversion`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,9 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `123312f test(runtime): cover imaginary complex bool conversion`
+  - Adds runtime coverage proving `_Bool` conversion checks a nonzero imaginary component.
 
 - `9ab00f8 fix(codegen): convert complex values to scalars`
   - Lowers complex-to-scalar casts by reading the real component instead of bit-casting object addresses.
