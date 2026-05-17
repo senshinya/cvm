@@ -297,6 +297,11 @@ double __cvm_tgmath_ceil();
 double __cvm_tgmath_floor();
 double __cvm_tgmath_trunc();
 double __cvm_tgmath_round();
+double __cvm_tgmath_exp2();
+double __cvm_tgmath_expm1();
+double __cvm_tgmath_log10();
+double __cvm_tgmath_log1p();
+double __cvm_tgmath_log2();
 #endif
 `
 }
