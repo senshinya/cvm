@@ -1208,6 +1208,9 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 		}
 		leftAlign := false
 		zeroPad := false
+		showSign := false
+		leadingSpace := false
+		alternate := false
 		for i < len(format) {
 			switch format[i] {
 			case '-':
@@ -1215,6 +1218,15 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				i++
 			case '0':
 				zeroPad = true
+				i++
+			case '+':
+				showSign = true
+				i++
+			case ' ':
+				leadingSpace = true
+				i++
+			case '#':
+				alternate = true
 				i++
 			default:
 				goto width
@@ -1281,6 +1293,13 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				return "", fmt.Errorf("%s %%%c expects integer argument", name, format[i])
 			}
 			piece = strconv.FormatInt(signedInt(arg), 10)
+			if !strings.HasPrefix(piece, "-") {
+				if showSign {
+					piece = "+" + piece
+				} else if leadingSpace {
+					piece = " " + piece
+				}
+			}
 			integerFormat = true
 		case 'u':
 			if !isIntegerLike(arg.Type) {
@@ -1293,18 +1312,27 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				return "", fmt.Errorf("%s %%x expects integer argument", name)
 			}
 			piece = strconv.FormatUint(unsignedInt(arg), 16)
+			if alternate && piece != "0" {
+				piece = "0x" + piece
+			}
 			integerFormat = true
 		case 'X':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%X expects integer argument", name)
 			}
 			piece = strings.ToUpper(strconv.FormatUint(unsignedInt(arg), 16))
+			if alternate && piece != "0" {
+				piece = "0X" + piece
+			}
 			integerFormat = true
 		case 'o':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%o expects integer argument", name)
 			}
 			piece = strconv.FormatUint(unsignedInt(arg), 8)
+			if alternate && !strings.HasPrefix(piece, "0") {
+				piece = "0" + piece
+			}
 			integerFormat = true
 		case 'p':
 			if !isPointerType(arg.Type) {
@@ -1335,21 +1363,14 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 }
 
 func applyIntegerPrecision(piece string, precision int) string {
-	negative := strings.HasPrefix(piece, "-")
-	digits := piece
-	if negative {
-		digits = piece[1:]
-	}
+	prefix, digits := splitNumericPrefix(piece)
 	if precision == 0 && digits == "0" {
 		digits = ""
 	}
 	if len(digits) < precision {
 		digits = strings.Repeat("0", precision-len(digits)) + digits
 	}
-	if negative {
-		return "-" + digits
-	}
-	return digits
+	return prefix + digits
 }
 
 func writeFormattedPiece(out *strings.Builder, piece string, width int, leftAlign, zeroPad bool) {
@@ -1367,14 +1388,26 @@ func writeFormattedPiece(out *strings.Builder, piece string, width int, leftAlig
 		writeRepeatedByte(out, padByte, pad)
 		return
 	}
-	if padByte == '0' && strings.HasPrefix(piece, "-") {
-		out.WriteByte('-')
-		writeRepeatedByte(out, padByte, pad)
-		out.WriteString(piece[1:])
-		return
+	if padByte == '0' {
+		prefix, digits := splitNumericPrefix(piece)
+		if prefix != "" {
+			out.WriteString(prefix)
+			writeRepeatedByte(out, padByte, pad)
+			out.WriteString(digits)
+			return
+		}
 	}
 	writeRepeatedByte(out, padByte, pad)
 	out.WriteString(piece)
+}
+
+func splitNumericPrefix(piece string) (string, string) {
+	for _, prefix := range []string{"-", "+", " ", "0x", "0X"} {
+		if strings.HasPrefix(piece, prefix) {
+			return prefix, piece[len(prefix):]
+		}
+	}
+	return "", piece
 }
 
 func writeRepeatedByte(out *strings.Builder, b byte, n int) {
