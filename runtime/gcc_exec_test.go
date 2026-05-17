@@ -404,6 +404,26 @@ int main(void)
 	}
 }
 
+func TestGCCComplexEqualityExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  __complex__ double z = __builtin_complex(1.0, 2.0);
+  __complex__ double w = __builtin_complex(1.0, 2.0);
+  if (z != w)
+    return 1;
+  if (z == __builtin_complex(1.0, 3.0))
+    return 2;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "complex-equality-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)

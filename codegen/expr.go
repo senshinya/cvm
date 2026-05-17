@@ -1132,6 +1132,9 @@ func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
 	if x.Op == sema.OpLAnd || x.Op == sema.OpLOr {
 		return fg.emitLogical(x, resultType)
 	}
+	if (x.Op == sema.OpEq || x.Op == sema.OpNe) && (isComplexType(x.L.GetType()) || isComplexType(x.R.GetType())) {
+		return fg.emitComplexCompare(x, resultType)
+	}
 	if isComplexType(x.T) {
 		return fg.emitComplexBinOp(x)
 	}
@@ -1161,6 +1164,75 @@ func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
 	if isCompareOp(x.Op) {
 		fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
 	}
+	return nil
+}
+
+func (fg *funcGen) emitComplexCompare(x *sema.BinOp, resultType bytecode.ValueType) error {
+	if x.Op != sema.OpEq && x.Op != sema.OpNe {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("complex comparison %v is not implemented", x.Op)}
+	}
+	lhsRealType, err := complexRealType(x.L.GetType())
+	if err != nil {
+		return err
+	}
+	rhsRealType, err := complexRealType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	lhsVT, err := fg.g.lowerValueType(lhsRealType)
+	if err != nil {
+		return err
+	}
+	rhsVT, err := fg.g.lowerValueType(rhsRealType)
+	if err != nil {
+		return err
+	}
+	cmpVT := lhsVT
+	if typeSize(rhsVT) > typeSize(cmpVT) {
+		cmpVT = rhsVT
+	}
+	lhsAddrSlot := fg.allocSyntheticSlot(".complex.cmp.lhs", bytecode.TypeObjectAddr)
+	rhsAddrSlot := fg.allocSyntheticSlot(".complex.cmp.rhs", bytecode.TypeObjectAddr)
+	lrSlot := fg.allocSyntheticSlot(".complex.cmp.lr", cmpVT)
+	liSlot := fg.allocSyntheticSlot(".complex.cmp.li", cmpVT)
+	rrSlot := fg.allocSyntheticSlot(".complex.cmp.rr", cmpVT)
+	riSlot := fg.allocSyntheticSlot(".complex.cmp.ri", cmpVT)
+	if err := fg.emitComplexSourceAddress(x.L); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+	if err := fg.emitComplexSourceAddress(x.R); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, rhsAddrSlot))
+
+	lhsImagOffset := fg.g.sizeof(lhsRealType)
+	rhsImagOffset := fg.g.sizeof(rhsRealType)
+	fg.emitLoadComplexComponent(lhsAddrSlot, 0, lhsVT, cmpVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(cmpVT, lrSlot))
+	fg.emitLoadComplexComponent(lhsAddrSlot, lhsImagOffset, lhsVT, cmpVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(cmpVT, liSlot))
+	fg.emitLoadComplexComponent(rhsAddrSlot, 0, rhsVT, cmpVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(cmpVT, rrSlot))
+	fg.emitLoadComplexComponent(rhsAddrSlot, rhsImagOffset, rhsVT, cmpVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(cmpVT, riSlot))
+
+	componentOp := bytecode.BinEq
+	combineOp := bytecode.BinAnd
+	if x.Op == sema.OpNe {
+		componentOp = bytecode.BinNe
+		combineOp = bytecode.BinOr
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(cmpVT, lrSlot),
+		bytecode.LoadLocal(cmpVT, rrSlot),
+		bytecode.Binary(cmpVT, componentOp),
+		bytecode.LoadLocal(cmpVT, liSlot),
+		bytecode.LoadLocal(cmpVT, riSlot),
+		bytecode.Binary(cmpVT, componentOp),
+		bytecode.Binary(bytecode.TypeBool, combineOp),
+	)
+	fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
 	return nil
 }
 
