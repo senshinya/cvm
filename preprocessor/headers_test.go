@@ -40,10 +40,23 @@ func TestBuiltinStdioHeaderDeclaresFormattingSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"FILE", "size_t", "stdin", "stdout", "stderr", "fputs", "fputs_unlocked", "fputc", "fputc_unlocked", "puts", "putchar", "fflush", "fclose", "ferror", "clearerr", "feof", "fwrite", "fread", "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf", "vsprintf", "vsnprintf"} {
+	for _, name := range []string{"FILE", "size_t", "stdin", "stdout", "stderr", "fputs", "fputs_unlocked", "fputc", "fputc_unlocked", "puts", "putchar", "getchar", "fflush", "fclose", "ferror", "clearerr", "feof", "fwrite", "fread", "fgetc", "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf", "vsprintf", "vsnprintf"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("stdio identifier %q missing: %#v", name, res.Tokens)
 		}
+	}
+}
+
+func TestBuiltinStdioHeaderDefinesEOF(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <stdio.h>
+int eof_value = EOF;
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	if !hasLexeme(res.Tokens, "-") || !hasLexeme(res.Tokens, "1") {
+		t.Fatalf("EOF did not expand to -1: %#v", res.Tokens)
 	}
 }
 

@@ -956,6 +956,25 @@ int main(void)
 	}
 }
 
+func TestStdioGetcharFgetcEmptyInputExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (fgetc(stdin) != EOF)
+    return 1;
+  if (getchar() != EOF)
+    return 2;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-getchar-fgetc-empty-input-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

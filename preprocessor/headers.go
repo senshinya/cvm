@@ -46,6 +46,7 @@ func stdioHeader() string {
 #define __CVM_STDIO_H
 typedef __SIZE_TYPE__ size_t;
 typedef struct __cvm_FILE FILE;
+#define EOF (-1)
 extern FILE *stdin;
 extern FILE *stdout;
 extern FILE *stderr;
@@ -55,6 +56,7 @@ int fputc(int, FILE *);
 int fputc_unlocked(int, FILE *);
 int puts(const char *);
 int putchar(int);
+int getchar(void);
 int fflush(FILE *);
 int fclose(FILE *);
 int ferror(FILE *);
@@ -62,6 +64,7 @@ void clearerr(FILE *);
 int feof(FILE *);
 size_t fwrite(const void *, size_t, size_t, FILE *);
 size_t fread(void *, size_t, size_t, FILE *);
+int fgetc(FILE *);
 int printf(const char *, ...);
 int printf_unlocked(const char *, ...);
 int fprintf(FILE *, const char *, ...);
