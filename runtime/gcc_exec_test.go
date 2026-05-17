@@ -959,6 +959,61 @@ int main(void)
 	}
 }
 
+func TestGCCFunctionDesignatorConditionalInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int inc(int x)
+{
+  return x + 1;
+}
+
+int dec(int x)
+{
+  return x - 1;
+}
+
+int main(void)
+{
+  int flag = 0;
+  int (*fn)(int) = flag ? inc : dec;
+  return fn(43) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "function-designator-conditional-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCFunctionDesignatorAssignmentAndCommaExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int inc(int x)
+{
+  return x + 1;
+}
+
+int dec(int x)
+{
+  return x - 1;
+}
+
+int main(void)
+{
+  int (*fn)(int);
+  fn = inc;
+  if (fn(41) != 42)
+    return 1;
+  fn = (inc, dec);
+  return fn(43) == 42 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "function-designator-assignment-comma-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCFunctionPointerArgumentCallExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
