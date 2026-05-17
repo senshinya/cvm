@@ -84,7 +84,7 @@ go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -cou
   - `feat(runtime): add stdio buffer control externs`
   - `docs: record stdio buffer control externs`
 
-## Plan 4: Stdio Stream Lock No-Ops
+## Plan 4: Stdio Stream Lock No-Ops - Completed
 
 Add `flockfile`, `ftrylockfile`, and `funlockfile` as no-op validation externs for known host stream handles.
 
