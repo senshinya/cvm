@@ -35,7 +35,7 @@ env GOCACHE=/private/tmp/cvm-go-build-cache go test ./codegen -count=1
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./... -count=1
 ```
 
-## Plan 1: `puts_unlocked`
+## Plan 1: `puts_unlocked` - Completed
 
 Add `puts_unlocked` as an alias over the existing `puts` behavior.
 
