@@ -212,7 +212,7 @@ go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -coun
   - `feat(runtime): add plain string write aliases`
   - `docs: record plain string write aliases`
 
-## Plan 12: Plain Allocation Aliases
+## Plan 12: Plain Allocation Aliases - Completed
 
 Add builtin `<stdlib.h>` declarations and runtime aliases for `malloc`, `calloc`, `free`, and `strdup`. Reuse existing allocation paths for allocation/duplication and use runtime memory free for `free`.
 
