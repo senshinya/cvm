@@ -615,6 +615,25 @@ int main(void)
 	}
 }
 
+func TestTgmathLongRoundingHelpersExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  long a = lrint(3.0f);
+  long b = lround(4.0L);
+  long long c = llrint(5.0);
+  long long d = llround(6.0f);
+  return a + b + c + d == 18 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-long-rounding.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathBinaryRealHelpersExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

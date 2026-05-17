@@ -236,6 +236,36 @@ func TestMathClassificationExterns(t *testing.T) {
 	}
 }
 
+func TestTgmathLongExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	tests := []struct {
+		name string
+		fn   string
+		arg  Value
+		want int64
+	}{
+		{name: "lrint", fn: "__cvm_tgmath_lrint", arg: FloatValue(bytecode.TypeF64, 3), want: 3},
+		{name: "lround", fn: "__cvm_tgmath_lround", arg: FloatValue(bytecode.TypeF64, 4), want: 4},
+		{name: "llrint", fn: "__cvm_tgmath_llrint", arg: FloatValue(bytecode.TypeF64, 5), want: 5},
+		{name: "llround", fn: "__cvm_tgmath_llround", arg: FloatValue(bytecode.TypeF64, 6), want: 6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fn, ok := reg.Lookup(tt.fn)
+			if !ok {
+				t.Fatalf("missing %s extern", tt.fn)
+			}
+			ret, exit, err := fn(context.Background(), nil, []Value{tt.arg})
+			if err != nil || exit != nil {
+				t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.fn, ret, exit, err)
+			}
+			if ret.Type != bytecode.TypeI64 || int64(ret.Int) != tt.want {
+				t.Fatalf("%s ret = %#v, want i64 %d", tt.fn, ret, tt.want)
+			}
+		})
+	}
+}
+
 func TestMathUnorderedExtern(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	fn, ok := reg.Lookup("__cvm_isunordered")

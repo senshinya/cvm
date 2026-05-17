@@ -151,6 +151,19 @@ int f(void) {
 	}
 }
 
+func TestGCCTgmathLongRoundingUsesFloatExtern(t *testing.T) {
+	source := `#include <tgmath.h>
+long f(void) {
+  float x = 3.0f;
+  return lrint(x);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-lrint-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_lrintf") {
+		t.Fatalf("lrint(float) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string

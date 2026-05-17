@@ -209,6 +209,10 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealExterns(r, "__cvm_tgmath_rint", math.RoundToEven)
 	registerTgmathRealExterns(r, "__cvm_tgmath_logb", math.Logb)
 	registerTgmathIntExterns(r, "__cvm_tgmath_ilogb", math.Ilogb)
+	registerTgmathLongExterns(r, "__cvm_tgmath_lrint", math.RoundToEven)
+	registerTgmathLongExterns(r, "__cvm_tgmath_lround", math.Round)
+	registerTgmathLongExterns(r, "__cvm_tgmath_llrint", math.RoundToEven)
+	registerTgmathLongExterns(r, "__cvm_tgmath_llround", math.Round)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_pow", math.Pow)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_atan2", math.Atan2)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_hypot", math.Hypot)
@@ -376,6 +380,12 @@ func registerTgmathIntExterns(r *ExternRegistry, base string, fn func(float64) i
 	r.Register(base+"l", mathUnaryIntExtern(base+"l", fn))
 }
 
+func registerTgmathLongExterns(r *ExternRegistry, base string, fn func(float64) float64) {
+	r.Register(base+"f", mathUnaryLongExtern(base+"f", fn))
+	r.Register(base, mathUnaryLongExtern(base, fn))
+	r.Register(base+"l", mathUnaryLongExtern(base+"l", fn))
+}
+
 func registerTgmathRealBinaryExterns(r *ExternRegistry, base string, fn func(float64, float64) float64) {
 	r.Register(base+"f", mathBinaryFloatExtern(base+"f", bytecode.TypeF32, fn))
 	r.Register(base, mathBinaryFloatExtern(base, bytecode.TypeF64, fn))
@@ -415,6 +425,18 @@ func mathUnaryIntExtern(name string, fn func(float64) int) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s expects floating argument", name)
 		}
 		return IntValue(bytecode.TypeI32, int64(fn(cvmFloat(args[0])))), nil, nil
+	}
+}
+
+func mathUnaryLongExtern(name string, fn func(float64) float64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isFloatType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects floating argument", name)
+		}
+		return IntValue(bytecode.TypeI64, int64(fn(cvmFloat(args[0])))), nil, nil
 	}
 }
 
