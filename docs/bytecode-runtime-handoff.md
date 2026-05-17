@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `0f79f2d fix(codegen): lower complex compound scalar operands`
+- Latest implementation/coverage commit before this handoff document: `97b2f37 test(runtime): cover scalar complex conversions`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,10 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `97b2f37 test(runtime): cover scalar complex conversions`
+  - Extends scalar RHS complex compound runtime coverage across `+=`, `-=`, `*=`, and `/=`.
+  - Adds runtime coverage for scalar return conversion into a complex return type.
 
 - `0f79f2d fix(codegen): lower complex compound scalar operands`
   - Materializes scalar RHS operands as complex temporaries for complex compound assignment.
