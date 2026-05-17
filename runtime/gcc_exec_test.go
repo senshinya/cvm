@@ -959,6 +959,25 @@ int main(void)
 	}
 }
 
+func TestStdioStreamLockControlsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  flockfile(stdout);
+  if (ftrylockfile(stdout) != 0)
+    return 1;
+  funlockfile(stdout);
+  return fputc('L', stdout) == 'L' ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "stdio-stream-lock-controls-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

@@ -96,6 +96,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	}
 	r.Register("setbuf", setbufExtern("setbuf", r))
 	r.Register("setvbuf", setvbufExtern("setvbuf", r))
+	r.Register("flockfile", streamLockExtern("flockfile", r, false))
+	r.Register("ftrylockfile", streamLockExtern("ftrylockfile", r, true))
+	r.Register("funlockfile", streamLockExtern("funlockfile", r, false))
 	for _, name := range []string{"fwrite", "fwrite_unlocked"} {
 		r.Register(name, fwriteExtern(name, r))
 	}
@@ -437,6 +440,24 @@ func setvbufExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
+	}
+}
+
+func streamLockExtern(name string, r *ExternRegistry, returnsInt bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream pointer", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		if returnsInt {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		return Value{}, nil, nil
 	}
 }
 
