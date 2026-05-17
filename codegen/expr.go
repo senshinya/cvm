@@ -131,6 +131,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 	case *sema.CompoundAssign:
 		return fg.emitCompoundAssign(x)
 	case *sema.CallExpr:
+		if builtinComplexCall(x) != nil {
+			return fg.emitComplexRValueAddress(x)
+		}
 		return fg.emitCall(x)
 	case *sema.CommaExpr:
 		if err := fg.emitValue(x.L); err != nil {
