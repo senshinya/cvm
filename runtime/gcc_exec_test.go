@@ -685,6 +685,71 @@ int main(void)
 	}
 }
 
+func TestGCCComplexStructCommaReturnAssignmentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+struct pair make_a(void)
+{
+  struct pair p = { 7, __builtin_complex(3.0, 4.0) };
+  return p;
+}
+
+struct pair make_b(void)
+{
+  struct pair p = { 9, __builtin_complex(5.0, 12.0) };
+  return p;
+}
+
+int main(void)
+{
+  struct pair p = { 0, __builtin_complex(0.0, 0.0) };
+  p = (make_a(), make_b());
+  return p.tag == 9 && __builtin_cabs(p.value) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-comma-return-assignment-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexStructCommaReturnInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+struct pair make_a(void)
+{
+  struct pair p = { 7, __builtin_complex(3.0, 4.0) };
+  return p;
+}
+
+struct pair make_b(void)
+{
+  struct pair p = { 9, __builtin_complex(5.0, 12.0) };
+  return p;
+}
+
+int main(void)
+{
+  struct pair p = (make_a(), make_b());
+  return p.tag == 9 && __builtin_cabs(p.value) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-comma-return-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexArrayInitializerExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
