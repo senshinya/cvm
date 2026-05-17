@@ -276,6 +276,34 @@ func TestCheckedPrintfExternsWriteFormattedOutput(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportIntegerLengthModifiers(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-length", 32, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-length", []byte("%ld %llu %zu\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		IntValue(bytecode.TypeI64, -7),
+		UIntValue(bytecode.TypeU64, 42),
+		UIntValue(bytecode.TypeU64, 3),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 7 || got != "-7 42 3" {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q, want i32 7 and -7 42 3", ret, got)
+	}
+}
+
 func TestFenvExternsAreNoOps(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	for _, name := range []string{"feclearexcept", "fetestexcept"} {

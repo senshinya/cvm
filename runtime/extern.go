@@ -1206,6 +1206,24 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			out.WriteByte('%')
 			continue
 		}
+		for {
+			if i >= len(format) {
+				return "", fmt.Errorf("%s has trailing %% in format", name)
+			}
+			switch format[i] {
+			case 'h', 'l':
+				if i+1 < len(format) && format[i+1] == format[i] {
+					i += 2
+				} else {
+					i++
+				}
+			case 'j', 'z', 't', 'L':
+				i++
+			default:
+				goto verb
+			}
+		}
+	verb:
 		if argIndex >= len(args) {
 			return "", fmt.Errorf("%s format needs more arguments", name)
 		}
