@@ -100,7 +100,7 @@ go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -cou
   - `feat(runtime): add stdio stream lock externs`
   - `docs: record stdio stream lock externs`
 
-## Plan 5: `stdlib.h` Absolute Value Helpers
+## Plan 5: `stdlib.h` Absolute Value Helpers - Completed
 
 Add builtin `<stdlib.h>` with `abs`, `labs`, and `llabs` runtime externs.
 
