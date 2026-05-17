@@ -827,6 +827,80 @@ int main(void)
 	}
 }
 
+func TestGCCFunctionPointerFieldCallExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct ops {
+  int (*fn)(int);
+};
+
+int inc(int x)
+{
+  return x + 1;
+}
+
+int main(void)
+{
+  struct ops o = { inc };
+  return o.fn(41) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "function-pointer-field-call-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStaticFunctionPointerFieldCallExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct ops {
+  int (*fn)(int);
+};
+
+int inc(int x)
+{
+  return x + 1;
+}
+
+static struct ops o = { inc };
+
+int main(void)
+{
+  return o.fn(41) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "static-function-pointer-field-call-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCFunctionPointerArrayCallExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int inc(int x)
+{
+  return x + 1;
+}
+
+int dec(int x)
+{
+  return x - 1;
+}
+
+int main(void)
+{
+  int (*ops[2])(int) = { inc, dec };
+  return ops[0](41) == 42 && ops[1](43) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "function-pointer-array-call-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
