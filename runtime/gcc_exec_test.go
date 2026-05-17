@@ -453,6 +453,44 @@ int main(void)
 	}
 }
 
+func TestGCCComplexArgumentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+double norm(__complex__ double z)
+{
+  return __builtin_cabs(z);
+}
+
+int main(void)
+{
+  return norm(__builtin_complex(3.0, 4.0)) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-argument-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexArgumentReturnExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+__complex__ double ident(__complex__ double z)
+{
+  return z;
+}
+
+int main(void)
+{
+  return __builtin_cabs(ident(__builtin_complex(3.0, 4.0))) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-argument-return-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexExplicitCastNarrowsThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
