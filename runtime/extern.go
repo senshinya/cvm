@@ -231,6 +231,8 @@ func registerOutputFormatExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked"} {
 		r.Register(name, fprintfExtern(name, r))
 	}
+	r.Register("__builtin___printf_chk", printfCheckedExtern("__builtin___printf_chk", r))
+	r.Register("__builtin___fprintf_chk", fprintfCheckedExtern("__builtin___fprintf_chk", r))
 }
 
 func registerMathExterns(r *ExternRegistry) {
@@ -1126,6 +1128,54 @@ func fprintfExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
 		out, err := formatCString(name, ec.Memory, args[1].Int, args[2:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := fmt.Fprint(w, out); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func printfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 2 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects flag and format arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatCString(name, ec.Memory, args[1].Int, args[2:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := fmt.Fprint(r.externStdout(ec), out); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func fprintfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 3 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream, flag, and format arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		w, ok := r.lookupHostWriter(args[0].Int)
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		out, err := formatCString(name, ec.Memory, args[2].Int, args[3:])
 		if err != nil {
 			return Value{}, nil, err
 		}
