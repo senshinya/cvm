@@ -923,6 +923,24 @@ int main(void)
 	}
 }
 
+func TestStdioFreadEmptyInputExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[2] = { 'x', 'y' };
+  if (fread(buf, 1, 2, stdin) != 0)
+    return 1;
+  return buf[0] == 'x' && buf[1] == 'y' ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "stdio-fread-empty-input-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

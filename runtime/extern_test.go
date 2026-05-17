@@ -12,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "puts", "putchar", "fputc", "fputc_unlocked", "fputs", "fputs_unlocked", "fflush", "ferror", "clearerr", "feof", "fwrite", "strcmp", "memcmp", "__builtin_malloc", "__builtin_calloc", "__builtin_strdup", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy", "__builtin_memset", "__builtin_bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "__builtin_strchr", "__builtin_strstr", "__builtin_strcpy", "__builtin_stpcpy", "__builtin_strcat", "__builtin_strncpy", "__builtin_stpncpy", "__builtin_strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "__builtin_vfprintf", "vfprintf", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
+	for _, name := range []string{"exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "puts", "putchar", "fputc", "fputc_unlocked", "fputs", "fputs_unlocked", "fflush", "ferror", "clearerr", "feof", "fwrite", "fread", "strcmp", "memcmp", "__builtin_malloc", "__builtin_calloc", "__builtin_strdup", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy", "__builtin_memset", "__builtin_bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "__builtin_strchr", "__builtin_strstr", "__builtin_strcpy", "__builtin_stpcpy", "__builtin_strcat", "__builtin_strncpy", "__builtin_stpncpy", "__builtin_strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "__builtin_vfprintf", "vfprintf", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -196,6 +196,39 @@ func TestFwriteZeroSizeOrCountWritesNothing(t *testing.T) {
 	}
 	if out.String() != "" {
 		t.Fatalf("fwrite zero case output=%q, want empty", out.String())
+	}
+}
+
+func TestFreadEmptyInputWritesNothing(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	buf := mustAllocBytes(t, mem, "fread:buf", []byte("xy\x00"), false, blockLocal)
+	fn, ok := reg.Lookup("fread")
+	if !ok {
+		t.Fatal("missing fread extern")
+	}
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(buf),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 2),
+		PtrValue(stdin),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("fread ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("fread ret=%#v, want u64 0", ret)
+	}
+	got, err := mem.ReadCString(buf)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	if got != "xy" {
+		t.Fatalf("fread buffer = %q, want unchanged xy", got)
 	}
 }
 

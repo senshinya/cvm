@@ -83,6 +83,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	}
 	r.Register("fflush", fflushExtern("fflush", r))
 	r.Register("fwrite", fwriteExtern("fwrite", r))
+	r.Register("fread", freadExtern("fread", r))
 	for _, name := range []string{"ferror", "feof"} {
 		r.Register(name, streamStatusExtern(name, r))
 	}
@@ -278,6 +279,27 @@ func fwriteExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, err
 		}
 		return UIntValue(bytecode.TypeU64, uint64(count)), nil, nil
+	}
+}
+
+func freadExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) || !isPointerType(args[3].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects buffer, size, count, and stream arguments", name)
+		}
+		if _, ok := r.lookupHostWriter(args[3].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[3].Int)
+		}
+		if _, err := memorySizeArg(name, args[1]); err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := memorySizeArg(name, args[2]); err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, 0), nil, nil
 	}
 }
 

@@ -40,7 +40,7 @@ func TestBuiltinStdioHeaderDeclaresFormattingSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"FILE", "size_t", "stdin", "stdout", "stderr", "fputs", "fputs_unlocked", "fputc", "fputc_unlocked", "puts", "putchar", "fflush", "ferror", "clearerr", "feof", "fwrite", "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf", "vsprintf", "vsnprintf"} {
+	for _, name := range []string{"FILE", "size_t", "stdin", "stdout", "stderr", "fputs", "fputs_unlocked", "fputc", "fputc_unlocked", "puts", "putchar", "fflush", "ferror", "clearerr", "feof", "fwrite", "fread", "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf", "vsprintf", "vsnprintf"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("stdio identifier %q missing: %#v", name, res.Tokens)
 		}
