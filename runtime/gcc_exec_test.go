@@ -463,10 +463,32 @@ int main(void)
   __complex__ double z = __builtin_complex(1.0, 4.0);
   z += 2.0;
   z -= 0.0;
+  z *= 2.0;
+  z /= 2.0;
   return __builtin_cabs(z) == 5.0 ? 0 : 1;
 }
 `
 	st := runGCCExecFixture(t, "complex-compound-real-scalar-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCScalarReturnConvertsToComplexExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+__complex__ double make(void)
+{
+  return 3.0;
+}
+
+int main(void)
+{
+  __complex__ double z = make();
+  return __builtin_cabs(z - __builtin_complex(3.0, 0.0)) == 0.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "scalar-return-converts-to-complex-runtime.c", source)
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
