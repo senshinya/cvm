@@ -338,6 +338,61 @@ int main(void)
 	}
 }
 
+func TestGCCVLAStructAndUnionMembersExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+static int A(int i)
+{
+  struct S { int ar[1][i]; } s;
+
+  s.ar[0][0] = 7;
+  s.ar[0][i - 1] = 9;
+  return s.ar[0][0] + s.ar[0][i - 1];
+}
+
+static int C(int i)
+{
+  union U { int ar[1][i]; } u;
+
+  u.ar[0][0] = 11;
+  u.ar[0][i - 1] = 13;
+  return u.ar[0][0] + u.ar[0][i - 1];
+}
+
+int main(void)
+{
+  return A(23) == 16 && C(23) == 24 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "vla-struct-union-members-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCVLAParameterDynamicStrideExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+void ed(int n, float s[3][n])
+{
+  for (int i = 0; i < n; i++)
+    s[1][i] = i + 1;
+}
+
+int main(void)
+{
+  int n = 4;
+  float s[3][n];
+  ed(n, s);
+  return s[1][3] == 4.0f ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "vla-parameter-dynamic-stride-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
