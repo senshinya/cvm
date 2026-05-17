@@ -88,7 +88,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	for _, name := range []string{"fputc", "fputc_unlocked", "putc", "putc_unlocked"} {
 		r.Register(name, fputcExtern(name, r))
 	}
-	for _, name := range []string{"fgetc", "getc", "getc_unlocked"} {
+	for _, name := range []string{"fgetc", "fgetc_unlocked", "getc", "getc_unlocked"} {
 		r.Register(name, fgetcExtern(name, r))
 	}
 	r.Register("ungetc", ungetcExtern("ungetc", r))
@@ -98,7 +98,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	for _, name := range []string{"fputs", "fputs_unlocked"} {
 		r.Register(name, fputsExtern(name, r))
 	}
-	r.Register("fflush", fflushExtern("fflush", r))
+	for _, name := range []string{"fflush", "fflush_unlocked"} {
+		r.Register(name, fflushExtern(name, r))
+	}
 	r.Register("fclose", fcloseExtern("fclose", r))
 	for _, name := range []string{"fwrite", "fwrite_unlocked"} {
 		r.Register(name, fwriteExtern(name, r))

@@ -878,7 +878,9 @@ int main(void)
 {
   if (fputc('C', stdout) != 'C')
     return 1;
-  return fflush(stdout) == 0 ? 0 : 2;
+  if (fflush(stdout) != 0)
+    return 2;
+  return fflush_unlocked(stdout) == 0 ? 0 : 3;
 }
 `
 	st := runGCCExecFixture(t, "stdio-fflush-runtime.c", source)
@@ -1147,12 +1149,15 @@ int main(void)
   ungetc('G', stdin);
   if (getc(stdin) != 'G')
     return 1;
+  ungetc('F', stdin);
+  if (fgetc_unlocked(stdin) != 'F')
+    return 2;
   ungetc('U', stdin);
   if (getc_unlocked(stdin) != 'U')
-    return 2;
+    return 3;
   ungetc('H', stdin);
   if (getchar_unlocked() != 'H')
-    return 3;
+    return 4;
   return 0;
 }
 `
