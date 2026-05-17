@@ -65,22 +65,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("abort", abortExtern())
 	r.Register("__builtin_abort", abortExtern())
 	registerVaListExterns(r)
-	r.Register("puts", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
-		if len(args) != 1 {
-			return Value{}, nil, fmt.Errorf("puts expects 1 argument")
-		}
-		if ec == nil || ec.Memory == nil {
-			return Value{}, nil, fmt.Errorf("puts requires memory")
-		}
-		s, err := ec.Memory.ReadCString(args[0].Int)
-		if err != nil {
-			return Value{}, nil, err
-		}
-		if _, err := fmt.Fprintln(r.externStdout(ec), s); err != nil {
-			return Value{}, nil, err
-		}
-		return IntValue(bytecode.TypeI32, int64(len(s)+1)), nil, nil
-	})
+	for _, name := range []string{"puts", "puts_unlocked"} {
+		r.Register(name, putsExtern(name, r))
+	}
 	for _, name := range []string{"putchar", "putchar_unlocked"} {
 		r.Register(name, putcharExtern(name, r))
 	}
@@ -194,6 +181,25 @@ func registerVaListExterns(r *ExternRegistry) {
 		}
 		return Value{}, nil, nil
 	})
+}
+
+func putsExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := fmt.Fprintln(r.externStdout(ec), s); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(s)+1)), nil, nil
+	}
 }
 
 func putcharExtern(name string, r *ExternRegistry) ExternFunc {

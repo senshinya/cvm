@@ -57,6 +57,7 @@ int fputc_unlocked(int, FILE *);
 int putc(int, FILE *);
 int putc_unlocked(int, FILE *);
 int puts(const char *);
+int puts_unlocked(const char *);
 int putchar(int);
 int putchar_unlocked(int);
 int getchar(void);

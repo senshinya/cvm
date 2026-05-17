@@ -855,6 +855,21 @@ int main(void)
 	}
 }
 
+func TestStdioPutsUnlockedExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  return puts_unlocked("unlocked") == 9 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "stdio-puts-unlocked-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioFputcExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
