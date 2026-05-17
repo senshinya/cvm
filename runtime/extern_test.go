@@ -293,6 +293,34 @@ func TestTgmathFrexpExtern(t *testing.T) {
 	}
 }
 
+func TestTgmathRemquoExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("__cvm_tgmath_remquo")
+	if !ok {
+		t.Fatal("missing __cvm_tgmath_remquo extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	quoAddr := mustAlloc(t, mem, "quo", 4, 4, false, blockLocal)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		FloatValue(bytecode.TypeF64, 4),
+		FloatValue(bytecode.TypeF64, 2),
+		PtrValue(quoAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("__cvm_tgmath_remquo ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 {
+		t.Fatalf("__cvm_tgmath_remquo ret = %#v, want f64 0", ret)
+	}
+	quo, err := mem.Load(quoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("Load quotient: %v", err)
+	}
+	if int64(quo.Int) != 2 {
+		t.Fatalf("remquo quotient = %#v, want 2", quo)
+	}
+}
+
 func TestMathUnorderedExtern(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	fn, ok := reg.Lookup("__cvm_isunordered")

@@ -228,6 +228,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealIntBinaryExterns(r, "__cvm_tgmath_scalbln", math.Ldexp)
 	registerTgmathRealIntBinaryExterns(r, "__cvm_tgmath_ldexp", math.Ldexp)
 	registerTgmathFrexpExterns(r, "__cvm_tgmath_frexp")
+	registerTgmathRemquoExterns(r, "__cvm_tgmath_remquo")
 	registerTgmathRealTernaryExterns(r, "__cvm_tgmath_fma", math.FMA)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csin", cmplx.Sin)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cexp", cmplx.Exp)
@@ -406,6 +407,12 @@ func registerTgmathFrexpExterns(r *ExternRegistry, base string) {
 	r.Register(base+"l", mathFrexpExtern(base+"l", bytecode.TypeFLong))
 }
 
+func registerTgmathRemquoExterns(r *ExternRegistry, base string) {
+	r.Register(base+"f", mathRemquoExtern(base+"f", bytecode.TypeF32))
+	r.Register(base, mathRemquoExtern(base, bytecode.TypeF64))
+	r.Register(base+"l", mathRemquoExtern(base+"l", bytecode.TypeFLong))
+}
+
 func registerTgmathRealTernaryExterns(r *ExternRegistry, base string, fn func(float64, float64, float64) float64) {
 	r.Register(base+"f", mathTernaryFloatExtern(base+"f", bytecode.TypeF32, fn))
 	r.Register(base, mathTernaryFloatExtern(base, bytecode.TypeF64, fn))
@@ -492,6 +499,26 @@ func mathFrexpExtern(name string, ret bytecode.ValueType) ExternFunc {
 			return Value{}, nil, err
 		}
 		return floatResult(ret, frac), nil, nil
+	}
+}
+
+func mathRemquoExtern(name string, ret bytecode.ValueType) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isFloatType(args[0].Type) || !isFloatType(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects floating, floating, and pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		x, y := cvmFloat(args[0]), cvmFloat(args[1])
+		quo := int64(math.RoundToEven(x / y))
+		if err := ec.Memory.Store(args[2].Int, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, quo)); err != nil {
+			return Value{}, nil, err
+		}
+		return floatResult(ret, math.Remainder(x, y)), nil, nil
 	}
 }
 

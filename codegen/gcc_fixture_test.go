@@ -190,6 +190,20 @@ float f(int n) {
 	}
 }
 
+func TestGCCTgmathRemquoIgnoresPointerArgumentForRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(int *quo) {
+  float x = 4.0f;
+  float y = 2.0f;
+  return remquo(x, y, quo);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-remquo-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_remquof") {
+		t.Fatalf("remquo(float, float, int *) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string

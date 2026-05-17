@@ -668,6 +668,25 @@ int main(void)
 	}
 }
 
+func TestTgmathRemquoExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  int quo = 0;
+  float rem = remquo(4.0f, 2.0f, &quo);
+  if (rem != 0.0f)
+    return 1;
+  return quo == 2 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-remquo.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathBinaryRealHelpersExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
