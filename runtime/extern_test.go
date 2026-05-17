@@ -12,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "abort", "__builtin_abort", "puts", "fputs", "strcmp", "memcmp", "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy", "__builtin_memset", "__builtin_bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "__builtin_strchr", "__builtin_strstr", "__builtin_strcpy", "__builtin_stpcpy", "__builtin_strcat", "__builtin_strncpy", "__builtin_stpncpy", "__builtin_strncat", "feclearexcept", "fetestexcept"} {
+	for _, name := range []string{"exit", "abort", "__builtin_abort", "puts", "fputs", "strcmp", "memcmp", "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy", "__builtin_memset", "__builtin_bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "__builtin_strchr", "__builtin_strstr", "__builtin_strcpy", "__builtin_stpcpy", "__builtin_strcat", "__builtin_strncpy", "__builtin_stpncpy", "__builtin_strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
