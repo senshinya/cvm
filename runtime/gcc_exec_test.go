@@ -448,6 +448,58 @@ int main(void)
 	}
 }
 
+func TestGCCSignedUnsignedConditionalConversionsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <limits.h>
+
+int fsi(int si)
+{
+  return si;
+}
+
+unsigned fui(unsigned int ui)
+{
+  return ui;
+}
+
+int main(void)
+{
+  int x = 1;
+  unsigned int ui = 0;
+  unsigned char uc = 0;
+  signed char sc = 0;
+
+  uc = x ? SCHAR_MIN : 1U;
+  if (uc != 128)
+    return 1;
+
+  ui = x ? INT_MIN : 1U;
+  if (ui != (unsigned) INT_MIN)
+    return 2;
+
+  sc = (unsigned char) -1;
+  if (sc != -1)
+    return 3;
+
+  uc = sc;
+  if (uc != UCHAR_MAX)
+    return 4;
+
+  if (fsi(UINT_MAX / 3U) != 1431655765)
+    return 5;
+
+  if (fui(-1) != UINT_MAX)
+    return 6;
+
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "Wsign-conversion-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCLongDoubleArithmeticExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
