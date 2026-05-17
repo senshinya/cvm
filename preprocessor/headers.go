@@ -30,6 +30,8 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return "#ifndef __CVM_SYS_TYPES_H\n#define __CVM_SYS_TYPES_H\n#endif\n", true
 	case "stdio.h":
 		return stdioHeader(), true
+	case "stdlib.h":
+		return stdlibHeader(), true
 	case "signal.h":
 		return "#ifndef __CVM_SIGNAL_H\n#define __CVM_SIGNAL_H\ntypedef int sig_atomic_t;\n#define SIG_ATOMIC_MIN (-2147483647-1)\n#define SIG_ATOMIC_MAX 2147483647\n#endif\n", true
 	case "limits.h":
@@ -105,6 +107,16 @@ int vfprintf(FILE *, const char *, void *);
 int vfprintf_unlocked(FILE *, const char *, void *);
 int vsprintf(char *, const char *, void *);
 int vsnprintf(char *, size_t, const char *, void *);
+#endif
+`
+}
+
+func stdlibHeader() string {
+	return `#ifndef __CVM_STDLIB_H
+#define __CVM_STDLIB_H
+int abs(int);
+long labs(long);
+long long llabs(long long);
 #endif
 `
 }

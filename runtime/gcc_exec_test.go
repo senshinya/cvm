@@ -978,6 +978,27 @@ int main(void)
 	}
 }
 
+func TestStdlibAbsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  if (abs(-7) != 7)
+    return 1;
+  if (labs(-9L) != 9L)
+    return 2;
+  if (llabs(-11LL) != 11LL)
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-abs-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

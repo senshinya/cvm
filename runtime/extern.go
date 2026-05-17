@@ -111,6 +111,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	for _, name := range []string{"clearerr", "clearerr_unlocked"} {
 		r.Register(name, clearerrExtern(name, r))
 	}
+	r.Register("abs", signedAbsExtern("abs", bytecode.TypeI32))
+	r.Register("labs", signedAbsExtern("labs", bytecode.TypeI64))
+	r.Register("llabs", signedAbsExtern("llabs", bytecode.TypeI64))
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("strcmp expects 2 arguments")
@@ -458,6 +461,22 @@ func streamLockExtern(name string, r *ExternRegistry, returnsInt bool) ExternFun
 			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
 		return Value{}, nil, nil
+	}
+}
+
+func signedAbsExtern(name string, ret bytecode.ValueType) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
+		}
+		v := signedInt(args[0])
+		if v < 0 {
+			v = -v
+		}
+		return normalizeInt(IntValue(ret, v)), nil, nil
 	}
 }
 

@@ -75,6 +75,20 @@ int eof_value = EOF;
 	}
 }
 
+func TestBuiltinStdlibHeaderDeclaresRuntimeSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <stdlib.h>
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	for _, name := range []string{"abs", "labs", "llabs"} {
+		if !hasIdentifier(res.Tokens, name) {
+			t.Fatalf("stdlib identifier %q missing: %#v", name, res.Tokens)
+		}
+	}
+}
+
 func hasToken(tokens []entity.Token, typ entity.TokenType) bool {
 	for _, tok := range tokens {
 		if tok.Typ == typ {
