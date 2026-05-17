@@ -1022,6 +1022,31 @@ int main(void)
 	}
 }
 
+func TestCtypeClassificationExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <ctype.h>
+
+int main(void)
+{
+  if (!isdigit('5') || isdigit('x'))
+    return 1;
+  if (!isalpha('Z') || !isalnum('7'))
+    return 2;
+  if (!isspace('\n') || !islower('q') || !isupper('Q'))
+    return 3;
+  if (!isxdigit('f') || isxdigit('G'))
+    return 4;
+  if (!isprint(' ') || isprint(127))
+    return 5;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "ctype-classification-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

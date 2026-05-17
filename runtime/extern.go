@@ -117,6 +117,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("atoi", atoiExtern("atoi", bytecode.TypeI32))
 	r.Register("atol", atoiExtern("atol", bytecode.TypeI64))
 	r.Register("atoll", atoiExtern("atoll", bytecode.TypeI64))
+	registerCtypeClassificationExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("strcmp expects 2 arguments")
@@ -534,6 +535,47 @@ func isASCIIWhitespace(ch byte) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func registerCtypeClassificationExterns(r *ExternRegistry) {
+	r.Register("isdigit", ctypeClassificationExtern("isdigit", func(ch byte) bool {
+		return ch >= '0' && ch <= '9'
+	}))
+	r.Register("isalpha", ctypeClassificationExtern("isalpha", func(ch byte) bool {
+		return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+	}))
+	r.Register("isalnum", ctypeClassificationExtern("isalnum", func(ch byte) bool {
+		return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+	}))
+	r.Register("isspace", ctypeClassificationExtern("isspace", isASCIIWhitespace))
+	r.Register("islower", ctypeClassificationExtern("islower", func(ch byte) bool {
+		return ch >= 'a' && ch <= 'z'
+	}))
+	r.Register("isupper", ctypeClassificationExtern("isupper", func(ch byte) bool {
+		return ch >= 'A' && ch <= 'Z'
+	}))
+	r.Register("isxdigit", ctypeClassificationExtern("isxdigit", func(ch byte) bool {
+		return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f')
+	}))
+	r.Register("isprint", ctypeClassificationExtern("isprint", func(ch byte) bool {
+		return ch >= 0x20 && ch <= 0x7e
+	}))
+}
+
+func ctypeClassificationExtern(name string, pred func(byte) bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
+		}
+		ch := signedInt(args[0])
+		if ch < 0 || ch > 255 || !pred(byte(ch)) {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, 1), nil, nil
 	}
 }
 

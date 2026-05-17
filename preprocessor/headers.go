@@ -32,6 +32,8 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return stdioHeader(), true
 	case "stdlib.h":
 		return stdlibHeader(), true
+	case "ctype.h":
+		return ctypeHeader(), true
 	case "signal.h":
 		return "#ifndef __CVM_SIGNAL_H\n#define __CVM_SIGNAL_H\ntypedef int sig_atomic_t;\n#define SIG_ATOMIC_MIN (-2147483647-1)\n#define SIG_ATOMIC_MAX 2147483647\n#endif\n", true
 	case "limits.h":
@@ -120,6 +122,21 @@ long long llabs(long long);
 int atoi(const char *);
 long atol(const char *);
 long long atoll(const char *);
+#endif
+`
+}
+
+func ctypeHeader() string {
+	return `#ifndef __CVM_CTYPE_H
+#define __CVM_CTYPE_H
+int isdigit(int);
+int isalpha(int);
+int isalnum(int);
+int isspace(int);
+int islower(int);
+int isupper(int);
+int isxdigit(int);
+int isprint(int);
 #endif
 `
 }

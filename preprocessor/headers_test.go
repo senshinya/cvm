@@ -89,6 +89,20 @@ func TestBuiltinStdlibHeaderDeclaresRuntimeSurface(t *testing.T) {
 	}
 }
 
+func TestBuiltinCtypeHeaderDeclaresRuntimeSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <ctype.h>
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	for _, name := range []string{"isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint"} {
+		if !hasIdentifier(res.Tokens, name) {
+			t.Fatalf("ctype identifier %q missing: %#v", name, res.Tokens)
+		}
+	}
+}
+
 func hasToken(tokens []entity.Token, typ entity.TokenType) bool {
 	for _, tok := range tokens {
 		if tok.Typ == typ {
