@@ -511,6 +511,45 @@ int main(void)
 	}
 }
 
+func TestGCCComplexConditionalReturnExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+__complex__ double choose(int flag)
+{
+  return flag ? __builtin_complex(3.0, 4.0) : __builtin_complex(6.0, 8.0);
+}
+
+int main(void)
+{
+  if (__builtin_cabs(choose(1)) != 5.0)
+    return 1;
+  if (__builtin_cabs(choose(0)) != 10.0)
+    return 2;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "complex-conditional-return-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexConditionalInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  int flag = 0;
+  __complex__ double z = flag ? __builtin_complex(3.0, 4.0) : __builtin_complex(6.0, 8.0);
+  return __builtin_cabs(z) == 10.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-conditional-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCStaticComplexConstantExpressionInitializerExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
