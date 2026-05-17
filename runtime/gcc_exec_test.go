@@ -231,6 +231,23 @@ int main(void)
 	}
 }
 
+func TestTgmathSqrtExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (sqrt(9.0f) != 3.0f)
+    return 1;
+  return sqrt(16.0L) == 4.0L ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-sqrt-real.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathComplexSinExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
@@ -243,6 +260,23 @@ int main(void)
 }
 `
 	st := runGCCExecFixture(t, "tgmath-complex-sin.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestTgmathComplexSqrtExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  complex double z = __builtin_complex(3.0, 4.0);
+  complex double r = sqrt(z);
+  return __builtin_cabs(r) == __builtin_cabs(__builtin_complex(2.0, 1.0)) ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-complex-sqrt.c", source)
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
