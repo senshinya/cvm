@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `5fb4eff feat(runtime): execute tgmath log`
+- Latest implementation/coverage commit before this handoff document: `b61e315 feat(runtime): execute tgmath sinh`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `b61e315 feat(runtime): execute tgmath sinh`
+  - Adds `<tgmath.h>` pseudo-function plumbing for `sinh` through preprocessor, sema, and codegen.
+  - Registers real and complex runtime externs for `sinh`, including float/double/long-double suffix variants.
+  - Adds runtime coverage for real `sinh`, complex `sinh`, and the direct real extern registry.
 
 - `5fb4eff feat(runtime): execute tgmath log`
   - Adds `<tgmath.h>` pseudo-function plumbing for `log` through preprocessor, sema, and codegen.
@@ -478,7 +483,7 @@ The current codegen support includes:
 - complex tgmath extern dispatch
 
 Runtime execution of complex arithmetic is still incomplete. Current runtime support includes `__builtin_cabs*` externs for object-address complex arguments.
-Runtime integration coverage now includes local/static `__builtin_complex` initialization, local/static complex array and struct-field initialization including designated and nested struct fields, complex struct field assignment and compound assignment through `.`, `->`, and pointer dereference, complex pointer dereference reads/copies including direct arguments, tgmath arguments, binary expressions, and comparisons, direct `__builtin_complex` arguments, user-defined complex by-value parameters and returns with mutation isolation, struct by-value parameters and returns/assignments containing complex fields including conditional and comma aggregate rvalues, aggregate rvalues passed directly as by-value arguments, aggregate assignment-expression results consumed through member access and by-value calls, nested struct by-value argument mutation isolation, complex `+`, `-`, `*`, `/`, `==`, `!=`, `*=`, `+=`, `-=`, `/=`, scalar RHS complex compound assignment, complex assignment and comma expressions consumed as values, object-return copy-out, double-to-float complex copy, complex float return promoted to complex double, complex conditional returns and local initialization, `__builtin_cabs`, `__builtin_cabsf`, `__builtin_cabsl`, complex tgmath `sin`, complex tgmath `cos`, complex tgmath `tan`, complex tgmath `exp`, complex long double tgmath `exp`, complex tgmath `log`, complex tgmath `pow`, complex long double tgmath `pow`, and complex tgmath `sqrt`.
+Runtime integration coverage now includes local/static `__builtin_complex` initialization, local/static complex array and struct-field initialization including designated and nested struct fields, complex struct field assignment and compound assignment through `.`, `->`, and pointer dereference, complex pointer dereference reads/copies including direct arguments, tgmath arguments, binary expressions, and comparisons, direct `__builtin_complex` arguments, user-defined complex by-value parameters and returns with mutation isolation, struct by-value parameters and returns/assignments containing complex fields including conditional and comma aggregate rvalues, aggregate rvalues passed directly as by-value arguments, aggregate assignment-expression results consumed through member access and by-value calls, nested struct by-value argument mutation isolation, complex `+`, `-`, `*`, `/`, `==`, `!=`, `*=`, `+=`, `-=`, `/=`, scalar RHS complex compound assignment, complex assignment and comma expressions consumed as values, object-return copy-out, double-to-float complex copy, complex float return promoted to complex double, complex conditional returns and local initialization, `__builtin_cabs`, `__builtin_cabsf`, `__builtin_cabsl`, complex tgmath `sin`, complex tgmath `sinh`, complex tgmath `cos`, complex tgmath `tan`, complex tgmath `exp`, complex long double tgmath `exp`, complex tgmath `log`, complex tgmath `pow`, complex long double tgmath `pow`, and complex tgmath `sqrt`.
 GCC-derived complex runtime coverage also includes imaginary floating constants such as `-1.0i` and integer imaginary constants such as `1i`.
 Complex-to-scalar runtime coverage includes local initialization from imaginary literals, where the real component is selected.
 Complex constant-expression coverage includes automatic and static complex initializers with arithmetic over imaginary literals and static conditional initializers selecting `__builtin_complex`.
@@ -511,6 +516,7 @@ Current limits:
 `<tgmath.h>` is represented through pseudo functions such as:
 
 - `__cvm_tgmath_sin`
+- `__cvm_tgmath_sinh`
 - `__cvm_tgmath_cos`
 - `__cvm_tgmath_tan`
 - `__cvm_tgmath_exp`
@@ -520,10 +526,10 @@ Current limits:
 
 Sema preserves argument types for these pseudo calls, and codegen dispatches to concrete synthetic externs:
 
-- real: `__cvm_tgmath_sinf`, `__cvm_tgmath_cos`, `__cvm_tgmath_tan`, `__cvm_tgmath_exp`, `__cvm_tgmath_log`, `__cvm_tgmath_sqrtl`, `__cvm_tgmath_powl`, etc.
-- complex: `__cvm_tgmath_ccos`, `__cvm_tgmath_ctan`, `__cvm_tgmath_cexp`, `__cvm_tgmath_clog`, `__cvm_tgmath_csqrt`, `__cvm_tgmath_cpowf`, etc.
+- real: `__cvm_tgmath_sinf`, `__cvm_tgmath_sinh`, `__cvm_tgmath_cos`, `__cvm_tgmath_tan`, `__cvm_tgmath_exp`, `__cvm_tgmath_log`, `__cvm_tgmath_sqrtl`, `__cvm_tgmath_powl`, etc.
+- complex: `__cvm_tgmath_csinh`, `__cvm_tgmath_ccos`, `__cvm_tgmath_ctan`, `__cvm_tgmath_cexp`, `__cvm_tgmath_clog`, `__cvm_tgmath_csqrt`, `__cvm_tgmath_cpowf`, etc.
 
-Runtime support exists for real math externs and for the currently covered complex `csin*`/`ccos*`/`ctan*`/`cexp*`/`clog*`/`csqrt*`/`cpow*` externs. Broader complex tgmath coverage remains a later phase.
+Runtime support exists for real math externs and for the currently covered complex `csin*`/`csinh*`/`ccos*`/`ctan*`/`cexp*`/`clog*`/`csqrt*`/`cpow*` externs. Broader complex tgmath coverage remains a later phase.
 
 ## Known Limits
 
