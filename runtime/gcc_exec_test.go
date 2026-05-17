@@ -765,6 +765,48 @@ int main(void)
 	}
 }
 
+func TestPlainAllocationExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  char *p = malloc(4);
+  if (p == 0)
+    return 1;
+  p[0] = 'a';
+  p[1] = 0;
+  if (p[0] != 'a')
+    return 2;
+
+  char *q = calloc(3, 2);
+  if (q == 0)
+    return 3;
+  if (q[0] != 0 || q[5] != 0)
+    return 4;
+  q[5] = 'z';
+  if (q[5] != 'z')
+    return 5;
+
+  char *r = strdup("hi");
+  if (r == 0)
+    return 6;
+  if (r[0] != 'h' || r[1] != 'i' || r[2] != 0)
+    return 7;
+
+  free(p);
+  free(q);
+  free(r);
+  free(0);
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "plain-allocation-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinObjectSizeExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

@@ -12,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "abs", "labs", "llabs", "atoi", "atol", "atoll", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "tolower", "toupper", "strcmp", "memcmp", "__builtin_malloc", "__builtin_calloc", "__builtin_strdup", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
+	for _, name := range []string{"exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "abs", "labs", "llabs", "atoi", "atol", "atoll", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "tolower", "toupper", "strcmp", "memcmp", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "__builtin_strdup", "strdup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -849,6 +849,72 @@ func TestPlainStringWriteExterns(t *testing.T) {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing %s extern", name)
 		}
+	}
+}
+
+func TestPlainAllocationExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	mallocFn, ok := reg.Lookup("malloc")
+	if !ok {
+		t.Fatal("missing malloc extern")
+	}
+	ret, exit, err := mallocFn(context.Background(), &ExternContext{Memory: mem}, []Value{UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil {
+		t.Fatalf("malloc ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("malloc ret=%#v, want nonzero pointer", ret)
+	}
+	if err := mem.Store(ret.Int, bytecode.TypeI8, 1, IntValue(bytecode.TypeI8, 'm')); err != nil {
+		t.Fatalf("Store malloc byte: %v", err)
+	}
+	freeFn, ok := reg.Lookup("free")
+	if !ok {
+		t.Fatal("missing free extern")
+	}
+	freeRet, exit, err := freeFn(context.Background(), &ExternContext{Memory: mem}, []Value{ret})
+	if err != nil || exit != nil {
+		t.Fatalf("free ret=%#v exit=%#v err=%v", freeRet, exit, err)
+	}
+	if freeRet.Type != bytecode.TypeVoid {
+		t.Fatalf("free ret=%#v, want void value", freeRet)
+	}
+	if err := mem.Store(ret.Int, bytecode.TypeI8, 1, IntValue(bytecode.TypeI8, 'x')); err == nil || !strings.Contains(err.Error(), "use after free") {
+		t.Fatalf("Store after free err=%v, want use after free", err)
+	}
+
+	callocFn, ok := reg.Lookup("calloc")
+	if !ok {
+		t.Fatal("missing calloc extern")
+	}
+	ret, exit, err = callocFn(context.Background(), &ExternContext{Memory: mem}, []Value{UIntValue(bytecode.TypeU64, 2), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil {
+		t.Fatalf("calloc ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	zero, err := mem.Load(ret.Int+5, bytecode.TypeI8, 1)
+	if err != nil {
+		t.Fatalf("Load calloc byte: %v", err)
+	}
+	if zero.Int != 0 {
+		t.Fatalf("calloc byte = %#v, want zero", zero)
+	}
+
+	strdupFn, ok := reg.Lookup("strdup")
+	if !ok {
+		t.Fatal("missing strdup extern")
+	}
+	src := mustAllocBytes(t, mem, "plain-allocation:src", []byte("hi\x00"), true, blockString)
+	ret, exit, err = strdupFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(src)})
+	if err != nil || exit != nil {
+		t.Fatalf("strdup ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	got, err := mem.ReadCString(ret.Int)
+	if err != nil {
+		t.Fatalf("ReadCString strdup: %v", err)
+	}
+	if got != "hi" {
+		t.Fatalf("strdup string = %q, want hi", got)
 	}
 }
 

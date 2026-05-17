@@ -118,12 +118,17 @@ int vsnprintf(char *, size_t, const char *, void *);
 func stdlibHeader() string {
 	return `#ifndef __CVM_STDLIB_H
 #define __CVM_STDLIB_H
+typedef __SIZE_TYPE__ size_t;
 int abs(int);
 long labs(long);
 long long llabs(long long);
 int atoi(const char *);
 long atol(const char *);
 long long atoll(const char *);
+void *malloc(size_t);
+void *calloc(size_t, size_t);
+void free(void *);
+char *strdup(const char *);
 #endif
 `
 }

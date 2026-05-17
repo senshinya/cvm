@@ -736,9 +736,16 @@ func clearerrExtern(name string, r *ExternRegistry) ExternFunc {
 }
 
 func registerAllocationExterns(r *ExternRegistry) {
-	r.Register("__builtin_malloc", mallocExtern("__builtin_malloc"))
-	r.Register("__builtin_calloc", callocExtern("__builtin_calloc"))
-	r.Register("__builtin_strdup", strdupExtern("__builtin_strdup"))
+	for _, name := range []string{"__builtin_malloc", "malloc"} {
+		r.Register(name, mallocExtern(name))
+	}
+	for _, name := range []string{"__builtin_calloc", "calloc"} {
+		r.Register(name, callocExtern(name))
+	}
+	for _, name := range []string{"__builtin_strdup", "strdup"} {
+		r.Register(name, strdupExtern(name))
+	}
+	r.Register("free", freeExtern("free"))
 	r.Register("__builtin_object_size", objectSizeExtern("__builtin_object_size"))
 	r.Register("__builtin_dynamic_object_size", objectSizeExtern("__builtin_dynamic_object_size"))
 }
@@ -1032,6 +1039,27 @@ func strdupExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		return PtrValue(addr), nil, nil
+	}
+}
+
+func freeExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if args[0].Int != 0 && !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer argument", name)
+		}
+		if args[0].Int == 0 {
+			return Value{}, nil, nil
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if err := ec.Memory.Free(args[0].Int, blockGlobal); err != nil {
+			return Value{}, nil, err
+		}
+		return Value{}, nil, nil
 	}
 }
 

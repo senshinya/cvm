@@ -29,12 +29,14 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 	vaList := voidPtr
 
 	switch name {
-	case "__builtin_malloc":
+	case "__builtin_malloc", "malloc":
 		return s.Types.Function(voidPtr, []Type{sizeT}, false, true)
-	case "__builtin_calloc":
+	case "__builtin_calloc", "calloc":
 		return s.Types.Function(voidPtr, []Type{sizeT, sizeT}, false, true)
-	case "__builtin_strdup":
+	case "__builtin_strdup", "strdup":
 		return s.Types.Function(charPtr, []Type{constCharPtr}, false, true)
+	case "free":
+		return s.Types.Function(voidT, []Type{voidPtr}, false, true)
 	case "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy":
 		return s.Types.Function(voidPtr, []Type{voidPtr, constVoidPtr, sizeT}, false, true)
 	case "memcpy", "memmove", "mempcpy":
