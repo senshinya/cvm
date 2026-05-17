@@ -164,6 +164,19 @@ long f(void) {
 	}
 }
 
+func TestGCCTgmathFrexpUsesFirstArgumentRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(int *exp) {
+  float x = 8.0f;
+  return frexp(x, exp);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-frexp-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_frexpf") {
+		t.Fatalf("frexp(float, int *) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string

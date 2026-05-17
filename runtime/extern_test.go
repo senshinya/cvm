@@ -266,6 +266,33 @@ func TestTgmathLongExterns(t *testing.T) {
 	}
 }
 
+func TestTgmathFrexpExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("__cvm_tgmath_frexp")
+	if !ok {
+		t.Fatal("missing __cvm_tgmath_frexp extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	expAddr := mustAlloc(t, mem, "exp", 4, 4, false, blockLocal)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		FloatValue(bytecode.TypeF64, 8),
+		PtrValue(expAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("__cvm_tgmath_frexp ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0.5 {
+		t.Fatalf("__cvm_tgmath_frexp ret = %#v, want f64 0.5", ret)
+	}
+	exp, err := mem.Load(expAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("Load exponent: %v", err)
+	}
+	if int64(exp.Int) != 4 {
+		t.Fatalf("frexp exponent = %#v, want 4", exp)
+	}
+}
+
 func TestMathUnorderedExtern(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	fn, ok := reg.Lookup("__cvm_isunordered")

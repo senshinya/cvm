@@ -226,6 +226,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_nexttoward", math.Nextafter)
 	registerTgmathRealIntBinaryExterns(r, "__cvm_tgmath_scalbn", math.Ldexp)
 	registerTgmathRealIntBinaryExterns(r, "__cvm_tgmath_scalbln", math.Ldexp)
+	registerTgmathFrexpExterns(r, "__cvm_tgmath_frexp")
 	registerTgmathRealTernaryExterns(r, "__cvm_tgmath_fma", math.FMA)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csin", cmplx.Sin)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cexp", cmplx.Exp)
@@ -398,6 +399,12 @@ func registerTgmathRealIntBinaryExterns(r *ExternRegistry, base string, fn func(
 	r.Register(base+"l", mathFloatIntExtern(base+"l", bytecode.TypeFLong, fn))
 }
 
+func registerTgmathFrexpExterns(r *ExternRegistry, base string) {
+	r.Register(base+"f", mathFrexpExtern(base+"f", bytecode.TypeF32))
+	r.Register(base, mathFrexpExtern(base, bytecode.TypeF64))
+	r.Register(base+"l", mathFrexpExtern(base+"l", bytecode.TypeFLong))
+}
+
 func registerTgmathRealTernaryExterns(r *ExternRegistry, base string, fn func(float64, float64, float64) float64) {
 	r.Register(base+"f", mathTernaryFloatExtern(base+"f", bytecode.TypeF32, fn))
 	r.Register(base, mathTernaryFloatExtern(base, bytecode.TypeF64, fn))
@@ -465,6 +472,25 @@ func mathFloatIntExtern(name string, ret bytecode.ValueType, fn func(float64, in
 			return Value{}, nil, fmt.Errorf("%s exponent %d exceeds int range", name, exp)
 		}
 		return floatResult(ret, fn(cvmFloat(args[0]), int(exp))), nil, nil
+	}
+}
+
+func mathFrexpExtern(name string, ret bytecode.ValueType) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isFloatType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects floating and pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		frac, exp := math.Frexp(cvmFloat(args[0]))
+		if err := ec.Memory.Store(args[1].Int, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(exp))); err != nil {
+			return Value{}, nil, err
+		}
+		return floatResult(ret, frac), nil, nil
 	}
 }
 

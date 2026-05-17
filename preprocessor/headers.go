@@ -321,6 +321,7 @@ double __cvm_tgmath_logb();
 double __cvm_tgmath_scalbn();
 double __cvm_tgmath_scalbln();
 int __cvm_tgmath_ilogb();
+double __cvm_tgmath_frexp();
 long __cvm_tgmath_lrint();
 long __cvm_tgmath_lround();
 long long __cvm_tgmath_llrint();

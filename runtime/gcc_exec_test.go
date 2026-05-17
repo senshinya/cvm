@@ -634,6 +634,25 @@ int main(void)
 	}
 }
 
+func TestTgmathFrexpExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  int exp = 0;
+  double frac = frexp(8.0, &exp);
+  if (frac != 0.5)
+    return 1;
+  return exp == 4 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-frexp.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathBinaryRealHelpersExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
