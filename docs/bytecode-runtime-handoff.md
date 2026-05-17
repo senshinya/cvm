@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `dd45ac7 feat(runtime): support sized printf counts`
+- Latest implementation/coverage commit before this handoff document: `2a0c35a feat(runtime): execute va_arg opcodes`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `2a0c35a feat(runtime): execute va_arg opcodes`
+  - Allows `OpVaStart`, `OpVaArg`, and `OpVaEnd` through bytecode validation.
+  - Preserves variadic extra arguments on runtime frames for local variadic calls.
+  - Adds runtime coverage for reading the first extra argument through a bytecode `va_list` cursor.
 
 - `dd45ac7 feat(runtime): support sized printf counts`
   - Preserves printf length modifiers for `%n`.
@@ -774,7 +779,7 @@ Direct builtin runtime coverage includes `__builtin_pow`, `__builtin_huge_val*`,
 Bit-field runtime coverage includes simple assignment, compound assignment, and `++`/`--` for integer and `_Bool` bit-fields, including expression values after bit-field truncation/wrapping.
 Pointer runtime coverage includes local and addressable pointer compound assignment, initialized pointer fields updated with `+=` and `-=`, pointer array element compound assignment, pointer `++`/`--` through struct fields and array elements, and static pointer field/array initializers with relocations.
 Function pointer runtime coverage includes indirect calls through local arrays, struct fields, static struct-field initializers, function pointer parameters, returned function pointers, struct returns and struct by-value arguments through function pointers, function designator initialization/assignment/comma expressions, and return conversion from function designators to function pointers.
-Variadic runtime coverage includes direct variadic calls and indirect calls through variadic function pointers with extra arguments.
+Variadic runtime coverage includes direct variadic calls and indirect calls through variadic function pointers with extra arguments, plus first-stage `OpVaStart`/`OpVaArg`/`OpVaEnd` execution for local variadic functions reading extra arguments from a runtime frame cursor.
 
 ### GNU Nested Functions
 
@@ -870,6 +875,7 @@ Runtime support exists for real math externs and for the currently covered compl
 - Bytecode design is intended to be complete enough for the compiler artifact, but execution support is still catching up.
 - Complex runtime execution is not complete.
 - Long double runtime memory/operations are still limited in places.
+- `va_list` execution currently uses an interpreter-internal frame cursor for bytecode `OpVa*`; it is not yet a memory-backed C ABI object and does not yet enable `vprintf`/`vsprintf` extern families.
 - The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation, but runtime execution coverage is still much smaller.
 - Static-chain support is deliberately narrow and rejects escaping capturing nested functions instead of modeling trampolines.
 
