@@ -1000,6 +1000,31 @@ int main(void)
 	}
 }
 
+func TestStdioFgetsPushbackExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[4] = { 0 };
+  ungetc('\n', stdin);
+  ungetc('i', stdin);
+  ungetc('H', stdin);
+  if (fgets(buf, sizeof buf, stdin) != buf)
+    return 1;
+  if (buf[0] != 'H' || buf[1] != 'i' || buf[2] != '\n' || buf[3] != 0)
+    return 2;
+  if (fgets(buf, sizeof buf, stdin) != 0)
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-fgets-pushback-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

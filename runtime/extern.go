@@ -84,6 +84,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	}
 	r.Register("fgetc", fgetcExtern("fgetc", r))
 	r.Register("ungetc", ungetcExtern("ungetc", r))
+	r.Register("fgets", fgetsExtern("fgets", r))
 	for _, name := range []string{"fputs", "fputs_unlocked"} {
 		r.Register(name, fputsExtern(name, r))
 	}
@@ -256,6 +257,48 @@ func ungetcExtern(name string, r *ExternRegistry) ExternFunc {
 		b := byte(ch)
 		r.hostPushback[args[1].Int] = append(r.hostPushback[args[1].Int], b)
 		return IntValue(bytecode.TypeI32, int64(b)), nil, nil
+	}
+}
+
+func fgetsExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects buffer, size, and stream arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, ok := r.lookupHostWriter(args[2].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[2].Int)
+		}
+		n := int32(args[1].Int)
+		if n <= 1 {
+			return PtrValue(0), nil, nil
+		}
+		buf := make([]byte, 0, n-1)
+		for len(buf) < int(n)-1 {
+			ch, ok := r.readHostChar(args[2].Int)
+			if !ok {
+				break
+			}
+			buf = append(buf, ch)
+			if ch == '\n' {
+				break
+			}
+		}
+		if len(buf) == 0 {
+			return PtrValue(0), nil, nil
+		}
+		block, off, err := ec.Memory.rangeAccess(args[0].Int, int64(len(buf)+1), true)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		copy(block.data[off:], buf)
+		block.data[off+len(buf)] = 0
+		return PtrValue(args[0].Int), nil, nil
 	}
 }
 

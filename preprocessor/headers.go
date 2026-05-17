@@ -66,6 +66,7 @@ size_t fwrite(const void *, size_t, size_t, FILE *);
 size_t fread(void *, size_t, size_t, FILE *);
 int fgetc(FILE *);
 int ungetc(int, FILE *);
+char *fgets(char * restrict, int, FILE * restrict);
 int printf(const char *, ...);
 int printf_unlocked(const char *, ...);
 int fprintf(FILE *, const char *, ...);
