@@ -731,6 +731,58 @@ int main(void)
 	}
 }
 
+func TestGCCPointerArrayElementCompoundAssignmentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  int values[2] = { 10, 20 };
+  int *ptrs[1] = { values };
+
+  if (*(ptrs[0] += 1) != 20)
+    return 1;
+  if (ptrs[0] != values + 1)
+    return 2;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "pointer-array-element-compound-assignment-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCAddressablePointerIncDecExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct box {
+  int *p;
+};
+
+int main(void)
+{
+  int values[3] = { 10, 20, 30 };
+  struct box b;
+  int *ptrs[1] = { values + 1 };
+
+  b.p = values;
+  if (*(b.p++) != 10)
+    return 1;
+  if (*b.p != 20)
+    return 2;
+  if (*(--b.p) != 10)
+    return 3;
+  if (*(ptrs[0]--) != 20)
+    return 4;
+  return ptrs[0] == values ? 0 : 5;
+}
+`
+	st := runGCCExecFixture(t, "addressable-pointer-incdec-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
