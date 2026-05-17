@@ -218,6 +218,16 @@ double cf(void) { return fabs(__builtin_complex(3.0, 4.0)); }
 	}
 }
 
+func TestGCCTgmathComplexProjectionUsesComplexRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(complex float z) { return cimag(z); }
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-complex-projection-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_cimagf") {
+		t.Fatalf("cimag(complex float) did not reference complex-float projection extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string

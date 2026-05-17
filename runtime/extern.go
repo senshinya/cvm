@@ -230,6 +230,8 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealIntBinaryExterns(r, "__cvm_tgmath_ldexp", math.Ldexp)
 	registerTgmathFrexpExterns(r, "__cvm_tgmath_frexp")
 	registerTgmathRemquoExterns(r, "__cvm_tgmath_remquo")
+	registerTgmathComplexRealExterns(r, "__cvm_tgmath_cimag", func(z complex128) float64 { return imag(z) })
+	registerTgmathComplexRealExterns(r, "__cvm_tgmath_creal", func(z complex128) float64 { return real(z) })
 	registerTgmathRealTernaryExterns(r, "__cvm_tgmath_fma", math.FMA)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csin", cmplx.Sin)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cexp", cmplx.Exp)
@@ -283,6 +285,12 @@ func registerTgmathComplexBinaryExterns(r *ExternRegistry, base string, fn func(
 	r.Register(base+"l", complexBinaryExtern(base+"l", bytecode.TypeFLong, 16, fn))
 }
 
+func registerTgmathComplexRealExterns(r *ExternRegistry, base string, fn func(complex128) float64) {
+	r.Register(base+"f", complexRealExtern(base+"f", bytecode.TypeF32, 4, fn))
+	r.Register(base, complexRealExtern(base, bytecode.TypeF64, 8, fn))
+	r.Register(base+"l", complexRealExtern(base+"l", bytecode.TypeFLong, 16, fn))
+}
+
 func complexUnaryExtern(name string, realType bytecode.ValueType, realSize uint64, fn func(complex128) complex128) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
@@ -297,6 +305,19 @@ func complexUnaryExtern(name string, realType bytecode.ValueType, realSize uint6
 			return Value{}, nil, err
 		}
 		return ObjectAddrValue(addr), nil, nil
+	}
+}
+
+func complexRealExtern(name string, realType bytecode.ValueType, realSize uint64, fn func(complex128) float64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		z, err := loadComplexArg(name, ec, args[0], realType, realSize)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return FloatValue(realType, fn(z)), nil, nil
 	}
 }
 

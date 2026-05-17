@@ -704,6 +704,24 @@ int main(void)
 	}
 }
 
+func TestTgmathComplexProjectionExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  complex float z = __builtin_complex(3.0f, 4.0f);
+  if (creal(z) != 3.0f)
+    return 1;
+  return cimag(z) == 4.0f ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-complex-projection.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathBinaryRealHelpersExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
