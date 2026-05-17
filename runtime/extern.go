@@ -219,6 +219,8 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_snprintf", "snprintf"} {
 		r.Register(name, snprintfExtern(name))
 	}
+	r.Register("__builtin___sprintf_chk", sprintfCheckedExtern("__builtin___sprintf_chk"))
+	r.Register("__builtin___snprintf_chk", snprintfCheckedExtern("__builtin___snprintf_chk"))
 }
 
 func registerMathExterns(r *ExternRegistry) {
@@ -996,6 +998,68 @@ func snprintfExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		size, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if size > 0 {
+			n := len(out)
+			if n > int(size)-1 {
+				n = int(size) - 1
+			}
+			data := make([]byte, n+1)
+			copy(data, out[:n])
+			if err := writeMemoryBytes(ec.Memory, args[0].Int, data); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func sprintfCheckedExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 4 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 4 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) || !isPointerType(args[3].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, flag, object-size, and format arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatCString(name, ec.Memory, args[3].Int, args[4:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := checkObjectSize(name, uint64(len(out)+1), args[2]); err != nil {
+			return Value{}, nil, err
+		}
+		if err := writeMemoryBytes(ec.Memory, args[0].Int, append([]byte(out), 0)); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func snprintfCheckedExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 5 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 5 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) || !isIntegerLike(args[3].Type) || !isPointerType(args[4].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, size, flag, object-size, and format arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := checkObjectSize(name, uint64(size), args[3]); err != nil {
+			return Value{}, nil, err
+		}
+		out, err := formatCString(name, ec.Memory, args[4].Int, args[5:])
 		if err != nil {
 			return Value{}, nil, err
 		}
