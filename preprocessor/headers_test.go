@@ -33,6 +33,20 @@ unsigned long sm = SIZE_MAX;
 	}
 }
 
+func TestBuiltinStdioHeaderDeclaresFormattingSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <stdio.h>
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	for _, name := range []string{"FILE", "size_t", "stdin", "stdout", "stderr", "fputs", "fputs_unlocked", "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vfprintf", "vsprintf", "vsnprintf"} {
+		if !hasIdentifier(res.Tokens, name) {
+			t.Fatalf("stdio identifier %q missing: %#v", name, res.Tokens)
+		}
+	}
+}
+
 func hasToken(tokens []entity.Token, typ entity.TokenType) bool {
 	for _, tok := range tokens {
 		if tok.Typ == typ {

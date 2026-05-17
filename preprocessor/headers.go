@@ -29,7 +29,7 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 	case "sys/types.h":
 		return "#ifndef __CVM_SYS_TYPES_H\n#define __CVM_SYS_TYPES_H\n#endif\n", true
 	case "stdio.h":
-		return "#ifndef __CVM_STDIO_H\n#define __CVM_STDIO_H\ntypedef struct __cvm_FILE FILE;\nextern FILE *stdin;\nextern FILE *stdout;\nextern FILE *stderr;\nint fputs(const char * restrict, FILE * restrict);\nint fputs_unlocked(const char * restrict, FILE * restrict);\n#endif\n", true
+		return stdioHeader(), true
 	case "signal.h":
 		return "#ifndef __CVM_SIGNAL_H\n#define __CVM_SIGNAL_H\ntypedef int sig_atomic_t;\n#define SIG_ATOMIC_MIN (-2147483647-1)\n#define SIG_ATOMIC_MAX 2147483647\n#endif\n", true
 	case "limits.h":
@@ -39,6 +39,30 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func stdioHeader() string {
+	return `#ifndef __CVM_STDIO_H
+#define __CVM_STDIO_H
+typedef __SIZE_TYPE__ size_t;
+typedef struct __cvm_FILE FILE;
+extern FILE *stdin;
+extern FILE *stdout;
+extern FILE *stderr;
+int fputs(const char * restrict, FILE * restrict);
+int fputs_unlocked(const char * restrict, FILE * restrict);
+int printf(const char *, ...);
+int printf_unlocked(const char *, ...);
+int fprintf(FILE *, const char *, ...);
+int fprintf_unlocked(FILE *, const char *, ...);
+int sprintf(char *, const char *, ...);
+int snprintf(char *, size_t, const char *, ...);
+int vprintf(const char *, void *);
+int vfprintf(FILE *, const char *, void *);
+int vsprintf(char *, const char *, void *);
+int vsnprintf(char *, size_t, const char *, void *);
+#endif
+`
 }
 
 func builtinChkHeader() string {
