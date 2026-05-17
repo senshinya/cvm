@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `9403ff2 fix(sema): model integer imaginary literals`
+- Latest implementation/coverage commit before this handoff document: `9ab00f8 fix(codegen): convert complex values to scalars`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `9ab00f8 fix(codegen): convert complex values to scalars`
+  - Lowers complex-to-scalar casts by reading the real component instead of bit-casting object addresses.
+  - Handles complex-to-bool by checking both real and imaginary components.
+  - Adds runtime coverage for local `double d = 3.0i`.
 
 - `9403ff2 fix(sema): model integer imaginary literals`
   - Recognizes integer constants with `i`/`j` suffixes as pure imaginary complex literals.
@@ -234,6 +239,7 @@ The current codegen support includes:
 Runtime execution of complex arithmetic is still incomplete. Current runtime support includes `__builtin_cabs*` externs for object-address complex arguments.
 Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `+`, `-`, `*`, `/`, `*=`, `+=`, `-=`, `/=`, object-return copy-out, double-to-float complex copy, complex float return promoted to complex double, `__builtin_cabs`, `__builtin_cabsf`, complex tgmath `sin`, complex tgmath `exp`, and complex tgmath `pow`.
 GCC-derived complex runtime coverage also includes imaginary floating constants such as `-1.0i` and integer imaginary constants such as `1i`.
+Complex-to-scalar runtime coverage includes local initialization from imaginary literals, where the real component is selected.
 
 ### GNU Nested Functions
 
