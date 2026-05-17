@@ -491,6 +491,43 @@ int main(void)
 	}
 }
 
+func TestGCCComplexArrayInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  __complex__ double values[2] = {
+    __builtin_complex(3.0, 4.0),
+    __builtin_complex(5.0, 12.0)
+  };
+  return __builtin_cabs(values[1]) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-array-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStaticComplexArrayInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+const __complex__ double values[2] = {
+  __builtin_complex(3.0, 4.0),
+  __builtin_complex(5.0, 12.0)
+};
+
+int main(void)
+{
+  return __builtin_cabs(values[1]) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "static-complex-array-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexExplicitCastNarrowsThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
