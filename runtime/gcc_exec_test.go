@@ -769,6 +769,40 @@ int main(void)
 	}
 }
 
+func TestBuiltinCheckedMemoryOpsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  char dst[10];
+  char src[5] = "abcd";
+
+  if (__builtin___memcpy_chk(dst, src, 5, 10) != dst)
+    return 1;
+  if (dst[0] != 'a' || dst[3] != 'd' || dst[4] != 0)
+    return 2;
+
+  if (__builtin___memmove_chk(dst + 1, dst, 4, 9) != dst + 1)
+    return 3;
+  if (dst[0] != 'a' || dst[1] != 'a' || dst[2] != 'b' || dst[3] != 'c')
+    return 4;
+
+  if (__builtin___mempcpy_chk(dst + 4, "xy", 2, 6) != dst + 6)
+    return 5;
+  if (dst[4] != 'x' || dst[5] != 'y')
+    return 6;
+
+  if (__builtin___memset_chk(dst + 6, 'z', 2, 4) != dst + 6)
+    return 7;
+  return dst[6] == 'z' && dst[7] == 'z' ? 0 : 8;
+}
+`
+	st := runGCCExecFixture(t, "builtin-checked-memory-ops-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinStringSearchExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

@@ -163,6 +163,11 @@ func registerMemoryExterns(r *ExternRegistry) {
 		r.Register(name, memorySetExtern(name))
 	}
 	r.Register("__builtin_bzero", memoryBzeroExtern("__builtin_bzero"))
+	for _, name := range []string{"__builtin___memcpy_chk", "__builtin___memmove_chk"} {
+		r.Register(name, memoryCheckedCopyExtern(name, false))
+	}
+	r.Register("__builtin___mempcpy_chk", memoryCheckedCopyExtern("__builtin___mempcpy_chk", true))
+	r.Register("__builtin___memset_chk", memoryCheckedSetExtern("__builtin___memset_chk"))
 	for _, name := range []string{"__builtin_strlen", "strlen"} {
 		r.Register(name, stringLengthExtern(name))
 	}
@@ -386,12 +391,74 @@ func memoryBzeroExtern(name string) ExternFunc {
 	}
 }
 
+func memoryCheckedCopyExtern(name string, returnEnd bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) || !isIntegerLike(args[3].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, pointer, size, and object-size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := checkObjectSize(name, uint64(size), args[3]); err != nil {
+			return Value{}, nil, err
+		}
+		if err := ec.Memory.Copy(args[0].Int, args[1].Int, size); err != nil {
+			return Value{}, nil, err
+		}
+		addr := args[0].Int
+		if returnEnd {
+			addr += uint64(size)
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
+func memoryCheckedSetExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) || !isIntegerLike(args[3].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, integer, size, and object-size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := checkObjectSize(name, uint64(size), args[3]); err != nil {
+			return Value{}, nil, err
+		}
+		if err := ec.Memory.Set(args[0].Int, byte(unsignedInt(args[1])), size); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
 func memorySizeArg(name string, arg Value) (int64, error) {
 	size := unsignedInt(arg)
 	if size > uint64(maxInt()) {
 		return 0, fmt.Errorf("%s size %d exceeds int range", name, size)
 	}
 	return int64(size), nil
+}
+
+func checkObjectSize(name string, size uint64, objectSize Value) error {
+	limit := unsignedInt(objectSize)
+	if limit != ^uint64(0) && size > limit {
+		return &TrapError{Reason: fmt.Sprintf("%s object size %d is smaller than operation size %d", name, limit, size)}
+	}
+	return nil
 }
 
 func stringLengthExtern(name string) ExternFunc {
