@@ -215,6 +215,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathLongExterns(r, "__cvm_tgmath_llrint", math.RoundToEven)
 	registerTgmathLongExterns(r, "__cvm_tgmath_llround", math.Round)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_pow", math.Pow)
+	r.Register("__builtin_pow", mathBinaryFloatExtern("__builtin_pow", bytecode.TypeF64, math.Pow))
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_atan2", math.Atan2)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_hypot", math.Hypot)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_fdim", math.Dim)

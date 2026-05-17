@@ -687,6 +687,20 @@ int main(void)
 	}
 }
 
+func TestBuiltinPowExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  return __builtin_pow(2.0, 3.0) == 8.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "builtin-pow-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathFabsExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
