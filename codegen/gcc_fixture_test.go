@@ -177,6 +177,19 @@ float f(int *exp) {
 	}
 }
 
+func TestGCCTgmathLdexpUsesFirstArgumentRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(int n) {
+  float x = 2.0f;
+  return ldexp(x, n);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-ldexp-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_ldexpf") {
+		t.Fatalf("ldexp(float, int) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string
