@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `9b12c65 test(runtime): cover long double complex pow`
+- Latest implementation/coverage commit before this handoff document: `534abc4 test(runtime): cover complex conditional execution`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,10 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `534abc4 test(runtime): cover complex conditional execution`
+  - Adds runtime coverage for complex conditional returns.
+  - Adds runtime coverage for complex conditional local initialization.
 
 - `9b12c65 test(runtime): cover long double complex pow`
   - Adds runtime coverage for complex long double tgmath `pow`.
@@ -273,7 +277,7 @@ The current codegen support includes:
 - complex tgmath extern dispatch
 
 Runtime execution of complex arithmetic is still incomplete. Current runtime support includes `__builtin_cabs*` externs for object-address complex arguments.
-Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `+`, `-`, `*`, `/`, `==`, `!=`, `*=`, `+=`, `-=`, `/=`, scalar RHS complex compound assignment, object-return copy-out, double-to-float complex copy, complex float return promoted to complex double, `__builtin_cabs`, `__builtin_cabsf`, `__builtin_cabsl`, complex tgmath `sin`, complex tgmath `exp`, complex long double tgmath `exp`, complex tgmath `pow`, and complex long double tgmath `pow`.
+Runtime integration coverage now includes local/static `__builtin_complex` initialization, complex `+`, `-`, `*`, `/`, `==`, `!=`, `*=`, `+=`, `-=`, `/=`, scalar RHS complex compound assignment, object-return copy-out, double-to-float complex copy, complex float return promoted to complex double, complex conditional returns and local initialization, `__builtin_cabs`, `__builtin_cabsf`, `__builtin_cabsl`, complex tgmath `sin`, complex tgmath `exp`, complex long double tgmath `exp`, complex tgmath `pow`, and complex long double tgmath `pow`.
 GCC-derived complex runtime coverage also includes imaginary floating constants such as `-1.0i` and integer imaginary constants such as `1i`.
 Complex-to-scalar runtime coverage includes local initialization from imaginary literals, where the real component is selected.
 Complex constant-expression coverage includes automatic and static complex initializers with arithmetic over imaginary literals.
