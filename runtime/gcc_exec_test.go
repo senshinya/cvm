@@ -524,6 +524,35 @@ int main(void)
 	}
 }
 
+func TestGCCFloatingAssignmentAndLogicalExpressionsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct box {
+  long double x;
+};
+
+int main(void)
+{
+  float f = 0.0f;
+  struct box b = { 0.0L };
+
+  if ((f = 2.0f) != 2.0f)
+    return 1;
+  if ((b.x = -3.0L) != -3.0L)
+    return 2;
+  if (!(f && b.x))
+    return 3;
+  if (0.0L || 0.0f)
+    return 4;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "floating-assignment-logical-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCFloatIncDecExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
