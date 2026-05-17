@@ -292,6 +292,7 @@ double __cvm_tgmath_acosh();
 double __cvm_tgmath_atanh();
 double __cvm_tgmath_atan2();
 double __cvm_tgmath_hypot();
+double __cvm_tgmath_cbrt();
 #endif
 `
 }

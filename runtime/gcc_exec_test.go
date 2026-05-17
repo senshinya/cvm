@@ -486,6 +486,23 @@ int main(void)
 	}
 }
 
+func TestTgmathCbrtExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (cbrt(8.0f) != 2.0f)
+    return 1;
+  return cbrt(8.0L) == 2.0L ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-cbrt-real.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathComplexSinExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
