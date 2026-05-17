@@ -1206,10 +1206,30 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			out.WriteByte('%')
 			continue
 		}
-		for {
-			if i >= len(format) {
-				return "", fmt.Errorf("%s has trailing %% in format", name)
+		leftAlign := false
+		zeroPad := false
+		for i < len(format) {
+			switch format[i] {
+			case '-':
+				leftAlign = true
+				i++
+			case '0':
+				zeroPad = true
+				i++
+			default:
+				goto width
 			}
+		}
+	width:
+		width := 0
+		for i < len(format) && format[i] >= '0' && format[i] <= '9' {
+			width = width*10 + int(format[i]-'0')
+			i++
+		}
+		if i < len(format) && format[i] == '.' {
+			return "", fmt.Errorf("%s unsupported precision in format", name)
+		}
+		for i < len(format) {
 			switch format[i] {
 			case 'h', 'l':
 				if i+1 < len(format) && format[i+1] == format[i] {
@@ -1224,11 +1244,15 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			}
 		}
 	verb:
+		if i >= len(format) {
+			return "", fmt.Errorf("%s has trailing %% in format", name)
+		}
 		if argIndex >= len(args) {
 			return "", fmt.Errorf("%s format needs more arguments", name)
 		}
 		arg := args[argIndex]
 		argIndex++
+		piece := ""
 		switch format[i] {
 		case 's':
 			if !isPointerType(arg.Type) {
@@ -1238,48 +1262,79 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			if err != nil {
 				return "", err
 			}
-			out.WriteString(s)
+			piece = s
 		case 'd', 'i':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%%c expects integer argument", name, format[i])
 			}
-			out.WriteString(strconv.FormatInt(signedInt(arg), 10))
+			piece = strconv.FormatInt(signedInt(arg), 10)
 		case 'u':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%u expects integer argument", name)
 			}
-			out.WriteString(strconv.FormatUint(unsignedInt(arg), 10))
+			piece = strconv.FormatUint(unsignedInt(arg), 10)
 		case 'x':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%x expects integer argument", name)
 			}
-			out.WriteString(strconv.FormatUint(unsignedInt(arg), 16))
+			piece = strconv.FormatUint(unsignedInt(arg), 16)
 		case 'X':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%X expects integer argument", name)
 			}
-			out.WriteString(strings.ToUpper(strconv.FormatUint(unsignedInt(arg), 16)))
+			piece = strings.ToUpper(strconv.FormatUint(unsignedInt(arg), 16))
 		case 'o':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%o expects integer argument", name)
 			}
-			out.WriteString(strconv.FormatUint(unsignedInt(arg), 8))
+			piece = strconv.FormatUint(unsignedInt(arg), 8)
 		case 'p':
 			if !isPointerType(arg.Type) {
 				return "", fmt.Errorf("%s %%p expects pointer argument", name)
 			}
-			out.WriteString("0x")
-			out.WriteString(strconv.FormatUint(arg.Int, 16))
+			piece = "0x" + strconv.FormatUint(arg.Int, 16)
 		case 'c':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%c expects integer argument", name)
 			}
-			out.WriteByte(byte(unsignedInt(arg)))
+			piece = string([]byte{byte(unsignedInt(arg))})
 		default:
 			return "", fmt.Errorf("%s unsupported format %%%c", name, format[i])
 		}
+		writeFormattedPiece(&out, piece, width, leftAlign, zeroPad)
 	}
 	return out.String(), nil
+}
+
+func writeFormattedPiece(out *strings.Builder, piece string, width int, leftAlign, zeroPad bool) {
+	pad := width - len(piece)
+	if pad <= 0 {
+		out.WriteString(piece)
+		return
+	}
+	padByte := byte(' ')
+	if zeroPad && !leftAlign {
+		padByte = '0'
+	}
+	if leftAlign {
+		out.WriteString(piece)
+		writeRepeatedByte(out, padByte, pad)
+		return
+	}
+	if padByte == '0' && strings.HasPrefix(piece, "-") {
+		out.WriteByte('-')
+		writeRepeatedByte(out, padByte, pad)
+		out.WriteString(piece[1:])
+		return
+	}
+	writeRepeatedByte(out, padByte, pad)
+	out.WriteString(piece)
+}
+
+func writeRepeatedByte(out *strings.Builder, b byte, n int) {
+	for i := 0; i < n; i++ {
+		out.WriteByte(b)
+	}
 }
 
 func complexAbsExtern(name string, realType bytecode.ValueType, realSize uint64) ExternFunc {
