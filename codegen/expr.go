@@ -877,7 +877,7 @@ func tgmathPseudoCallName(e sema.Expr) string {
 		return ""
 	}
 	switch vr.Sym.Name {
-	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow", "__cvm_tgmath_sqrt", "__cvm_tgmath_cos", "__cvm_tgmath_tan", "__cvm_tgmath_log", "__cvm_tgmath_sinh", "__cvm_tgmath_cosh", "__cvm_tgmath_tanh", "__cvm_tgmath_asin":
+	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow", "__cvm_tgmath_sqrt", "__cvm_tgmath_cos", "__cvm_tgmath_tan", "__cvm_tgmath_log", "__cvm_tgmath_sinh", "__cvm_tgmath_cosh", "__cvm_tgmath_tanh", "__cvm_tgmath_asin", "__cvm_tgmath_acos":
 		return vr.Sym.Name
 	default:
 		return ""
@@ -910,6 +910,8 @@ func tgmathExternName(pseudo string, x *sema.CallExpr) string {
 			base = "__cvm_tgmath_ctanh"
 		case "__cvm_tgmath_asin":
 			base = "__cvm_tgmath_casin"
+		case "__cvm_tgmath_acos":
+			base = "__cvm_tgmath_cacos"
 		}
 	}
 	switch tgmathCallRank(x) {
