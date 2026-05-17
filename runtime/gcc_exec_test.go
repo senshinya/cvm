@@ -389,6 +389,21 @@ int main(void)
 	}
 }
 
+func TestGCCImaginaryToBoolLocalInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  _Bool b = 3.0i;
+  return b ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "imaginary-to-bool-local-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)
