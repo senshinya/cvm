@@ -159,6 +159,12 @@ void *memmove(void *, const void *, size_t);
 void *mempcpy(void *, const void *, size_t);
 void *memset(void *, int, size_t);
 void bzero(void *, size_t);
+char *strcpy(char *, const char *);
+char *stpcpy(char *, const char *);
+char *strcat(char *, const char *);
+char *strncpy(char *, const char *, size_t);
+char *stpncpy(char *, const char *, size_t);
+char *strncat(char *, const char *, size_t);
 #endif
 `
 }
