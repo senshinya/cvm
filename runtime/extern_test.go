@@ -446,6 +446,35 @@ func TestFormatExternsSupportSignAndAlternateFlags(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportFloatFormats(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-float", 40, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-float", []byte("%f|%.2f|%.1e|%.1E\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		FloatValue(bytecode.TypeF64, 1.5),
+		FloatValue(bytecode.TypeF64, 1.25),
+		FloatValue(bytecode.TypeF64, 12),
+		FloatValue(bytecode.TypeF64, 12),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 29 || got != "1.500000|1.25|1.2e+01|1.2E+01" {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q, want i32 29 and float output", ret, got)
+	}
+}
+
 func TestFenvExternsAreNoOps(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	for _, name := range []string{"feclearexcept", "fetestexcept"} {

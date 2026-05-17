@@ -1350,6 +1350,29 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				return "", fmt.Errorf("%s %%c does not support precision", name)
 			}
 			piece = string([]byte{byte(unsignedInt(arg))})
+		case 'f', 'F', 'e', 'E', 'g', 'G':
+			if !isFloatLike(arg.Type) {
+				return "", fmt.Errorf("%s %%%c expects floating argument", name, format[i])
+			}
+			verb := format[i]
+			if verb == 'F' {
+				verb = 'f'
+			}
+			floatPrecision := precision
+			if floatPrecision < 0 {
+				floatPrecision = 6
+			}
+			piece = strconv.FormatFloat(cvmFloat(arg), verb, floatPrecision, floatFormatBits(arg.Type))
+			if format[i] == 'F' {
+				piece = strings.ToUpper(piece)
+			}
+			if !strings.HasPrefix(piece, "-") && !strings.HasPrefix(piece, "N") && !strings.HasPrefix(piece, "I") {
+				if showSign {
+					piece = "+" + piece
+				} else if leadingSpace {
+					piece = " " + piece
+				}
+			}
 		default:
 			return "", fmt.Errorf("%s unsupported format %%%c", name, format[i])
 		}
@@ -1371,6 +1394,22 @@ func applyIntegerPrecision(piece string, precision int) string {
 		digits = strings.Repeat("0", precision-len(digits)) + digits
 	}
 	return prefix + digits
+}
+
+func isFloatLike(t bytecode.ValueType) bool {
+	switch t {
+	case bytecode.TypeF32, bytecode.TypeF64, bytecode.TypeFLong:
+		return true
+	default:
+		return false
+	}
+}
+
+func floatFormatBits(t bytecode.ValueType) int {
+	if t == bytecode.TypeF32 {
+		return 32
+	}
+	return 64
 }
 
 func writeFormattedPiece(out *strings.Builder, piece string, width int, leftAlign, zeroPad bool) {
