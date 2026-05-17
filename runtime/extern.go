@@ -616,10 +616,10 @@ func registerOutputFormatExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked"} {
 		r.Register(name, fprintfExtern(name, r))
 	}
-	for _, name := range []string{"__builtin_vprintf", "vprintf"} {
+	for _, name := range []string{"__builtin_vprintf", "vprintf", "vprintf_unlocked"} {
 		r.Register(name, vprintfExtern(name, r))
 	}
-	for _, name := range []string{"__builtin_vfprintf", "vfprintf"} {
+	for _, name := range []string{"__builtin_vfprintf", "vfprintf", "vfprintf_unlocked"} {
 		r.Register(name, vfprintfExtern(name, r))
 	}
 	r.Register("__builtin___printf_chk", printfCheckedExtern("__builtin___printf_chk", r))

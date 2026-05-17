@@ -2742,6 +2742,32 @@ int main(void)
 	}
 }
 
+func TestStdioVFormatUnlockedAliasesExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+#include <stdio.h>
+
+int emit(int n, ...)
+{
+  va_list ap = 0;
+  va_start(ap, n);
+  int a = vprintf_unlocked("vu", ap);
+  int b = vfprintf_unlocked(stderr, "vf", ap);
+  va_end(ap);
+  return a == 2 && b == 2 ? 0 : 1;
+}
+
+int main(void)
+{
+  return emit(1, 2);
+}
+`
+	st := runGCCExecFixture(t, "stdio-vformat-unlocked-aliases-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCFunctionPointerStructReturnExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

@@ -91,7 +91,9 @@ int fprintf_unlocked(FILE *, const char *, ...);
 int sprintf(char *, const char *, ...);
 int snprintf(char *, size_t, const char *, ...);
 int vprintf(const char *, void *);
+int vprintf_unlocked(const char *, void *);
 int vfprintf(FILE *, const char *, void *);
+int vfprintf_unlocked(FILE *, const char *, void *);
 int vsprintf(char *, const char *, void *);
 int vsnprintf(char *, size_t, const char *, void *);
 #endif
