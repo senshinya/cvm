@@ -278,6 +278,7 @@ double __cvm_tgmath_sin();
 double __cvm_tgmath_exp();
 double __cvm_tgmath_pow();
 double __cvm_tgmath_sqrt();
+double __cvm_tgmath_cos();
 #endif
 `
 }
