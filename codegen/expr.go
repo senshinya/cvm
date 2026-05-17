@@ -418,13 +418,15 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, rhsAddrSlot))
 	lhsImagOffset := fg.g.sizeof(lhsRealType)
 	rhsImagOffset := fg.g.sizeof(rhsRealType)
-	fg.emitLoadComplexComponent(lhsAddrSlot, 0, lhsVT, lhsVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+	lhsAlign := fg.accessAlignForExpr(x.L, lhsRealType)
+	rhsAlign := fg.accessAlignForExpr(x.R, rhsRealType)
+	fg.emitLoadComplexComponent(lhsAddrSlot, 0, lhsVT, lhsVT, lhsAlign, isVolatile(x.L.GetType()))
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(lhsVT, lrSlot))
-	fg.emitLoadComplexComponent(lhsAddrSlot, lhsImagOffset, lhsVT, lhsVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+	fg.emitLoadComplexComponent(lhsAddrSlot, lhsImagOffset, lhsVT, lhsVT, lhsAlign, isVolatile(x.L.GetType()))
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(lhsVT, liSlot))
-	fg.emitLoadComplexComponent(rhsAddrSlot, 0, rhsVT, lhsVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
+	fg.emitLoadComplexComponent(rhsAddrSlot, 0, rhsVT, lhsVT, rhsAlign, isVolatile(x.R.GetType()))
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(lhsVT, rrSlot))
-	fg.emitLoadComplexComponent(rhsAddrSlot, rhsImagOffset, rhsVT, lhsVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
+	fg.emitLoadComplexComponent(rhsAddrSlot, rhsImagOffset, rhsVT, lhsVT, rhsAlign, isVolatile(x.R.GetType()))
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(lhsVT, riSlot))
 
 	if x.Op == sema.OpAdd || x.Op == sema.OpSub {
@@ -432,8 +434,8 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 		if x.Op == sema.OpSub {
 			op = bytecode.BinSub
 		}
-		fg.storeComplexCompoundAddSubComponent(lhsAddrSlot, 0, lrSlot, rrSlot, lhsVT, op, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
-		fg.storeComplexCompoundAddSubComponent(lhsAddrSlot, lhsImagOffset, liSlot, riSlot, lhsVT, op, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+		fg.storeComplexCompoundAddSubComponent(lhsAddrSlot, 0, lrSlot, rrSlot, lhsVT, op, lhsAlign, isVolatile(x.L.GetType()))
+		fg.storeComplexCompoundAddSubComponent(lhsAddrSlot, lhsImagOffset, liSlot, riSlot, lhsVT, op, lhsAlign, isVolatile(x.L.GetType()))
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
 		return nil
 	}
@@ -450,8 +452,8 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 			bytecode.Binary(lhsVT, bytecode.BinAdd),
 			bytecode.StoreLocal(lhsVT, denomSlot),
 		)
-		fg.storeComplexCompoundDivReal(lhsAddrSlot, 0, lrSlot, liSlot, rrSlot, riSlot, denomSlot, lhsVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
-		fg.storeComplexCompoundDivImag(lhsAddrSlot, lhsImagOffset, lrSlot, liSlot, rrSlot, riSlot, denomSlot, lhsVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+		fg.storeComplexCompoundDivReal(lhsAddrSlot, 0, lrSlot, liSlot, rrSlot, riSlot, denomSlot, lhsVT, lhsAlign, isVolatile(x.L.GetType()))
+		fg.storeComplexCompoundDivImag(lhsAddrSlot, lhsImagOffset, lrSlot, liSlot, rrSlot, riSlot, denomSlot, lhsVT, lhsAlign, isVolatile(x.L.GetType()))
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
 		return nil
 	}
@@ -465,7 +467,7 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 		bytecode.LoadLocal(lhsVT, riSlot),
 		bytecode.Binary(lhsVT, bytecode.BinMul),
 		bytecode.Binary(lhsVT, bytecode.BinSub),
-		bytecode.Store(lhsVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType())),
+		bytecode.Store(lhsVT, lhsAlign, isVolatile(x.L.GetType())),
 		bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot),
 		bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: lhsImagOffset},
 		bytecode.LoadLocal(lhsVT, lrSlot),
@@ -475,7 +477,7 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 		bytecode.LoadLocal(lhsVT, rrSlot),
 		bytecode.Binary(lhsVT, bytecode.BinMul),
 		bytecode.Binary(lhsVT, bytecode.BinAdd),
-		bytecode.Store(lhsVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType())),
+		bytecode.Store(lhsVT, lhsAlign, isVolatile(x.L.GetType())),
 		bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot),
 	)
 	return nil
@@ -1100,10 +1102,32 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 }
 
 func (fg *funcGen) emitComplexAssign(lhs, rhs sema.Expr) error {
-	dst := address{emit: func() error {
-		return fg.emitAddress(lhs)
-	}}
+	dst := fg.addressForExpr(lhs)
 	return fg.emitComplexInitializer(dst, rhs, lhs.GetType())
+}
+
+func (fg *funcGen) addressForExpr(e sema.Expr) address {
+	addr := address{emit: func() error {
+		return fg.emitAddress(e)
+	}}
+	addr.align = fg.explicitAccessAlignForExpr(e, e.GetType())
+	return addr
+}
+
+func (fg *funcGen) accessAlignForExpr(e sema.Expr, accessType sema.Type) int64 {
+	if align := fg.explicitAccessAlignForExpr(e, accessType); align > 0 {
+		return align
+	}
+	return fg.g.alignof(accessType)
+}
+
+func (fg *funcGen) explicitAccessAlignForExpr(e sema.Expr, accessType sema.Type) int64 {
+	if member, ok := e.(*sema.MemberExpr); ok && member.Field != nil && !member.Field.IsBitField {
+		if align := fg.g.alignof(accessType); align > 1 && member.Field.Offset%align != 0 {
+			return 1
+		}
+	}
+	return 0
 }
 
 func (fg *funcGen) loadStoreAlign(e sema.Expr, t sema.Type) int64 {
