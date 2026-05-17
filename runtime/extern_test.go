@@ -204,6 +204,68 @@ func TestUngetcEOFDoesNotPushBack(t *testing.T) {
 	}
 }
 
+func TestCharacterInputUpdatesEOFStatus(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	fgetcFn, ok := reg.Lookup("fgetc")
+	if !ok {
+		t.Fatal("missing fgetc extern")
+	}
+	feofFn, ok := reg.Lookup("feof")
+	if !ok {
+		t.Fatal("missing feof extern")
+	}
+	clearerrFn, ok := reg.Lookup("clearerr")
+	if !ok {
+		t.Fatal("missing clearerr extern")
+	}
+	ungetcFn, ok := reg.Lookup("ungetc")
+	if !ok {
+		t.Fatal("missing ungetc extern")
+	}
+	ret, exit, err := fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil {
+		t.Fatalf("fgetc ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || int32(ret.Int) != -1 {
+		t.Fatalf("fgetc ret=%#v, want EOF", ret)
+	}
+	ret, exit, err = feofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil {
+		t.Fatalf("feof ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("feof ret=%#v, want 1", ret)
+	}
+	if _, exit, err := clearerrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)}); err != nil || exit != nil {
+		t.Fatalf("clearerr exit=%#v err=%v", exit, err)
+	}
+	ret, exit, err = feofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil {
+		t.Fatalf("feof after clearerr ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("feof after clearerr ret=%#v, want 0", ret)
+	}
+	if _, exit, err := fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)}); err != nil || exit != nil {
+		t.Fatalf("second fgetc exit=%#v err=%v", exit, err)
+	}
+	if _, exit, err := ungetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'A'), PtrValue(stdin)}); err != nil || exit != nil {
+		t.Fatalf("ungetc exit=%#v err=%v", exit, err)
+	}
+	ret, exit, err = feofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil {
+		t.Fatalf("feof after ungetc ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("feof after ungetc ret=%#v, want 0", ret)
+	}
+}
+
 func TestFgetsEmptyInputReturnsNullAndLeavesBuffer(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

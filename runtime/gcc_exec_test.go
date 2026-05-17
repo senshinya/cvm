@@ -1025,6 +1025,38 @@ int main(void)
 	}
 }
 
+func TestStdioEOFStatusExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (feof(stdin) != 0)
+    return 1;
+  if (fgetc(stdin) != EOF)
+    return 2;
+  if (feof(stdin) == 0)
+    return 3;
+  clearerr(stdin);
+  if (feof(stdin) != 0)
+    return 4;
+  if (fgetc(stdin) != EOF)
+    return 5;
+  if (ungetc('A', stdin) != 'A')
+    return 6;
+  if (feof(stdin) != 0)
+    return 7;
+  if (fgetc(stdin) != 'A')
+    return 8;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-eof-status-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

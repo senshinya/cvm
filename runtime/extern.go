@@ -27,6 +27,7 @@ type ExternRegistry struct {
 	stderr       io.Writer
 	hostWriters  map[uint64]io.Writer
 	hostPushback map[uint64][]byte
+	hostEOF      map[uint64]bool
 	stdinHandle  uint64
 }
 
@@ -43,6 +44,7 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		stderr:       stderr,
 		hostWriters:  make(map[uint64]io.Writer),
 		hostPushback: make(map[uint64][]byte),
+		hostEOF:      make(map[uint64]bool),
 	}
 }
 
@@ -197,6 +199,9 @@ func getcharExtern(name string, r *ExternRegistry) ExternFunc {
 		if ch, ok := r.readHostChar(r.stdinHandle); ok {
 			return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
 		}
+		if r.stdinHandle != 0 {
+			r.hostEOF[r.stdinHandle] = true
+		}
 		return IntValue(bytecode.TypeI32, -1), nil, nil
 	}
 }
@@ -235,6 +240,7 @@ func fgetcExtern(name string, r *ExternRegistry) ExternFunc {
 		if ch, ok := r.readHostChar(args[0].Int); ok {
 			return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
 		}
+		r.hostEOF[args[0].Int] = true
 		return IntValue(bytecode.TypeI32, -1), nil, nil
 	}
 }
@@ -256,6 +262,7 @@ func ungetcExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		b := byte(ch)
 		r.hostPushback[args[1].Int] = append(r.hostPushback[args[1].Int], b)
+		r.hostEOF[args[1].Int] = false
 		return IntValue(bytecode.TypeI32, int64(b)), nil, nil
 	}
 }
@@ -290,6 +297,7 @@ func fgetsExtern(name string, r *ExternRegistry) ExternFunc {
 			}
 		}
 		if len(buf) == 0 {
+			r.hostEOF[args[2].Int] = true
 			return PtrValue(0), nil, nil
 		}
 		block, off, err := ec.Memory.rangeAccess(args[0].Int, int64(len(buf)+1), true)
@@ -409,11 +417,16 @@ func freadExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[3].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[3].Int)
 		}
-		if _, err := memorySizeArg(name, args[1]); err != nil {
+		size, err := memorySizeArg(name, args[1])
+		if err != nil {
 			return Value{}, nil, err
 		}
-		if _, err := memorySizeArg(name, args[2]); err != nil {
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
 			return Value{}, nil, err
+		}
+		if size != 0 && count != 0 {
+			r.hostEOF[args[3].Int] = true
 		}
 		return UIntValue(bytecode.TypeU64, 0), nil, nil
 	}
@@ -430,6 +443,9 @@ func streamStatusExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		if name == "feof" && r.hostEOF[args[0].Int] {
+			return IntValue(bytecode.TypeI32, 1), nil, nil
+		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
@@ -445,6 +461,7 @@ func clearerrExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		r.hostEOF[args[0].Int] = false
 		return Value{}, nil, nil
 	}
 }
