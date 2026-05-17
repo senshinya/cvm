@@ -538,6 +538,59 @@ int main(void)
 	}
 }
 
+func TestGCCComplexStructArgumentIsPassedByValueExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+void mutate(struct pair p)
+{
+  p.tag = 9;
+  p.value = __builtin_complex(5.0, 12.0);
+}
+
+int main(void)
+{
+  struct pair p = { 7, __builtin_complex(3.0, 4.0) };
+  mutate(p);
+  return p.tag == 7 && __builtin_cabs(p.value) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-argument-by-value-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexStructReturnExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+struct pair make(void)
+{
+  struct pair p = { 7, __builtin_complex(5.0, 12.0) };
+  return p;
+}
+
+int main(void)
+{
+  struct pair p = make();
+  return p.tag == 7 && __builtin_cabs(p.value) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-return-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexArrayInitializerExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

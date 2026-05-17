@@ -1137,8 +1137,14 @@ func (fg *funcGen) emitObjectCopyInitializer(dst address, init sema.Expr, typ se
 	if err := dst.emit(); err != nil {
 		return err
 	}
-	if err := fg.emitAddress(init); err != nil {
-		return err
+	if init.GetCategory() == sema.LValue {
+		if err := fg.emitAddress(init); err != nil {
+			return err
+		}
+	} else {
+		if err := fg.emitValue(init); err != nil {
+			return err
+		}
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(typ), Align: dst.accessAlign(fg.g.alignof(typ)), Volatile: isVolatile(typ)})
 	return nil

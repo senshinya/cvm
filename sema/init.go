@@ -30,6 +30,9 @@ func (s *Sema) typeInitializer(node *entity.AstNode, target Type) Expr {
 	case node.ReducedBy(parser.Initializer, 1):
 		expr := s.typeExpr(node.Children[0], s.scope)
 		expr = s.castFunctionDecay(s.castArrayDecay(s.castLValueToRValue(expr)))
+		if isAggregateInitType(target) && isAggregateInitType(expr.GetType()) {
+			return s.assignmentConversion(expr, target, node.SourceStart)
+		}
 		if sub := firstScalarInitializerType(target); sub != nil {
 			target = sub
 		}
