@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `4df3d7b test(runtime): cover VLA execution fixtures`
+- Latest implementation/coverage commit before this handoff document: `ac015c2 test(runtime): cover integer conversion execution`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,10 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `ac015c2 test(runtime): cover integer conversion execution`
+  - Adds runtime coverage derived from the Wconversion integer fixtures.
+  - Covers signed-to-unsigned conversion, unsigned-char narrowing, conditional integer conversions, and converted function arguments.
 
 - `4df3d7b test(runtime): cover VLA execution fixtures`
   - Adds runtime coverage derived from `vla-2.c` for VLA members inside local structs and unions.
@@ -382,6 +386,7 @@ GCC-derived complex runtime coverage also includes imaginary floating constants 
 Complex-to-scalar runtime coverage includes local initialization from imaginary literals, where the real component is selected.
 Complex constant-expression coverage includes automatic and static complex initializers with arithmetic over imaginary literals and static conditional initializers selecting `__builtin_complex`.
 VLA runtime coverage includes local VLA dynamic object allocation, VLA fields inside local structs and unions, VLA parameter dynamic strides, and nested-function VLA capture cases.
+Integer conversion runtime coverage includes Wconversion-derived signed-to-unsigned conversion, unsigned-char narrowing, conditional conversions, and function argument conversions.
 
 ### GNU Nested Functions
 
