@@ -783,6 +783,50 @@ int main(void)
 	}
 }
 
+func TestGCCStaticPointerFieldInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct box {
+  int *p;
+};
+
+static int values[2] = { 10, 20 };
+static struct box b = { values };
+
+int main(void)
+{
+  if (b.p[1] != 20)
+    return 1;
+  b.p += 1;
+  return *b.p == 20 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "static-pointer-field-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStaticPointerArrayInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+static int values[3] = { 10, 20, 30 };
+static int *ptrs[2] = { values, values + 1 };
+
+int main(void)
+{
+  if (*ptrs[0] != 10 || *ptrs[1] != 20)
+    return 1;
+  ptrs[0] += 2;
+  return *ptrs[0] == 30 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "static-pointer-array-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
