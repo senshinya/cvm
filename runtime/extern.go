@@ -80,11 +80,15 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		return IntValue(bytecode.TypeI32, int64(len(s)+1)), nil, nil
 	})
 	r.Register("putchar", putcharExtern("putchar", r))
-	r.Register("getchar", getcharExtern("getchar", r))
+	for _, name := range []string{"getchar", "getchar_unlocked"} {
+		r.Register(name, getcharExtern(name, r))
+	}
 	for _, name := range []string{"fputc", "fputc_unlocked"} {
 		r.Register(name, fputcExtern(name, r))
 	}
-	r.Register("fgetc", fgetcExtern("fgetc", r))
+	for _, name := range []string{"fgetc", "getc", "getc_unlocked"} {
+		r.Register(name, fgetcExtern(name, r))
+	}
 	r.Register("ungetc", ungetcExtern("ungetc", r))
 	r.Register("fgets", fgetsExtern("fgets", r))
 	for _, name := range []string{"fputs", "fputs_unlocked"} {

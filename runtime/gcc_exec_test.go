@@ -1057,6 +1057,30 @@ int main(void)
 	}
 }
 
+func TestStdioInputUnlockedAliasesExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  ungetc('G', stdin);
+  if (getc(stdin) != 'G')
+    return 1;
+  ungetc('U', stdin);
+  if (getc_unlocked(stdin) != 'U')
+    return 2;
+  ungetc('H', stdin);
+  if (getchar_unlocked() != 'H')
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdio-input-unlocked-aliases-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

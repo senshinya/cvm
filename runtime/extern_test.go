@@ -12,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "puts", "putchar", "getchar", "fputc", "fputc_unlocked", "fputs", "fputs_unlocked", "fgetc", "ungetc", "fgets", "fflush", "fclose", "ferror", "clearerr", "feof", "fwrite", "fread", "strcmp", "memcmp", "__builtin_malloc", "__builtin_calloc", "__builtin_strdup", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy", "__builtin_memset", "__builtin_bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "__builtin_strchr", "__builtin_strstr", "__builtin_strcpy", "__builtin_stpcpy", "__builtin_strcat", "__builtin_strncpy", "__builtin_stpncpy", "__builtin_strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "__builtin_vfprintf", "vfprintf", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
+	for _, name := range []string{"exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "puts", "putchar", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "fputs", "fputs_unlocked", "fgetc", "getc", "getc_unlocked", "ungetc", "fgets", "fflush", "fclose", "ferror", "clearerr", "feof", "fwrite", "fread", "strcmp", "memcmp", "__builtin_malloc", "__builtin_calloc", "__builtin_strdup", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy", "__builtin_memset", "__builtin_bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "__builtin_strchr", "__builtin_strstr", "__builtin_strcpy", "__builtin_stpcpy", "__builtin_strcat", "__builtin_strncpy", "__builtin_stpncpy", "__builtin_strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "__builtin_vfprintf", "vfprintf", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -104,6 +104,43 @@ func TestFgetcEmptyInputReturnsEOF(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypeI32 || int32(ret.Int) != -1 {
 		t.Fatalf("fgetc ret=%#v, want i32 -1", ret)
+	}
+}
+
+func TestInputCharacterAliasesConsumePushback(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	ungetcFn, ok := reg.Lookup("ungetc")
+	if !ok {
+		t.Fatal("missing ungetc extern")
+	}
+	for _, tt := range []struct {
+		name string
+		args []Value
+		ch   rune
+	}{
+		{name: "getc", args: []Value{PtrValue(stdin)}, ch: 'G'},
+		{name: "getc_unlocked", args: []Value{PtrValue(stdin)}, ch: 'U'},
+		{name: "getchar_unlocked", args: nil, ch: 'H'},
+	} {
+		if _, exit, err := ungetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, int64(tt.ch)), PtrValue(stdin)}); err != nil || exit != nil {
+			t.Fatalf("ungetc %q exit=%#v err=%v", tt.ch, exit, err)
+		}
+		fn, ok := reg.Lookup(tt.name)
+		if !ok {
+			t.Fatalf("missing %s extern", tt.name)
+		}
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, tt.args)
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypeI32 || ret.Int != uint64(tt.ch) {
+			t.Fatalf("%s ret=%#v, want i32 %q", tt.name, ret, tt.ch)
+		}
 	}
 }
 
