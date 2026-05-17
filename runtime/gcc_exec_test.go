@@ -338,6 +338,27 @@ int main(void)
 	}
 }
 
+func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+__complex__ double foo(__complex__ double x)
+{
+  return 1.0 / x * -1.0i;
+}
+
+int main(void)
+{
+  __complex__ double z = __builtin_complex(0.0, 2.0);
+  __complex__ double r = foo(z);
+  return __builtin_cabs(r + __builtin_complex(0.5, 0.0)) == 0.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-4-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)

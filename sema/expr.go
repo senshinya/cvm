@@ -134,20 +134,31 @@ func (s *Sema) makeFloatLit(node *entity.AstNode) Expr {
 	if invalidFloatSuffix(node.Terminal.Lexeme, s.Options.PedanticErrors) {
 		s.report(InvalidTypeSpec(node.SourceStart, "invalid floating constant suffix"))
 	}
+	if isImaginaryFloatSuffix(node.Terminal.Lexeme) {
+		return &ImagLit{Value: parseFloatLiteral(node.Terminal.Lexeme), T: s.imaginaryFloatLiteralType(node.Terminal.Lexeme), Range: node.SourceRange}
+	}
 	return &FloatLit{Value: parseFloatLiteral(node.Terminal.Lexeme), T: s.Types.Builtin(Double), Range: node.SourceRange}
 }
 
-func invalidFloatSuffix(lexeme string, pedanticErrors bool) bool {
-	i := len(lexeme)
-	for i > 0 {
-		c := lexeme[i-1]
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
-			i--
-			continue
-		}
-		break
+func isImaginaryFloatSuffix(lexeme string) bool {
+	suffix := floatLiteralSuffix(lexeme)
+	return strings.ContainsAny(suffix, "ij")
+}
+
+func (s *Sema) imaginaryFloatLiteralType(lexeme string) Type {
+	suffix := floatLiteralSuffix(lexeme)
+	switch {
+	case strings.Contains(suffix, "f"):
+		return s.Types.Builtin(FloatComplex)
+	case strings.Contains(suffix, "l"):
+		return s.Types.Builtin(LongDoubleComplex)
+	default:
+		return s.Types.Builtin(DoubleComplex)
 	}
-	suffix := strings.ToLower(lexeme[i:])
+}
+
+func invalidFloatSuffix(lexeme string, pedanticErrors bool) bool {
+	suffix := floatLiteralSuffix(lexeme)
 	if suffix == "" || suffix == "f" || suffix == "l" {
 		return false
 	}
@@ -161,6 +172,19 @@ func invalidFloatSuffix(lexeme string, pedanticErrors bool) bool {
 		return false
 	}
 	return true
+}
+
+func floatLiteralSuffix(lexeme string) string {
+	i := len(lexeme)
+	for i > 0 {
+		c := lexeme[i-1]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			i--
+			continue
+		}
+		break
+	}
+	return strings.ToLower(lexeme[i:])
 }
 
 func (s *Sema) makeCharLit(node *entity.AstNode) Expr {

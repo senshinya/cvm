@@ -360,6 +360,20 @@ func (g *generator) writeStaticScalarInitializer(buf []byte, relocs *[]bytecode.
 		if ok, err := g.writeStaticBuiltinComplex(buf, offset, x, typ); ok || err != nil {
 			return err
 		}
+	case *sema.ImagLit:
+		if isComplexType(typ) {
+			return g.writeStaticImaginaryComplex(buf, offset, x, typ)
+		}
+		vt, err := g.lowerValueType(typ)
+		if err != nil {
+			return err
+		}
+		if isFloatType(vt) {
+			return g.writeStaticFloat(buf, offset, typ, 0)
+		}
+		if isIntegerType(vt) {
+			return g.writeStaticInteger(buf, offset, typ, 0)
+		}
 	case *sema.IntLit:
 		return g.writeStaticInteger(buf, offset, typ, x.Value)
 	case *sema.CharLit:
@@ -406,6 +420,17 @@ func (g *generator) writeStaticBuiltinComplex(buf []byte, offset int64, call *se
 		}
 	}
 	return true, nil
+}
+
+func (g *generator) writeStaticImaginaryComplex(buf []byte, offset int64, lit *sema.ImagLit, typ sema.Type) error {
+	realType, err := complexRealType(typ)
+	if err != nil {
+		return err
+	}
+	if err := g.writeStaticFloat(buf, offset, realType, 0); err != nil {
+		return err
+	}
+	return g.writeStaticFloat(buf, offset+g.sizeof(realType), realType, lit.Value)
 }
 
 func staticCompoundLiteralAddressOperand(e sema.Expr) *sema.CompoundLit {
@@ -790,6 +815,9 @@ func (fg *funcGen) emitComplexInitializer(dst address, init sema.Expr, typ sema.
 	if call := builtinComplexCall(init); call != nil {
 		return fg.emitBuiltinComplexInitializer(dst, call, typ)
 	}
+	if lit, ok := init.(*sema.ImagLit); ok {
+		return fg.emitImaginaryComplexInitializer(dst, lit, typ)
+	}
 	if realInit := complexRealInitializer(init); realInit != nil {
 		savedDst, err := fg.saveAddress(dst, ".complex.dst")
 		if err != nil {
@@ -821,6 +849,30 @@ func (fg *funcGen) emitComplexInitializer(dst address, init sema.Expr, typ sema.
 		return nil
 	}
 	return fg.emitComplexValueCopy(dst, init, typ)
+}
+
+func (fg *funcGen) emitImaginaryComplexInitializer(dst address, lit *sema.ImagLit, typ sema.Type) error {
+	realType, err := complexRealType(typ)
+	if err != nil {
+		return err
+	}
+	realVT, err := fg.g.lowerValueType(realType)
+	if err != nil {
+		return err
+	}
+	savedDst, err := fg.saveAddress(dst, ".complex.dst")
+	if err != nil {
+		return err
+	}
+	if err := fg.emitZeroInitializer(savedDst, typ); err != nil {
+		return err
+	}
+	if err := fg.offsetAddress(savedDst, fg.g.sizeof(realType)).emit(); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpConst, Type: realVT, Float: lit.Value})
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(realVT, fg.g.alignof(realType), isVolatile(typ)))
+	return nil
 }
 
 func builtinComplexCall(init sema.Expr) *sema.CallExpr {
@@ -940,6 +992,13 @@ func (fg *funcGen) emitComplexSourceAddress(src sema.Expr) error {
 	switch x := src.(type) {
 	case *sema.BinOp:
 		return fg.emitValue(src)
+	case *sema.ImagLit:
+		return fg.emitComplexRValueAddress(src)
+	case *sema.UnOp:
+		if isComplexType(x.GetType()) {
+			return fg.emitValue(src)
+		}
+		return fg.emitAddress(src)
 	case *sema.ImplicitCast:
 		if isComplexType(x.To) {
 			return fg.emitComplexRValueAddress(src)

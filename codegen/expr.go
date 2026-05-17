@@ -21,6 +21,8 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 			return err
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpConst, Type: t, Float: x.Value})
+	case *sema.ImagLit:
+		return fg.emitComplexRValueAddress(x)
 	case *sema.CharLit:
 		t, err := fg.g.lowerValueType(x.T)
 		if err != nil {
@@ -139,6 +141,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		case sema.UnPlus:
 			return fg.emitValue(x.X)
 		case sema.UnMinus:
+			if isComplexType(x.T) {
+				return fg.emitComplexUnaryMinus(x)
+			}
 			if err := fg.emitValue(x.X); err != nil {
 				return err
 			}
@@ -180,6 +185,37 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "expression lowering is not implemented for this node"}
 	}
 	return nil
+}
+
+func (fg *funcGen) emitComplexUnaryMinus(x *sema.UnOp) error {
+	realType, err := complexRealType(x.T)
+	if err != nil {
+		return err
+	}
+	vt, err := fg.g.lowerValueType(realType)
+	if err != nil {
+		return err
+	}
+	object, err := fg.newLocalObject(".complex.neg", x.T)
+	if err != nil {
+		return err
+	}
+	srcSlot := fg.allocSyntheticSlot(".complex.neg.src", bytecode.TypeObjectAddr)
+	if err := fg.emitComplexSourceAddress(x.X); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, srcSlot))
+	imagOffset := fg.g.sizeof(realType)
+	fg.storeComplexUnaryNegComponent(object, 0, srcSlot, 0, vt, fg.g.alignof(realType), isVolatile(x.T))
+	fg.storeComplexUnaryNegComponent(object, imagOffset, srcSlot, imagOffset, vt, fg.g.alignof(realType), isVolatile(x.T))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+	return nil
+}
+
+func (fg *funcGen) storeComplexUnaryNegComponent(dstObject int, dstOffset int64, srcSlot int, srcOffset int64, vt bytecode.ValueType, align int64, volatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.emitLoadComplexComponent(srcSlot, srcOffset, vt, vt, align, volatile)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: vt, Unary: bytecode.UnaryNeg}, bytecode.Store(vt, align, volatile))
 }
 
 func (fg *funcGen) emitCompoundAssign(x *sema.CompoundAssign) error {

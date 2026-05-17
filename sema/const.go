@@ -646,6 +646,8 @@ func (e *Evaluator) EvalConstant(expr Expr) (ConstValue, bool) {
 	switch x := expr.(type) {
 	case *FloatLit:
 		return ConstValue{Kind: ConstFloat, Float: x.Value, T: x.T}, true
+	case *ImagLit:
+		return ConstValue{Kind: ConstComplex, T: x.T}, true
 	case *StringLit:
 		return ConstValue{Kind: ConstString, T: x.T}, true
 	case *UnOp:
