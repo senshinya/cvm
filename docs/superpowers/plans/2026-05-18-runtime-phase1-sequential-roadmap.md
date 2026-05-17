@@ -196,7 +196,7 @@ go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -coun
   - `feat(runtime): add plain memory operation aliases`
   - `docs: record plain memory operation aliases`
 
-## Plan 11: Plain String Write Aliases
+## Plan 11: Plain String Write Aliases - Completed
 
 Add plain runtime aliases and header declarations for `strcpy`, `stpcpy`, `strcat`, `strncpy`, `stpncpy`, and `strncat`, reusing existing builtin string-writing extern helpers.
 
