@@ -840,6 +840,21 @@ int main(void)
 	}
 }
 
+func TestStdioPutcharExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  return putchar('A') == 'A' ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "stdio-putchar-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

@@ -74,6 +74,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		}
 		return IntValue(bytecode.TypeI32, int64(len(s)+1)), nil, nil
 	})
+	r.Register("putchar", putcharExtern("putchar", r))
 	for _, name := range []string{"fputs", "fputs_unlocked"} {
 		r.Register(name, fputsExtern(name, r))
 	}
@@ -152,6 +153,22 @@ func registerVaListExterns(r *ExternRegistry) {
 		}
 		return Value{}, nil, nil
 	})
+}
+
+func putcharExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
+		}
+		ch := byte(args[0].Int)
+		if _, err := r.externStdout(ec).Write([]byte{ch}); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
+	}
 }
 
 func fputsExtern(name string, r *ExternRegistry) ExternFunc {
