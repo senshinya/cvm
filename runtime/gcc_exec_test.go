@@ -547,6 +547,29 @@ int main(void)
 	}
 }
 
+func TestTgmathBinaryRealHelpersExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (fdim(5.0f, 3.0f) != 2.0f)
+    return 1;
+  if (fmax(2.0L, 3.0L) != 3.0L)
+    return 2;
+  if (fmin(2.0f, 3.0f) != 2.0f)
+    return 3;
+  if (fmod(5.0L, 2.0L) != 1.0L)
+    return 4;
+  return remainder(4.0f, 2.0f) == 0.0f ? 0 : 5;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-binary-real-helpers.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathComplexSinExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

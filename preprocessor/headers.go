@@ -302,6 +302,11 @@ double __cvm_tgmath_expm1();
 double __cvm_tgmath_log10();
 double __cvm_tgmath_log1p();
 double __cvm_tgmath_log2();
+double __cvm_tgmath_fdim();
+double __cvm_tgmath_fmax();
+double __cvm_tgmath_fmin();
+double __cvm_tgmath_fmod();
+double __cvm_tgmath_remainder();
 #endif
 `
 }
