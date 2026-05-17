@@ -51,7 +51,7 @@ go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -cou
   - `feat(runtime): add stdio puts unlocked alias`
   - `docs: record stdio puts unlocked alias`
 
-## Plan 2: `vprintf_unlocked` And `vfprintf_unlocked`
+## Plan 2: `vprintf_unlocked` And `vfprintf_unlocked` - Completed
 
 Add literal-only unlocked vformat aliases using the existing vformat path that does not consume `va_list` values.
 
