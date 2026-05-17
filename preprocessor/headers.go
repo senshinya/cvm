@@ -282,6 +282,7 @@ double __cvm_tgmath_cos();
 double __cvm_tgmath_tan();
 double __cvm_tgmath_log();
 double __cvm_tgmath_sinh();
+double __cvm_tgmath_cosh();
 #endif
 `
 }
