@@ -293,6 +293,10 @@ double __cvm_tgmath_atanh();
 double __cvm_tgmath_atan2();
 double __cvm_tgmath_hypot();
 double __cvm_tgmath_cbrt();
+double __cvm_tgmath_ceil();
+double __cvm_tgmath_floor();
+double __cvm_tgmath_trunc();
+double __cvm_tgmath_round();
 #endif
 `
 }

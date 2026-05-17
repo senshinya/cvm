@@ -503,6 +503,27 @@ int main(void)
 	}
 }
 
+func TestTgmathRoundingExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  if (ceil(1.25f) != 2.0f)
+    return 1;
+  if (floor(1.75L) != 1.0L)
+    return 2;
+  if (trunc(-1.75f) != -1.0f)
+    return 3;
+  return round(-1.5L) == -2.0L ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-rounding-real.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathComplexSinExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
