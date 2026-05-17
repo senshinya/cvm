@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `e5784fa test(runtime): cover variadic function calls`
+- Latest implementation/coverage commit before this handoff document: `7873756 test(runtime): cover struct function pointer calls`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -107,6 +107,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `7873756 test(runtime): cover struct function pointer calls`
+  - Adds runtime coverage for calling a function pointer that returns a struct containing a complex field.
+  - Adds runtime coverage for passing a struct containing a complex field by value through a function pointer.
+  - Confirms by-value struct arguments are copied before callee mutation.
 
 - `e5784fa test(runtime): cover variadic function calls`
   - Adds runtime coverage for direct variadic function calls with extra arguments.
