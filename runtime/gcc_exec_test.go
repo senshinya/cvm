@@ -439,6 +439,22 @@ int main(void)
 	}
 }
 
+func TestGCCComplexExplicitCastNarrowsThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  __complex__ double z = __builtin_complex(3.0, 4.0);
+  __complex__ float f = (__complex__ float)z;
+  return __builtin_cabsf(f) == 5.0f ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-explicit-cast-narrow-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)

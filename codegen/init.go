@@ -947,6 +947,9 @@ func (fg *funcGen) emitComplexValueCopy(dst address, src sema.Expr, dstType sema
 	if ic, ok := src.(*sema.ImplicitCast); ok && isComplexType(ic.From) && isComplexType(ic.To) {
 		src = ic.X
 	}
+	if ec, ok := src.(*sema.ExplicitCast); ok && isComplexType(ec.X.GetType()) && isComplexType(ec.To) {
+		src = ec.X
+	}
 	srcRealType, err := complexRealType(src.GetType())
 	if err != nil {
 		return err
