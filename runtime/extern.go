@@ -263,11 +263,11 @@ func loadComplexArg(name string, ec *ExternContext, arg Value, realType bytecode
 	if arg.Int > math.MaxUint64-realSize {
 		return 0, fmt.Errorf("%s complex imaginary component address overflows", name)
 	}
-	realPart, err := ec.Memory.Load(arg.Int, realType, int64(realSize))
+	realPart, err := ec.Memory.Load(arg.Int, realType, 1)
 	if err != nil {
 		return 0, err
 	}
-	imagPart, err := ec.Memory.Load(arg.Int+realSize, realType, int64(realSize))
+	imagPart, err := ec.Memory.Load(arg.Int+realSize, realType, 1)
 	if err != nil {
 		return 0, err
 	}

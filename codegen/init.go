@@ -11,11 +11,19 @@ import (
 
 type address struct {
 	emit      func() error
+	align     int64
 	bit       bool
 	layout    int
 	field     int
 	valueType bytecode.ValueType
 	volatile  bool
+}
+
+func (a address) accessAlign(defaultAlign int64) int64 {
+	if a.align > 0 {
+		return a.align
+	}
+	return defaultAlign
 }
 
 type initLeaf struct {
@@ -826,7 +834,7 @@ func (fg *funcGen) emitScalarInitializer(dst address, init sema.Expr, typ sema.T
 	if err := fg.emitValue(init); err != nil {
 		return err
 	}
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.g.alignof(typ), isVolatile(typ)))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, dst.accessAlign(fg.g.alignof(typ)), isVolatile(typ)))
 	return nil
 }
 
@@ -870,7 +878,7 @@ func (fg *funcGen) emitComplexInitializer(dst address, init sema.Expr, typ sema.
 			return err
 		}
 		fg.emitCast(from, realVT, sema.UsualArithmetic)
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(realVT, fg.g.alignof(realType), isVolatile(typ)))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(realVT, savedDst.accessAlign(fg.g.alignof(realType)), isVolatile(typ)))
 		return nil
 	}
 	return fg.emitComplexValueCopy(dst, init, typ)
@@ -896,7 +904,7 @@ func (fg *funcGen) emitImaginaryComplexInitializer(dst address, lit *sema.ImagLi
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpConst, Type: realVT, Float: lit.Value})
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(realVT, fg.g.alignof(realType), isVolatile(typ)))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(realVT, savedDst.accessAlign(fg.g.alignof(realType)), isVolatile(typ)))
 	return nil
 }
 
@@ -947,7 +955,7 @@ func (fg *funcGen) emitBuiltinComplexInitializer(dst address, call *sema.CallExp
 			return err
 		}
 		fg.emitCast(from, realVT, sema.UsualArithmetic)
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(realVT, fg.g.alignof(realType), isVolatile(typ)))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(realVT, savedDst.accessAlign(fg.g.alignof(realType)), isVolatile(typ)))
 	}
 	return nil
 }
@@ -1014,7 +1022,7 @@ func (fg *funcGen) emitComplexValueCopy(dst address, src sema.Expr, dstType sema
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(srcVT, fg.g.alignof(srcRealType), isVolatile(src.GetType())))
 		fg.emitCast(srcVT, dstVT, sema.UsualArithmetic)
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(dstVT, fg.g.alignof(dstRealType), isVolatile(dstType)))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(dstVT, savedDst.accessAlign(fg.g.alignof(dstRealType)), isVolatile(dstType)))
 	}
 	return nil
 }
@@ -1102,7 +1110,7 @@ func (fg *funcGen) saveAddress(src address, name string) (address, error) {
 		return address{}, err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, slot))
-	return address{emit: func() error {
+	return address{align: src.align, emit: func() error {
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, slot))
 		return nil
 	}}, nil
@@ -1132,7 +1140,7 @@ func (fg *funcGen) emitObjectCopyInitializer(dst address, init sema.Expr, typ se
 	if err := fg.emitAddress(init); err != nil {
 		return err
 	}
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(typ), Align: fg.g.alignof(typ), Volatile: isVolatile(typ)})
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(typ), Align: dst.accessAlign(fg.g.alignof(typ)), Volatile: isVolatile(typ)})
 	return nil
 }
 
@@ -1151,7 +1159,7 @@ func (fg *funcGen) emitZeroInitializer(dst address, typ sema.Type) error {
 		}
 		fg.out.Instrs = append(fg.out.Instrs,
 			bytecode.I32Const(0),
-			bytecode.Instr{Op: bytecode.OpMemSet, Size: fg.g.sizeof(typ), Align: fg.g.alignof(typ), Volatile: isVolatile(typ)},
+			bytecode.Instr{Op: bytecode.OpMemSet, Size: fg.g.sizeof(typ), Align: dst.accessAlign(fg.g.alignof(typ)), Volatile: isVolatile(typ)},
 		)
 		return nil
 	}
@@ -1162,7 +1170,7 @@ func (fg *funcGen) emitZeroInitializer(dst address, typ sema.Type) error {
 	if err := dst.emit(); err != nil {
 		return err
 	}
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(vt, 0), bytecode.Store(vt, fg.g.alignof(typ), isVolatile(typ)))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(vt, 0), bytecode.Store(vt, dst.accessAlign(fg.g.alignof(typ)), isVolatile(typ)))
 	return nil
 }
 
@@ -1205,7 +1213,7 @@ func (fg *funcGen) emitIntegerStore(dst address, typ sema.Type, value int64) err
 	if err := dst.emit(); err != nil {
 		return err
 	}
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(vt, value), bytecode.Store(vt, fg.g.alignof(typ), isVolatile(typ)))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(vt, value), bytecode.Store(vt, dst.accessAlign(fg.g.alignof(typ)), isVolatile(typ)))
 	return nil
 }
 
@@ -1228,7 +1236,11 @@ func (fg *funcGen) fieldAddress(base address, container sema.Type, field *sema.F
 		}
 		return address{emit: base.emit, bit: true, layout: layout.ID, field: fieldID, valueType: vt, volatile: layout.Bit[fieldID].Volatile || isVolatile(field.T)}, nil
 	}
-	return fg.offsetAddress(base, field.Offset), nil
+	addr := fg.offsetAddress(base, field.Offset)
+	if align := fg.g.alignof(field.T); align > 1 && field.Offset%align != 0 {
+		addr.align = 1
+	}
+	return addr, nil
 }
 
 func (fg *funcGen) newLocalObject(name string, typ sema.Type) (int, error) {
@@ -1245,7 +1257,7 @@ func (fg *funcGen) offsetAddress(base address, offset int64) address {
 	if offset == 0 {
 		return base
 	}
-	return address{emit: func() error {
+	return address{align: base.align, emit: func() error {
 		if err := base.emit(); err != nil {
 			return err
 		}
