@@ -1083,6 +1083,19 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 			}
 			return fg.emitAddress(lhs)
 		}
+		if rhs.GetCategory() != sema.LValue {
+			rhsSlot := fg.allocSyntheticSlot(".assign.rhs", bytecode.TypeObjectAddr)
+			if err := fg.emitObjectSourceAddress(rhs); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, rhsSlot))
+			if err := fg.emitAddress(lhs); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, rhsSlot))
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(lhs.GetType()), Align: fg.g.alignof(lhs.GetType()), Volatile: isVolatile(lhs.GetType())})
+			return fg.emitAddress(lhs)
+		}
 		if err := fg.emitAddress(lhs); err != nil {
 			return err
 		}

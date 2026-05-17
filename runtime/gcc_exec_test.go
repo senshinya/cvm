@@ -618,6 +618,73 @@ int main(void)
 	}
 }
 
+func TestGCCComplexStructConditionalReturnInitializerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+struct pair make_a(void)
+{
+  struct pair p = { 7, __builtin_complex(3.0, 4.0) };
+  return p;
+}
+
+struct pair make_b(void)
+{
+  struct pair p = { 9, __builtin_complex(5.0, 12.0) };
+  return p;
+}
+
+int main(void)
+{
+  int flag = 0;
+  struct pair p = flag ? make_a() : make_b();
+  return p.tag == 9 && __builtin_cabs(p.value) == 13.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-conditional-return-initializer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCComplexStructConditionalReturnAssignmentExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+struct pair {
+  int tag;
+  __complex__ double value;
+};
+
+struct pair make_a(void)
+{
+  struct pair p = { 7, __builtin_complex(3.0, 4.0) };
+  return p;
+}
+
+struct pair make_b(void)
+{
+  struct pair p = { 9, __builtin_complex(5.0, 12.0) };
+  return p;
+}
+
+int main(void)
+{
+  int flag = 1;
+  struct pair p = { 0, __builtin_complex(0.0, 0.0) };
+  p = flag ? make_a() : make_b();
+  return p.tag == 7 && __builtin_cabs(p.value) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-struct-conditional-return-assignment-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexArrayInitializerExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
