@@ -561,6 +561,23 @@ int main(void)
 	}
 }
 
+func TestTgmathComplexLongDoublePowExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <tgmath.h>
+
+int main(void)
+{
+  complex long double z = __builtin_complex(2.0L, 0.0L);
+  complex long double r = pow(z, 3.0L);
+  return __builtin_cabsl(r) == 8.0L ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "tgmath-complex-long-double-pow.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)
