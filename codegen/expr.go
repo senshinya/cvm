@@ -384,9 +384,12 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 	if err != nil {
 		return err
 	}
-	rhsRealType, err := complexRealType(x.R.GetType())
-	if err != nil {
-		return err
+	rhsRealType := lhsRealType
+	if isComplexType(x.R.GetType()) {
+		rhsRealType, err = complexRealType(x.R.GetType())
+		if err != nil {
+			return err
+		}
 	}
 	lhsVT, err := fg.g.lowerValueType(lhsRealType)
 	if err != nil {
@@ -406,7 +409,7 @@ func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
-	if err := fg.emitComplexSourceAddress(x.R); err != nil {
+	if err := fg.emitComplexSourceAddressAs(x.R, x.L.GetType()); err != nil {
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, rhsAddrSlot))

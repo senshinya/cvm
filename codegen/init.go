@@ -1028,6 +1028,25 @@ func (fg *funcGen) emitComplexSourceAddress(src sema.Expr) error {
 	}
 }
 
+func (fg *funcGen) emitComplexSourceAddressAs(src sema.Expr, targetType sema.Type) error {
+	if isComplexType(src.GetType()) {
+		return fg.emitComplexSourceAddress(src)
+	}
+	object, err := fg.newLocalObject(".complex.rvalue", targetType)
+	if err != nil {
+		return err
+	}
+	dst := address{emit: func() error {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+		return nil
+	}}
+	if err := fg.emitComplexInitializer(dst, src, targetType); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+	return nil
+}
+
 func (fg *funcGen) emitComplexRValueAddress(src sema.Expr) error {
 	object, err := fg.newLocalObject(".complex.rvalue", src.GetType())
 	if err != nil {

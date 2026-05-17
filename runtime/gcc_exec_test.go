@@ -455,6 +455,23 @@ int main(void)
 	}
 }
 
+func TestGCCComplexCompoundAssignRealScalarExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  __complex__ double z = __builtin_complex(1.0, 4.0);
+  z += 2.0;
+  z -= 0.0;
+  return __builtin_cabs(z) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "complex-compound-real-scalar-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func parseGCCExecManifest(t *testing.T, content string) []gccExecCase {
 	t.Helper()
 	cases, err := parseGCCExecManifestContent(content)
