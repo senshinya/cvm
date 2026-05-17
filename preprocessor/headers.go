@@ -59,6 +59,7 @@ int fflush(FILE *);
 int ferror(FILE *);
 void clearerr(FILE *);
 int feof(FILE *);
+size_t fwrite(const void *, size_t, size_t, FILE *);
 int printf(const char *, ...);
 int printf_unlocked(const char *, ...);
 int fprintf(FILE *, const char *, ...);

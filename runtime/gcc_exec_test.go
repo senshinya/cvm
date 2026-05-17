@@ -907,6 +907,22 @@ int main(void)
 	}
 }
 
+func TestStdioFwriteExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char data[4] = { 'D', 'E', 'F', 'G' };
+  return fwrite(data, 2, 2, stdout) == 2 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "stdio-fwrite-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

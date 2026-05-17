@@ -82,6 +82,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		r.Register(name, fputsExtern(name, r))
 	}
 	r.Register("fflush", fflushExtern("fflush", r))
+	r.Register("fwrite", fwriteExtern("fwrite", r))
 	for _, name := range []string{"ferror", "feof"} {
 		r.Register(name, streamStatusExtern(name, r))
 	}
@@ -236,6 +237,47 @@ func fflushExtern(name string, r *ExternRegistry) ExternFunc {
 			}
 		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
+	}
+}
+
+func fwriteExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) || !isPointerType(args[3].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects buffer, size, count, and stream arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		w, ok := r.lookupHostWriter(args[3].Int)
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[3].Int)
+		}
+		size, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if size == 0 || count == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		if size > int64(maxInt())/count {
+			return Value{}, nil, fmt.Errorf("%s byte count overflows", name)
+		}
+		total := size * count
+		block, off, err := ec.Memory.rangeAccess(args[0].Int, total, false)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := w.Write(block.data[off : off+int(total)]); err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, uint64(count)), nil, nil
 	}
 }
 
