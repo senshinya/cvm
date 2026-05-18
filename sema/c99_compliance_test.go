@@ -2,6 +2,38 @@ package sema
 
 import "testing"
 
+func TestC99RejectsTypedefRedeclaration(t *testing.T) {
+	mustReject(t, `
+		typedef unsigned long size_t;
+		typedef unsigned long size_t;
+	`)
+	mustReject(t, `
+		void f(void) {
+			typedef int T;
+			typedef int T;
+		}
+	`)
+	mustReject(t, `
+		typedef int T;
+		typedef long T;
+	`)
+}
+
+func TestC99BuiltinHeadersMayRedeclareSizeT(t *testing.T) {
+	src := `
+		#include <stdio.h>
+		#include <string.h>
+		int main(void) {
+			char buf[8];
+			sprintf(buf, "%s", "ok");
+			return strcmp(buf, "ok");
+		}
+	`
+	if err := preprocessParseAnalyze(t, "header-size-t-redeclaration.c", src, SemaOptions{}); err != nil {
+		t.Fatalf("preprocessor+parser+sema rejected compatible size_t redeclaration: %v", err)
+	}
+}
+
 func TestC99FuncIdentifierIsImplicitInFunctionScope(t *testing.T) {
 	prog := mustAnalyze(t, `
 		extern int strcmp(const char *, const char *);

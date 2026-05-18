@@ -7,7 +7,7 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 	case "stdbool.h":
 		return "#ifndef __CVM_STDBOOL_H\n#define __CVM_STDBOOL_H\n#define bool _Bool\n#define true 1\n#define false 0\n#define __bool_true_false_are_defined 1\n#endif\n", true
 	case "stddef.h":
-		return fmt.Sprintf("#ifndef __CVM_STDDEF_H\n#define __CVM_STDDEF_H\n#define __SIZE_TYPE__ %s\n#define __PTRDIFF_TYPE__ %s\ntypedef __SIZE_TYPE__ size_t;\ntypedef __PTRDIFF_TYPE__ ptrdiff_t;\n#define NULL ((void *)0)\n#endif\n", target.SizeType, target.PtrdiffType), true
+		return fmt.Sprintf("#ifndef __CVM_STDDEF_H\n#define __CVM_STDDEF_H\n#define __SIZE_TYPE__ %s\n#define __PTRDIFF_TYPE__ %s\n#ifndef __CVM_SIZE_T\n#define __CVM_SIZE_T\ntypedef __SIZE_TYPE__ size_t;\n#endif\ntypedef __PTRDIFF_TYPE__ ptrdiff_t;\n#define NULL ((void *)0)\n#endif\n", target.SizeType, target.PtrdiffType), true
 	case "stdarg.h":
 		return "#ifndef __CVM_STDARG_H\n#define __CVM_STDARG_H\ntypedef __builtin_va_list va_list;\n#define va_start(ap, last) __builtin_va_start(ap, last)\n#define va_end(ap) __builtin_va_end(ap)\n#define va_arg(ap, type) ((type)0)\n#endif\n", true
 	case "stdint.h":
@@ -138,7 +138,10 @@ long double complex cpowl(long double complex, long double complex);
 func stdioHeader() string {
 	return `#ifndef __CVM_STDIO_H
 #define __CVM_STDIO_H
+#ifndef __CVM_SIZE_T
+#define __CVM_SIZE_T
 typedef __SIZE_TYPE__ size_t;
+#endif
 typedef struct __cvm_FILE FILE;
 typedef long fpos_t;
 #define EOF (-1)
@@ -224,7 +227,10 @@ int vsnprintf(char *, size_t, const char *, void *);
 func stdlibHeader() string {
 	return `#ifndef __CVM_STDLIB_H
 #define __CVM_STDLIB_H
+#ifndef __CVM_SIZE_T
+#define __CVM_SIZE_T
 typedef __SIZE_TYPE__ size_t;
+#endif
 typedef __WCHAR_TYPE__ wchar_t;
 typedef struct { int quot; int rem; } div_t;
 typedef struct { long quot; long rem; } ldiv_t;
@@ -320,7 +326,10 @@ time_t time(time_t *);
 func stringHeader() string {
 	return `#ifndef __CVM_STRING_H
 #define __CVM_STRING_H
+#ifndef __CVM_SIZE_T
+#define __CVM_SIZE_T
 typedef __SIZE_TYPE__ size_t;
+#endif
 int strcmp(const char *, const char *);
 int memcmp(const void *, const void *, size_t);
 int strncmp(const char *, const char *, size_t);
@@ -357,7 +366,10 @@ char *strncat(char *, const char *, size_t);
 func stringsHeader() string {
 	return `#ifndef __CVM_STRINGS_H
 #define __CVM_STRINGS_H
+#ifndef __CVM_SIZE_T
+#define __CVM_SIZE_T
 typedef __SIZE_TYPE__ size_t;
+#endif
 int bcmp(const void *, const void *, size_t);
 void bcopy(const void *, void *, size_t);
 void bzero(void *, size_t);
@@ -368,7 +380,10 @@ void bzero(void *, size_t);
 func builtinChkHeader() string {
 	return `#ifndef __CVM_BUILTIN_CHK_H
 #define __CVM_BUILTIN_CHK_H
+#ifndef __CVM_SIZE_T
+#define __CVM_SIZE_T
 typedef __SIZE_TYPE__ size_t;
+#endif
 void *memcpy(void *, const void *, size_t);
 void *mempcpy(void *, const void *, size_t);
 void *memmove(void *, const void *, size_t);
