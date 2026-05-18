@@ -1064,6 +1064,22 @@ go test ./runtime -run 'TestComplexInverseTrigExterns|TestComplexInverseTrigExec
   - `feat(runtime): add complex inverse trig externs`
   - `docs: record complex inverse trig externs`
 
+## Plan 77: Plain `<complex.h>` Inverse Hyperbolic Helpers - Completed
+
+The pre-plan adjustment selected the remaining inverse hyperbolic complex unary helpers after the circular inverse helpers landed. Tests use exact `0+0i` and `1+0i` cases.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinComplexHeaderDeclaresProjectionSurface -count=1 -v
+go test ./runtime -run 'TestComplexInverseHyperbolicExterns|TestComplexInverseHyperbolicExecutesThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add complex inverse hyperbolic externs`
+  - `docs: record complex inverse hyperbolic externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
