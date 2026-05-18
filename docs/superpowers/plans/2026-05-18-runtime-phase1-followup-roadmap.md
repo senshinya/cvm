@@ -1534,6 +1534,26 @@ go test ./runtime -run TestPlainAllocationExecuteThroughRuntime -count=1 -v
 - Commit message:
   - `test(runtime): combine stdlib and string headers`
 
+## Plan 154: VLA Candidate Rescan - Completed
+
+The pre-plan adjustment rescanned VLA-related GCC accept fixtures. Existing runtime coverage already maps to `vla-2.c`, `vla-26.c`, and `Wstrict-aliasing-bogus-vla-1.c`. The clean remaining low-risk shape was `c99-vla-1.c`: a typedef naming a VLA, a local object of that typedef type, and a pointer to that VLA.
+
+## Plan 155: VLA Typedef Pointer Runtime Coverage - Completed
+
+Added a focused runtime probe derived from `c99-vla-1.c`. It fills a VLA through `A *p = &a` and reads back dynamic-indexed elements through the pointer.
+
+- Files: `runtime/gcc_exec_test.go`
+- Focused tests:
+
+```bash
+go test ./runtime -run TestGCCVLATypedefPointerExecutesThroughRuntime -count=1 -v
+go test ./runtime -run 'TestGCCVLA(StructAndUnionMembers|ParameterDynamicStride|MemcpyDynamicSize|TypedefPointer)ExecutesThroughRuntime' -count=1 -v
+go test ./runtime -run TestGCCVLAStructAndUnionMembersExecuteThroughRuntime -count=1 -v
+```
+
+- Commit message:
+  - `test(runtime): execute VLA typedef pointer access`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.

@@ -154,6 +154,9 @@ Recent commits at the tip of this branch:
   - Adds direct runtime coverage inspired by `Wstrict-aliasing-bogus-vla-1.c`.
   - Exercises local VLA allocation, dynamic `sizeof(*x)` sizing, and `__builtin_memcpy` over the resulting dynamic byte count.
   - Complements existing runtime coverage for `vla-2.c`-style VLA struct/union members and `vla-26.c`-style VLA parameter dynamic strides.
+- `d8b98e6 test(runtime): execute VLA typedef pointer access`
+  - Adds direct runtime coverage inspired by `c99-vla-1.c`.
+  - Exercises a typedef naming a VLA, taking its address through a pointer-to-VLA, and indexing through that pointer with dynamic bounds.
 
 - `eaf0dc4 test(runtime): execute GCC declaration-after-statement fixture`
   - Adds a direct runtime coverage test for `sema/testdata/gcc-c90-as-c99/accept/Wdeclaration-after-statement-4.c`.
