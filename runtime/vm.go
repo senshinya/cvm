@@ -603,10 +603,18 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		fr.activeVaList = ins.Slot
 		fr.hasActiveVa = true
 	case bytecode.OpVaArg:
-		if !fr.hasActiveVa {
-			return ExitStatus{}, true, vm.trap("va_arg without active va_list")
+		slot := ins.Slot
+		cursor, ok := fr.vaLists[slot]
+		if !ok {
+			if !fr.hasActiveVa {
+				return ExitStatus{}, true, vm.trap("va_arg without active va_list")
+			}
+			slot = fr.activeVaList
+			cursor, ok = fr.vaLists[slot]
+			if !ok {
+				return ExitStatus{}, true, vm.trap("va_arg without active va_list")
+			}
 		}
-		cursor := fr.vaLists[fr.activeVaList]
 		if cursor < 0 || cursor >= len(fr.variadicArgs) {
 			return ExitStatus{}, true, vm.trap("va_arg past end of arguments")
 		}
@@ -614,8 +622,14 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if v.Type != ins.Type {
 			return ExitStatus{}, true, vm.trap(fmt.Sprintf("va_arg has type %s, want %s", v.Type, ins.Type))
 		}
-		fr.vaLists[fr.activeVaList] = cursor + 1
+		fr.vaLists[slot] = cursor + 1
 		vm.stack = append(vm.stack, v)
+	case bytecode.OpVaCopy:
+		cursor, ok := fr.vaLists[ins.Object]
+		if !ok {
+			return ExitStatus{}, true, vm.trap("va_copy from inactive va_list")
+		}
+		fr.vaLists[ins.Slot] = cursor
 	case bytecode.OpVaEnd:
 		delete(fr.vaLists, ins.Slot)
 		if fr.hasActiveVa && fr.activeVaList == ins.Slot {

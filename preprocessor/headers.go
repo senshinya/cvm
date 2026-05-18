@@ -9,7 +9,7 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 	case "stddef.h":
 		return fmt.Sprintf("#ifndef __CVM_STDDEF_H\n#define __CVM_STDDEF_H\n#define __SIZE_TYPE__ %s\n#define __PTRDIFF_TYPE__ %s\n#ifndef __CVM_SIZE_T\n#define __CVM_SIZE_T\ntypedef __SIZE_TYPE__ size_t;\n#endif\ntypedef __PTRDIFF_TYPE__ ptrdiff_t;\n#define NULL ((void *)0)\n#endif\n", target.SizeType, target.PtrdiffType), true
 	case "stdarg.h":
-		return "#ifndef __CVM_STDARG_H\n#define __CVM_STDARG_H\ntypedef __builtin_va_list va_list;\n#define va_start(ap, last) __builtin_va_start(ap, last)\n#define va_end(ap) __builtin_va_end(ap)\n#define va_arg(ap, type) (*(type *)__builtin_va_arg(ap))\n#endif\n", true
+		return "#ifndef __CVM_STDARG_H\n#define __CVM_STDARG_H\ntypedef __builtin_va_list va_list;\n#define va_start(ap, last) __builtin_va_start(ap, last)\n#define va_end(ap) __builtin_va_end(ap)\n#define va_copy(dst, src) __builtin_va_copy(dst, src)\n#define va_arg(ap, type) (*(type *)__builtin_va_arg(ap))\n#endif\n", true
 	case "stdint.h":
 		return stdintHeader(target), true
 	case "inttypes.h":

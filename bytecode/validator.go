@@ -749,7 +749,17 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, 
 			return nil, fmt.Errorf("%v in non-variadic function", ins.Op)
 		}
 	case OpVaArg:
+		if ins.Slot < 0 {
+			return nil, fmt.Errorf("%v references negative va_list slot %d", ins.Op, ins.Slot)
+		}
 		push(ins.Type)
+	case OpVaCopy:
+		if ins.Slot < 0 {
+			return nil, fmt.Errorf("%v references negative destination va_list slot %d", ins.Op, ins.Slot)
+		}
+		if ins.Object < 0 {
+			return nil, fmt.Errorf("%v references negative source va_list slot %d", ins.Op, ins.Object)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported opcode %v", ins.Op)
 	}

@@ -90,7 +90,42 @@ git push
 
 ## Milestone 3: `va_copy`, Multiple `va_list`, And Nested Varargs
 
-**Calibration:** Pending after Milestone 2.
+**Calibration:** Completed after Milestone 2. `va_copy` had no header, sema builtin, codegen, or runtime support. VM frames already kept a cursor per va-list slot, but `OpVaArg` read `activeVaList`, so multiple live source-level `va_list` variables were not independent.
+
+**Files:**
+- Modify: `bytecode/opcode.go`
+- Modify: `bytecode/printer.go`
+- Modify: `bytecode/printer_test.go`
+- Modify: `bytecode/validator.go`
+- Modify: `runtime/vm.go`
+- Modify: `preprocessor/headers.go`
+- Modify: `sema/builtin.go`
+- Modify: `codegen/expr.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add failing multiple-list and `va_copy` tests**
+
+Added `TestGCCSourceVaArgMultipleListsExecuteIndependently` and `TestGCCSourceVaCopyExecutesThroughRuntime`.
+
+- [x] **Step 2: Make source-level `va_arg` slot-aware**
+
+Changed codegen to emit the `va_list` slot on `OpVaArg`, and changed the VM to advance that slot instead of always using the last active `va_list`.
+
+- [x] **Step 3: Add `OpVaCopy`**
+
+Added bytecode, printer, validator, VM, header, sema builtin, and codegen support for `va_copy(dst, src)`.
+
+- [x] **Step 4: Verify, commit, and push**
+
+Run Common Verification, then:
+
+```bash
+git add bytecode/opcode.go bytecode/printer.go bytecode/printer_test.go bytecode/validator.go runtime/vm.go preprocessor/headers.go sema/builtin.go codegen/expr.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(runtime): support source va_copy"
+git push
+```
 
 ## Milestone 4: Formatted Input Runtime
 

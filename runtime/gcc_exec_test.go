@@ -4590,6 +4590,64 @@ int main(void)
 	}
 }
 
+func TestGCCSourceVaArgMultipleListsExecuteIndependently(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+int check(int n, ...)
+{
+  va_list a;
+  va_list b;
+  va_start(a, n);
+  va_start(b, n);
+  int ax = va_arg(a, int);
+  int bx = va_arg(b, int);
+  int ay = va_arg(a, int);
+  va_end(b);
+  va_end(a);
+  return ax == 5 && bx == 5 && ay == 7;
+}
+
+int main(void)
+{
+  return check(2, 5, 7) ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-multiple-lists-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaCopyExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+int check(int n, ...)
+{
+  va_list a;
+  va_list b;
+  va_start(a, n);
+  int first = va_arg(a, int);
+  va_copy(b, a);
+  int second = va_arg(a, int);
+  int copied = va_arg(b, int);
+  va_end(b);
+  va_end(a);
+  return first == 1 && second == 2 && copied == 2;
+}
+
+int main(void)
+{
+  return check(2, 1, 2) ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-copy-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCVFormatNoArgumentExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdarg.h>

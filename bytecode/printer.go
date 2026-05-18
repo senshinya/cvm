@@ -196,6 +196,8 @@ func FormatInstr(i Instr) string {
 		return fmt.Sprintf("VaStart slot=%d", i.Slot)
 	case OpVaArg:
 		return fmt.Sprintf("%sVaArg", instrTypePrefix(i.Type))
+	case OpVaCopy:
+		return fmt.Sprintf("VaCopy dst=%d src=%d", i.Slot, i.Object)
 	case OpVaEnd:
 		return fmt.Sprintf("VaEnd slot=%d", i.Slot)
 	default:

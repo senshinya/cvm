@@ -797,6 +797,8 @@ func (fg *funcGen) emitCall(x *sema.CallExpr) error {
 		return fg.emitBuiltinVaStart(x)
 	} else if name == "__builtin_va_end" {
 		return fg.emitBuiltinVaEnd(x)
+	} else if name == "__builtin_va_copy" {
+		return fg.emitBuiltinVaCopy(x)
 	}
 	if name := tgmathPseudoCallName(x.Callee); name != "" {
 		return fg.emitTgmathCall(x, name)
@@ -872,6 +874,22 @@ func (fg *funcGen) emitBuiltinVaEnd(x *sema.CallExpr) error {
 	return nil
 }
 
+func (fg *funcGen) emitBuiltinVaCopy(x *sema.CallExpr) error {
+	if len(x.Args) < 2 {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "__builtin_va_copy requires destination and source va_list arguments"}
+	}
+	dst, err := fg.vaListSlot(x.Args[0])
+	if err != nil {
+		return &Error{Pos: x.Args[0].Pos().SourceStart, Node: fmt.Sprintf("%T", x.Args[0]), Op: "emitValue", Reason: err.Error()}
+	}
+	src, err := fg.vaListSlot(x.Args[1])
+	if err != nil {
+		return &Error{Pos: x.Args[1].Pos().SourceStart, Node: fmt.Sprintf("%T", x.Args[1]), Op: "emitValue", Reason: err.Error()}
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpVaCopy, Slot: dst, Object: src})
+	return nil
+}
+
 func (fg *funcGen) vaListSlot(e sema.Expr) (int, error) {
 	for {
 		cast, ok := e.(*sema.ImplicitCast)
@@ -910,11 +928,18 @@ func (fg *funcGen) emitBuiltinVaArgValue(e sema.Expr) (bool, error) {
 	if !ok || builtinCallName(call.Callee) != "__builtin_va_arg" {
 		return false, nil
 	}
+	if len(call.Args) < 1 {
+		return true, &Error{Pos: call.Pos().SourceStart, Node: fmt.Sprintf("%T", call), Op: "emitValue", Reason: "__builtin_va_arg requires a va_list argument"}
+	}
+	slot, err := fg.vaListSlot(call.Args[0])
+	if err != nil {
+		return true, &Error{Pos: call.Args[0].Pos().SourceStart, Node: fmt.Sprintf("%T", call.Args[0]), Op: "emitValue", Reason: err.Error()}
+	}
 	typ, err := fg.g.lowerValueType(un.T)
 	if err != nil {
 		return true, err
 	}
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpVaArg, Type: typ})
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpVaArg, Type: typ, Slot: slot})
 	return true, nil
 }
 

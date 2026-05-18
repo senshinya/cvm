@@ -10,15 +10,19 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 
 ## Current High-Value Gaps
 
-1. Source-level `<stdarg.h>` still defines `va_arg(ap, type)` as `((type)0)`, even though the bytecode VM can execute `OpVaArg` and v-format externs can consume a CVM memory-backed `va_list` layout.
-2. `va_copy` and multiple live `va_list` traversal semantics need coverage once source-level `va_arg` is no longer a placeholder.
-3. Formatted input functions are not yet modeled as a bounded runtime surface.
-4. Hermetic `FILE *` handles have useful read/write/seek behavior, but Phase 3 should calibrate remaining mode and state transitions before expanding them.
-5. `getenv` currently returns null from a hermetic stub. Phase 3 can add configured environment variables without reading ambient host environment.
-6. `atexit` currently accepts callbacks without executing them. Phase 3 can add deterministic callback execution at normal program termination.
-7. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
-8. Runtime diagnostics should be audited after the larger hosted surfaces settle.
-9. `cvm run` should expose only stable deterministic runtime knobs.
+1. Formatted input functions are not yet modeled as a bounded runtime surface.
+2. Hermetic `FILE *` handles have useful read/write/seek behavior, but Phase 3 should calibrate remaining mode and state transitions before expanding them.
+3. `getenv` currently returns null from a hermetic stub. Phase 3 can add configured environment variables without reading ambient host environment.
+4. `atexit` currently accepts callbacks without executing them. Phase 3 can add deterministic callback execution at normal program termination.
+5. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
+6. Runtime diagnostics should be audited after the larger hosted surfaces settle.
+7. `cvm run` should expose only stable deterministic runtime knobs.
+
+## Closed During Phase 3
+
+- `va_arg(ap, type)` now lowers through `__builtin_va_arg` and executes VM `OpVaArg` for source-level integer and pointer reads.
+- Multiple live source-level `va_list` cursors are independent because codegen emits slot-aware `OpVaArg`.
+- `va_copy(dst, src)` now lowers through `__builtin_va_copy` and executes VM `OpVaCopy`.
 
 ## First Milestone Decision
 
