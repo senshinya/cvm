@@ -10,7 +10,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 
 ## Current High-Value Gaps
 
-1. Phase 3 implementation milestones are closed. The remaining work is final closure documentation and any review follow-up.
+1. No current Phase 3 implementation gap remains. Future hosted-runtime work should be scoped as a new phase or review follow-up.
 
 ## Closed During Phase 3
 

@@ -8,10 +8,10 @@ This document records the current state of the bytecode/runtime work so the bran
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document update: `e363b6d fix(codegen): propagate captures through nested function pointers`
+- Branch: `codex/bytecode-runtime-phase-3`
+- Latest implementation/coverage commit before this handoff document update: `d236c59 feat(runtime): configure cvm run stdin and env`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: `origin/codex/bytecode-runtime-phase-1`
+- Upstream: `origin/codex/bytecode-runtime-phase-3`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-1 origin/codex/bytecode-runtime-phase-1
+git switch -c codex/bytecode-runtime-phase-3 origin/codex/bytecode-runtime-phase-3
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-1` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-3` instead.
 
 ## Verification Commands
 
@@ -41,6 +41,33 @@ git diff --check
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./codegen -count=1
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./... -count=1
 ```
+
+## Phase 3 Closure
+
+Phase 3 runtime ABI fidelity is closed on `codex/bytecode-runtime-phase-3`.
+
+Closed Phase 3 milestones:
+
+- Baseline roadmap and gap map.
+- Source-level `va_arg` lowering for integer, pointer, long double, complex, struct, and union values.
+- Multiple live source-level `va_list` cursors and `va_copy`.
+- Bounded formatted input: `sscanf`, `scanf`, `fscanf`, integer/string/char conversions, assignment suppression, and `%n`.
+- FILE state: EOF/error/clear/close behavior plus read/write mode error indicators.
+- Hermetic file mode expansion for `r`, `w`, `a`, `+`, and append write positioning.
+- Explicit configured environment via `ExternRegistry.SetEnv` and `cvm run --env NAME=VALUE`.
+- Program termination semantics: `atexit` callbacks run in reverse order for normal termination and `exit`, while `_Exit` skips them.
+- Long double/complex ABI sweep, including preservation of `f`/`l` floating literal suffix types before default argument promotion.
+- Struct/union ABI sweep through aggregate `va_arg` coverage.
+- GCC runtime fixture sweep: manifest gap report remains closed.
+- Runtime status/error stabilization: internal atexit cleanup state no longer leaks through `ExitStatus`.
+- CLI runtime UX: `cvm run --stdin text` and `--env NAME=VALUE` configure deterministic hosted state.
+
+Residual bounded surfaces after Phase 3:
+
+- Formatted input remains intentionally scoped to integer/string/char conversions; scansets, floating input, pointer input, and exact EOF corner semantics are deferred until a fixture or workflow requires them.
+- Update-mode streams do not enforce the C sequencing rule requiring a flush or positioning operation between certain read/write direction changes.
+- Capturing GNU nested-function closure pointers follow stack-trampoline lifetime rules; calling one after the enclosing frame returns remains invalid.
+- Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
 
 ## Completed Work
 
@@ -1557,8 +1584,8 @@ Runtime support exists for real math externs and for the Phase 1 complex math ex
 - Bytecode design is intended to be complete enough for the compiler artifact, but execution support is still catching up.
 - Broader complex runtime execution outside the Phase 1 math extern surface is not complete.
 - Broader long double runtime memory/operations outside the Phase 1 math extern surface are still limited in places.
-- `va_list` execution has two partial paths: bytecode `OpVa*` uses an interpreter-internal frame cursor, and v-format externs can consume the CVM memory-backed `va_list` layout. Ordinary C source-level `va_arg(ap, type)` is still not lowered into that memory layout.
-- Standard input can be configured through the default extern registry constructors. File streams can be configured hermetically through `ExternRegistry.AddFile`, `fopen`, `tmpfile`, `remove`, `rename`, `fseek`, `ftell`, and stdio read/write helpers; direct host filesystem access and interactive terminal behavior are intentionally not modeled.
+- `va_list` execution has two bounded paths: source-level `va_arg(ap, type)` uses bytecode `OpVa*` over an interpreter-internal frame cursor, while v-format externs consume the CVM memory-backed `va_list` layout.
+- Standard input can be configured through the default extern registry constructors or `cvm run --stdin text`. File streams can be configured hermetically through `ExternRegistry.AddFile`, `fopen`, `tmpfile`, `remove`, `rename`, `fseek`, `ftell`, and stdio read/write helpers; direct host filesystem access and interactive terminal behavior are intentionally not modeled.
 - `fclose` now invalidates known host stream handles. Broader FILE lifetime behavior beyond standard host streams remains intentionally narrow.
 - The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation. Phase 1 runtime execution has also closed the low-risk non-math `main` candidate set; remaining compile-only `main` fixtures are intentionally not runtime targets for the reasons listed above.
 - Static-chain support now includes runtime-managed closure/trampoline pointers for capturing GNU nested functions while their creating frame is alive. Calling one after the enclosing frame has returned remains intentionally invalid, matching stack-trampoline lifetime constraints.
@@ -1566,10 +1593,10 @@ Runtime support exists for real math externs and for the Phase 1 complex math ex
 
 ## Suggested Next Work
 
-The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, the first Phase 2 runtime environment milestone is complete, and the bounded Phase 2B `va_list`/file-stream/nested-trampoline runtime work is complete. Suggested next directions:
+The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, Phase 2 and Phase 2B are closed, and Phase 3 runtime ABI fidelity is closed. Suggested next directions:
 
 - Expand runtime execution coverage only when a fixture has stable runtime semantics or when the required semantics are explicitly brought into scope.
-- Treat any further Phase 2 work as a newly scoped hosted-runtime or ABI milestone rather than continuing the now-closed bounded Phase 2B set.
+- Treat any further hosted runtime work as a newly scoped Phase 4 milestone rather than continuing the now-closed Phase 3 set.
 
 Recommended workflow:
 

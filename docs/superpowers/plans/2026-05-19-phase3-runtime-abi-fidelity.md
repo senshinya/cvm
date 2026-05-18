@@ -481,4 +481,27 @@ git push
 
 ## Milestone 14: Phase 3 Closure Docs
 
-**Calibration:** Pending after all earlier milestones are implemented or closed.
+**Calibration:** Completed after all earlier milestones were implemented or closed. The branch has one coherent commit per Phase 3 increment, the gap map now lists no remaining Phase 3 implementation gap, and the handoff document needed to be brought forward from the old Phase 1/2 branch state.
+
+**Files:**
+- Modify: `docs/bytecode-runtime-handoff.md`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Update handoff state**
+
+Updated the handoff branch/upstream, latest implementation commit, Phase 3 closure summary, residual bounded surfaces, and suggested next-work language.
+
+- [x] **Step 2: Close gap map**
+
+Changed the high-value gap summary to say no Phase 3 implementation gap remains and future hosted-runtime work should be scoped as a new phase or review follow-up.
+
+- [x] **Step 3: Final verify, commit, and push closure docs**
+
+Run Common Verification, then:
+
+```bash
+git add docs/bytecode-runtime-handoff.md docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "docs: close phase 3 runtime abi work"
+git push
+```
