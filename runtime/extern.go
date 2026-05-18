@@ -132,6 +132,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("strtold", strtoFloatExtern("strtold", bytecode.TypeFLong))
 	r.Register("rand", randExtern("rand", r))
 	r.Register("srand", srandExtern("srand", r))
+	r.Register("getenv", getenvExtern("getenv"))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
@@ -738,6 +739,24 @@ func srandExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		r.randSeed = uint32(unsignedInt(args[0]))
 		return Value{}, nil, nil
+	}
+}
+
+func getenvExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(0), nil, nil
 	}
 }
 

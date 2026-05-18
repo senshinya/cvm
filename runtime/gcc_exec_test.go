@@ -880,6 +880,23 @@ int main(void)
 	}
 }
 
+func TestStdlibGetenvExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  if (getenv("PATH") != 0)
+    return 1;
+  return getenv("") == 0 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-getenv-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibExitExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>
