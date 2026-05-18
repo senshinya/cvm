@@ -952,6 +952,22 @@ go test ./runtime -run 'TestTgmathFrexpExtern|TestMathPlainUnaryExecuteThroughRu
   - `feat(runtime): add plain frexp math externs`
   - `docs: record plain frexp math externs`
 
+## Plan 70: Plain `remquo` `math.h` Helpers - Completed
+
+The pre-plan adjustment confirmed plain `remquo*` remained the last pointer-output real math family missing from `<math.h>` declarations and default runtime registration. This plan adds plain `remquo*` declarations and extern registrations.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestTgmathRemquoExtern|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain remquo math externs`
+  - `docs: record plain remquo math externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
