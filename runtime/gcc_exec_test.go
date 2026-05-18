@@ -348,7 +348,13 @@ int main(void)
     return 7;
   if (cos(0.0) != 1.0 || cosf(0.0f) != 1.0f || cosl(0.0L) != 1.0L)
     return 8;
-  return tan(0.0) == 0.0 && tanf(0.0f) == 0.0f && tanl(0.0L) == 0.0L ? 0 : 9;
+  if (tan(0.0) != 0.0 || tanf(0.0f) != 0.0f || tanl(0.0L) != 0.0L)
+    return 9;
+  if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
+    return 10;
+  if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
+    return 11;
+  return hypot(3.0, 4.0) == 5.0 && hypotf(3.0f, 4.0f) == 5.0f && hypotl(3.0L, 4.0L) == 5.0L ? 0 : 12;
 }
 `
 	st := runGCCExecFixture(t, "math-plain-unary-runtime.c", source)

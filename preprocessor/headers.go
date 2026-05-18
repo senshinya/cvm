@@ -427,6 +427,15 @@ long double cosl(long double);
 float tanf(float);
 double tan(double);
 long double tanl(long double);
+float powf(float, float);
+double pow(double, double);
+long double powl(long double, long double);
+float atan2f(float, float);
+double atan2(double, double);
+long double atan2l(long double, long double);
+float hypotf(float, float);
+double hypot(double, double);
+long double hypotl(long double, long double);
 #endif
 int __cvm_fpclassifyf(float);
 int __cvm_fpclassify(double);
