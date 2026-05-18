@@ -99,7 +99,7 @@ go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -coun
   - `feat(runtime): add string reverse set search externs`
   - `docs: record string reverse set search externs`
 
-## Plan 17: `string.h` Span Helpers
+## Plan 17: `string.h` Span Helpers - Completed
 
 Add `strspn` and `strcspn` declarations, sema signatures, runtime externs, direct coverage, and GCC runtime execution coverage.
 
