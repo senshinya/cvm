@@ -515,6 +515,22 @@ go test ./runtime -run TestAssertHeaderExecuteThroughRuntime -count=1 -v
   - `feat(runtime): add assert header surface`
   - `docs: record assert header surface`
 
+## Plan 43: `stdio.h` Position Stubs - Completed
+
+The pre-plan adjustment found `scanf` too broad for phase 1 because it needs real format parsing, input consumption, typed write-back, and conversion-count semantics. This plan instead adds narrower `stdio` position helpers: `SEEK_SET`, `SEEK_CUR`, `SEEK_END`, `fseek`, `ftell`, and `rewind`. Runtime validates host-backed stream handles; `fseek` and `ftell` conservatively report failure, while `rewind` clears EOF state.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run 'TestBuiltinStdioHeaderDeclaresFormattingSurface|TestBuiltinStdioHeaderDefinesBufferingMacros' -count=1 -v
+go test ./runtime -run 'TestStdioPositionStubs|TestStdioPositionStubsExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdio position stubs`
+  - `docs: record stdio position stubs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
