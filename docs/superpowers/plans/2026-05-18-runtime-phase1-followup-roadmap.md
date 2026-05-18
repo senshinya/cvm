@@ -531,6 +531,22 @@ go test ./runtime -run 'TestStdioPositionStubs|TestStdioPositionStubsExecuteThro
   - `feat(runtime): add stdio position stubs`
   - `docs: record stdio position stubs`
 
+## Plan 44: Plain `math.h` Unary Helpers - Completed
+
+The pre-plan adjustment found tgmath real unary dispatch already covered, but plain `<math.h>` did not declare or register ordinary `fabs*` and `sqrt*` helpers. This plan adds direct header declarations and runtime externs for `fabs`, `fabsf`, `fabsl`, `sqrt`, `sqrtf`, and `sqrtl`, backed by the existing unary math runtime helper.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain math unary externs`
+  - `docs: record plain math unary externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
