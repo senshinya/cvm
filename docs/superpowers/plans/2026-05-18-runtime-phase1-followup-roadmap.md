@@ -227,7 +227,7 @@ go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -coun
   - `feat(runtime): add string strnlen extern`
   - `docs: record string strnlen extern`
 
-## Plan 25: `stdlib.h` `realloc`
+## Plan 25: `stdlib.h` `realloc` - Completed
 
 Add `realloc` declaration, runtime extern, direct coverage, and GCC runtime execution coverage. The extern should support `realloc(NULL, size)` as allocation, `realloc(ptr, 0)` as free-and-null, and copying the common prefix from the old allocation into a new runtime block for normal resizing.
 
