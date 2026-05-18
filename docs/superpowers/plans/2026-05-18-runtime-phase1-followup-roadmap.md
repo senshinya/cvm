@@ -680,6 +680,22 @@ go test ./codegen -run 'TestGCCBytecodeManifest|TestGCCBytecodeCompileManifest|T
 - Commit message:
   - `docs: record gcc fixture gap recheck`
 
+## Plan 53: Plain Rounding `math.h` Helpers - Completed
+
+The pre-plan adjustment found no GCC fixture gap to add, so this plan continued the plain `<math.h>` surface using existing tgmath-compatible unary runtime helpers. It adds `ceil*`, `floor*`, `trunc*`, and `round*` declarations and extern registrations.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain rounding math externs`
+  - `docs: record plain rounding math externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
