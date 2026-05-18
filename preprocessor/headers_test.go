@@ -82,7 +82,7 @@ func TestBuiltinStdlibHeaderDeclaresRuntimeSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"abs", "labs", "llabs", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "malloc", "calloc", "free", "strdup", "exit", "abort"} {
+	for _, name := range []string{"abs", "labs", "llabs", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "malloc", "calloc", "free", "strdup", "exit", "abort"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("stdlib identifier %q missing: %#v", name, res.Tokens)
 		}

@@ -134,6 +134,8 @@ unsigned long strtoul(const char *, char **, int);
 long long strtoll(const char *, char **, int);
 unsigned long long strtoull(const char *, char **, int);
 double strtod(const char *, char **);
+float strtof(const char *, char **);
+long double strtold(const char *, char **);
 void *malloc(size_t);
 void *calloc(size_t, size_t);
 void free(void *);

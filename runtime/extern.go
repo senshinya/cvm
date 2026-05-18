@@ -123,7 +123,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("strtoul", strtoIntegerExtern("strtoul", bytecode.TypeU64, false))
 	r.Register("strtoll", strtoIntegerExtern("strtoll", bytecode.TypeI64, true))
 	r.Register("strtoull", strtoIntegerExtern("strtoull", bytecode.TypeU64, false))
-	r.Register("strtod", strtodExtern("strtod"))
+	r.Register("strtod", strtoFloatExtern("strtod", bytecode.TypeF64))
+	r.Register("strtof", strtoFloatExtern("strtof", bytecode.TypeF32))
+	r.Register("strtold", strtoFloatExtern("strtold", bytecode.TypeFLong))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
@@ -678,7 +680,7 @@ func atofExtern(name string) ExternFunc {
 	}
 }
 
-func strtodExtern(name string) ExternFunc {
+func strtoFloatExtern(name string, ret bytecode.ValueType) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
@@ -706,7 +708,7 @@ func strtodExtern(name string) ExternFunc {
 				return Value{}, nil, err
 			}
 		}
-		return FloatValue(bytecode.TypeF64, parsed.value), nil, nil
+		return FloatValue(ret, parsed.value), nil, nil
 	}
 }
 

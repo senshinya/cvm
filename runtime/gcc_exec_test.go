@@ -1179,6 +1179,29 @@ int main(void)
 	}
 }
 
+func TestStdlibMoreFloatParserExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  char *end = 0;
+
+  if (strtof(" 1.5!", &end) != 1.5f)
+    return 1;
+  if (*end != '!')
+    return 2;
+  if (strtold("-0x1.4p+2z", &end) != -5.0L)
+    return 3;
+  return *end == 'z' ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-more-float-parser-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestCtypeClassificationExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <ctype.h>
