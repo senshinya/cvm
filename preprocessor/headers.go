@@ -162,6 +162,7 @@ char *getenv(const char *);
 int system(const char *);
 int atexit(void (*)(void));
 void exit(int);
+void _Exit(int);
 void abort(void);
 #endif
 `

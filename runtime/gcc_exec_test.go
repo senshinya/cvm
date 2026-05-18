@@ -1025,6 +1025,22 @@ int main(void)
 	}
 }
 
+func TestStdlibImmediateExitExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  _Exit(24);
+  return 1;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-immediate-exit-runtime.c", source)
+	if st.Code != 24 {
+		t.Fatalf("exit code = %d, want 24", st.Code)
+	}
+}
+
 func TestBuiltinObjectSizeExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

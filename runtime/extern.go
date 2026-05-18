@@ -58,16 +58,8 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 
 func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r := NewExternRegistry(stdout, stderr)
-	r.Register("exit", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
-		if len(args) != 1 {
-			return Value{}, nil, fmt.Errorf("exit expects 1 argument")
-		}
-		code, err := args[0].ExitCode()
-		if err != nil {
-			return Value{}, nil, err
-		}
-		return Value{}, &ExitStatus{Code: code}, nil
-	})
+	r.Register("exit", exitExtern("exit"))
+	r.Register("_Exit", exitExtern("_Exit"))
 	r.Register("abort", abortExtern())
 	r.Register("__builtin_abort", abortExtern())
 	registerVaListExterns(r)
@@ -946,6 +938,19 @@ func atexitExtern(name string) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s expects function pointer", name)
 		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
+	}
+}
+
+func exitExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		code, err := args[0].ExitCode()
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return Value{}, &ExitStatus{Code: code}, nil
 	}
 }
 
