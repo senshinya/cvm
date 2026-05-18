@@ -1630,6 +1630,65 @@ After Plan 160, the remaining compile-only `main` fixtures are intentionally not
 
 The Phase 1 non-math runtime fixture milestone is complete. Future work should be scoped as Phase 2 runtime expansion rather than continuing to mine the already-closed low-risk candidate set.
 
+## Plan 162: Phase 2 Runtime Environment Design - Completed
+
+The pre-plan adjustment split Phase 2 into a first bounded runtime environment milestone rather than jumping directly to larger ABI work. The milestone covers configured `argv`, configured stdin reads, and closed host stream handles. Larger items are reserved for Phase 2B: memory-backed `va_list`, escaping nested-function trampolines, and filesystem-backed streams.
+
+- Files: `docs/superpowers/specs/2026-05-19-phase2-runtime-environment-design.md`, `docs/superpowers/plans/2026-05-19-phase2-runtime-environment.md`
+- Commit message:
+  - `feat(runtime): pass configured argv to main`
+
+## Plan 163: Configured Argv Runtime Support - Completed
+
+Runtime loading now accepts `LoadOptions.Args`, allocates an `argv` pointer vector, and passes configured `argc`/`argv` into integer-returning `main(int, char **)`. `cvm run file.cvmbc [args...]` forwards the bytecode path as `argv[0]` and trailing command-line arguments as the remaining entries.
+
+- Files: `runtime/program.go`, `runtime/vm.go`, `runtime/vm_test.go`, `runtime/gcc_exec_test.go`, `compiler_test.go`
+- Focused tests:
+
+```bash
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestRunPassesCustomArgvToMain|TestGCCMainArgvExecutesThroughRuntime' -count=1 -v
+env GOCACHE=/private/tmp/cvm-go-build-cache go test . -run TestRunBytecodeForwardsArgs -count=1 -v
+```
+
+- Commit message:
+  - `feat(runtime): pass configured argv to main`
+
+## Plan 164: Configured Stdin Runtime Support - Completed
+
+The default extern registry now has `NewExternRegistryWithIO` and `DefaultExternRegistryWithIO` constructors. Stdio input externs consume configured stdin bytes after any `ungetc` pushback, covering `getchar`, `fgetc`, `fgets`, and `fread`.
+
+- Files: `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`
+- Focused test:
+
+```bash
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdioReadsConfiguredStdin|TestGCCStdioConfiguredStdinExecutesThroughRuntime' -count=1 -v
+```
+
+- Commit message:
+  - `feat(runtime): read configured stdin streams`
+
+## Plan 165: Closed Host Stream Handles - Completed
+
+`fclose` now marks known host stream handles closed, clears their writer/fd/pushback/EOF state, and rejects later use through the same stream handle. Existing GCC execution coverage for successful `fclose(stdout)` remains green.
+
+- Files: `runtime/extern.go`, `runtime/extern_test.go`
+- Focused test:
+
+```bash
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestFcloseRejectsLaterStreamUse|TestStdioFcloseExecutesThroughRuntime' -count=1 -v
+```
+
+- Commit message:
+  - `feat(runtime): reject closed host streams`
+
+## Plan 166: Phase 2 Environment Closure - Completed
+
+The Phase 2 runtime environment milestone is complete. Handoff and roadmap docs now separate the finished environment work from larger Phase 2B candidates: memory-backed `va_list`, escaping nested-function trampolines, filesystem-backed streams, and extern-backed warning fixtures.
+
+- Files: `docs/bytecode-runtime-handoff.md`, `docs/superpowers/plans/2026-05-18-runtime-phase1-followup-roadmap.md`, `docs/superpowers/plans/2026-05-19-phase2-runtime-environment.md`
+- Commit message:
+  - `docs: record phase 2 runtime environment closure`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.

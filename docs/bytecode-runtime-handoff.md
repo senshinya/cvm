@@ -1,6 +1,7 @@
 # Bytecode Runtime Phase 1 Handoff
 
 Date: 2026-05-18
+Updated: 2026-05-19
 
 This document records the current state of the bytecode/runtime work so the branch can be resumed from another device.
 
@@ -8,7 +9,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `36d63f0 test(runtime): execute GCC strict aliasing VLA fixture`
+- Latest implementation/coverage commit before this handoff document update: `2971ab4 feat(runtime): reject closed host streams`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -63,6 +64,23 @@ Important commits in this part include:
 - `3128954 feat(runtime): execute static memory opcodes`
 - `33637f7 feat(runtime): execute constants locals and returns`
 - `f6351f6 feat(runtime): add built-in extern registry`
+
+### Runtime Phase 2 Environment
+
+The first Phase 2 runtime environment milestone is now complete:
+
+- `7cd8df6 feat(runtime): pass configured argv to main`
+  - Adds `runtime.LoadOptions.Args`.
+  - Passes configured `argc`/`argv` into integer-returning `main(int, char **)`.
+  - Updates `cvm run file.cvmbc [args...]` so `argv[0]` is the bytecode path and trailing CLI arguments are visible to the program.
+- `82425df feat(runtime): read configured stdin streams`
+  - Adds `DefaultExternRegistryWithIO`/`NewExternRegistryWithIO`.
+  - Lets `getchar`, `fgetc`, `fgets`, and `fread` consume configured stdin bytes after any `ungetc` pushback.
+  - Adds direct extern and GCC runtime execution coverage for configured stdin.
+- `2971ab4 feat(runtime): reject closed host streams`
+  - Tracks closed host stream handles.
+  - Makes `fclose(stdout)` invalidate the handle and reject later writes through the same stream.
+  - Preserves existing GCC runtime execution coverage for successful `fclose(stdout)`.
 
 ### GCC Runtime Execution Coverage
 
@@ -125,6 +143,18 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `2971ab4 feat(runtime): reject closed host streams`
+  - Tracks closed standard stream handles after `fclose`.
+  - Rejects later use of the closed stream handle instead of silently writing.
+
+- `82425df feat(runtime): read configured stdin streams`
+  - Adds configured stdin reader plumbing to the default extern registry constructors.
+  - Covers `getchar`, `fgetc`, `fgets`, and `fread` over configured stdin.
+
+- `7cd8df6 feat(runtime): pass configured argv to main`
+  - Adds runtime loader support for configured `argc`/`argv`.
+  - Forwards `cvm run` trailing arguments to bytecode programs.
 
 - `36d63f0 test(runtime): execute GCC strict aliasing VLA fixture`
   - Adds direct runtime coverage for `sema/testdata/gcc-c99-extra/accept/Wstrict-aliasing-bogus-vla-1.c`.
@@ -1364,6 +1394,7 @@ Static data runtime coverage includes the `pr27639.c` large static character arr
 Inline runtime coverage includes repeated inline calls with volatile global side effects from both `pr71969-1.c` and the GNU89 inline variant `pr71969-3.c`.
 Scalar floating runtime coverage includes `long double` local arithmetic, `long double` by-value arguments and returns, mixed-width floating compound assignment such as `float += double`, floating assignment and compound-assignment expression results for local slots and addressable fields, floating logical expressions through bool conversion, and floating `++`/`--` for local slots and addressable fields.
 Direct builtin runtime coverage includes `__builtin_pow`, `__builtin_huge_val*`, `__builtin_nan`, plain `nan`, `nanf`, and `nanl`, plain math helpers `fabs`, `fabsf`, `fabsl`, `sqrt`, `sqrtf`, `sqrtl`, `sin`, `sinf`, `sinl`, `cos`, `cosf`, `cosl`, `tan`, `tanf`, `tanl`, `sinh`, `sinhf`, `sinhl`, `cosh`, `coshf`, `coshl`, `tanh`, `tanhf`, `tanhl`, `asin`, `asinf`, `asinl`, `acos`, `acosf`, `acosl`, `atan`, `atanf`, `atanl`, `asinh`, `asinhf`, `asinhl`, `acosh`, `acoshf`, `acoshl`, `atanh`, `atanhf`, `atanhl`, `cbrt`, `cbrtf`, `cbrtl`, `erf`, `erff`, `erfl`, `erfc`, `erfcf`, `erfcl`, `tgamma`, `tgammaf`, `tgammal`, `lgamma`, `lgammaf`, `lgammal`, `exp`, `expf`, `expl`, `exp2`, `exp2f`, `exp2l`, `expm1`, `expm1f`, `expm1l`, `log`, `logf`, `logl`, `log10`, `log10f`, `log10l`, `log1p`, `log1pf`, `log1pl`, `log2`, `log2f`, `log2l`, `ceil`, `ceilf`, `ceill`, `floor`, `floorf`, `floorl`, `trunc`, `truncf`, `truncl`, `round`, `roundf`, `roundl`, `nearbyint`, `nearbyintf`, `nearbyintl`, `rint`, `rintf`, `rintl`, `logb`, `logbf`, `logbl`, `ilogb`, `ilogbf`, `ilogbl`, `lrint`, `lrintf`, `lrintl`, `lround`, `lroundf`, `lroundl`, `llrint`, `llrintf`, `llrintl`, `llround`, `llroundf`, `llroundl`, `scalbn`, `scalbnf`, `scalbnl`, `scalbln`, `scalblnf`, `scalblnl`, `ldexp`, `ldexpf`, `ldexpl`, `frexp`, `frexpf`, `frexpl`, `modf`, `modff`, `modfl`, `remquo`, `remquof`, `remquol`, `pow`, `powf`, `powl`, `atan2`, `atan2f`, `atan2l`, `hypot`, `hypotf`, `hypotl`, `fdim`, `fdimf`, `fdiml`, `fmax`, `fmaxf`, `fmaxl`, `fmin`, `fminf`, `fminl`, `fmod`, `fmodf`, `fmodl`, `remainder`, `remainderf`, `remainderl`, `copysign`, `copysignf`, `copysignl`, `fma`, `fmaf`, `fmal`, `nextafter`, `nextafterf`, `nextafterl`, `nexttoward`, `nexttowardf`, and `nexttowardl`, plain complex pow helpers `cpow`, `cpowf`, and `cpowl`, plain complex exp/log/sqrt helpers `cexp`, `cexpf`, `cexpl`, `clog`, `clogf`, `clogl`, `csqrt`, `csqrtf`, and `csqrtl`, plain complex inverse hyperbolic helpers `casinh`, `casinhf`, `casinhl`, `cacosh`, `cacoshf`, `cacoshl`, `catanh`, `catanhf`, and `catanhl`, plain complex inverse trigonometric helpers `casin`, `casinf`, `casinl`, `cacos`, `cacosf`, `cacosl`, `catan`, `catanf`, and `catanl`, plain complex hyperbolic helpers `csinh`, `csinhf`, `csinhl`, `ccosh`, `ccoshf`, `ccoshl`, `ctanh`, `ctanhf`, and `ctanhl`, plain complex trig helpers `csin`, `csinf`, `csinl`, `ccos`, `ccosf`, `ccosl`, `ctan`, `ctanf`, and `ctanl`, plain complex unary helpers `conj`, `conjf`, `conjl`, `cproj`, `cprojf`, and `cprojl`, plain complex absolute-value helpers `cabs`, `cabsf`, and `cabsl`, plain complex projection helpers `creal`, `crealf`, `creall`, `cimag`, `cimagf`, `cimagl`, `carg`, `cargf`, and `cargl`, `abort`, `__builtin_abort`, assert-failure expansion through `<assert.h>`, `exit`, `_Exit`, `__builtin_va_start`, `__builtin_va_end`, allocation helpers `__builtin_malloc`, `malloc`, `__builtin_calloc`, `calloc`, `realloc`, `__builtin_strdup`, `strdup`, `strndup`, and `free`, object-size helpers `__builtin_object_size` and `__builtin_dynamic_object_size`, memory operations `__builtin_memcpy`, `memcpy`, `__builtin_memmove`, `memmove`, `__builtin_mempcpy`, `mempcpy`, `memccpy`, `bcopy`, `__builtin_memset`, `memset`, `__builtin_bzero`, and `bzero`, memory comparison helpers `memcmp` and `bcmp`, checked memory operations `__builtin___memcpy_chk`, `__builtin___memmove_chk`, `__builtin___mempcpy_chk`, and `__builtin___memset_chk`, read-only string helpers `__builtin_strlen`, `strlen`, `strnlen`, `strerror`, `__builtin_strchr`, `__builtin_strstr`, `strncmp`, `strcoll`, `memchr`, `strrchr`, `strpbrk`, `strspn`, `strcspn`, and tokenizer helper `strtok`, string-writing helpers `strxfrm`, `__builtin_strcpy`, `strcpy`, `__builtin_stpcpy`, `stpcpy`, `__builtin_strcat`, `strcat`, `__builtin_strncpy`, `strncpy`, `__builtin_stpncpy`, `stpncpy`, `__builtin_strncat`, and `strncat`, checked string-writing helpers `__builtin___strcpy_chk`, `__builtin___stpcpy_chk`, `__builtin___strcat_chk`, `__builtin___strncpy_chk`, `__builtin___stpncpy_chk`, and `__builtin___strncat_chk`, stdlib helpers `abs`, `labs`, `llabs`, `div`, `ldiv`, `lldiv`, `atoi`, `atol`, `atoll`, `atof`, `strtol`, `strtoul`, `strtoll`, `strtoull`, `strtod`, `strtof`, `strtold`, `mblen`, `mbtowc`, `wctomb`, `mbstowcs`, `wcstombs`, `rand`, `srand`, `getenv`, `system`, and `atexit`, locale helper `setlocale`, time helpers `clock`, `difftime`, and `time`, errno extern variable `errno`, ctype helpers `isdigit`, `isalpha`, `isalnum`, `isspace`, `islower`, `isupper`, `isxdigit`, `isprint`, `isblank`, `iscntrl`, `isgraph`, `ispunct`, `tolower`, and `toupper`, stdio output/status helpers `remove`, `rename`, `fopen`, `freopen`, `tmpfile`, `tmpnam`, `fseek`, `ftell`, `rewind`, `fgetpos`, `fsetpos`, `puts`, `puts_unlocked`, `putchar`, `putchar_unlocked`, `getchar`, `getchar_unlocked`, `fputc`, `fputc_unlocked`, `putc`, `putc_unlocked`, `fgetc`, `fgetc_unlocked`, `getc`, `getc_unlocked`, `ungetc`, `fgets`, `fgets_unlocked`, `fputs`, `fputs_unlocked`, `fflush`, `fflush_unlocked`, `fclose`, `fileno`, `fileno_unlocked`, `setbuf`, `setvbuf`, `flockfile`, `ftrylockfile`, `funlockfile`, `perror`, `ferror`, `ferror_unlocked`, `clearerr`, `clearerr_unlocked`, `feof`, `feof_unlocked`, `fwrite`, `fwrite_unlocked`, pushback-backed `fread`, and `fread_unlocked`, buffer formatting helpers `__builtin_sprintf`, `__builtin_snprintf`, plain `sprintf`, plain `snprintf`, `__builtin_vsprintf`, and `__builtin_vsnprintf`, checked buffer formatting helpers `__builtin___sprintf_chk`, `__builtin___snprintf_chk`, `__builtin___vsprintf_chk`, and `__builtin___vsnprintf_chk`, stdout/FILE formatting helpers `__builtin_printf`, `__builtin_printf_unlocked`, `__builtin_fprintf`, `__builtin_fprintf_unlocked`, `__builtin_vprintf`, `vprintf_unlocked`, `__builtin_vfprintf`, and `vfprintf_unlocked`, checked stdout/FILE formatting helpers `__builtin___printf_chk`, `__builtin___fprintf_chk`, `__builtin___vprintf_chk`, and `__builtin___vfprintf_chk`, and shared formatter coverage for integer/pointer/floating formats such as `%ld`, `%llu`, `%zu`, `%x`, `%X`, `%o`, `%p`, `%f`, `%e`, `%g`, `%a`, and sized `%n`, plus literal/dynamic width, literal/dynamic precision, `-`, `0`, `+`, space, and `#` flags. The v-format externs currently only execute formats that do not consume `va_list` values.
+Runtime environment coverage includes configured `argc`/`argv` for `main(int, char **)`, `cvm run` argument forwarding, configured stdin consumption for `getchar`, `fgetc`, `fgets`, and `fread` after pushback, and closed standard stream handle rejection after `fclose`.
 Bit-field runtime coverage includes simple assignment, compound assignment, and `++`/`--` for integer and `_Bool` bit-fields, including expression values after bit-field truncation/wrapping.
 Pointer runtime coverage includes local and addressable pointer compound assignment, initialized pointer fields updated with `+=` and `-=`, pointer array element compound assignment, pointer `++`/`--` through struct fields and array elements, and static pointer field/array initializers with relocations.
 Function pointer runtime coverage includes indirect calls through local arrays, struct fields, static struct-field initializers, function pointer parameters, returned function pointers, struct returns and struct by-value arguments through function pointers, function designator initialization/assignment/comma expressions, and return conversion from function designators to function pointers.
@@ -1465,17 +1496,17 @@ Runtime support exists for real math externs and for the Phase 1 complex math ex
 - Broader complex runtime execution outside the Phase 1 math extern surface is not complete.
 - Broader long double runtime memory/operations outside the Phase 1 math extern surface are still limited in places.
 - `va_list` execution currently uses an interpreter-internal frame cursor for bytecode `OpVa*`; it is not yet a memory-backed C ABI object. The v-format extern families are registered, but only support formats that do not consume `va_list` values.
-- `getchar`, `fgetc`, `fgets`, and `fread` currently consume interpreter-local `ungetc` pushback and otherwise return `EOF`/null/zero; they do not read from a host input stream.
-- `fclose` currently validates known host stream handles and returns zero, but does not model stream lifetime or prevent later use of that stream handle.
+- Standard input can be configured through the default extern registry constructors. The runtime still does not model interactive terminal behavior or filesystem-backed file streams.
+- `fclose` now invalidates known host stream handles. Broader FILE lifetime behavior beyond standard host streams remains intentionally narrow.
 - The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation. Phase 1 runtime execution has also closed the low-risk non-math `main` candidate set; remaining compile-only `main` fixtures are intentionally not runtime targets for the reasons listed above.
 - Static-chain support is deliberately narrow and rejects escaping capturing nested functions instead of modeling trampolines.
 - Builtin headers share a guarded `size_t` typedef, so combinations such as `<stdio.h>` plus `<string.h>` analyze without relaxing ordinary C99 typedef redeclaration diagnostics.
 
 ## Suggested Next Work
 
-The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, and Phase 1 non-math low-risk runtime `main` fixture closure is complete. Suggested next directions:
+The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, and the first Phase 2 runtime environment milestone is complete. Suggested next directions:
 
-- Start a Phase 2 runtime milestone for deliberately larger gaps such as escaping nested functions, richer `argv`/host input modeling, or extern-backed warning fixtures.
+- Start a Phase 2B runtime milestone for deliberately larger gaps such as memory-backed `va_list`, escaping nested-function trampolines, filesystem-backed streams, or extern-backed warning fixtures.
 - Expand runtime execution coverage only when a fixture has stable runtime semantics or when the required semantics are explicitly brought into scope.
 - Revisit static-chain support if the bytecode format grows an explicit closure/trampoline representation.
 

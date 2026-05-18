@@ -142,11 +142,11 @@ git push origin codex/bytecode-runtime-phase-1
 - Modify: `docs/superpowers/plans/2026-05-18-runtime-phase1-followup-roadmap.md`
 - Modify: `docs/superpowers/plans/2026-05-19-phase2-runtime-environment.md`
 
-- [ ] **Step 1: Update handoff known limits**
+- [x] **Step 1: Update handoff known limits**
 
 Remove or narrow the fixed-argv, no-input stdin, and no-op fclose limits. Add next Phase 2B candidates: memory-backed `va_list`, escaping nested-function trampolines, and filesystem-backed streams.
 
-- [ ] **Step 2: Mark plan complete and verify**
+- [x] **Step 2: Mark plan complete and verify**
 
 Run Common Verification, then commit:
 
