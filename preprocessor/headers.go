@@ -511,6 +511,15 @@ long double atan2l(long double, long double);
 float hypotf(float, float);
 double hypot(double, double);
 long double hypotl(long double, long double);
+float fdimf(float, float);
+double fdim(double, double);
+long double fdiml(long double, long double);
+float fmaxf(float, float);
+double fmax(double, double);
+long double fmaxl(long double, long double);
+float fminf(float, float);
+double fmin(double, double);
+long double fminl(long double, long double);
 #endif
 int __cvm_fpclassifyf(float);
 int __cvm_fpclassify(double);

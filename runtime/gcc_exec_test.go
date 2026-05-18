@@ -388,6 +388,12 @@ int main(void)
     return 11;
   if (hypot(3.0, 4.0) != 5.0 || hypotf(3.0f, 4.0f) != 5.0f || hypotl(3.0L, 4.0L) != 5.0L)
     return 12;
+  if (fdim(5.0, 3.0) != 2.0 || fdimf(5.0f, 3.0f) != 2.0f || fdiml(5.0L, 3.0L) != 2.0L)
+    return 36;
+  if (fmax(2.0, 3.0) != 3.0 || fmaxf(2.0f, 3.0f) != 3.0f || fmaxl(2.0L, 3.0L) != 3.0L)
+    return 37;
+  if (fmin(2.0, 3.0) != 2.0 || fminf(2.0f, 3.0f) != 2.0f || fminl(2.0L, 3.0L) != 2.0L)
+    return 38;
   if (exp(0.0) != 1.0 || expf(0.0f) != 1.0f || expl(0.0L) != 1.0L)
     return 13;
   if (log(1.0) != 0.0 || logf(1.0f) != 0.0f || logl(1.0L) != 0.0L)
