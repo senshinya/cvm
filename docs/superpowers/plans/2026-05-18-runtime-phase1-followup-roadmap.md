@@ -595,6 +595,23 @@ go test ./runtime -run 'TestStdioPositionStubs|TestStdioPositionStubsExecuteThro
   - `feat(runtime): add stdio fpos stubs`
   - `docs: record stdio fpos stubs`
 
+## Plan 48: Plain Trigonometric `math.h` Helpers - Completed
+
+The pre-plan adjustment found plain `<math.h>` still much narrower than the existing tgmath-backed runtime helper set. This plan adds direct `sin*`, `cos*`, and `tan*` declarations and extern registrations, while guarding `<math.h>` plain prototypes when included by `<tgmath.h>` so tgmath function-like macros do not rewrite those prototypes.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThroughRuntime|TestTgmathSinFloatExecutesThroughRuntime|TestTgmathCosExecuteThroughRuntime|TestTgmathTanExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./codegen -run 'TestGCCTgmathFloatSinUsesFloatExtern|TestGCCBytecodeCompileSuite/c99-tgmath' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain trig math externs`
+  - `docs: record plain trig math externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
