@@ -237,6 +237,10 @@ git commit -m "feat(runtime): mark read-side stream errors"
 git push
 ```
 
+- [x] **Step 6: Close FILE state milestone**
+
+Calibration after EOF/error changes found the remaining high-value work is mode semantics (`a+`, append write positioning, update-mode transitions) rather than stream status bits. Milestone 5 is closed for EOF/error/clear/close state and mode expansion moves to Milestone 6.
+
 ## Milestone 6: Hermetic File Mode Expansion
 
 **Calibration:** Pending after FILE state model.

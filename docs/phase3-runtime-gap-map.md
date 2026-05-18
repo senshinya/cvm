@@ -10,7 +10,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 
 ## Current High-Value Gaps
 
-1. Hermetic `FILE *` handles have useful read/write/seek/error behavior, but Phase 3 should calibrate remaining mode and state transitions before expanding them.
+1. Hermetic file mode handling should expand append/update behavior now that `FILE *` state bits are modeled.
 2. `getenv` currently returns null from a hermetic stub. Phase 3 can add configured environment variables without reading ambient host environment.
 3. `atexit` currently accepts callbacks without executing them. Phase 3 can add deterministic callback execution at normal program termination.
 4. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
@@ -27,6 +27,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 - Formatted input now supports `%x`, `%X`, `%o`, assignment suppression, and `%n` count writes for integer scanning coverage.
 - `FILE *` write failures now set a stream error indicator instead of trapping; `ferror` observes it and `clearerr` clears it.
 - `FILE *` read failures on write-only streams now set the same error indicator without falsely setting EOF.
+- The Phase 3 `FILE *` state milestone is closed for EOF/error/clear/close state; remaining mode semantics move to the hermetic file mode milestone.
 
 ## Residual Bounded Runtime Surface
 
