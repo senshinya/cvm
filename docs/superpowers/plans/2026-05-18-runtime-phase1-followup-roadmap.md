@@ -1189,6 +1189,38 @@ go test ./runtime -run 'TestPlainMathNanExterns|TestBuiltinFloatingConstantsExec
   - `feat(runtime): add math nan variants`
   - `docs: record math nan variants`
 
+## Plan 88: `<math.h>` `modf*` Pointer-Output Helpers - Completed
+
+The pre-plan adjustment stayed on the remaining math scan gap after `nan*` landed. `modf*` uses the same pointer-output shape as `frexp*`, but stores the integer part using the same floating rank and size as the return value.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathModfExterns|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add math modf externs`
+  - `docs: record math modf externs`
+
+## Plan 89: `<math.h>` Plain Surface Recheck - Completed
+
+The pre-plan adjustment switched from implementation to closure verification after `modf*` landed. The rescan compared the expected C99 math surface from `TestBuiltinMathHeaderDeclaresRuntimeSurface` against builtin header declarations and `TestDefaultExternRegistryHasExitAndAbort` registry coverage.
+
+- Result: no remaining expected `<math.h>` header gaps.
+- Result: no remaining expected `<math.h>` runtime registry gaps.
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathModfExterns|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit message:
+  - `docs: record math modf externs`
+
 ## Continuous Execution Rule
 
-After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
+After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.
