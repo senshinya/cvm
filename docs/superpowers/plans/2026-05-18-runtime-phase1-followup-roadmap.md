@@ -51,7 +51,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib process termination surface`
   - `docs: record stdlib process termination surface`
 
-## Plan 14: Extra `ctype.h` Classification Helpers
+## Plan 14: Extra `ctype.h` Classification Helpers - Completed
 
 Add ASCII classification externs and declarations for `isblank`, `iscntrl`, `isgraph`, and `ispunct`.
 
