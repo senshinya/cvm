@@ -133,6 +133,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("rand", randExtern("rand", r))
 	r.Register("srand", srandExtern("srand", r))
 	r.Register("getenv", getenvExtern("getenv"))
+	r.Register("system", systemExtern("system"))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
@@ -757,6 +758,27 @@ func getenvExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		return PtrValue(0), nil, nil
+	}
+}
+
+func systemExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if args[0].Int != 0 && !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects command pointer", name)
+		}
+		if args[0].Int == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, -1), nil, nil
 	}
 }
 

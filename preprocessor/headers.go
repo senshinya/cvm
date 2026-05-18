@@ -145,6 +145,7 @@ char *strdup(const char *);
 int rand(void);
 void srand(unsigned int);
 char *getenv(const char *);
+int system(const char *);
 void exit(int);
 void abort(void);
 #endif

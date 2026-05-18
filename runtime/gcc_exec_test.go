@@ -897,6 +897,23 @@ int main(void)
 	}
 }
 
+func TestStdlibSystemExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  if (system(0) != 0)
+    return 1;
+  return system("echo nope") == -1 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-system-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibExitExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>

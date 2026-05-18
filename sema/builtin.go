@@ -50,6 +50,8 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(voidT, []Type{s.Types.Builtin(UInt)}, false, true)
 	case "getenv":
 		return s.Types.Function(charPtr, []Type{constCharPtr}, false, true)
+	case "system":
+		return s.Types.Function(intT, []Type{constCharPtr}, false, true)
 	case "atof":
 		return s.Types.Function(doubleT, []Type{constCharPtr}, false, true)
 	case "strtol":
