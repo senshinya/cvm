@@ -2651,6 +2651,35 @@ func TestStdlibGetenvExtern(t *testing.T) {
 	}
 }
 
+func TestStdlibGetenvExternReadsConfiguredEnvironment(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.SetEnv("CVM_TEST", "configured-value")
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("getenv")
+	if !ok {
+		t.Fatal("missing getenv extern")
+	}
+	name := mustAllocBytes(t, mem, "getenv:configured-name", []byte("CVM_TEST\x00"), true, blockString)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(name)})
+	if err != nil || exit != nil {
+		t.Fatalf("getenv ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("getenv ret=%#v, want non-null pointer", ret)
+	}
+	got, err := mem.ReadCString(ret.Int)
+	if err != nil || got != "configured-value" {
+		t.Fatalf("getenv value=%q err=%v, want configured-value", got, err)
+	}
+	ret2, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(name)})
+	if err != nil || exit != nil {
+		t.Fatalf("getenv second ret=%#v exit=%#v err=%v", ret2, exit, err)
+	}
+	if ret2.Int != ret.Int {
+		t.Fatalf("getenv pointer changed %#x -> %#x", ret.Int, ret2.Int)
+	}
+}
+
 func TestStdlibSystemExtern(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

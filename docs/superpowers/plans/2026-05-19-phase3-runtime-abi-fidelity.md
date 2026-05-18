@@ -276,7 +276,32 @@ Calibration found C99 `r`, `w`, `a`, and `+` behavior covered after append write
 
 ## Milestone 7: Environment Runtime
 
-**Calibration:** Pending after file milestones.
+**Calibration:** Completed after file milestones. `getenv` was present as a hermetic stub that always returned null after validating the name pointer. The runtime already keeps deterministic configured state in `ExternRegistry`, so environment variables should be explicit registry entries and should not read the ambient host process environment.
+
+**Files:**
+- Modify: `runtime/extern.go`
+- Modify: `runtime/extern_test.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add failing configured environment tests**
+
+Added direct and GCC-runtime coverage for configured `getenv`, while preserving the default null result for missing values.
+
+- [x] **Step 2: Add explicit registry environment state**
+
+Added `ExternRegistry.SetEnv` and changed `getenv` to return stable runtime C strings for configured values.
+
+- [x] **Step 3: Verify, commit, and push environment runtime**
+
+Run Common Verification, then:
+
+```bash
+git add runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(runtime): add configured getenv"
+git push
+```
 
 ## Milestone 8: Program Termination Semantics
 

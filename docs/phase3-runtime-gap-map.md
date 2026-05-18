@@ -10,11 +10,10 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 
 ## Current High-Value Gaps
 
-1. `getenv` currently returns null from a hermetic stub. Phase 3 can add configured environment variables without reading ambient host environment.
-2. `atexit` currently accepts callbacks without executing them. Phase 3 can add deterministic callback execution at normal program termination.
-3. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
-4. Runtime diagnostics should be audited after the larger hosted surfaces settle.
-5. `cvm run` should expose only stable deterministic runtime knobs.
+1. `atexit` currently accepts callbacks without executing them. Phase 3 can add deterministic callback execution at normal program termination.
+2. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
+3. Runtime diagnostics should be audited after the larger hosted surfaces settle.
+4. `cvm run` should expose only stable deterministic runtime knobs.
 
 ## Closed During Phase 3
 
@@ -29,6 +28,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 - The Phase 3 `FILE *` state milestone is closed for EOF/error/clear/close state; remaining mode semantics move to the hermetic file mode milestone.
 - Append-mode files now force writes to the current end of the hermetic file even after `fseek`, matching `a`/`a+` write positioning.
 - The hermetic file mode milestone is closed for C99 `r`, `w`, `a`, and `+` behavior. Strict read/write sequencing rules for update streams remain a documented residual limit.
+- `getenv` now reads only explicit `ExternRegistry.SetEnv` values and remains isolated from the ambient host environment by default.
 
 ## Residual Bounded Runtime Surface
 

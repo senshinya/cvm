@@ -1400,6 +1400,29 @@ int main(void)
 	}
 }
 
+func TestStdlibConfiguredGetenvExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+#include <string.h>
+
+int main(void)
+{
+  char *v = getenv("CVM_TEST");
+  if (!v)
+    return 1;
+  if (strcmp(v, "configured-value") != 0)
+    return 2;
+  return getenv("MISSING") == 0 ? 0 : 3;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.SetEnv("CVM_TEST", "configured-value")
+	st := runGCCExecFixtureWithLoadOptions(t, "stdlib-configured-getenv-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibSystemExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>

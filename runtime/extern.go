@@ -34,6 +34,7 @@ type ExternRegistry struct {
 	hostClosed    map[uint64]bool
 	hostFiles     map[uint64]*hostFile
 	files         map[string][]byte
+	env           map[string]string
 	stdinHandle   uint64
 	staticStrings map[*Memory]map[string]uint64
 	staticVars    map[*Memory]map[string]uint64
@@ -79,6 +80,7 @@ func NewExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *ExternR
 		hostClosed:    make(map[uint64]bool),
 		hostFiles:     make(map[uint64]*hostFile),
 		files:         make(map[string][]byte),
+		env:           make(map[string]string),
 		staticStrings: make(map[*Memory]map[string]uint64),
 		staticVars:    make(map[*Memory]map[string]uint64),
 		strtokNext:    make(map[*Memory]uint64),
@@ -179,7 +181,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("wcstombs", wcstombsExtern("wcstombs"))
 	r.Register("rand", randExtern("rand", r))
 	r.Register("srand", srandExtern("srand", r))
-	r.Register("getenv", getenvExtern("getenv"))
+	r.Register("getenv", getenvExtern("getenv", r))
 	r.Register("system", systemExtern("system"))
 	r.Register("atexit", atexitExtern("atexit"))
 	r.Register("setlocale", setlocaleExtern("setlocale", r))
@@ -232,6 +234,13 @@ func (r *ExternRegistry) AddFile(path string, data []byte) {
 		return
 	}
 	r.files[path] = append([]byte(nil), data...)
+}
+
+func (r *ExternRegistry) SetEnv(name, value string) {
+	if r == nil {
+		return
+	}
+	r.env[name] = value
 }
 
 func (w hostFileWriter) Write(p []byte) (int, error) {
@@ -1327,7 +1336,7 @@ func srandExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
-func getenvExtern(name string) ExternFunc {
+func getenvExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
@@ -1338,10 +1347,19 @@ func getenvExtern(name string) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+		key, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
 			return Value{}, nil, err
 		}
-		return PtrValue(0), nil, nil
+		value, ok := r.env[key]
+		if !ok {
+			return PtrValue(0), nil, nil
+		}
+		addr, err := r.staticCString(ec.Memory, "getenv:"+key+"="+value, value)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
 	}
 }
 
