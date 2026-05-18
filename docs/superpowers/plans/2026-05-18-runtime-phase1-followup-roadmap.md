@@ -808,6 +808,22 @@ go test ./runtime -run 'TestPlainMathBinaryExterns|TestMathPlainUnaryExecuteThro
   - `feat(runtime): add plain fmod copysign math externs`
   - `docs: record plain fmod copysign math externs`
 
+## Plan 61: Plain `fma` `math.h` Helpers - Completed
+
+The pre-plan adjustment picked `fma*` as a standalone ternary helper because it has a different extern shape from the binary math families. This plan adds plain `fma*` declarations and extern registrations.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathTernaryExterns|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain fma math externs`
+  - `docs: record plain fma math externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
