@@ -190,6 +190,7 @@ char *strpbrk(const char *, const char *);
 size_t strspn(const char *, const char *);
 size_t strcspn(const char *, const char *);
 void *memchr(const void *, int, size_t);
+char *strtok(char *, const char *);
 void *memcpy(void *, const void *, size_t);
 void *memmove(void *, const void *, size_t);
 void *mempcpy(void *, const void *, size_t);

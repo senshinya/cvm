@@ -31,6 +31,7 @@ type ExternRegistry struct {
 	hostEOF       map[uint64]bool
 	stdinHandle   uint64
 	staticStrings map[*Memory]map[string]uint64
+	strtokNext    map[*Memory]uint64
 	randSeed      uint32
 }
 
@@ -50,6 +51,7 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		hostPushback:  make(map[uint64][]byte),
 		hostEOF:       make(map[uint64]bool),
 		staticStrings: make(map[*Memory]map[string]uint64),
+		strtokNext:    make(map[*Memory]uint64),
 		randSeed:      1,
 	}
 }
@@ -1069,6 +1071,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("strpbrk", stringSetSearchExtern("strpbrk"))
 	r.Register("strspn", stringSpanExtern("strspn", true))
 	r.Register("strcspn", stringSpanExtern("strcspn", false))
+	r.Register("strtok", stringTokenExtern("strtok", r))
 	r.Register("strncmp", stringNCompareExtern("strncmp"))
 	r.Register("memchr", memoryCharSearchExtern("memchr"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
@@ -1859,6 +1862,77 @@ func stringSpanExtern(name string, acceptMatch bool) ExternFunc {
 	}
 }
 
+func stringTokenExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		delims, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		start := args[0].Int
+		if start == 0 {
+			start = r.strtokNext[ec.Memory]
+		}
+		if start == 0 {
+			return PtrValue(0), nil, nil
+		}
+
+		addr := start
+		for {
+			ch, err := readMemoryByte(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				r.strtokNext[ec.Memory] = 0
+				return PtrValue(0), nil, nil
+			}
+			if strings.IndexByte(delims, ch) < 0 {
+				break
+			}
+			addr, err = addSignedOffset(addr, 1)
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
+
+		tokenStart := addr
+		for {
+			ch, err := readMemoryByte(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				r.strtokNext[ec.Memory] = 0
+				return PtrValue(tokenStart), nil, nil
+			}
+			if strings.IndexByte(delims, ch) >= 0 {
+				if err := writeMemoryByte(ec.Memory, addr, 0); err != nil {
+					return Value{}, nil, err
+				}
+				next, err := addSignedOffset(addr, 1)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				r.strtokNext[ec.Memory] = next
+				return PtrValue(tokenStart), nil, nil
+			}
+			addr, err = addSignedOffset(addr, 1)
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
+	}
+}
+
 func stringNCompareExtern(name string) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 3 {
@@ -2217,6 +2291,23 @@ func writeMemoryBytes(mem *Memory, addr uint64, data []byte) error {
 		return err
 	}
 	copy(block.data[off:off+len(data)], data)
+	return nil
+}
+
+func readMemoryByte(mem *Memory, addr uint64) (byte, error) {
+	block, off, err := mem.rangeAccess(addr, 1, false)
+	if err != nil {
+		return 0, err
+	}
+	return block.data[off], nil
+}
+
+func writeMemoryByte(mem *Memory, addr uint64, value byte) error {
+	block, off, err := mem.rangeAccess(addr, 1, true)
+	if err != nil {
+		return err
+	}
+	block.data[off] = value
 	return nil
 }
 

@@ -1628,6 +1628,34 @@ int main(void)
 	}
 }
 
+func TestStringStrtokExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  char text[24];
+  char *tok;
+
+  strcpy(text, ",alpha,beta;gamma");
+  tok = strtok(text, ",;");
+  if (tok != text + 1 || strcmp(tok, "alpha") != 0)
+    return 1;
+  tok = strtok(0, ",;");
+  if (tok != text + 7 || strcmp(tok, "beta") != 0)
+    return 2;
+  tok = strtok(0, ",;");
+  if (tok != text + 12 || strcmp(tok, "gamma") != 0)
+    return 3;
+  return strtok(0, ",;") == 0 ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "string-strtok-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioStatusFunctionsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
