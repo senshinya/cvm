@@ -791,6 +791,8 @@ func registerMemoryExterns(r *ExternRegistry) {
 		r.Register(name, stringSearchExtern(name))
 	}
 	r.Register("strpbrk", stringSetSearchExtern("strpbrk"))
+	r.Register("strspn", stringSpanExtern("strspn", true))
+	r.Register("strcspn", stringSpanExtern("strcspn", false))
 	r.Register("strncmp", stringNCompareExtern("strncmp"))
 	r.Register("memchr", memoryCharSearchExtern("memchr"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
@@ -1381,6 +1383,35 @@ func stringSetSearchExtern(name string) ExternFunc {
 			return PtrValue(addr), nil, nil
 		}
 		return PtrValue(0), nil, nil
+	}
+}
+
+func stringSpanExtern(name string, acceptMatch bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		set, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		for i := 0; i < len(s); i++ {
+			matches := strings.IndexByte(set, s[i]) >= 0
+			if matches != acceptMatch {
+				return UIntValue(bytecode.TypeU64, uint64(i)), nil, nil
+			}
+		}
+		return UIntValue(bytecode.TypeU64, uint64(len(s))), nil, nil
 	}
 }
 

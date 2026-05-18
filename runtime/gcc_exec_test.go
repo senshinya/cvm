@@ -1229,6 +1229,29 @@ int main(void)
 	}
 }
 
+func TestStringSpanExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  const char *text = "abcde312";
+
+  if (strspn(text, "abc") != 3)
+    return 1;
+  if (strspn(text, "xyz") != 0)
+    return 2;
+  if (strcspn(text, "de") != 3)
+    return 3;
+  return strcspn(text, "xyz") == 8 ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "string-span-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestPlainMemoryOperationsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <string.h>

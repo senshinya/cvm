@@ -73,6 +73,8 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(charPtr, []Type{constCharPtr, constCharPtr}, false, true)
 	case "strpbrk":
 		return s.Types.Function(charPtr, []Type{constCharPtr, constCharPtr}, false, true)
+	case "strspn", "strcspn":
+		return s.Types.Function(sizeT, []Type{constCharPtr, constCharPtr}, false, true)
 	case "memchr":
 		return s.Types.Function(voidPtr, []Type{constVoidPtr, intT, sizeT}, false, true)
 	case "__builtin_object_size", "__builtin_dynamic_object_size":
