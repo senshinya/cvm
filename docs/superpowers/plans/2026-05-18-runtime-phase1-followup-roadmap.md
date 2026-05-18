@@ -115,7 +115,7 @@ go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -coun
   - `feat(runtime): add string span externs`
   - `docs: record string span externs`
 
-## Plan 18: `stdlib.h` `strtol` And `strtoul`
+## Plan 18: `stdlib.h` `strtol` And `strtoul` - Completed
 
 Add `strtol` and `strtoul` declarations, sema signatures, runtime externs, direct coverage, and GCC runtime execution coverage. Parsing should skip ASCII whitespace, accept an optional sign, support bases `0`, `8`, `10`, and `16`, stop at the first invalid digit, and write `endptr` when non-null.
 
