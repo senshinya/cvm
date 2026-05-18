@@ -190,6 +190,10 @@ git commit -m "feat(runtime): extend scanf integer formats"
 git push
 ```
 
+- [x] **Step 9: Close bounded formatted input milestone**
+
+Calibration found no GCC accept fixture pressure requiring scansets, floating input, or pointer input. Milestone 4 is closed as a bounded hosted-runtime surface with `sscanf`, `scanf`, `fscanf`, integer/string/char conversions, assignment suppression, `%n`, and stream pushback preservation. Residual conversions stay documented as deferred surface area.
+
 ## Milestone 5: FILE State Model Completion
 
 **Calibration:** Pending after formatted input scan.

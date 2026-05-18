@@ -10,13 +10,12 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 
 ## Current High-Value Gaps
 
-1. Formatted input functions have initial `sscanf`, `scanf`, and `fscanf` coverage, but scansets, floating conversions, pointer conversions, and EOF-edge semantics still need expansion.
-2. Hermetic `FILE *` handles have useful read/write/seek behavior, but Phase 3 should calibrate remaining mode and state transitions before expanding them.
-3. `getenv` currently returns null from a hermetic stub. Phase 3 can add configured environment variables without reading ambient host environment.
-4. `atexit` currently accepts callbacks without executing them. Phase 3 can add deterministic callback execution at normal program termination.
-5. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
-6. Runtime diagnostics should be audited after the larger hosted surfaces settle.
-7. `cvm run` should expose only stable deterministic runtime knobs.
+1. Hermetic `FILE *` handles have useful read/write/seek behavior, but Phase 3 should calibrate remaining mode and state transitions before expanding them.
+2. `getenv` currently returns null from a hermetic stub. Phase 3 can add configured environment variables without reading ambient host environment.
+3. `atexit` currently accepts callbacks without executing them. Phase 3 can add deterministic callback execution at normal program termination.
+4. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
+5. Runtime diagnostics should be audited after the larger hosted surfaces settle.
+6. `cvm run` should expose only stable deterministic runtime knobs.
 
 ## Closed During Phase 3
 
@@ -26,6 +25,10 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 - `sscanf` is declared by `<stdio.h>`, typed by sema, registered as a runtime extern, and handles bounded `%d`, `%i`, `%u`, `%s`, `%c`, and `%%` string input for the first formatted-input slice.
 - `scanf` and `fscanf` now reuse the same scanner over stdin and hermetic `FILE *` handles, preserving unread stream input via runtime pushback.
 - Formatted input now supports `%x`, `%X`, `%o`, assignment suppression, and `%n` count writes for integer scanning coverage.
+
+## Residual Bounded Runtime Surface
+
+- Formatted input intentionally remains bounded to integer/string/char conversions. Scansets, floating input, pointer input, and exact EOF corner semantics are deferred until a fixture or user workflow needs them.
 
 ## First Milestone Decision
 
