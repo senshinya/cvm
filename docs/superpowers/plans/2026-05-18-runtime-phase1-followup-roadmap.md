@@ -1738,13 +1738,29 @@ Added hermetic write-mode file handles, registry-backed `remove`/`rename`, anony
   - `feat(runtime): support hermetic tmpfile streams`
   - `test(runtime): cover configured file append mode`
 
-## Plan 173: Phase 2B Stop Condition - Documented
+## Plan 173: Phase 2B Trampoline Design Stop Condition - Completed
 
-The remaining Phase 2B item, escaping GNU nested-function trampolines, cannot be implemented as another narrow runtime extern increment. Current bytecode function pointers are plain static function addresses, and `CallIndirect` resolves only those addresses back to globals. Capturing nested functions need a bytecode-level closure/trampoline representation carrying the callee plus static-chain environment. Continue only after writing and approving that representation.
+The remaining Phase 2B item, escaping GNU nested-function trampolines, could not be implemented as another narrow runtime extern increment. The stop condition correctly forced an explicit bytecode/runtime closure design before implementation.
 
 - Files: `docs/bytecode-runtime-handoff.md`, `docs/superpowers/plans/2026-05-18-runtime-phase1-followup-roadmap.md`
 - Commit message:
   - `docs: record phase 2b runtime closure and blocker`
+
+## Plan 174: Phase 2B Nested Trampoline Implementation - Completed
+
+Added `MakeClosure` bytecode plumbing, VM-managed closure records, and `CallIndirect` dispatch that appends hidden static-chain captures when the callee pointer is a closure pointer. Codegen now lowers capturing GNU nested-function address expressions to closures instead of rejecting them.
+
+- Files: `bytecode/opcode.go`, `bytecode/printer.go`, `bytecode/printer_test.go`, `bytecode/validator.go`, `runtime/vm.go`, `codegen/expr.go`, `codegen/codegen_test.go`, `runtime/gcc_exec_test.go`, `docs/superpowers/specs/2026-05-19-phase2b-nested-trampolines-design.md`, `docs/superpowers/plans/2026-05-19-phase2b-nested-trampolines.md`
+- Commit message:
+  - `feat(runtime): call capturing nested function pointers`
+
+## Plan 175: Phase 2B Nested Trampoline Coverage Hardening - Completed
+
+The post-implementation adjustment added VLA capture and transitive capture runtime coverage for closure pointers. It exposed that capture propagation only considered direct nested calls, not function address references; the fix teaches the capture dependency walker to propagate nested callee captures through function references as well.
+
+- Files: `codegen/capture.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`, `docs/superpowers/plans/2026-05-18-runtime-phase1-followup-roadmap.md`
+- Commit message:
+  - `fix(codegen): propagate captures through nested function pointers`
 
 ## Continuous Execution Rule
 

@@ -9,7 +9,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document update: `0d547b8 test(runtime): cover configured file append mode`
+- Latest implementation/coverage commit before this handoff document update: `06a90b9 feat(runtime): call capturing nested function pointers`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -82,9 +82,9 @@ The first Phase 2 runtime environment milestone is now complete:
   - Makes `fclose(stdout)` invalidate the handle and reject later writes through the same stream.
   - Preserves existing GCC runtime execution coverage for successful `fclose(stdout)`.
 
-### Runtime Phase 2B `va_list` And File Streams
+### Runtime Phase 2B `va_list`, File Streams, And Nested Trampolines
 
-Two larger Phase 2B runtime surfaces have been advanced with bounded, hermetic semantics:
+The larger Phase 2B runtime surfaces have been advanced with bounded, hermetic semantics:
 
 - `53138f0 feat(runtime): consume memory backed va lists`
   - Adds a CVM-owned memory `va_list` layout consumed by v-format externs.
@@ -106,6 +106,10 @@ Two larger Phase 2B runtime surfaces have been advanced with bounded, hermetic s
   - Implements anonymous in-memory `tmpfile` streams with write/rewind/read behavior.
 - `0d547b8 test(runtime): cover configured file append mode`
   - Covers `fopen(path, "a")` appending to configured registry files.
+- `06a90b9 feat(runtime): call capturing nested function pointers`
+  - Adds bytecode/runtime closure pointers for GNU nested functions with captured static-chain state.
+  - Lets indirect calls through those pointers append hidden captures and invoke the lowered nested-function signature while the creating frame is alive.
+  - Covers local closure calls and passing a capturing nested-function pointer to another callee.
 
 ### GCC Runtime Execution Coverage
 
@@ -1551,16 +1555,15 @@ Runtime support exists for real math externs and for the Phase 1 complex math ex
 - Standard input can be configured through the default extern registry constructors. File streams can be configured hermetically through `ExternRegistry.AddFile`, `fopen`, `tmpfile`, `remove`, `rename`, `fseek`, `ftell`, and stdio read/write helpers; direct host filesystem access and interactive terminal behavior are intentionally not modeled.
 - `fclose` now invalidates known host stream handles. Broader FILE lifetime behavior beyond standard host streams remains intentionally narrow.
 - The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation. Phase 1 runtime execution has also closed the low-risk non-math `main` candidate set; remaining compile-only `main` fixtures are intentionally not runtime targets for the reasons listed above.
-- Static-chain support is deliberately narrow and rejects escaping capturing nested functions instead of modeling trampolines.
+- Static-chain support now includes runtime-managed closure/trampoline pointers for capturing GNU nested functions while their creating frame is alive. Calling one after the enclosing frame has returned remains intentionally invalid, matching stack-trampoline lifetime constraints.
 - Builtin headers share a guarded `size_t` typedef, so combinations such as `<stdio.h>` plus `<string.h>` analyze without relaxing ordinary C99 typedef redeclaration diagnostics.
 
 ## Suggested Next Work
 
-The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, the first Phase 2 runtime environment milestone is complete, and the bounded Phase 2B `va_list`/file-stream runtime work is complete. Suggested next directions:
+The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, the first Phase 2 runtime environment milestone is complete, and the bounded Phase 2B `va_list`/file-stream/nested-trampoline runtime work is complete. Suggested next directions:
 
-- The remaining Phase 2B blocker is escaping GNU nested-function trampolines. Current bytecode function pointers are plain static function addresses, so captured nested-function pointers need an explicit closure/trampoline representation before they can be implemented safely.
 - Expand runtime execution coverage only when a fixture has stable runtime semantics or when the required semantics are explicitly brought into scope.
-- Revisit static-chain support if the bytecode format grows an explicit closure/trampoline representation.
+- Treat any further Phase 2 work as a newly scoped hosted-runtime or ABI milestone rather than continuing the now-closed bounded Phase 2B set.
 
 Recommended workflow:
 

@@ -244,6 +244,10 @@ func walkStmtForDirectNestedCalls(s sema.Stmt, g *generator, add func(*sema.Func
 func walkExprForDirectNestedCalls(e sema.Expr, g *generator, add func(*sema.FuncDef)) {
 	switch x := e.(type) {
 	case nil:
+	case *sema.VarRef:
+		if x.Sym != nil {
+			add(g.funcDefForSymbol(x.Sym))
+		}
 	case *sema.CallExpr:
 		if vr := functionVarRef(x.Callee); vr != nil && vr.Sym != nil {
 			add(g.funcDefForSymbol(vr.Sym))

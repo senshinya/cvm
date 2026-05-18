@@ -4816,6 +4816,58 @@ int main(void)
 	}
 }
 
+func TestGCCNestedFunctionPointerVLACaptureExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+/* { dg-options "-std=gnu99" } */
+
+int main(void)
+{
+  int n = 3;
+  int a[n];
+  a[0] = 10;
+  a[1] = 20;
+  a[2] = 30;
+
+  int inner(int i) { return a[i] + n; }
+  int (*fn)(int) = inner;
+  return fn(2) == 33 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "nested-function-pointer-vla-capture-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCNestedFunctionPointerTransitiveCaptureExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+/* { dg-options "-std=gnu99" } */
+
+int apply(int (*fn)(int), int x)
+{
+  return fn(x);
+}
+
+int main(void)
+{
+  int base = 10;
+
+  int outer(int z)
+  {
+    int scale = 2;
+    int inner(int y) { return base + z + scale * y; }
+    return apply(inner, 5);
+  }
+
+  return outer(3) == 23 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "nested-function-pointer-transitive-capture-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
