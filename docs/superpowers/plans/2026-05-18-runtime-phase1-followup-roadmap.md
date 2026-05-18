@@ -1000,6 +1000,22 @@ go test ./runtime -run 'TestComplexAbsExterns|TestComplexAbsExecutesThroughRunti
   - `feat(runtime): add complex abs externs`
   - `docs: record complex abs externs`
 
+## Plan 73: Plain `<complex.h>` Unary Helpers - Completed
+
+The pre-plan adjustment confirmed the requested GCC bytecode accept fixtures were already covered, then selected the next smallest runtime/header gap: plain `<complex.h>` `conj*` and `cproj*` declarations plus default registry names.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinComplexHeaderDeclaresProjectionSurface -count=1 -v
+go test ./runtime -run 'TestComplexUnaryExterns|TestComplexUnaryExecutesThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add complex unary externs`
+  - `docs: record complex unary externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
