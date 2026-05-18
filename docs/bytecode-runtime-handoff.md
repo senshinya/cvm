@@ -82,7 +82,7 @@ Recent related commits:
 - `67c4f41 include c99 runtime fixture in GCC execution suite`
 - `de11b2a support real tgmath runtime externs`
 
-The latest Plan 35 adjustment found no uncovered GCC runtime accept candidates: `runtime/testdata/gcc-exec/gap-report.md` reports 18 runnable fixtures, all currently represented in `runtime/testdata/gcc-exec/manifest.tsv`.
+The latest Plan 52 adjustment found no uncovered GCC runtime accept candidates: `runtime/testdata/gcc-exec/gap-report.md` reports 18 runnable fixtures, all currently represented in `runtime/testdata/gcc-exec/manifest.tsv`.
 
 ### Bytecode GCC Compile Coverage
 
@@ -94,7 +94,7 @@ The bytecode compile suite now covers every imported `.c` GCC accept fixture fro
 - `sema/testdata/gcc-c99-extra/accept`
 - `sema/testdata/gcc-c90-as-c99/accept`
 
-The coverage check currently returns no uncovered `.c` fixtures for those roots.
+The Plan 52 coverage check returned no uncovered `.c` fixtures for those roots.
 
 Notable recent coverage additions:
 

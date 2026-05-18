@@ -661,6 +661,25 @@ go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThrou
   - `feat(runtime): add plain exp log math externs`
   - `docs: record plain exp log math externs`
 
+## Plan 52: GCC Fixture Gap Recheck - Completed
+
+The pre-plan adjustment returned to the GCC fixture manifests before selecting more runtime/header work. Runtime execution has no current runnable accept gap, and bytecode compile coverage still covers every imported GCC accept `.c` fixture in the tracked roots.
+
+- Files: `runtime/testdata/gcc-exec/gap-report.md`, `runtime/testdata/gcc-exec/manifest.tsv`, `codegen/testdata/gcc-bytecode-compile.tsv`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1 -v
+go test ./codegen -run 'TestGCCBytecodeManifest|TestGCCBytecodeCompileManifest|TestGCCBytecodeCompileSuite' -count=1 -v
+```
+
+- Result:
+  - Runtime gap report remains current with 18 runnable fixtures and no missing manifest entries.
+  - Codegen bytecode compile manifest remains at 231 fixture entries plus header and has no uncovered imported accept `.c` fixtures.
+
+- Commit message:
+  - `docs: record gcc fixture gap recheck`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
