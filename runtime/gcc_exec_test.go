@@ -360,7 +360,15 @@ int main(void)
     return 13;
   if (log(1.0) != 0.0 || logf(1.0f) != 0.0f || logl(1.0L) != 0.0L)
     return 14;
-  return log10(100.0) == 2.0 && log10f(100.0f) == 2.0f && log10l(100.0L) == 2.0L ? 0 : 15;
+  if (log10(100.0) != 2.0 || log10f(100.0f) != 2.0f || log10l(100.0L) != 2.0L)
+    return 15;
+  if (ceil(1.25) != 2.0 || ceilf(1.25f) != 2.0f || ceill(1.25L) != 2.0L)
+    return 16;
+  if (floor(1.75) != 1.0 || floorf(1.75f) != 1.0f || floorl(1.75L) != 1.0L)
+    return 17;
+  if (trunc(-1.75) != -1.0 || truncf(-1.75f) != -1.0f || truncl(-1.75L) != -1.0L)
+    return 18;
+  return round(1.5) == 2.0 && roundf(1.5f) == 2.0f && roundl(1.5L) == 2.0L ? 0 : 19;
 }
 `
 	st := runGCCExecFixture(t, "math-plain-unary-runtime.c", source)
