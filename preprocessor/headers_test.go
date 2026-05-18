@@ -162,7 +162,7 @@ func TestBuiltinComplexHeaderDeclaresProjectionSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"cabsf", "cabs", "cabsl", "crealf", "creal", "creall", "cimagf", "cimag", "cimagl", "cargf", "carg", "cargl", "conjf", "conj", "conjl", "cprojf", "cproj", "cprojl", "csinf", "csin", "csinl", "ccosf", "ccos", "ccosl", "ctanf", "ctan", "ctanl", "csinhf", "csinh", "csinhl", "ccoshf", "ccosh", "ccoshl", "ctanhf", "ctanh", "ctanhl", "casinf", "casin", "casinl", "cacosf", "cacos", "cacosl", "catanf", "catan", "catanl", "casinhf", "casinh", "casinhl", "cacoshf", "cacosh", "cacoshl", "catanhf", "catanh", "catanhl"} {
+	for _, name := range []string{"cabsf", "cabs", "cabsl", "crealf", "creal", "creall", "cimagf", "cimag", "cimagl", "cargf", "carg", "cargl", "conjf", "conj", "conjl", "cprojf", "cproj", "cprojl", "csinf", "csin", "csinl", "ccosf", "ccos", "ccosl", "ctanf", "ctan", "ctanl", "csinhf", "csinh", "csinhl", "ccoshf", "ccosh", "ccoshl", "ctanhf", "ctanh", "ctanhl", "casinf", "casin", "casinl", "cacosf", "cacos", "cacosl", "catanf", "catan", "catanl", "casinhf", "casinh", "casinhl", "cacoshf", "cacosh", "cacoshl", "catanhf", "catanh", "catanhl", "cexpf", "cexp", "cexpl", "clogf", "clog", "clogl", "csqrtf", "csqrt", "csqrtl"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("complex identifier %q missing: %#v", name, res.Tokens)
 		}

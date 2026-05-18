@@ -2860,6 +2860,43 @@ int main(void)
 	}
 }
 
+func TestComplexExpLogSqrtExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <complex.h>
+
+int main(void)
+{
+  float complex zf = __builtin_complex(0.0f, 0.0f);
+  double complex zd = __builtin_complex(0.0, 0.0);
+  long double complex zl = __builtin_complex(0.0L, 0.0L);
+  float complex of = __builtin_complex(1.0f, 0.0f);
+  double complex od = __builtin_complex(1.0, 0.0);
+  long double complex ol = __builtin_complex(1.0L, 0.0L);
+  if (crealf(cexpf(zf)) != 1.0f || cimagf(cexpf(zf)) != 0.0f)
+    return 1;
+  if (creal(cexp(zd)) != 1.0 || cimag(cexp(zd)) != 0.0)
+    return 2;
+  if (creall(cexpl(zl)) != 1.0L || cimagl(cexpl(zl)) != 0.0L)
+    return 3;
+  if (crealf(clogf(of)) != 0.0f || cimagf(clogf(of)) != 0.0f)
+    return 4;
+  if (creal(clog(od)) != 0.0 || cimag(clog(od)) != 0.0)
+    return 5;
+  if (creall(clogl(ol)) != 0.0L || cimagl(clogl(ol)) != 0.0L)
+    return 6;
+  if (crealf(csqrtf(zf)) != 0.0f || cimagf(csqrtf(zf)) != 0.0f)
+    return 7;
+  if (creal(csqrt(zd)) != 0.0 || cimag(csqrt(zd)) != 0.0)
+    return 8;
+  return creall(csqrtl(zl)) == 0.0L && cimagl(csqrtl(zl)) == 0.0L ? 0 : 9;
+}
+`
+	st := runGCCExecFixture(t, "complex-exp-log-sqrt.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathConjExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

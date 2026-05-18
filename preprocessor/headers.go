@@ -119,6 +119,15 @@ long double complex cacoshl(long double complex);
 float complex catanhf(float complex);
 double complex catanh(double complex);
 long double complex catanhl(long double complex);
+float complex cexpf(float complex);
+double complex cexp(double complex);
+long double complex cexpl(long double complex);
+float complex clogf(float complex);
+double complex clog(double complex);
+long double complex clogl(long double complex);
+float complex csqrtf(float complex);
+double complex csqrt(double complex);
+long double complex csqrtl(long double complex);
 #endif
 `
 }
