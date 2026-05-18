@@ -417,6 +417,15 @@ int main(void)
     if (frexpl(8.0L, &e3) != 0.5L || e3 != 4)
       return 60;
   }
+  {
+    int q1 = 0, q2 = 0, q3 = 0;
+    if (remquo(4.0, 4.0, &q1) != 0.0 || q1 != 1)
+      return 61;
+    if (remquof(4.0f, 4.0f, &q2) != 0.0f || q2 != 1)
+      return 62;
+    if (remquol(4.0L, 4.0L, &q3) != 0.0L || q3 != 1)
+      return 63;
+  }
   if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
