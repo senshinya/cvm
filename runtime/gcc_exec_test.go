@@ -2338,6 +2338,33 @@ int main(void)
 	}
 }
 
+func TestGCCStdioConfiguredStdinExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[4] = {0, 0, 0, 0};
+  if (getchar() != 'A')
+    return 1;
+  if (fgetc(stdin) != 'B')
+    return 2;
+  if (fgets(buf, sizeof buf, stdin) != buf)
+    return 3;
+  if (buf[0] != 'C' || buf[1] != '\n' || buf[2] != 0)
+    return 4;
+  if (fread(buf, 1, 2, stdin) != 2)
+    return 5;
+  return buf[0] == 'D' && buf[1] == 'E' ? 0 : 6;
+}
+`
+	reg := DefaultExternRegistryWithIO(strings.NewReader("ABC\nDE"), nil, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-configured-stdin-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioUngetcExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

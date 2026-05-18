@@ -637,6 +637,71 @@ func TestFgetcEmptyInputReturnsEOF(t *testing.T) {
 	}
 }
 
+func TestStdioReadsConfiguredStdin(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("ABC\nrest"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	fgetcFn, ok := reg.Lookup("fgetc")
+	if !ok {
+		t.Fatal("missing fgetc extern")
+	}
+	getcharFn, ok := reg.Lookup("getchar")
+	if !ok {
+		t.Fatal("missing getchar extern")
+	}
+	fgetsFn, ok := reg.Lookup("fgets")
+	if !ok {
+		t.Fatal("missing fgets extern")
+	}
+	freadFn, ok := reg.Lookup("fread")
+	if !ok {
+		t.Fatal("missing fread extern")
+	}
+
+	ret, exit, err := fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'A' {
+		t.Fatalf("fgetc ret=%#v exit=%#v err=%v, want 'A'", ret, exit, err)
+	}
+	ret, exit, err = getcharFn(context.Background(), &ExternContext{Memory: mem}, nil)
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'B' {
+		t.Fatalf("getchar ret=%#v exit=%#v err=%v, want 'B'", ret, exit, err)
+	}
+
+	line := mustAllocBytes(t, mem, "stdin:line", []byte{0, 0, 0, 0}, false, blockLocal)
+	ret, exit, err = fgetsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(line), IntValue(bytecode.TypeI32, 4), PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != line {
+		t.Fatalf("fgets ret=%#v exit=%#v err=%v, want buffer", ret, exit, err)
+	}
+	got, err := mem.ReadCString(line)
+	if err != nil {
+		t.Fatalf("ReadCString line: %v", err)
+	}
+	if got != "C\n" {
+		t.Fatalf("fgets line = %q, want C newline", got)
+	}
+
+	block := mustAllocBytes(t, mem, "stdin:block", []byte{0, 0, 0}, false, blockLocal)
+	ret, exit, err = freadFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(block),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 3),
+		PtrValue(stdin),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 3 {
+		t.Fatalf("fread ret=%#v exit=%#v err=%v, want 3", ret, exit, err)
+	}
+	bytesBlock, off, err := mem.rangeAccess(block, 3, false)
+	if err != nil {
+		t.Fatalf("rangeAccess block: %v", err)
+	}
+	if got := string(bytesBlock.data[off : off+3]); got != "res" {
+		t.Fatalf("fread bytes = %q, want res", got)
+	}
+}
+
 func TestInputCharacterAliasesConsumePushback(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

@@ -72,19 +72,19 @@ git push origin codex/bytecode-runtime-phase-1
 - Modify: `runtime/gcc_exec_test.go`
 - Modify: `runtime/integration_test.go` if compile-and-run helper needs stdin support
 
-- [ ] **Step 1: Add failing direct extern tests**
+- [x] **Step 1: Add failing direct extern tests**
 
 Add tests proving `getchar`, `fgetc`, `fgets`, and `fread` consume bytes from configured stdin after existing `ungetc` bytes are exhausted.
 
-- [ ] **Step 2: Add failing GCC runtime stdin snippet**
+- [x] **Step 2: Add failing GCC runtime stdin snippet**
 
 Add a helper or test path that runs a C snippet with stdin set to a small string and verifies character, line, and block reads.
 
-- [ ] **Step 3: Implement stdin reader plumbing**
+- [x] **Step 3: Implement stdin reader plumbing**
 
 Add a backward-compatible constructor such as `NewExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer)` and `DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer)`. Store stdin as a reader in the registry and have `readHostChar` fall back to that reader after pushback.
 
-- [ ] **Step 4: Run focused tests**
+- [x] **Step 4: Run focused tests**
 
 Run:
 
@@ -92,7 +92,7 @@ Run:
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdioReadsConfiguredStdin|TestGCCStdioConfiguredStdinExecutesThroughRuntime' -count=1 -v
 ```
 
-- [ ] **Step 5: Full verification, commit, push**
+- [x] **Step 5: Full verification, commit, push**
 
 Run Common Verification, then commit:
 

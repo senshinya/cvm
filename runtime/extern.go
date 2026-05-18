@@ -23,6 +23,7 @@ type ExternContext struct {
 
 type ExternRegistry struct {
 	funcs         map[string]ExternFunc
+	stdin         io.Reader
 	stdout        io.Writer
 	stderr        io.Writer
 	hostWriters   map[uint64]io.Writer
@@ -37,6 +38,10 @@ type ExternRegistry struct {
 }
 
 func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
+	return NewExternRegistryWithIO(nil, stdout, stderr)
+}
+
+func NewExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *ExternRegistry {
 	if stdout == nil {
 		stdout = os.Stdout
 	}
@@ -45,6 +50,7 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	}
 	return &ExternRegistry{
 		funcs:         make(map[string]ExternFunc),
+		stdin:         stdin,
 		stdout:        stdout,
 		stderr:        stderr,
 		hostWriters:   make(map[uint64]io.Writer),
@@ -59,7 +65,11 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 }
 
 func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
-	r := NewExternRegistry(stdout, stderr)
+	return DefaultExternRegistryWithIO(nil, stdout, stderr)
+}
+
+func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *ExternRegistry {
+	r := NewExternRegistryWithIO(stdin, stdout, stderr)
 	r.Register("exit", exitExtern("exit"))
 	r.Register("_Exit", exitExtern("_Exit"))
 	r.Register("abort", abortExtern())
@@ -4400,6 +4410,17 @@ func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {
 func (r *ExternRegistry) readHostChar(addr uint64) (byte, bool) {
 	buf := r.hostPushback[addr]
 	if len(buf) == 0 {
+		if addr != r.stdinHandle || r.stdin == nil {
+			return 0, false
+		}
+		var one [1]byte
+		n, err := r.stdin.Read(one[:])
+		if n > 0 {
+			return one[0], true
+		}
+		if err != nil {
+			return 0, false
+		}
 		return 0, false
 	}
 	ch := buf[len(buf)-1]
