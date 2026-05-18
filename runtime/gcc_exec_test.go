@@ -266,6 +266,13 @@ func TestGCCInlineVolatileCallsExecuteThroughRuntime(t *testing.T) {
 	}
 }
 
+func TestGCCGNU89InlineVolatileCallsExecuteThroughRuntime(t *testing.T) {
+	st := runGCCAcceptFixtureWithStepLimit(t, "sema/testdata/gcc-c99-extra/accept/pr71969-3.c", 1000000)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioPositionStubsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
