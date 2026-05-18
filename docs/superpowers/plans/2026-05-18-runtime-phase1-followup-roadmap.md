@@ -1096,6 +1096,22 @@ go test ./runtime -run 'TestComplexExpLogSqrtExterns|TestComplexExpLogSqrtExecut
   - `feat(runtime): add complex exp log sqrt externs`
   - `docs: record complex exp log sqrt externs`
 
+## Plan 79: Plain `<complex.h>` Pow Helpers - Completed
+
+The pre-plan adjustment selected `cpow*` as the only remaining known complex helper already backed by the existing tgmath binary-complex runtime path. Tests use `cpow(1+0i, 2+0i) == 1+0i` to avoid approximate comparisons.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinComplexHeaderDeclaresProjectionSurface -count=1 -v
+go test ./runtime -run 'TestComplexPowExterns|TestComplexPowExecutesThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add complex pow externs`
+  - `docs: record complex pow externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
