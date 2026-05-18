@@ -914,6 +914,29 @@ int main(void)
 	}
 }
 
+func TestStdlibDivExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  div_t d = div(-7, 3);
+  ldiv_t ld = ldiv(-9L, 4L);
+  lldiv_t lld = lldiv(10LL, -4LL);
+
+  if (d.quot != -2 || d.rem != -1)
+    return 1;
+  if (ld.quot != -2 || ld.rem != -1)
+    return 2;
+  return lld.quot == -2 && lld.rem == 2 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-div-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibExitExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>

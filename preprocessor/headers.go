@@ -122,10 +122,16 @@ func stdlibHeader() string {
 	return `#ifndef __CVM_STDLIB_H
 #define __CVM_STDLIB_H
 typedef __SIZE_TYPE__ size_t;
+typedef struct { int quot; int rem; } div_t;
+typedef struct { long quot; long rem; } ldiv_t;
+typedef struct { long long quot; long long rem; } lldiv_t;
 #define RAND_MAX 32767
 int abs(int);
 long labs(long);
 long long llabs(long long);
+div_t div(int, int);
+ldiv_t ldiv(long, long);
+lldiv_t lldiv(long long, long long);
 int atoi(const char *);
 long atol(const char *);
 long long atoll(const char *);

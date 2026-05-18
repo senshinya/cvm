@@ -121,6 +121,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("abs", signedAbsExtern("abs", bytecode.TypeI32))
 	r.Register("labs", signedAbsExtern("labs", bytecode.TypeI64))
 	r.Register("llabs", signedAbsExtern("llabs", bytecode.TypeI64))
+	r.Register("div", signedDivExtern("div", bytecode.TypeI32, 4, 4))
+	r.Register("ldiv", signedDivExtern("ldiv", bytecode.TypeI64, 8, 8))
+	r.Register("lldiv", signedDivExtern("lldiv", bytecode.TypeI64, 8, 8))
 	r.Register("atoi", atoiExtern("atoi", bytecode.TypeI32))
 	r.Register("atol", atoiExtern("atol", bytecode.TypeI64))
 	r.Register("atoll", atoiExtern("atoll", bytecode.TypeI64))
@@ -507,6 +510,36 @@ func signedAbsExtern(name string, ret bytecode.ValueType) ExternFunc {
 			v = -v
 		}
 		return normalizeInt(IntValue(ret, v)), nil, nil
+	}
+}
+
+func signedDivExtern(name string, typ bytecode.ValueType, fieldSize, fieldAlign int64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		numer := signedInt(args[0])
+		denom := signedInt(args[1])
+		if denom == 0 {
+			return Value{}, nil, fmt.Errorf("%s division by zero", name)
+		}
+		addr, err := ec.Memory.TryAlloc(name+":result", fieldSize*2, fieldAlign, false, blockGlobal)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := ec.Memory.Store(addr, typ, fieldAlign, IntValue(typ, numer/denom)); err != nil {
+			return Value{}, nil, err
+		}
+		if err := ec.Memory.Store(addr+uint64(fieldSize), typ, fieldAlign, IntValue(typ, numer%denom)); err != nil {
+			return Value{}, nil, err
+		}
+		return ObjectAddrValue(addr), nil, nil
 	}
 }
 
