@@ -792,6 +792,22 @@ go test ./runtime -run 'TestPlainMathBinaryExterns|TestMathPlainUnaryExecuteThro
   - `feat(runtime): add plain fdim minmax math externs`
   - `docs: record plain fdim minmax math externs`
 
+## Plan 60: Plain Remainder/Sign Binary `math.h` Helpers - Completed
+
+The pre-plan adjustment continued the binary real math sweep and kept `fma`/`nextafter` for later because they have distinct arity or edge-case behavior. This plan adds plain `fmod*`, `remainder*`, and `copysign*` declarations and extern registrations.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathBinaryExterns|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain fmod copysign math externs`
+  - `docs: record plain fmod copysign math externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
