@@ -44,6 +44,39 @@ git commit -m "feat(runtime): open configured read only files"
 git push origin codex/bytecode-runtime-phase-1
 ```
 
+## Task 6: Configured File Append Mode
+
+**Files:**
+- Modify: `runtime/extern_test.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/superpowers/plans/2026-05-19-phase2b-file-streams.md`
+
+- [x] **Step 1: Add direct append-mode coverage**
+
+Cover `fopen(path, "a")` appending to an existing configured file and then reading back the combined content.
+
+- [x] **Step 2: Add GCC runtime coverage**
+
+Add a runtime test that appends to a configured file and verifies the result after reopening for read.
+
+- [x] **Step 3: Run focused tests**
+
+Run:
+
+```bash
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestFopenAppendsConfiguredFile|TestGCCFopenConfiguredFileAppendModeExecutesThroughRuntime' -count=1 -v
+```
+
+- [x] **Step 4: Full verification, commit, push**
+
+Run Common Verification, then commit:
+
+```bash
+git add runtime/extern_test.go runtime/gcc_exec_test.go docs/superpowers/plans/2026-05-19-phase2b-file-streams.md
+git commit -m "test(runtime): cover configured file append mode"
+git push origin codex/bytecode-runtime-phase-1
+```
+
 ## Task 5: Hermetic `tmpfile`
 
 **Files:**
