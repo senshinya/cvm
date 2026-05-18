@@ -163,7 +163,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib floating parser externs`
   - `docs: record stdlib floating parser externs`
 
-## Plan 21: `strings.h` BSD Memory Aliases
+## Plan 21: `strings.h` BSD Memory Aliases - Completed
 
 Add builtin `<strings.h>` declarations, sema signatures, runtime aliases, direct coverage, and GCC runtime execution coverage for `bcmp`, `bcopy`, and `bzero`. Reuse existing `memcmp`, `memmove`, and `bzero` behavior.
 
