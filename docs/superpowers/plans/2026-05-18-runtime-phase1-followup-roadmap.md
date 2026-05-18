@@ -1516,6 +1516,24 @@ go test ./runtime -run TestPlainSprintfExecutesThroughRuntime -count=1 -v
 - Commit message:
   - `test(runtime): include string header in plain sprintf coverage`
 
+## Plan 151: Header Composition Runtime Gap Scan - Completed
+
+The pre-plan adjustment scanned runtime tests that include builtin headers exposing `size_t`. After Plan 147, `<stdio.h>` plus `<string.h>` was covered, but `<stdlib.h>` plus `<string.h>` still had no shared execution path.
+
+## Plan 152: Stdlib/String Header Composition Runtime Coverage - Completed
+
+Updated `TestPlainAllocationExecuteThroughRuntime` to include both `<stdlib.h>` and `<string.h>`, then validate the `strdup` result with `strlen` and `strcmp`. This keeps the existing allocation semantics coverage and adds another runtime path through the shared guarded `size_t` typedef.
+
+- Files: `runtime/gcc_exec_test.go`
+- Focused test:
+
+```bash
+go test ./runtime -run TestPlainAllocationExecuteThroughRuntime -count=1 -v
+```
+
+- Commit message:
+  - `test(runtime): combine stdlib and string headers`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.

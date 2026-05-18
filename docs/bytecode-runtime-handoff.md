@@ -141,6 +141,9 @@ Recent commits at the tip of this branch:
 - `55b3876 test(runtime): include string header in plain sprintf coverage`
   - Updates the plain formatter runtime source to include both `<stdio.h>` and `<string.h>`.
   - Confirms the shared guarded `size_t` typedef path is exercised during runtime compile-and-execute coverage.
+- `506b766 test(runtime): combine stdlib and string headers`
+  - Updates plain allocation runtime coverage to include both `<stdlib.h>` and `<string.h>`.
+  - Uses `strlen`/`strcmp` on `strdup` results, adding a second shared `size_t` header composition path through runtime execution.
 
 - `43f0676 test(runtime): execute GCC large static array loop`
   - Adds direct runtime coverage for `sema/testdata/gcc-c99-extra/accept/pr27639.c`.
