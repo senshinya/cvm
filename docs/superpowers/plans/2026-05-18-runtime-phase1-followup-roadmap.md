@@ -35,7 +35,7 @@ env GOCACHE=/private/tmp/cvm-go-build-cache go test ./codegen -count=1
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./... -count=1
 ```
 
-## Plan 13: `stdlib.h` Process Termination Surface
+## Plan 13: `stdlib.h` Process Termination Surface - Completed
 
 Add builtin `<stdlib.h>` declarations and runtime-through-header coverage for `exit` and `abort`. `exit` already exists in the registry; `abort` already exists as a trap extern, so this plan should shrink to declarations and coverage unless the pre-plan adjustment finds missing runtime pieces.
 
