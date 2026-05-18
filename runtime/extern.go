@@ -71,6 +71,8 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("abort", abortExtern())
 	r.Register("__builtin_abort", abortExtern())
 	registerVaListExterns(r)
+	r.Register("remove", removeExtern("remove"))
+	r.Register("rename", renameExtern("rename"))
 	for _, name := range []string{"puts", "puts_unlocked"} {
 		r.Register(name, putsExtern(name, r))
 	}
@@ -192,6 +194,45 @@ func registerVaListExterns(r *ExternRegistry) {
 		}
 		return Value{}, nil, nil
 	})
+}
+
+func removeExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects path pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, -1), nil, nil
+	}
+}
+
+func renameExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects path pointers", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := ec.Memory.ReadCString(args[1].Int); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, -1), nil, nil
+	}
 }
 
 func putsExtern(name string, r *ExternRegistry) ExternFunc {

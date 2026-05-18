@@ -163,6 +163,23 @@ func TestHasGCCRunDirectiveRejectsNonRunCases(t *testing.T) {
 	}
 }
 
+func TestStdioFileOperationStubsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (remove("missing.tmp") != -1)
+    return 1;
+  return rename("old.tmp", "new.tmp") == -1 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "stdio-file-operation-stubs-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCExecutionFixtures(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("testdata", "gcc-exec", "manifest.tsv"))
 	if err != nil {

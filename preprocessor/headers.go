@@ -62,6 +62,8 @@ typedef struct __cvm_FILE FILE;
 extern FILE *stdin;
 extern FILE *stdout;
 extern FILE *stderr;
+int remove(const char *);
+int rename(const char *, const char *);
 int fputs(const char * restrict, FILE * restrict);
 int fputs_unlocked(const char * restrict, FILE * restrict);
 int fputc(int, FILE *);
