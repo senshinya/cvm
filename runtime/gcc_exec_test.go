@@ -990,7 +990,14 @@ int main(void)
     return 5;
   if (!(m != m))
     return 6;
-  return nl != nl ? 0 : 7;
+  if (!(nl != nl))
+    return 7;
+
+  if (!signbit(-0.0f))
+    return 8;
+  if (!signbit(-0.0))
+    return 9;
+  return signbit(-0.0L) ? 0 : 10;
 }
 `
 	st := runGCCExecFixture(t, "builtin-floating-constants-runtime.c", source)

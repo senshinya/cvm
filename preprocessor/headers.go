@@ -708,7 +708,7 @@ int __cvm_isunordered(double, double);
 #define isinf(x) __cvm_math_select1((x), __cvm_isinff, __cvm_isinf, __cvm_isinfl)
 #define isnan(x) __cvm_math_select1((x), __cvm_isnanf, __cvm_isnan, __cvm_isnanl)
 #define isnormal(x) __cvm_math_select1((x), __cvm_isnormalf, __cvm_isnormal, __cvm_isnormall)
-#define signbit(x) __cvm_signbit((double)(x))
+#define signbit(x) __cvm_math_select1((x), __cvm_signbitf, __cvm_signbit, __cvm_signbitl)
 #define isgreater(x, y) ((x) > (y))
 #define isgreaterequal(x, y) ((x) >= (y))
 #define isless(x, y) ((x) < (y))

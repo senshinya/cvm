@@ -1101,6 +1101,13 @@ int f(int m) {
 	}
 }
 
+func TestGenerateConstantConditionalExpressionWithOuterStackValue(t *testing.T) {
+	compileModule(t, `
+int main(void) {
+	return ((sizeof(int) == sizeof(int)) ? 1 : 0) | ((sizeof(long) == sizeof(int)) ? 2 : 4);
+}`)
+}
+
 func instrPC(t *testing.T, fn bytecode.Function, pred func(bytecode.Instr) bool) int {
 	t.Helper()
 	return instrPCAfter(t, fn, -1, pred)

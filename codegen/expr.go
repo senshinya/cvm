@@ -613,6 +613,13 @@ func compoundArithmeticType(lhs, rhs bytecode.ValueType) (bytecode.ValueType, bo
 }
 
 func (fg *funcGen) emitCondExpr(x *sema.CondExpr) error {
+	if cv, ok := sema.NewEvaluator(nil).EvalC99IntegerConstantExpression(x.Cond); ok {
+		if cv.Int != 0 || cv.Uint != 0 {
+			return fg.emitValue(x.Then)
+		}
+		return fg.emitValue(x.Else)
+	}
+
 	var stack []bytecode.ValueType
 	if exprLeavesValue(x) {
 		t, err := fg.g.lowerValueType(x.T)
