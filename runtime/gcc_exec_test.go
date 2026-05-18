@@ -1436,6 +1436,26 @@ int main(void)
 	}
 }
 
+func TestStringStrerrorExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  char *a = strerror(1);
+  char *b = strerror(2);
+
+  if (strcmp(a, "error") != 0)
+    return 1;
+  return a == b ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "string-strerror-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestPlainMemoryOperationsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <string.h>

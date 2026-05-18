@@ -22,14 +22,15 @@ type ExternContext struct {
 }
 
 type ExternRegistry struct {
-	funcs        map[string]ExternFunc
-	stdout       io.Writer
-	stderr       io.Writer
-	hostWriters  map[uint64]io.Writer
-	hostFDs      map[uint64]int32
-	hostPushback map[uint64][]byte
-	hostEOF      map[uint64]bool
-	stdinHandle  uint64
+	funcs         map[string]ExternFunc
+	stdout        io.Writer
+	stderr        io.Writer
+	hostWriters   map[uint64]io.Writer
+	hostFDs       map[uint64]int32
+	hostPushback  map[uint64][]byte
+	hostEOF       map[uint64]bool
+	stdinHandle   uint64
+	staticStrings map[*Memory]map[string]uint64
 }
 
 func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
@@ -40,13 +41,14 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		stderr = os.Stderr
 	}
 	return &ExternRegistry{
-		funcs:        make(map[string]ExternFunc),
-		stdout:       stdout,
-		stderr:       stderr,
-		hostWriters:  make(map[uint64]io.Writer),
-		hostFDs:      make(map[uint64]int32),
-		hostPushback: make(map[uint64][]byte),
-		hostEOF:      make(map[uint64]bool),
+		funcs:         make(map[string]ExternFunc),
+		stdout:        stdout,
+		stderr:        stderr,
+		hostWriters:   make(map[uint64]io.Writer),
+		hostFDs:       make(map[uint64]int32),
+		hostPushback:  make(map[uint64][]byte),
+		hostEOF:       make(map[uint64]bool),
+		staticStrings: make(map[*Memory]map[string]uint64),
 	}
 }
 
@@ -988,6 +990,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 		r.Register(name, stringLengthExtern(name))
 	}
 	r.Register("strnlen", stringNLengthExtern("strnlen"))
+	r.Register("strerror", stringErrorExtern("strerror", r))
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
 		r.Register(name, stringCharSearchExtern(name))
 	}
@@ -1615,6 +1618,25 @@ func stringNLengthExtern(name string) ExternFunc {
 			}
 		}
 		return UIntValue(bytecode.TypeU64, uint64(n)), nil, nil
+	}
+}
+
+func stringErrorExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		addr, err := r.staticCString(ec.Memory, name, "error")
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
 	}
 }
 
@@ -3391,6 +3413,30 @@ func (r *ExternRegistry) externStderr(ec *ExternContext) io.Writer {
 		return ec.Stderr
 	}
 	return r.stderr
+}
+
+func (r *ExternRegistry) staticCString(mem *Memory, name, value string) (uint64, error) {
+	if mem == nil {
+		return 0, fmt.Errorf("memory is nil")
+	}
+	if byName := r.staticStrings[mem]; byName != nil {
+		if addr, ok := byName[name]; ok {
+			return addr, nil
+		}
+	}
+	data := append([]byte(value), 0)
+	addr, err := mem.TryAlloc("extern:"+name, int64(len(data)), 1, false, blockString)
+	if err != nil {
+		return 0, err
+	}
+	if err := writeMemoryBytes(mem, addr, data); err != nil {
+		return 0, err
+	}
+	if r.staticStrings[mem] == nil {
+		r.staticStrings[mem] = make(map[string]uint64)
+	}
+	r.staticStrings[mem][name] = addr
+	return addr, nil
 }
 
 func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {

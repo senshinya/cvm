@@ -88,6 +88,8 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(sizeT, []Type{constCharPtr}, false, true)
 	case "strnlen":
 		return s.Types.Function(sizeT, []Type{constCharPtr, sizeT}, false, true)
+	case "strerror":
+		return s.Types.Function(charPtr, []Type{intT}, false, true)
 	case "strncmp":
 		return s.Types.Function(intT, []Type{constCharPtr, constCharPtr, sizeT}, false, true)
 	case "__builtin_strchr":
