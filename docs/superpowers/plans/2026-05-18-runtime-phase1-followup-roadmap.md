@@ -355,6 +355,22 @@ go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -cou
   - `feat(runtime): add stdio file operation stubs`
   - `docs: record stdio file operation stubs`
 
+## Plan 33: `stdio.h` Open Stubs - Completed
+
+Add hermetic null-return stubs for `fopen`, `freopen`, and `tmpfile`. `fopen` and `freopen` validate path and mode strings; `freopen` also validates the stream handle. None of these externs touches the host filesystem.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStdioOpenStubs|TestStdioOpenStubsExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdio open stubs`
+  - `docs: record stdio open stubs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
