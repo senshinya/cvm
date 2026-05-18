@@ -94,7 +94,7 @@ The bytecode compile suite now covers every imported `.c` GCC accept fixture fro
 - `sema/testdata/gcc-c99-extra/accept`
 - `sema/testdata/gcc-c90-as-c99/accept`
 
-The Plan 52 coverage check returned no uncovered `.c` fixtures for those roots.
+The Plan 84 coverage check returned no uncovered `.c` fixtures for those roots.
 
 Notable recent coverage additions:
 

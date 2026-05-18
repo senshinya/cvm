@@ -1145,6 +1145,23 @@ go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1 -v
 - Commit message:
   - `docs: record GCC runtime gap recheck`
 
+## Plan 83: GCC Runtime Fixture Addition - Completed
+
+The pre-plan adjustment consumed Plan 82's result: no new runnable GCC runtime fixture exists to add. This plan completed without code changes.
+
+## Plan 84: GCC Bytecode Compile Manifest Recheck - Completed
+
+The pre-plan adjustment rechecked bytecode compile coverage after runtime manifest closure. `codegen/testdata/gcc-bytecode-compile.tsv` still has 232 lines including the header, covering 231 fixture entries. The direct `comm` gap check returned zero missing `.c` files across `sema/testdata/gcc-c99/accept`, `sema/testdata/gcc-c99-extra/accept`, and `sema/testdata/gcc-c90-as-c99/accept`.
+
+- Focused tests:
+
+```bash
+go test ./codegen -run 'TestGCCBytecodeManifestCoversImportedAcceptFixtures|TestGCCBytecodeCompileSuite' -count=1 -v
+```
+
+- Commit message:
+  - `docs: record GCC bytecode manifest recheck`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
