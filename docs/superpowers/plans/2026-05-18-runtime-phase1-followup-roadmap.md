@@ -275,7 +275,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib random externs`
   - `docs: record stdlib random externs`
 
-## Plan 28: `stdlib.h` Environment Stubs
+## Plan 28: `stdlib.h` Environment Stubs - Completed
 
 Add `getenv` declaration, runtime extern, direct coverage, and GCC runtime execution coverage. Phase 1 behavior should be hermetic: validate the name pointer and return null for every variable.
 
