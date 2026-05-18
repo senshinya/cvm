@@ -499,6 +499,22 @@ go test ./runtime -run 'TestErrnoExternVariable|TestErrnoHeaderExecuteThroughRun
   - `feat(runtime): add errno extern variable`
   - `docs: record errno extern variable`
 
+## Plan 42: `assert.h` Header Surface - Completed
+
+Add builtin `<assert.h>` macro coverage. In normal mode `assert(expr)` expands to an expression that calls `abort()` on failure; with `NDEBUG` it expands to `((void)0)`. Runtime coverage executes the non-failing path through the header and reuses the existing `abort` extern for the failure path.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinAssertHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run TestAssertHeaderExecuteThroughRuntime -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add assert header surface`
+  - `docs: record assert header surface`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
