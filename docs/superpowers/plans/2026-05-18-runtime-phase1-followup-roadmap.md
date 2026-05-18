@@ -1276,6 +1276,51 @@ go test ./runtime -run 'TestGCCC90DeclarationAfterStatementExecutesThroughRuntim
 - Commit message:
   - `docs: record GCC declaration-after-statement runtime coverage`
 
+## Plan 97: GCC Bytecode Compile Manifest Recheck - Completed
+
+The pre-plan adjustment returned to compile coverage after the direct runtime fixture landed. `codegen/testdata/gcc-bytecode-compile.tsv` still has 232 lines including the header, and the direct `comm` gap check across `sema/testdata/gcc-c99/accept`, `sema/testdata/gcc-c99-extra/accept`, and `sema/testdata/gcc-c90-as-c99/accept` returned no missing `.c` fixtures.
+
+- Focused tests:
+
+```bash
+go test ./codegen -run 'TestGCCBytecodeManifestCoversImportedAcceptFixtures|TestGCCBytecodeCompileSuite' -count=1 -v
+```
+
+## Plan 98: VLA Runtime Candidate Selection - Completed
+
+The pre-plan adjustment revisited the originally requested VLA fixtures. `vla-2.c` and `vla-26.c` already map to existing direct runtime coverage for VLA struct/union members and VLA parameter dynamic strides. The next low-risk VLA-shaped candidate was `Wstrict-aliasing-bogus-vla-1.c`, adapted into a self-contained runtime probe so the current runtime does not need to inject `argc`/`argv` entry arguments.
+
+## Plan 99: VLA Dynamic-Size Memcpy Runtime Coverage - Completed
+
+The pre-plan adjustment added a focused runtime probe for local VLAs copied through `__builtin_memcpy` using a dynamic `n * sizeof(*x)` byte count.
+
+- Files: `runtime/gcc_exec_test.go`
+- Focused tests:
+
+```bash
+go test ./runtime -run TestGCCVLAMemcpyDynamicSizeExecutesThroughRuntime -count=1 -v
+go test ./runtime -run 'TestGCCVLAMemcpyDynamicSizeExecutesThroughRuntime|TestGCCVLAParameterDynamicStrideExecutesThroughRuntime|TestGCCVLAStructAndUnionMembersExecuteThroughRuntime' -count=1 -v
+```
+
+- Commit messages:
+  - `test(runtime): execute VLA memcpy dynamic size`
+  - `docs: record VLA memcpy dynamic-size runtime coverage`
+
+## Plan 100: VLA Failure Triage - Completed
+
+The Plan 99 focused probe passed immediately, so no sema, codegen, or runtime fix was required.
+
+## Plan 101: VLA Regression Coverage - Completed
+
+The added focused runtime probe is the regression coverage for dynamic VLA byte counts flowing into builtin memory operations.
+
+## Plan 102: VLA Coverage Verification - Completed
+
+The coverage-only VLA increment passed focused runtime tests plus full verification.
+
+- Commit message:
+  - `docs: record VLA memcpy dynamic-size runtime coverage`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.

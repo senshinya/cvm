@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `eaf0dc4 test(runtime): execute GCC declaration-after-statement fixture`
+- Latest implementation/coverage commit before this handoff document: `dac4a68 test(runtime): execute VLA memcpy dynamic size`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -88,6 +88,8 @@ The latest Plan 89 math surface scan found no remaining expected C99 `<math.h>` 
 
 Plan 90 rechecked the GCC runtime execution gap report and it remains closed. Plan 91 then scanned compile-only GCC accept fixtures with a `main` and selected `sema/testdata/gcc-c90-as-c99/accept/Wdeclaration-after-statement-4.c` as a low-risk direct runtime coverage candidate. The fixture now executes through a focused runtime test without joining `runtime/testdata/gcc-exec/manifest.tsv`, because that manifest is intentionally limited to fixtures with `{ dg-do run }` or `c99_runtime` directives.
 
+Plan 97 rechecked `codegen/testdata/gcc-bytecode-compile.tsv`: it still has 232 lines including the header, and the direct gap check across the three imported GCC accept roots returned no missing `.c` fixtures.
+
 ### Bytecode GCC Compile Coverage
 
 `codegen/testdata/gcc-bytecode-compile.tsv` currently has 232 lines including the header, so 231 fixture entries.
@@ -113,6 +115,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `dac4a68 test(runtime): execute VLA memcpy dynamic size`
+  - Adds direct runtime coverage inspired by `Wstrict-aliasing-bogus-vla-1.c`.
+  - Exercises local VLA allocation, dynamic `sizeof(*x)` sizing, and `__builtin_memcpy` over the resulting dynamic byte count.
+  - Complements existing runtime coverage for `vla-2.c`-style VLA struct/union members and `vla-26.c`-style VLA parameter dynamic strides.
 
 - `eaf0dc4 test(runtime): execute GCC declaration-after-statement fixture`
   - Adds a direct runtime coverage test for `sema/testdata/gcc-c90-as-c99/accept/Wdeclaration-after-statement-4.c`.
@@ -1301,7 +1308,7 @@ Runtime integration coverage now includes local/static `__builtin_complex` initi
 GCC-derived complex runtime coverage also includes imaginary floating constants such as `-1.0i` and integer imaginary constants such as `1i`.
 Complex-to-scalar runtime coverage includes local initialization from imaginary literals, where the real component is selected.
 Complex constant-expression coverage includes automatic and static complex initializers with arithmetic over imaginary literals and static conditional initializers selecting `__builtin_complex`.
-VLA runtime coverage includes local VLA dynamic object allocation, VLA fields inside local structs and unions, VLA parameter dynamic strides, and nested-function VLA capture cases.
+VLA runtime coverage includes local VLA dynamic object allocation, VLA fields inside local structs and unions, VLA parameter dynamic strides, dynamic-size `__builtin_memcpy` over local VLAs, and nested-function VLA capture cases.
 Integer conversion runtime coverage includes Wconversion-derived signed-to-unsigned conversion, unsigned-char narrowing, conditional conversions, function argument conversions, and Wsign-derived signed/unsigned boundary conversions.
 C90-as-C99 runtime coverage includes declaration-after-statement fixture execution with `abort`/`exit` assertions.
 Scalar floating runtime coverage includes `long double` local arithmetic, `long double` by-value arguments and returns, mixed-width floating compound assignment such as `float += double`, floating assignment and compound-assignment expression results for local slots and addressable fields, floating logical expressions through bool conversion, and floating `++`/`--` for local slots and addressable fields.
