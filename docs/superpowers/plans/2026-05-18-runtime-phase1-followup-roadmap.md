@@ -83,7 +83,7 @@ go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -coun
   - `feat(runtime): add string bounded compare search externs`
   - `docs: record string bounded compare search externs`
 
-## Plan 16: `string.h` Reverse/Set Search Helpers
+## Plan 16: `string.h` Reverse/Set Search Helpers - Completed
 
 Add `strrchr` and `strpbrk` declarations, sema signatures, runtime externs, direct coverage, and GCC runtime execution coverage.
 
