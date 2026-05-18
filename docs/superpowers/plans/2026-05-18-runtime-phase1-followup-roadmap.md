@@ -1080,6 +1080,22 @@ go test ./runtime -run 'TestComplexInverseHyperbolicExterns|TestComplexInverseHy
   - `feat(runtime): add complex inverse hyperbolic externs`
   - `docs: record complex inverse hyperbolic externs`
 
+## Plan 78: Plain `<complex.h>` Exp/Log/Sqrt Helpers - Completed
+
+The pre-plan adjustment picked `cexp*`, `clog*`, and `csqrt*` because tgmath already had runtime backends for them and exact inputs keep the tests deterministic: `cexp(0+0i) == 1+0i`, `clog(1+0i) == 0+0i`, and `csqrt(0+0i) == 0+0i`.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinComplexHeaderDeclaresProjectionSurface -count=1 -v
+go test ./runtime -run 'TestComplexExpLogSqrtExterns|TestComplexExpLogSqrtExecutesThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add complex exp log sqrt externs`
+  - `docs: record complex exp log sqrt externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
