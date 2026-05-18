@@ -394,6 +394,12 @@ int main(void)
     return 37;
   if (fmin(2.0, 3.0) != 2.0 || fminf(2.0f, 3.0f) != 2.0f || fminl(2.0L, 3.0L) != 2.0L)
     return 38;
+  if (fmod(5.0, 2.0) != 1.0 || fmodf(5.0f, 2.0f) != 1.0f || fmodl(5.0L, 2.0L) != 1.0L)
+    return 39;
+  if (remainder(4.0, 2.0) != 0.0 || remainderf(4.0f, 2.0f) != 0.0f || remainderl(4.0L, 2.0L) != 0.0L)
+    return 40;
+  if (copysign(2.0, -1.0) != -2.0 || copysignf(2.0f, -1.0f) != -2.0f || copysignl(2.0L, -1.0L) != -2.0L)
+    return 41;
   if (exp(0.0) != 1.0 || expf(0.0f) != 1.0f || expl(0.0L) != 1.0L)
     return 13;
   if (log(1.0) != 0.0 || logf(1.0f) != 0.0f || logl(1.0L) != 0.0L)

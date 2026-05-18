@@ -520,6 +520,15 @@ long double fmaxl(long double, long double);
 float fminf(float, float);
 double fmin(double, double);
 long double fminl(long double, long double);
+float fmodf(float, float);
+double fmod(double, double);
+long double fmodl(long double, long double);
+float remainderf(float, float);
+double remainder(double, double);
+long double remainderl(long double, long double);
+float copysignf(float, float);
+double copysign(double, double);
+long double copysignl(long double, long double);
 #endif
 int __cvm_fpclassifyf(float);
 int __cvm_fpclassify(double);
