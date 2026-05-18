@@ -19,6 +19,33 @@ func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	}
 }
 
+func TestStdlibProcessTerminationExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	exitFn, ok := reg.Lookup("exit")
+	if !ok {
+		t.Fatal("missing exit extern")
+	}
+	ret, exit, err := exitFn(context.Background(), nil, []Value{IntValue(bytecode.TypeI32, 23)})
+	if err != nil || exit == nil {
+		t.Fatalf("exit ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if exit.Code != 23 {
+		t.Fatalf("exit code = %d, want 23", exit.Code)
+	}
+
+	abortFn, ok := reg.Lookup("abort")
+	if !ok {
+		t.Fatal("missing abort extern")
+	}
+	_, exit, err = abortFn(context.Background(), nil, nil)
+	if exit != nil {
+		t.Fatalf("abort exit=%#v, want nil exit", exit)
+	}
+	if err == nil || !strings.Contains(err.Error(), "abort") {
+		t.Fatalf("abort err=%v, want abort trap", err)
+	}
+}
+
 func TestPutsWritesCString(t *testing.T) {
 	for _, name := range []string{"puts", "puts_unlocked"} {
 		var out bytes.Buffer

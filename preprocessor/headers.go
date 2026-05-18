@@ -129,6 +129,8 @@ void *malloc(size_t);
 void *calloc(size_t, size_t);
 void free(void *);
 char *strdup(const char *);
+void exit(int);
+void abort(void);
 #endif
 `
 }
