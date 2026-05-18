@@ -175,6 +175,7 @@ int strcmp(const char *, const char *);
 int memcmp(const void *, const void *, size_t);
 int strncmp(const char *, const char *, size_t);
 size_t strlen(const char *);
+size_t strnlen(const char *, size_t);
 char *strchr(const char *, int);
 char *strrchr(const char *, int);
 char *strstr(const char *, const char *);

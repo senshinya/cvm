@@ -1374,6 +1374,25 @@ int main(void)
 	}
 }
 
+func TestStringNLengthExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  if (strnlen("abc", 2) != 2)
+    return 1;
+  if (strnlen("hello", 10) != 5)
+    return 2;
+  return strnlen("hello", 3) == 3 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "string-strnlen-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestPlainMemoryOperationsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <string.h>

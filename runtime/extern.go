@@ -986,6 +986,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_strlen", "strlen"} {
 		r.Register(name, stringLengthExtern(name))
 	}
+	r.Register("strnlen", stringNLengthExtern("strnlen"))
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
 		r.Register(name, stringCharSearchExtern(name))
 	}
@@ -1518,6 +1519,41 @@ func stringLengthExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		return UIntValue(bytecode.TypeU64, uint64(len(s))), nil, nil
+	}
+}
+
+func stringNLengthExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		n, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if n == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		for i := int64(0); i < n; i++ {
+			addr, err := addSignedOffset(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			block, off, err := ec.Memory.rangeAccess(addr, 1, false)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if block.data[off] == 0 {
+				return UIntValue(bytecode.TypeU64, uint64(i)), nil, nil
+			}
+		}
+		return UIntValue(bytecode.TypeU64, uint64(n)), nil, nil
 	}
 }
 
