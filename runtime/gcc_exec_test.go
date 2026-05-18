@@ -408,6 +408,15 @@ int main(void)
     return 56;
   if (ldexp(2.0, 3) != 16.0 || ldexpf(2.0f, 3) != 16.0f || ldexpl(2.0L, 3) != 16.0L)
     return 57;
+  {
+    int e1 = 0, e2 = 0, e3 = 0;
+    if (frexp(8.0, &e1) != 0.5 || e1 != 4)
+      return 58;
+    if (frexpf(8.0f, &e2) != 0.5f || e2 != 4)
+      return 59;
+    if (frexpl(8.0L, &e3) != 0.5L || e3 != 4)
+      return 60;
+  }
   if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)

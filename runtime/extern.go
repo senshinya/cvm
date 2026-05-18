@@ -1711,6 +1711,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealIntBinaryExterns(r, "scalbn", math.Ldexp)
 	registerTgmathRealIntBinaryExterns(r, "scalbln", math.Ldexp)
 	registerTgmathRealIntBinaryExterns(r, "ldexp", math.Ldexp)
+	registerTgmathFrexpExterns(r, "frexp")
 	registerTgmathRealBinaryExterns(r, "pow", math.Pow)
 	registerTgmathRealBinaryExterns(r, "atan2", math.Atan2)
 	registerTgmathRealBinaryExterns(r, "hypot", math.Hypot)
