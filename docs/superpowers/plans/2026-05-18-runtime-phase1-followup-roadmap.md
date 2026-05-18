@@ -1128,6 +1128,23 @@ go test ./runtime -run 'TestComplexProjectionExterns|TestComplexAbsExterns|TestC
 - Commit message:
   - `docs: record complex surface gap scan`
 
+## Plan 81: Complex Plain Extern Followup - Completed
+
+The pre-plan adjustment consumed Plan 80's result: no low-risk plain complex extern remained to implement. This plan completed without code changes.
+
+## Plan 82: GCC Runtime Manifest Gap Recheck - Completed
+
+The pre-plan adjustment returned to the GCC runtime execution manifest after the complex surface closed. The report remains current: 18 runnable fixtures, all 18 represented in `runtime/testdata/gcc-exec/manifest.tsv`, with no preprocess, parse, sema, codegen, encode-load, runtime, or exit-mismatch failures.
+
+- Focused test:
+
+```bash
+go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1 -v
+```
+
+- Commit message:
+  - `docs: record GCC runtime gap recheck`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
