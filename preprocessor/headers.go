@@ -529,6 +529,9 @@ long double remainderl(long double, long double);
 float copysignf(float, float);
 double copysign(double, double);
 long double copysignl(long double, long double);
+float fmaf(float, float, float);
+double fma(double, double, double);
+long double fmal(long double, long double, long double);
 #endif
 int __cvm_fpclassifyf(float);
 int __cvm_fpclassify(double);

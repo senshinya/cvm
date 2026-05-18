@@ -1704,6 +1704,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealBinaryExterns(r, "fmod", math.Mod)
 	registerTgmathRealBinaryExterns(r, "remainder", math.Remainder)
 	registerTgmathRealBinaryExterns(r, "copysign", math.Copysign)
+	registerTgmathRealTernaryExterns(r, "fma", math.FMA)
 	registerTgmathRealExterns(r, "__cvm_tgmath_sqrt", math.Sqrt)
 	registerTgmathRealExterns(r, "__cvm_tgmath_fabs", math.Abs)
 	registerTgmathRealExterns(r, "__cvm_tgmath_cos", math.Cos)

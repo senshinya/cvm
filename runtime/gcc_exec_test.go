@@ -400,6 +400,8 @@ int main(void)
     return 40;
   if (copysign(2.0, -1.0) != -2.0 || copysignf(2.0f, -1.0f) != -2.0f || copysignl(2.0L, -1.0L) != -2.0L)
     return 41;
+  if (fma(2.0, 3.0, 4.0) != 10.0 || fmaf(2.0f, 3.0f, 4.0f) != 10.0f || fmal(2.0L, 3.0L, -4.0L) != 2.0L)
+    return 42;
   if (exp(0.0) != 1.0 || expf(0.0f) != 1.0f || expl(0.0L) != 1.0L)
     return 13;
   if (log(1.0) != 0.0 || logf(1.0f) != 0.0f || logl(1.0L) != 0.0L)
