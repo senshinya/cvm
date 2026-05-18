@@ -291,7 +291,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib getenv extern`
   - `docs: record stdlib getenv extern`
 
-## Plan 29: `stdlib.h` System Command Stub
+## Plan 29: `stdlib.h` System Command Stub - Completed
 
 Add `system` declaration, runtime extern, direct coverage, and GCC runtime execution coverage. Phase 1 behavior should remain hermetic: `system(NULL)` returns `0` and any non-null command returns `-1` after validating that the command pointer names a readable C string.
 
