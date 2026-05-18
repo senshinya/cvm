@@ -48,6 +48,33 @@ func TestRunReturnsMainConstant(t *testing.T) {
 	}
 }
 
+func TestRunPassesDefaultArgcToMain(t *testing.T) {
+	mod := bytecode.NewModule()
+	mod.Sigs = []bytecode.FuncSig{{ID: 0, Ret: bytecode.TypeI32, Params: []bytecode.ValueType{bytecode.TypeI32, bytecode.TypePtr}}}
+	mod.Globals = []bytecode.Global{{ID: 0, Name: "main", Kind: bytecode.GlobalFunc, Func: 0, Sig: 0}}
+	mod.Functions = []bytecode.Function{{
+		ID: 0, GlobalID: 0, Name: "main", Sig: 0,
+		Params: []bytecode.Param{
+			{Name: "argc", Type: bytecode.TypeI32, Slot: 0},
+			{Name: "argv", Type: bytecode.TypePtr, Slot: 1},
+		},
+		Instrs: []bytecode.Instr{
+			bytecode.LoadLocal(bytecode.TypeI32, 0),
+			bytecode.Return(bytecode.TypeI32),
+		},
+		MaxStack: 1,
+	}}
+	mod.Entry = &bytecode.EntryPoint{Global: 0, Name: "main"}
+
+	st, err := runModule(t, mod)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if st.Code != 1 {
+		t.Fatalf("exit code = %d, want argc 1", st.Code)
+	}
+}
+
 func TestRunDirectCall(t *testing.T) {
 	mod := testMainModule(
 		bytecode.I32Const(20),

@@ -50,7 +50,7 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 		program: p,
 		limit:   opts.StepLimit,
 	}
-	if err := vm.pushFrame(p.entryFunc, nil); err != nil {
+	if err := vm.pushFrame(p.entryFunc, p.entryArgs); err != nil {
 		return ExitStatus{}, err
 	}
 	for {

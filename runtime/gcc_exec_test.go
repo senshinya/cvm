@@ -3552,6 +3552,13 @@ int main(void)
 	}
 }
 
+func TestGCCStrictAliasingVLADereferenceExecutesThroughRuntime(t *testing.T) {
+	st := runGCCAcceptFixture(t, "sema/testdata/gcc-c99-extra/accept/Wstrict-aliasing-bogus-vla-1.c")
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCVLATypedefPointerExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

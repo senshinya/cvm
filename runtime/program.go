@@ -23,6 +23,7 @@ type Program struct {
 	externs    map[int]ExternFunc
 	externCtx  *ExternContext
 	entryFunc  int
+	entryArgs  []Value
 }
 
 func Load(r io.Reader, opts LoadOptions) (*Program, error) {
@@ -58,9 +59,11 @@ func Load(r io.Reader, opts LoadOptions) (*Program, error) {
 
 	entryGlobal := mod.Globals[mod.Entry.Global]
 	p.entryFunc = entryGlobal.Func
-	if err := p.checkEntrySignature(entryGlobal.Sig); err != nil {
+	entryArgs, err := p.defaultEntryArgs(entryGlobal.Sig)
+	if err != nil {
 		return nil, err
 	}
+	p.entryArgs = entryArgs
 	return p, nil
 }
 
@@ -279,15 +282,50 @@ func (p *Program) relocationTarget(r bytecode.Relocation) (uint64, error) {
 	}
 }
 
-func (p *Program) checkEntrySignature(sigID int) error {
+func (p *Program) defaultEntryArgs(sigID int) ([]Value, error) {
 	if sigID < 0 || sigID >= len(p.module.Sigs) {
-		return &LoadError{Reason: "entry has invalid signature"}
+		return nil, &LoadError{Reason: "entry has invalid signature"}
 	}
 	sig := p.module.Sigs[sigID]
-	if len(sig.Params) != 0 || !isIntegerReturn(sig.Ret) {
-		return &LoadError{Reason: "phase 1 supports no-argument integer-returning main"}
+	if !isIntegerReturn(sig.Ret) {
+		return nil, &LoadError{Reason: "phase 1 supports integer-returning main"}
 	}
-	return nil
+	if len(sig.Params) == 0 {
+		return nil, nil
+	}
+	if len(sig.Params) == 2 && sig.Params[0] == bytecode.TypeI32 && sig.Params[1] == bytecode.TypePtr {
+		args, err := p.defaultArgcArgv()
+		if err != nil {
+			return nil, &LoadError{Reason: "initialize entry argc/argv", Cause: err}
+		}
+		return args, nil
+	}
+	return nil, &LoadError{Reason: "phase 1 supports no-argument or argc/argv integer-returning main"}
+}
+
+func (p *Program) defaultArgcArgv() ([]Value, error) {
+	argv0 := []byte("cvm\x00")
+	argv0Addr, err := p.memory.TryAlloc("entry:argv0", int64(len(argv0)), 1, false, blockGlobal)
+	if err != nil {
+		return nil, err
+	}
+	for i, b := range argv0 {
+		if err := p.memory.Store(argv0Addr+uint64(i), bytecode.TypeU8, 1, UIntValue(bytecode.TypeU8, uint64(b))); err != nil {
+			return nil, err
+		}
+	}
+	ptrSize := p.module.Target.PointerSize
+	argvAddr, err := p.memory.TryAlloc("entry:argv", ptrSize*2, p.module.Target.PointerAlign, false, blockGlobal)
+	if err != nil {
+		return nil, err
+	}
+	if err := p.memory.Store(argvAddr, bytecode.TypePtr, p.module.Target.PointerAlign, PtrValue(argv0Addr)); err != nil {
+		return nil, err
+	}
+	if err := p.memory.Store(argvAddr+uint64(ptrSize), bytecode.TypePtr, p.module.Target.PointerAlign, PtrValue(0)); err != nil {
+		return nil, err
+	}
+	return []Value{IntValue(bytecode.TypeI32, 1), PtrValue(argvAddr)}, nil
 }
 
 func isExternFunction(g bytecode.Global) bool {
