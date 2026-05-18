@@ -259,7 +259,7 @@ go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -coun
   - `feat(runtime): add string strerror extern`
   - `docs: record string strerror extern`
 
-## Plan 27: `stdlib.h` Deterministic Random Helpers
+## Plan 27: `stdlib.h` Deterministic Random Helpers - Completed
 
 Add `rand` and `srand` declarations, runtime externs, direct coverage, and GCC runtime execution coverage. Keep phase 1 deterministic by storing a simple registry-local unsigned seed and producing repeatable non-negative `int` values.
 
