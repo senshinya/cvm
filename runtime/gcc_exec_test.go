@@ -350,6 +350,12 @@ int main(void)
     return 8;
   if (tan(0.0) != 0.0 || tanf(0.0f) != 0.0f || tanl(0.0L) != 0.0L)
     return 9;
+  if (sinh(0.0) != 0.0 || sinhf(0.0f) != 0.0f || sinhl(0.0L) != 0.0L)
+    return 23;
+  if (cosh(0.0) != 1.0 || coshf(0.0f) != 1.0f || coshl(0.0L) != 1.0L)
+    return 24;
+  if (tanh(0.0) != 0.0 || tanhf(0.0f) != 0.0f || tanhl(0.0L) != 0.0L)
+    return 25;
   if (asin(0.0) != 0.0 || asinf(0.0f) != 0.0f || asinl(0.0L) != 0.0L)
     return 20;
   if (acos(1.0) != 0.0 || acosf(1.0f) != 0.0f || acosl(1.0L) != 0.0L)
