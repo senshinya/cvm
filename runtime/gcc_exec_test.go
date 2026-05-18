@@ -368,6 +368,12 @@ int main(void)
     return 27;
   if (atanh(0.0) != 0.0 || atanhf(0.0f) != 0.0f || atanhl(0.0L) != 0.0L)
     return 28;
+  if (cbrt(8.0) != 2.0 || cbrtf(8.0f) != 2.0f || cbrtl(8.0L) != 2.0L)
+    return 29;
+  if (erf(0.0) != 0.0 || erff(0.0f) != 0.0f || erfl(0.0L) != 0.0L)
+    return 30;
+  if (erfc(0.0) != 1.0 || erfcf(0.0f) != 1.0f || erfcl(0.0L) != 1.0L)
+    return 31;
   if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
