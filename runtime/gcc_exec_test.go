@@ -252,6 +252,13 @@ func TestGCCC90DeclarationAfterStatementExecutesThroughRuntime(t *testing.T) {
 	}
 }
 
+func TestGCCLargeStaticArrayLoopExecutesThroughRuntime(t *testing.T) {
+	st := runGCCAcceptFixtureWithStepLimit(t, "sema/testdata/gcc-c99-extra/accept/pr27639.c", 1000000)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioPositionStubsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
@@ -5691,7 +5698,11 @@ func parseGCCExecManifestContent(content string) ([]gccExecCase, error) {
 func runGCCExecFixture(t *testing.T, path, source string) ExitStatus {
 	t.Helper()
 	const gccExecStepLimit = 100000
+	return runGCCExecFixtureWithStepLimit(t, path, source, gccExecStepLimit)
+}
 
+func runGCCExecFixtureWithStepLimit(t *testing.T, path, source string, stepLimit int) ExitStatus {
+	t.Helper()
 	src := stripGCCDirectives(source)
 	pp, err := preprocessor.PreprocessSource(path, src, preprocessor.Options{})
 	if err != nil {
@@ -5720,7 +5731,7 @@ func runGCCExecFixture(t *testing.T, path, source string) ExitStatus {
 	if err != nil {
 		t.Fatalf("%s Load: %v", path, err)
 	}
-	st, err := Run(context.Background(), p, RunOptions{StepLimit: gccExecStepLimit})
+	st, err := Run(context.Background(), p, RunOptions{StepLimit: stepLimit})
 	if err != nil {
 		t.Fatalf("%s Run: %v", path, err)
 	}
@@ -5729,12 +5740,17 @@ func runGCCExecFixture(t *testing.T, path, source string) ExitStatus {
 
 func runGCCAcceptFixture(t *testing.T, path string) ExitStatus {
 	t.Helper()
+	return runGCCAcceptFixtureWithStepLimit(t, path, 100000)
+}
+
+func runGCCAcceptFixtureWithStepLimit(t *testing.T, path string, stepLimit int) ExitStatus {
+	t.Helper()
 	sourcePath := filepath.Join("..", path)
 	source, err := os.ReadFile(sourcePath)
 	if err != nil {
 		t.Fatalf("read fixture %s: %v", path, err)
 	}
-	return runGCCExecFixture(t, sourcePath, string(source))
+	return runGCCExecFixtureWithStepLimit(t, sourcePath, string(source), stepLimit)
 }
 
 func gccSemaOptions(src string) sema.SemaOptions {
