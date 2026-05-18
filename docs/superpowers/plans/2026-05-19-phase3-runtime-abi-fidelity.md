@@ -453,7 +453,31 @@ git push
 
 ## Milestone 13: CLI Runtime UX
 
-**Calibration:** Pending after diagnostics stabilization.
+**Calibration:** Completed after diagnostics stabilization. `cvm run` already forwarded bytecode program argv, but Phase 3's deterministic stdin and environment runtime APIs were only reachable from Go tests. The CLI needed a small stable surface for those knobs without reading ambient host environment state.
+
+**Files:**
+- Modify: `main.go`
+- Modify: `compiler_test.go`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add failing CLI stdin/env tests**
+
+Added CLI tests for `cvm run --stdin text file.cvmbc` driving `getchar`, and `cvm run --env NAME=VALUE file.cvmbc` driving `getenv`.
+
+- [x] **Step 2: Parse deterministic runtime knobs**
+
+Added `cvm run` option parsing for `--stdin text`, `--stdin=text`, `--env NAME=VALUE`, `--env=NAME=VALUE`, and `--` before the file operand. The CLI builds an explicit extern registry and still forwards program argv as `{file.cvmbc, args...}`.
+
+- [x] **Step 3: Verify, commit, and push CLI runtime UX**
+
+Run Common Verification, then:
+
+```bash
+git add main.go compiler_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(runtime): configure cvm run stdin and env"
+git push
+```
 
 ## Milestone 14: Phase 3 Closure Docs
 

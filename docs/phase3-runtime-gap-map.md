@@ -10,9 +10,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 
 ## Current High-Value Gaps
 
-1. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
-2. Runtime diagnostics should be audited after the larger hosted surfaces settle.
-3. `cvm run` should expose only stable deterministic runtime knobs.
+1. Phase 3 implementation milestones are closed. The remaining work is final closure documentation and any review follow-up.
 
 ## Closed During Phase 3
 
@@ -33,6 +31,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 - The struct/union ABI sweep found existing object-address vararg handling sufficient for `va_arg(ap, struct S)` and `va_arg(ap, union U)`, and added runtime coverage for both cases.
 - The GCC runtime fixture expansion sweep is closed: the fresh gap report still has 18 runnable manifest candidates and no failures, while the compile-only `main` candidates are either already covered by direct runtime tests or remain documented non-runtime targets.
 - Runtime status/error stabilization now keeps the atexit cleanup-control bit internal: `_Exit` still skips cleanup handlers, but `Run` returns a public `ExitStatus` containing only the observable exit code.
+- `cvm run` now exposes deterministic runtime knobs for configured stdin and explicit environment variables through `--stdin text` and `--env NAME=VALUE`, while continuing to forward bytecode program argv after the file operand.
 
 ## Residual Bounded Runtime Surface
 
