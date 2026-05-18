@@ -179,7 +179,7 @@ go test ./preprocessor -run TestBuiltinStringsHeaderDeclaresRuntimeSurface -coun
   - `feat(runtime): add strings bsd memory aliases`
   - `docs: record strings bsd memory aliases`
 
-## Plan 22: `stdio.h` `perror`
+## Plan 22: `stdio.h` `perror` - Completed
 
 Add a simple `perror` declaration and runtime extern. The runtime extern should validate the optional string pointer, write `<prefix>: error\n` to stderr when the prefix is non-empty, write `error\n` otherwise, and return void.
 
@@ -194,6 +194,166 @@ go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -cou
 - Commit messages:
   - `feat(runtime): add stdio perror extern`
   - `docs: record stdio perror extern`
+
+## Plan 23: `stdlib.h` `strtof` And `strtold`
+
+Add `strtof` and `strtold` declarations, sema signatures, runtime externs, direct coverage, and GCC runtime execution coverage. Reuse the existing `strtod` consumed-prefix parser; return `float` for `strtof` and long-double storage semantics for `strtold`.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `sema/builtin.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStdlibMoreFloatParserExterns|TestStdlibMoreFloatParserExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdlib strtof externs`
+  - `docs: record stdlib strtof externs`
+
+## Plan 24: `string.h` `strnlen`
+
+Add `strnlen` declaration, sema signature, runtime extern, direct coverage, and GCC runtime execution coverage. The extern should scan no more than the supplied maximum byte count and should not require the string to contain a null terminator within that bound.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `sema/builtin.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStringNLengthExtern|TestStringNLengthExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add string strnlen extern`
+  - `docs: record string strnlen extern`
+
+## Plan 25: `stdlib.h` `realloc`
+
+Add `realloc` declaration, runtime extern, direct coverage, and GCC runtime execution coverage. The extern should support `realloc(NULL, size)` as allocation, `realloc(ptr, 0)` as free-and-null, and copying the common prefix from the old allocation into a new runtime block for normal resizing.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStdlibReallocExtern|TestStdlibReallocExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdlib realloc extern`
+  - `docs: record stdlib realloc extern`
+
+## Plan 26: `string.h` `strerror`
+
+Add `strerror` declaration, sema signature, runtime extern, direct coverage, and GCC runtime execution coverage. Phase 1 behavior should return a stable runtime C string for any input error number, using `"error"` as the deterministic message.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `sema/builtin.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStringStrerrorExtern|TestStringStrerrorExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add string strerror extern`
+  - `docs: record string strerror extern`
+
+## Plan 27: `stdlib.h` Deterministic Random Helpers
+
+Add `rand` and `srand` declarations, runtime externs, direct coverage, and GCC runtime execution coverage. Keep phase 1 deterministic by storing a simple registry-local unsigned seed and producing repeatable non-negative `int` values.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStdlibRandExterns|TestStdlibRandExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdlib random externs`
+  - `docs: record stdlib random externs`
+
+## Plan 28: `stdlib.h` Environment Stubs
+
+Add `getenv` declaration, runtime extern, direct coverage, and GCC runtime execution coverage. Phase 1 behavior should be hermetic: validate the name pointer and return null for every variable.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStdlibGetenvExtern|TestStdlibGetenvExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdlib getenv extern`
+  - `docs: record stdlib getenv extern`
+
+## Plan 29: `stdlib.h` System Command Stub
+
+Add `system` declaration, runtime extern, direct coverage, and GCC runtime execution coverage. Phase 1 behavior should remain hermetic: `system(NULL)` returns `0` and any non-null command returns `-1` after validating that the command pointer names a readable C string.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStdlibSystemExtern|TestStdlibSystemExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdlib system extern`
+  - `docs: record stdlib system extern`
+
+## Plan 30: `string.h` `strtok`
+
+Add `strtok` declaration, sema signature, runtime extern, direct coverage, and GCC runtime execution coverage. Store tokenizer continuation state on the registry and mutate delimiters in-place to match C token splitting behavior for single-threaded phase 1 execution.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `sema/builtin.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStringStrtokExtern|TestStringStrtokExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add string strtok extern`
+  - `docs: record string strtok extern`
+
+## Plan 31: `stdlib.h` Absolute Division Types
+
+Investigate and, if ABI support is already sufficient, add `div`, `ldiv`, and `lldiv` declarations plus runtime-through-header coverage. If struct-return lowering is not ready, mark this plan blocked in the roadmap and move to Plan 32 instead of forcing a broad ABI change.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `sema/builtin.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStdlibDivExterns|TestStdlibDivExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdlib div externs`
+  - `docs: record stdlib div externs`
+
+## Plan 32: `stdio.h` File-Operation Stubs
+
+Add hermetic stubs for a small stdio file-operation set only if they unblock GCC accept fixtures without host filesystem effects. Candidate subset: `remove` and `rename` returning `-1` after pointer validation; defer `fopen`, `freopen`, `tmpfile`, and `tmpnam` unless the pre-plan adjustment finds a narrow fixture requiring them.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStdioFileOperationStubs|TestStdioFileOperationStubsExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdio file operation stubs`
+  - `docs: record stdio file operation stubs`
 
 ## Continuous Execution Rule
 
