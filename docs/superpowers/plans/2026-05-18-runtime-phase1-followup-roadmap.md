@@ -195,7 +195,7 @@ go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -cou
   - `feat(runtime): add stdio perror extern`
   - `docs: record stdio perror extern`
 
-## Plan 23: `stdlib.h` `strtof` And `strtold`
+## Plan 23: `stdlib.h` `strtof` And `strtold` - Completed
 
 Add `strtof` and `strtold` declarations, sema signatures, runtime externs, direct coverage, and GCC runtime execution coverage. Reuse the existing `strtod` consumed-prefix parser; return `float` for `strtof` and long-double storage semantics for `strtold`.
 
