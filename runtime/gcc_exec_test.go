@@ -1109,6 +1109,29 @@ int main(void)
 	}
 }
 
+func TestStdlibStrtollExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  char *end = 0;
+
+  if (strtoll("-9876543210x", &end, 10) != -9876543210LL)
+    return 1;
+  if (*end != 'x')
+    return 2;
+  if (strtoull("0X100000000z", &end, 0) != 4294967296ULL)
+    return 3;
+  return *end == 'z' ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-strtoll-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestCtypeClassificationExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <ctype.h>

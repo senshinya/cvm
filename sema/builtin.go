@@ -20,6 +20,8 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 	intT := s.Types.Builtin(Int)
 	longT := s.Types.Builtin(Long)
 	unsignedLongT := s.Types.Builtin(ULong)
+	longLongT := s.Types.Builtin(LongLong)
+	unsignedLongLongT := s.Types.Builtin(ULongLong)
 	doubleT := s.Types.Builtin(Double)
 	floatT := s.Types.Builtin(Float)
 	longDoubleT := s.Types.Builtin(LongDouble)
@@ -44,6 +46,10 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(longT, []Type{constCharPtr, charPtrPtr, intT}, false, true)
 	case "strtoul":
 		return s.Types.Function(unsignedLongT, []Type{constCharPtr, charPtrPtr, intT}, false, true)
+	case "strtoll":
+		return s.Types.Function(longLongT, []Type{constCharPtr, charPtrPtr, intT}, false, true)
+	case "strtoull":
+		return s.Types.Function(unsignedLongLongT, []Type{constCharPtr, charPtrPtr, intT}, false, true)
 	case "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy":
 		return s.Types.Function(voidPtr, []Type{voidPtr, constVoidPtr, sizeT}, false, true)
 	case "memcpy", "memmove", "mempcpy":

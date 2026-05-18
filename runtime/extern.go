@@ -119,6 +119,8 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("atoll", atoiExtern("atoll", bytecode.TypeI64))
 	r.Register("strtol", strtoIntegerExtern("strtol", bytecode.TypeI64, true))
 	r.Register("strtoul", strtoIntegerExtern("strtoul", bytecode.TypeU64, false))
+	r.Register("strtoll", strtoIntegerExtern("strtoll", bytecode.TypeI64, true))
+	r.Register("strtoull", strtoIntegerExtern("strtoull", bytecode.TypeU64, false))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
