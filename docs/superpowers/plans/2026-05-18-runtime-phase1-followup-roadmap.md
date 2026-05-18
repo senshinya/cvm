@@ -211,7 +211,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib strtof externs`
   - `docs: record stdlib strtof externs`
 
-## Plan 24: `string.h` `strnlen`
+## Plan 24: `string.h` `strnlen` - Completed
 
 Add `strnlen` declaration, sema signature, runtime extern, direct coverage, and GCC runtime execution coverage. The extern should scan no more than the supplied maximum byte count and should not require the string to contain a null terminator within that bound.
 
