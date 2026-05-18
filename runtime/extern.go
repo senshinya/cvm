@@ -31,6 +31,7 @@ type ExternRegistry struct {
 	hostEOF       map[uint64]bool
 	stdinHandle   uint64
 	staticStrings map[*Memory]map[string]uint64
+	randSeed      uint32
 }
 
 func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
@@ -49,6 +50,7 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		hostPushback:  make(map[uint64][]byte),
 		hostEOF:       make(map[uint64]bool),
 		staticStrings: make(map[*Memory]map[string]uint64),
+		randSeed:      1,
 	}
 }
 
@@ -128,6 +130,8 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("strtod", strtoFloatExtern("strtod", bytecode.TypeF64))
 	r.Register("strtof", strtoFloatExtern("strtof", bytecode.TypeF32))
 	r.Register("strtold", strtoFloatExtern("strtold", bytecode.TypeFLong))
+	r.Register("rand", randExtern("rand", r))
+	r.Register("srand", srandExtern("srand", r))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
@@ -711,6 +715,29 @@ func strtoFloatExtern(name string, ret bytecode.ValueType) ExternFunc {
 			}
 		}
 		return FloatValue(ret, parsed.value), nil, nil
+	}
+}
+
+func randExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 0 {
+			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
+		}
+		r.randSeed = r.randSeed*1103515245 + 12345
+		return IntValue(bytecode.TypeI32, int64((r.randSeed/65536)%32768)), nil, nil
+	}
+}
+
+func srandExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects seed argument", name)
+		}
+		r.randSeed = uint32(unsignedInt(args[0]))
+		return Value{}, nil, nil
 	}
 }
 

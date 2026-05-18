@@ -44,6 +44,10 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(charPtr, []Type{constCharPtr}, false, true)
 	case "free":
 		return s.Types.Function(voidT, []Type{voidPtr}, false, true)
+	case "rand":
+		return s.Types.Function(intT, nil, false, true)
+	case "srand":
+		return s.Types.Function(voidT, []Type{s.Types.Builtin(UInt)}, false, true)
 	case "atof":
 		return s.Types.Function(doubleT, []Type{constCharPtr}, false, true)
 	case "strtol":

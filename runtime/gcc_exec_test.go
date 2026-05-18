@@ -850,6 +850,36 @@ int main(void)
 	}
 }
 
+func TestStdlibRandExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  int a;
+  int b;
+  int c;
+
+  if (RAND_MAX < 32767)
+    return 1;
+  srand(123);
+  a = rand();
+  b = rand();
+  if (a < 0 || b < 0 || a > RAND_MAX || b > RAND_MAX)
+    return 2;
+  if (a == b)
+    return 3;
+  srand(123);
+  c = rand();
+  return c == a ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-rand-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibExitExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>

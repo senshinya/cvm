@@ -122,6 +122,7 @@ func stdlibHeader() string {
 	return `#ifndef __CVM_STDLIB_H
 #define __CVM_STDLIB_H
 typedef __SIZE_TYPE__ size_t;
+#define RAND_MAX 32767
 int abs(int);
 long labs(long);
 long long llabs(long long);
@@ -141,6 +142,8 @@ void *calloc(size_t, size_t);
 void *realloc(void *, size_t);
 void free(void *);
 char *strdup(const char *);
+int rand(void);
+void srand(unsigned int);
 void exit(int);
 void abort(void);
 #endif
