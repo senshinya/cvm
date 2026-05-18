@@ -625,6 +625,9 @@ long double ldexpl(long double, int);
 float frexpf(float, int *);
 double frexp(double, int *);
 long double frexpl(long double, int *);
+float modff(float, float *);
+double modf(double, double *);
+long double modfl(long double, long double *);
 float remquof(float, float, int *);
 double remquo(double, double, int *);
 long double remquol(long double, long double, int *);
@@ -742,6 +745,7 @@ func tgmathHeader() string {
 #define fmin(x, y) __cvm_tgmath_fmin((x), (y))
 #define fmod(x, y) __cvm_tgmath_fmod((x), (y))
 #define frexp(x, y) __cvm_tgmath_frexp((x), (y))
+#define modf(x, y) __cvm_tgmath_modf((x), (y))
 #define hypot(x, y) __cvm_tgmath_hypot((x), (y))
 #define ilogb(x) __cvm_tgmath_ilogb(x)
 #define ldexp(x, y) __cvm_tgmath_ldexp((x), (y))
@@ -820,6 +824,7 @@ double __cvm_tgmath_scalbln();
 double __cvm_tgmath_ldexp();
 int __cvm_tgmath_ilogb();
 double __cvm_tgmath_frexp();
+double __cvm_tgmath_modf();
 double __cvm_tgmath_remquo();
 double __cvm_tgmath_carg();
 double __cvm_tgmath_cimag();

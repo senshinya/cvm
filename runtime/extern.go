@@ -1712,6 +1712,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealIntBinaryExterns(r, "scalbln", math.Ldexp)
 	registerTgmathRealIntBinaryExterns(r, "ldexp", math.Ldexp)
 	registerTgmathFrexpExterns(r, "frexp")
+	registerTgmathModfExterns(r, "modf")
 	registerTgmathRemquoExterns(r, "remquo")
 	registerTgmathRealBinaryExterns(r, "pow", math.Pow)
 	registerTgmathRealBinaryExterns(r, "atan2", math.Atan2)
@@ -1787,6 +1788,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealIntBinaryExterns(r, "__cvm_tgmath_scalbln", math.Ldexp)
 	registerTgmathRealIntBinaryExterns(r, "__cvm_tgmath_ldexp", math.Ldexp)
 	registerTgmathFrexpExterns(r, "__cvm_tgmath_frexp")
+	registerTgmathModfExterns(r, "__cvm_tgmath_modf")
 	registerTgmathRemquoExterns(r, "__cvm_tgmath_remquo")
 	registerTgmathComplexRealExterns(r, "__cvm_tgmath_carg", func(z complex128) float64 { return math.Atan2(imag(z), real(z)) })
 	registerTgmathComplexRealExterns(r, "__cvm_tgmath_cimag", func(z complex128) float64 { return imag(z) })
@@ -4001,6 +4003,12 @@ func registerTgmathFrexpExterns(r *ExternRegistry, base string) {
 	r.Register(base+"l", mathFrexpExtern(base+"l", bytecode.TypeFLong))
 }
 
+func registerTgmathModfExterns(r *ExternRegistry, base string) {
+	r.Register(base+"f", mathModfExtern(base+"f", bytecode.TypeF32, 4))
+	r.Register(base, mathModfExtern(base, bytecode.TypeF64, 8))
+	r.Register(base+"l", mathModfExtern(base+"l", bytecode.TypeFLong, 16))
+}
+
 func registerTgmathRemquoExterns(r *ExternRegistry, base string) {
 	r.Register(base+"f", mathRemquoExtern(base+"f", bytecode.TypeF32))
 	r.Register(base, mathRemquoExtern(base, bytecode.TypeF64))
@@ -4111,6 +4119,25 @@ func mathFrexpExtern(name string, ret bytecode.ValueType) ExternFunc {
 		}
 		frac, exp := math.Frexp(cvmFloat(args[0]))
 		if err := ec.Memory.Store(args[1].Int, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(exp))); err != nil {
+			return Value{}, nil, err
+		}
+		return floatResult(ret, frac), nil, nil
+	}
+}
+
+func mathModfExtern(name string, ret bytecode.ValueType, size int64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isFloatType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects floating and pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		intPart, frac := math.Modf(cvmFloat(args[0]))
+		if err := ec.Memory.Store(args[1].Int, ret, size, FloatValue(ret, intPart)); err != nil {
 			return Value{}, nil, err
 		}
 		return floatResult(ret, frac), nil, nil

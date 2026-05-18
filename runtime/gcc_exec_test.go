@@ -418,6 +418,17 @@ int main(void)
       return 60;
   }
   {
+    float mf = 0.0f;
+    double md = 0.0;
+    long double ml = 0.0L;
+    if (modff(3.25f, &mf) != 0.25f || mf != 3.0f)
+      return 64;
+    if (modf(3.25, &md) != 0.25 || md != 3.0)
+      return 65;
+    if (modfl(3.25L, &ml) != 0.25L || ml != 3.0L)
+      return 66;
+  }
+  {
     int q1 = 0, q2 = 0, q3 = 0;
     if (remquo(4.0, 4.0, &q1) != 0.0 || q1 != 1)
       return 61;
