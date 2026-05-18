@@ -188,6 +188,78 @@ func TestFopenReadsConfiguredFile(t *testing.T) {
 	}
 }
 
+func TestConfiguredFilePositioning(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("ABCDE"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:file-pos-path", []byte("data.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "stdio:file-pos-mode", []byte("r\x00"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	fseekFn, ok := reg.Lookup("fseek")
+	if !ok {
+		t.Fatal("missing fseek extern")
+	}
+	ftellFn, ok := reg.Lookup("ftell")
+	if !ok {
+		t.Fatal("missing ftell extern")
+	}
+	rewindFn, ok := reg.Lookup("rewind")
+	if !ok {
+		t.Fatal("missing rewind extern")
+	}
+	fgetcFn, ok := reg.Lookup("fgetc")
+	if !ok {
+		t.Fatal("missing fgetc extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+
+	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(file),
+		IntValue(bytecode.TypeI64, 2),
+		IntValue(bytecode.TypeI32, 0),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fseek set ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = ftellFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI64 || ret.Int != 2 {
+		t.Fatalf("ftell ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'C' {
+		t.Fatalf("fgetc ret=%#v exit=%#v err=%v, want C", ret, exit, err)
+	}
+	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(file),
+		IntValue(bytecode.TypeI64, -1),
+		IntValue(bytecode.TypeI32, 2),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fseek end ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'E' {
+		t.Fatalf("fgetc after SEEK_END ret=%#v exit=%#v err=%v, want E", ret, exit, err)
+	}
+	ret, exit, err = rewindFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeVoid {
+		t.Fatalf("rewind ret=%#v exit=%#v err=%v, want void", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'A' {
+		t.Fatalf("fgetc after rewind ret=%#v exit=%#v err=%v, want A", ret, exit, err)
+	}
+}
+
 func TestStdioTmpnamStub(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	fn, ok := reg.Lookup("tmpnam")

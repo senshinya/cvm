@@ -226,6 +226,37 @@ int main(void)
 	}
 }
 
+func TestGCCFopenConfiguredFilePositioningExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  FILE *f = fopen("data.txt", "r");
+  if (!f)
+    return 1;
+  if (fseek(f, 2, SEEK_SET) != 0)
+    return 2;
+  if (ftell(f) != 2L)
+    return 3;
+  if (fgetc(f) != 'C')
+    return 4;
+  if (fseek(f, -1, SEEK_END) != 0)
+    return 5;
+  if (fgetc(f) != 'E')
+    return 6;
+  rewind(f);
+  return fgetc(f) == 'A' ? 0 : 7;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("ABCDE"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-fopen-configured-file-position-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioTmpnamExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

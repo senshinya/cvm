@@ -637,6 +637,28 @@ func fseekExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		if file := r.hostFiles[args[0].Int]; file != nil {
+			offset := signedInt(args[1])
+			whence := signedInt(args[2])
+			var next int64
+			switch whence {
+			case 0:
+				next = offset
+			case 1:
+				next = file.pos + offset
+			case 2:
+				next = int64(len(file.data)) + offset
+			default:
+				return IntValue(bytecode.TypeI32, -1), nil, nil
+			}
+			if next < 0 {
+				return IntValue(bytecode.TypeI32, -1), nil, nil
+			}
+			file.pos = next
+			delete(r.hostPushback, args[0].Int)
+			delete(r.hostEOF, args[0].Int)
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
 		return IntValue(bytecode.TypeI32, -1), nil, nil
 	}
 }
@@ -651,6 +673,9 @@ func ftellExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		if file := r.hostFiles[args[0].Int]; file != nil {
+			return IntValue(bytecode.TypeI64, file.pos), nil, nil
 		}
 		return IntValue(bytecode.TypeI64, -1), nil, nil
 	}
@@ -667,6 +692,10 @@ func rewindExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		if file := r.hostFiles[args[0].Int]; file != nil {
+			file.pos = 0
+		}
+		delete(r.hostPushback, args[0].Int)
 		delete(r.hostEOF, args[0].Int)
 		return Value{}, nil, nil
 	}
