@@ -110,6 +110,15 @@ long double complex cacosl(long double complex);
 float complex catanf(float complex);
 double complex catan(double complex);
 long double complex catanl(long double complex);
+float complex casinhf(float complex);
+double complex casinh(double complex);
+long double complex casinhl(long double complex);
+float complex cacoshf(float complex);
+double complex cacosh(double complex);
+long double complex cacoshl(long double complex);
+float complex catanhf(float complex);
+double complex catanh(double complex);
+long double complex catanhl(long double complex);
 #endif
 `
 }
