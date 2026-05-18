@@ -4930,6 +4930,67 @@ int main(void)
 	}
 }
 
+func TestGCCSourceVaArgStructExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+struct pair {
+  int tag;
+  double value;
+};
+
+double first(int count, ...)
+{
+  va_list ap;
+  va_start(ap, count);
+  struct pair value = va_arg(ap, struct pair);
+  va_end(ap);
+  return value.tag + value.value;
+}
+
+int main(void)
+{
+  struct pair value = { 7, 5.0 };
+  return first(1, value) == 12.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-struct-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaArgUnionExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+union number {
+  int i;
+  unsigned char bytes[4];
+};
+
+int first(int count, ...)
+{
+  va_list ap;
+  va_start(ap, count);
+  union number value = va_arg(ap, union number);
+  va_end(ap);
+  return value.i;
+}
+
+int main(void)
+{
+  union number value;
+  value.i = 42;
+  return first(1, value) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-union-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCSourceVaArgMultipleListsExecuteIndependently(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdarg.h>

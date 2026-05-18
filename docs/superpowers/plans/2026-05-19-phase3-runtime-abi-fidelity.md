@@ -364,7 +364,30 @@ git push
 
 ## Milestone 10: Struct And Union ABI Edge Runtime Sweep
 
-**Calibration:** Pending after long double/complex sweep.
+**Calibration:** Completed after long double/complex sweep. Existing runtime coverage already exercises ordinary struct by-value arguments, struct returns, conditional/comma aggregate rvalues, nested structs, union storage, and complex fields inside aggregates. The remaining Phase 3 risk was whether the source-level `va_arg` path preserved aggregate values through the object-address ABI.
+
+**Files:**
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add aggregate vararg ABI coverage**
+
+Added runtime coverage for `va_arg(ap, struct pair)` and `va_arg(ap, union number)`.
+
+- [x] **Step 2: Close sweep as already supported**
+
+Focused tests passed without production changes, confirming the existing object-address call/vararg path preserves struct and union values for this bounded ABI surface.
+
+- [x] **Step 3: Verify, commit, and push aggregate sweep**
+
+Run Common Verification, then:
+
+```bash
+git add runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "test(runtime): cover aggregate va_arg values"
+git push
+```
 
 ## Milestone 11: GCC Runtime Fixture Expansion
 
