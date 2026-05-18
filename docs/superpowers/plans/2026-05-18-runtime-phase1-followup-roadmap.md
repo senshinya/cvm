@@ -483,6 +483,22 @@ go test ./runtime -run 'TestTimeExterns|TestTimeHeaderExecuteThroughRuntime|Test
   - `feat(runtime): add time header externs`
   - `docs: record time header externs`
 
+## Plan 41: `errno.h` Extern Variable - Completed
+
+Add a minimal builtin `<errno.h>` and resolve `errno` as a stable writable extern variable for each runtime memory instance. The header exposes `EDOM`, `ERANGE`, `EILSEQ`, and `extern int errno`.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinErrnoHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestErrnoExternVariable|TestErrnoHeaderExecuteThroughRuntime' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add errno extern variable`
+  - `docs: record errno extern variable`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
