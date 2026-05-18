@@ -1016,6 +1016,22 @@ go test ./runtime -run 'TestComplexUnaryExterns|TestComplexUnaryExecutesThroughR
   - `feat(runtime): add complex unary externs`
   - `docs: record complex unary externs`
 
+## Plan 74: Plain `<complex.h>` Trigonometric Helpers - Completed
+
+The pre-plan adjustment selected the basic trigonometric complex unary helpers and kept test inputs at zero to cover the plain extern plumbing and object-return path without introducing approximate comparison noise.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinComplexHeaderDeclaresProjectionSurface -count=1 -v
+go test ./runtime -run 'TestComplexTrigExterns|TestComplexTrigExecutesThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add complex trig externs`
+  - `docs: record complex trig externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
