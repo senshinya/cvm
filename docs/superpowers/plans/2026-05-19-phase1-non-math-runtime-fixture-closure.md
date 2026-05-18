@@ -107,7 +107,7 @@ git push origin codex/bytecode-runtime-phase-1
 - Modify: `docs/superpowers/plans/2026-05-18-runtime-phase1-followup-roadmap.md`
 - Modify: `docs/superpowers/plans/2026-05-19-phase1-non-math-runtime-fixture-closure.md`
 
-- [ ] **Step 1: Record remaining non-runtime candidates**
+- [x] **Step 1: Record remaining non-runtime candidates**
 
 Record these classifications:
 
@@ -119,7 +119,7 @@ pr70418.c: GNU nested function with VLA-in-struct parameter extension; no stable
 transparent-union-1.c: compile-only warning fixture with unresolved extern calls; not runnable without artificial extern definitions.
 ```
 
-- [ ] **Step 2: Run full verification and commit docs**
+- [x] **Step 2: Run full verification and commit docs**
 
 Run:
 

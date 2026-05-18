@@ -1589,6 +1589,47 @@ tgmathPseudoCount=61 missingPseudoDecl=[] missingPseudoReg=[]
 
 Phase 1 maths is complete. Further runtime work should move to non-math execution gaps unless a new imported fixture reveals a regression in this surface.
 
+## Plan 159: Phase 1 Non-Math Runtime Candidate Scan - Completed
+
+The pre-plan adjustment scanned all imported GCC accept fixtures with `main` across the three tracked roots and removed paths already represented by the `{ dg-do run }` manifest or direct runtime tests. After the VLA, inline, stdio/header, and maths increments, the remaining candidates were:
+
+```text
+sema/testdata/gcc-c99-extra/accept/Wstrict-aliasing-bogus-vla-1.c
+sema/testdata/gcc-c99-extra/accept/inline-10.c
+sema/testdata/gcc-c99-extra/accept/inline-8.c
+sema/testdata/gcc-c99-extra/accept/overflow-2.c
+sema/testdata/gcc-c99-extra/accept/pr70418.c
+sema/testdata/gcc-c99-extra/accept/transparent-union-1.c
+```
+
+Only `Wstrict-aliasing-bogus-vla-1.c` was a low-risk exit-0 runtime candidate.
+
+## Plan 160: Strict Aliasing VLA Runtime Coverage - Completed
+
+Added direct runtime coverage for `Wstrict-aliasing-bogus-vla-1.c`. The focused red test exposed a runtime loader gap rather than a VLA/memcpy bug: the fixture uses `int main(int argc, char *argv[])`, while Phase 1 loading previously accepted only no-argument `main`. Runtime loading now accepts integer-returning `main(int, char **)`, initializes default entry arguments as `argc = 1` and `argv = {"cvm", NULL}`, and passes those arguments into the initial VM frame.
+
+- Files: `runtime/gcc_exec_test.go`, `runtime/program.go`, `runtime/vm.go`, `runtime/vm_test.go`
+- Focused test:
+
+```bash
+go test ./runtime -run 'TestRunPassesDefaultArgcToMain|TestGCCStrictAliasingVLADereferenceExecutesThroughRuntime|TestGCCVLAMemcpyDynamicSizeExecutesThroughRuntime' -count=1 -v
+```
+
+- Commit message:
+  - `test(runtime): execute GCC strict aliasing VLA fixture`
+
+## Plan 161: Phase 1 Non-Math Runtime Closure - Completed
+
+After Plan 160, the remaining compile-only `main` fixtures are intentionally not Phase 1 runtime targets:
+
+- `inline-8.c`: inline declaration of `main` only; compile validation target, no runtime entry body.
+- `inline-10.c`: inline `main` returns 1 and is not an exit-0 runtime candidate.
+- `overflow-2.c`: compile-only overflow diagnostic fixture; system run exits 1.
+- `pr70418.c`: GNU nested function with VLA-in-struct parameter extension; no stable Phase 1 runtime assertion.
+- `transparent-union-1.c`: compile-only warning fixture with unresolved extern calls; not runnable without artificial extern definitions.
+
+The Phase 1 non-math runtime fixture milestone is complete. Future work should be scoped as Phase 2 runtime expansion rather than continuing to mine the already-closed low-risk candidate set.
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.

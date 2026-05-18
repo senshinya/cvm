@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `e60581b fix(codegen): fold constant conditional expressions`
+- Latest implementation/coverage commit before this handoff document: `36d63f0 test(runtime): execute GCC strict aliasing VLA fixture`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -98,6 +98,8 @@ Plan 117 rescanned the remaining self-contained compile-only `main` candidates a
 
 Plan 123 followed up with `pr71969-3.c`, the matching GNU89 inline variant. It also executes cleanly through runtime with the fixture-specific high step-limit helper.
 
+The Phase 1 non-math runtime fixture closure scan then found one remaining low-risk exit-0 candidate: `sema/testdata/gcc-c99-extra/accept/Wstrict-aliasing-bogus-vla-1.c`. It now executes directly through runtime. The same increment added default entry arguments for integer-returning `main(int, char **)`, using `argc = 1` and `argv = {"cvm", NULL}`. The remaining compile-only `main` candidates are classified as non-runtime Phase 1 targets: `inline-8.c` has no runtime entry body, `inline-10.c` is not an exit-0 candidate, `overflow-2.c` intentionally exits 1 when run, `pr70418.c` depends on GNU nested-function/VLA-in-struct extension behavior without a stable runtime assertion, and `transparent-union-1.c` calls unresolved extern declarations.
+
 ### Bytecode GCC Compile Coverage
 
 `codegen/testdata/gcc-bytecode-compile.tsv` currently has 232 lines including the header, so 231 fixture entries.
@@ -123,6 +125,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `36d63f0 test(runtime): execute GCC strict aliasing VLA fixture`
+  - Adds direct runtime coverage for `sema/testdata/gcc-c99-extra/accept/Wstrict-aliasing-bogus-vla-1.c`.
+  - Extends runtime loading and VM startup to support integer-returning `main(int, char **)` with default `argc`/`argv` entry arguments.
+  - Records the Phase 1 non-math runtime fixture closure plan and focused verification.
 
 - `e60581b fix(codegen): fold constant conditional expressions`
   - Folds C99 integer-constant conditional expressions during bytecode generation, avoiding expression-internal branch labels when `sizeof`-based macro dispatch is compile-time decidable.
@@ -1460,16 +1467,16 @@ Runtime support exists for real math externs and for the Phase 1 complex math ex
 - `va_list` execution currently uses an interpreter-internal frame cursor for bytecode `OpVa*`; it is not yet a memory-backed C ABI object. The v-format extern families are registered, but only support formats that do not consume `va_list` values.
 - `getchar`, `fgetc`, `fgets`, and `fread` currently consume interpreter-local `ungetc` pushback and otherwise return `EOF`/null/zero; they do not read from a host input stream.
 - `fclose` currently validates known host stream handles and returns zero, but does not model stream lifetime or prevent later use of that stream handle.
-- The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation, but runtime execution coverage is still much smaller.
+- The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation. Phase 1 runtime execution has also closed the low-risk non-math `main` candidate set; remaining compile-only `main` fixtures are intentionally not runtime targets for the reasons listed above.
 - Static-chain support is deliberately narrow and rejects escaping capturing nested functions instead of modeling trampolines.
 - Builtin headers share a guarded `size_t` typedef, so combinations such as `<stdio.h>` plus `<string.h>` analyze without relaxing ordinary C99 typedef redeclaration diagnostics.
 
 ## Suggested Next Work
 
-The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots. Suggested next directions:
+The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, and Phase 1 non-math low-risk runtime `main` fixture closure is complete. Suggested next directions:
 
-- Expand runtime execution coverage fixture-by-fixture, starting with cases that already compile cleanly and exercise existing runtime opcodes.
-- Move beyond Phase 1 maths into non-math runtime execution gaps where bytecode generation already succeeds.
+- Start a Phase 2 runtime milestone for deliberately larger gaps such as escaping nested functions, richer `argv`/host input modeling, or extern-backed warning fixtures.
+- Expand runtime execution coverage only when a fixture has stable runtime semantics or when the required semantics are explicitly brought into scope.
 - Revisit static-chain support if the bytecode format grows an explicit closure/trampoline representation.
 
 Recommended workflow:
