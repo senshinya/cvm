@@ -323,7 +323,7 @@ go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -coun
   - `feat(runtime): add string strtok extern`
   - `docs: record string strtok extern`
 
-## Plan 31: `stdlib.h` Absolute Division Types
+## Plan 31: `stdlib.h` Absolute Division Types - Completed
 
 Investigate and, if ABI support is already sufficient, add `div`, `ldiv`, and `lldiv` declarations plus runtime-through-header coverage. If struct-return lowering is not ready, mark this plan blocked in the roadmap and move to Plan 32 instead of forcing a broad ABI change.
 
