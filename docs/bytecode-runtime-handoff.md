@@ -9,7 +9,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document update: `06a90b9 feat(runtime): call capturing nested function pointers`
+- Latest implementation/coverage commit before this handoff document update: `e363b6d fix(codegen): propagate captures through nested function pointers`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -110,6 +110,9 @@ The larger Phase 2B runtime surfaces have been advanced with bounded, hermetic s
   - Adds bytecode/runtime closure pointers for GNU nested functions with captured static-chain state.
   - Lets indirect calls through those pointers append hidden captures and invoke the lowered nested-function signature while the creating frame is alive.
   - Covers local closure calls and passing a capturing nested-function pointer to another callee.
+- `e363b6d fix(codegen): propagate captures through nested function pointers`
+  - Propagates nested callee capture requirements through function address references, not only through direct nested calls.
+  - Covers VLA captures and transitive captures through nested-function pointers.
 
 ### GCC Runtime Execution Coverage
 
@@ -1388,6 +1391,7 @@ Recent commits at the tip of this branch:
 - `c565aca fix(codegen): reject escaping capturing nested functions`
   - Rejects taking a function pointer to a capturing GNU nested function with a clear codegen diagnostic.
   - Keeps direct static-chain nested calls supported while avoiding bytecode that would drop captured state.
+  - Superseded by `06a90b9`, which added runtime-managed closure/trampoline pointers for this case.
 
 - `34612f9 test(codegen): cover C99 float preprocess fixture`
   - Adds the final imported C99 accept `.c` fixture that was still outside the bytecode compile manifest.
@@ -1458,19 +1462,21 @@ Variadic runtime coverage includes direct variadic calls and indirect calls thro
 
 ### GNU Nested Functions
 
-Sema now analyzes GNU nested function bodies in their lexical function scope, and codegen has initial static-chain capture support for direct nested function calls that reference enclosing automatic objects.
+Sema now analyzes GNU nested function bodies in their lexical function scope, and codegen/runtime have static-chain capture support for direct nested function calls and runtime-managed closure pointers that reference enclosing automatic objects.
 
-The current direct-call support includes:
+The current support includes:
 
 - scalar captured variables loaded and stored through hidden object-address parameters
 - captured VLA object addresses and dynamic size metadata
 - transitive forwarding for direct nested-function call chains
+- indirect calls through runtime-managed closure pointers while the creating frame is alive
+- VLA and transitive capture forwarding through those closure pointers
 
 Current limits:
 
-- escaping nested function addresses are rejected during codegen; GCC-style trampolines are not implemented
-- indirect calls through nested function pointers with captured state are not implemented
-- the current support is intentionally scoped to compile validated bytecode for known imported GCC accept fixtures
+- closure pointers follow stack-trampoline lifetime rules; using one after the enclosing frame returns remains invalid
+- host ABI/native executable trampolines are not serialized or exposed outside the CVM runtime
+- the current support is intentionally scoped to validated bytecode/runtime execution inside CVM
 
 ### Tgmath
 
