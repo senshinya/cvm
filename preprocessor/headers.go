@@ -92,6 +92,15 @@ long double complex ccosl(long double complex);
 float complex ctanf(float complex);
 double complex ctan(double complex);
 long double complex ctanl(long double complex);
+float complex csinhf(float complex);
+double complex csinh(double complex);
+long double complex csinhl(long double complex);
+float complex ccoshf(float complex);
+double complex ccosh(double complex);
+long double complex ccoshl(long double complex);
+float complex ctanhf(float complex);
+double complex ctanh(double complex);
+long double complex ctanhl(long double complex);
 #endif
 `
 }

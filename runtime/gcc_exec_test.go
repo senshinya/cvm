@@ -2752,6 +2752,40 @@ int main(void)
 	}
 }
 
+func TestComplexHyperbolicExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <complex.h>
+
+int main(void)
+{
+  float complex zf = __builtin_complex(0.0f, 0.0f);
+  double complex zd = __builtin_complex(0.0, 0.0);
+  long double complex zl = __builtin_complex(0.0L, 0.0L);
+  if (crealf(csinhf(zf)) != 0.0f || cimagf(csinhf(zf)) != 0.0f)
+    return 1;
+  if (creal(csinh(zd)) != 0.0 || cimag(csinh(zd)) != 0.0)
+    return 2;
+  if (creall(csinhl(zl)) != 0.0L || cimagl(csinhl(zl)) != 0.0L)
+    return 3;
+  if (crealf(ccoshf(zf)) != 1.0f || cimagf(ccoshf(zf)) != 0.0f)
+    return 4;
+  if (creal(ccosh(zd)) != 1.0 || cimag(ccosh(zd)) != 0.0)
+    return 5;
+  if (creall(ccoshl(zl)) != 1.0L || cimagl(ccoshl(zl)) != 0.0L)
+    return 6;
+  if (crealf(ctanhf(zf)) != 0.0f || cimagf(ctanhf(zf)) != 0.0f)
+    return 7;
+  if (creal(ctanh(zd)) != 0.0 || cimag(ctanh(zd)) != 0.0)
+    return 8;
+  return creall(ctanhl(zl)) == 0.0L && cimagl(ctanhl(zl)) == 0.0L ? 0 : 9;
+}
+`
+	st := runGCCExecFixture(t, "complex-hyperbolic.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathConjExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
