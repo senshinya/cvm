@@ -117,10 +117,12 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("atoi", atoiExtern("atoi", bytecode.TypeI32))
 	r.Register("atol", atoiExtern("atol", bytecode.TypeI64))
 	r.Register("atoll", atoiExtern("atoll", bytecode.TypeI64))
+	r.Register("atof", atofExtern("atof"))
 	r.Register("strtol", strtoIntegerExtern("strtol", bytecode.TypeI64, true))
 	r.Register("strtoul", strtoIntegerExtern("strtoul", bytecode.TypeU64, false))
 	r.Register("strtoll", strtoIntegerExtern("strtoll", bytecode.TypeI64, true))
 	r.Register("strtoull", strtoIntegerExtern("strtoull", bytecode.TypeU64, false))
+	r.Register("strtod", strtodExtern("strtod"))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
@@ -647,6 +649,78 @@ func strtoDigit(ch byte) int {
 	default:
 		return -1
 	}
+}
+
+func atofExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		parsed := parseStrtoFloatString(s)
+		return FloatValue(bytecode.TypeF64, parsed.value), nil, nil
+	}
+}
+
+func strtodExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || (args[1].Int != 0 && !isPointerType(args[1].Type)) {
+			return Value{}, nil, fmt.Errorf("%s expects string and end pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		parsed := parseStrtoFloatString(s)
+		end := args[0].Int
+		if parsed.converted {
+			end, err = addSignedOffset(args[0].Int, int64(parsed.end))
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
+		if args[1].Int != 0 {
+			if err := ec.Memory.WritePointer(args[1].Int, end); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return FloatValue(bytecode.TypeF64, parsed.value), nil, nil
+	}
+}
+
+type parsedStrtoFloat struct {
+	value     float64
+	end       int
+	converted bool
+}
+
+func parseStrtoFloatString(s string) parsedStrtoFloat {
+	start := 0
+	for start < len(s) && isASCIIWhitespace(s[start]) {
+		start++
+	}
+	for end := len(s); end > start; end-- {
+		v, err := strconv.ParseFloat(s[start:end], 64)
+		if err == nil {
+			return parsedStrtoFloat{value: v, end: end, converted: true}
+		}
+	}
+	return parsedStrtoFloat{}
 }
 
 func isASCIIWhitespace(ch byte) bool {

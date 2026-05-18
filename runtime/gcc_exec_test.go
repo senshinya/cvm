@@ -1132,6 +1132,35 @@ int main(void)
 	}
 }
 
+func TestStdlibFloatParserExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  char *end = 0;
+
+  if (atof(" \t3.25tail") != 3.25)
+    return 1;
+  if (strtod(" -12.5e1x", &end) != -125.0)
+    return 2;
+  if (*end != 'x')
+    return 3;
+  if (strtod("0x1.8p+2!", &end) != 6.0)
+    return 4;
+  if (*end != '!')
+    return 5;
+  if (strtod("word", &end) != 0.0)
+    return 6;
+  return *end == 'w' ? 0 : 7;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-float-parser-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestCtypeClassificationExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <ctype.h>
