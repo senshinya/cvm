@@ -1112,6 +1112,22 @@ go test ./runtime -run 'TestComplexPowExterns|TestComplexPowExecutesThroughRunti
   - `feat(runtime): add complex pow externs`
   - `docs: record complex pow externs`
 
+## Plan 80: Plain `<complex.h>` Gap Scan - Completed
+
+The pre-plan adjustment switched from implementation to fact-finding after `cpow*` landed. The scan compared the C99 plain `<complex.h>` function set against builtin header declarations and runtime registry bases.
+
+- Result: no remaining plain `<complex.h>` header gap.
+- Result: no remaining plain runtime registry base gap for the real/unary/binary helper-backed complex functions; `cabs*` remains intentionally registered through `complexAbsExtern`.
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinComplexHeaderDeclaresProjectionSurface -count=1 -v
+go test ./runtime -run 'TestComplexProjectionExterns|TestComplexAbsExterns|TestComplexUnaryExterns|TestComplexTrigExterns|TestComplexHyperbolicExterns|TestComplexInverseTrigExterns|TestComplexInverseHyperbolicExterns|TestComplexExpLogSqrtExterns|TestComplexPowExterns|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit message:
+  - `docs: record complex surface gap scan`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
