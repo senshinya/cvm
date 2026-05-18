@@ -207,6 +207,17 @@ func (*FloatLit) isExpr()                    {}
 func (l *FloatLit) GetType() Type            { return l.T }
 func (*FloatLit) GetCategory() ValueCategory { return RValue }
 
+type ImagLit struct {
+	Value float64
+	T     Type
+	Range entity.SourceRange
+}
+
+func (l *ImagLit) Pos() entity.SourceRange  { return l.Range }
+func (*ImagLit) isExpr()                    {}
+func (l *ImagLit) GetType() Type            { return l.T }
+func (*ImagLit) GetCategory() ValueCategory { return RValue }
+
 type CharLit struct {
 	Value int32
 	T     Type

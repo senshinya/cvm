@@ -14,6 +14,7 @@ type Sema struct {
 	errors  []*common.CvmError
 
 	pendingFuncs   []*pendingFunc
+	funcCtx        *funcCtx
 	allowArrayStar bool
 }
 
@@ -25,8 +26,9 @@ type SemaOptions struct {
 }
 
 type pendingFunc struct {
-	def     *FuncDef
-	bodyAst *entity.AstNode
+	def         *FuncDef
+	bodyAst     *entity.AstNode
+	parentScope *Scope
 }
 
 type SemaResult struct {
@@ -48,8 +50,8 @@ func NewSemaWithOptions(opts SemaOptions) *Sema {
 func (s *Sema) analyzeOne(root *entity.AstNode) *SemaResult {
 	prog := &Program{Types: s.Types, SymTab: s.SymTab}
 	s.walkTranslationUnit(root, prog)
-	for _, pf := range s.pendingFuncs {
-		s.walkFunctionBody(pf, prog)
+	for i := 0; i < len(s.pendingFuncs); i++ {
+		s.walkFunctionBody(s.pendingFuncs[i], prog)
 	}
 	s.foldStaticInitializers(prog)
 	s.markStaticFunctionUsesInGlobals(prog)
@@ -136,7 +138,7 @@ func (s *Sema) walkFunctionDefinition(node *entity.AstNode, prog *Program) {
 	sym.Decl = def
 	sym.Defs = append(sym.Defs, def)
 	prog.Funcs = append(prog.Funcs, def)
-	s.pendingFuncs = append(s.pendingFuncs, &pendingFunc{def: def, bodyAst: node.Children[len(node.Children)-1]})
+	s.pendingFuncs = append(s.pendingFuncs, &pendingFunc{def: def, bodyAst: node.Children[len(node.Children)-1], parentScope: s.scope})
 }
 
 func firstFunctionDefinition(sym *Symbol) *FuncDef {
@@ -331,6 +333,11 @@ func (s *Sema) walkInitDeclarator(node *entity.AstNode, spec SpecResult, prog *P
 	}
 	if node.ReducedBy(parser.InitDeclarator, 2) {
 		vd.Init = s.typeInitializer(node.Children[2], t)
+		vd.T = s.completeUnsizedArrayInitializerType(vd.T, vd.Init)
+		sym.T = vd.T
+		if il, ok := vd.Init.(*InitList); ok {
+			il.T = vd.T
+		}
 	}
 	prog.Globals = append(prog.Globals, vd)
 }
@@ -394,7 +401,11 @@ func (s *Sema) mergeFunctionDeclaration(sym *Symbol, ft *FunctionType, pos entit
 }
 
 func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
-	bodyScope := NewScope(ScopeFunc, s.SymTab.File)
+	parent := pf.parentScope
+	if parent == nil {
+		parent = s.SymTab.File
+	}
+	bodyScope := NewScope(ScopeFunc, parent)
 	for _, p := range pf.def.Params {
 		if p.Sym != nil && p.Sym.Name != "" {
 			_ = bodyScope.InsertChecked(p.Sym.Name, p.Sym)
@@ -410,14 +421,28 @@ func (s *Sema) walkFunctionBody(pf *pendingFunc, prog *Program) {
 		Linkage: LinkageNone,
 		Pos:     pf.def.Range.SourceStart,
 	}
+	funcDecl := &VarDecl{
+		Sym:     funcSym,
+		T:       funcType,
+		Init:    &StringLit{Value: pf.def.Sym.Name, T: funcType, Range: pf.def.Range},
+		Storage: StorageStatic,
+		Range:   pf.def.Range,
+	}
+	funcSym.Decl = funcDecl
 	_ = bodyScope.InsertChecked("__func__", funcSym)
 	prev := s.scope
 	s.scope = bodyScope
 	defer func() { s.scope = prev }()
 	ctx := &funcCtx{def: pf.def, prog: prog}
+	prevCtx := s.funcCtx
+	s.funcCtx = ctx
+	defer func() { s.funcCtx = prevCtx }()
 	body, _ := s.typeStmt(pf.bodyAst, bodyScope, ctx).(*Block)
 	if body == nil {
 		body = &Block{Range: pf.bodyAst.SourceRange, Scope: bodyScope}
+	}
+	if funcSym.Used {
+		pf.def.Locals = append([]*VarDecl{funcDecl}, pf.def.Locals...)
 	}
 	pf.def.Body = body
 	pf.def.Labels = map[string]*LabeledStmt{}

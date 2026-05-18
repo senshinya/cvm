@@ -236,6 +236,12 @@ func (s *Sema) assignmentConversion(e Expr, target Type, pos entity.SourcePos) E
 		return &ImplicitCast{From: from, To: target, X: e, Kind: CastUnion, Range: e.Pos()}
 	}
 	if s.Options.Permissive {
+		if isArithmetic(from) && isPointer(target) {
+			return &ImplicitCast{From: from, To: target, X: e, Kind: IntToPointer, Range: e.Pos()}
+		}
+		if isPointer(from) && isArithmetic(target) {
+			return &ImplicitCast{From: from, To: target, X: e, Kind: PointerToInt, Range: e.Pos()}
+		}
 		return e
 	}
 	s.report(IncompatibleAssignment(pos, from.String(), target.String()))

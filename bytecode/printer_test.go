@@ -225,6 +225,7 @@ func TestFormatInstrCoversCurrentOpcodeEnum(t *testing.T) {
 		{"unreachable", Instr{Op: OpUnreachable}, "Unreachable"},
 		{"call", Call(1, 2, 3), "Call global=1 sig=2 argc=3"},
 		{"call-indirect", Instr{Op: OpCallIndirect, Sig: 2, Argc: 3}, "CallIndirect sig=2 argc=3"},
+		{"make-closure", MakeClosure(1, 2, 3), "MakeClosure global=1 sig=2 argc=3"},
 		{"va-start", Instr{Op: OpVaStart, Slot: 1}, "VaStart slot=1"},
 		{"va-arg", Instr{Op: OpVaArg, Type: TypeI64}, "I64VaArg"},
 		{"va-end", Instr{Op: OpVaEnd, Slot: 1}, "VaEnd slot=1"},
@@ -237,7 +238,7 @@ func TestFormatInstrCoversCurrentOpcodeEnum(t *testing.T) {
 			}
 		})
 	}
-	for op := OpConst; op <= OpVaEnd; op++ {
+	for op := OpConst; op <= OpMakeClosure; op++ {
 		t.Run(fmt.Sprintf("valid-op-%d", op), func(t *testing.T) {
 			got := FormatInstr(Instr{Op: op})
 			if strings.HasPrefix(got, "InvalidOpcode(") || strings.HasPrefix(got, "Opcode(") {

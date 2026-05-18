@@ -12,13 +12,21 @@ func Generate(prog *sema.Program) (*bytecode.Module, error) {
 		return nil, err
 	}
 	g := &generator{
-		prog:      prog,
-		mod:       bytecode.NewModule(),
-		globalMap: map[*sema.Symbol]int{},
-		sigMap:    map[string]int{},
-		layoutMap: map[sema.Type]int{},
-		stringMap: map[string]int{},
+		prog:                     prog,
+		mod:                      bytecode.NewModule(),
+		globalMap:                map[*sema.Symbol]int{},
+		externMap:                map[string]int{},
+		sigMap:                   map[string]int{},
+		layoutMap:                map[sema.Type]int{},
+		stringMap:                map[string]int{},
+		staticCompoundLiteralMap: map[*sema.CompoundLit]int{},
+		funcMap:                  map[*sema.Symbol]*sema.FuncDef{},
+		funcByGlobal:             map[int]*sema.FuncDef{},
+		funcByName:               map[string]*sema.FuncDef{},
+		nestedCaptures:           map[*sema.FuncDef][]capture{},
+		capturedByOwner:          map[*sema.FuncDef]map[*sema.Symbol]bool{},
 	}
+	g.prepareNestedCaptures()
 	if err := g.emitModule(); err != nil {
 		return nil, err
 	}
@@ -29,13 +37,20 @@ func Generate(prog *sema.Program) (*bytecode.Module, error) {
 }
 
 type generator struct {
-	prog      *sema.Program
-	mod       *bytecode.Module
-	globalMap map[*sema.Symbol]int
-	sigMap    map[string]int
-	layoutMap map[sema.Type]int
-	stringMap map[string]int
-	fn        *funcGen
+	prog                     *sema.Program
+	mod                      *bytecode.Module
+	globalMap                map[*sema.Symbol]int
+	externMap                map[string]int
+	sigMap                   map[string]int
+	layoutMap                map[sema.Type]int
+	stringMap                map[string]int
+	staticCompoundLiteralMap map[*sema.CompoundLit]int
+	funcMap                  map[*sema.Symbol]*sema.FuncDef
+	funcByGlobal             map[int]*sema.FuncDef
+	funcByName               map[string]*sema.FuncDef
+	nestedCaptures           map[*sema.FuncDef][]capture
+	capturedByOwner          map[*sema.FuncDef]map[*sema.Symbol]bool
+	fn                       *funcGen
 }
 
 type funcGen struct {
@@ -48,6 +63,7 @@ type funcGen struct {
 	dynamicSizeSlotMap    map[*sema.Symbol]int
 	dynamicSizeSymbolMap  map[*sema.Symbol]map[string]int
 	dynamicPointerTypeMap map[*sema.Symbol]map[string]int
+	capturedObjectSlot    map[*sema.Symbol]int
 	activeDynamicObjects  []int
 	nextSyntheticSlot     int
 	addressTaken          map[*sema.Symbol]bool
@@ -175,6 +191,25 @@ func externRefForSymbol(sym *sema.Symbol) bytecode.ExternRef {
 	}
 }
 
+func (g *generator) syntheticExtern(name string, ret bytecode.ValueType, params []bytecode.ValueType, variadic bool) int {
+	key := fmt.Sprintf("%s:%s/%v/%v", name, ret, params, variadic)
+	if id, ok := g.externMap[key]; ok {
+		return id
+	}
+	sig := g.internSig(ret, params, variadic)
+	id := len(g.mod.Globals)
+	g.mod.Globals = append(g.mod.Globals, bytecode.Global{
+		ID:     id,
+		Name:   name,
+		Kind:   bytecode.GlobalExtern,
+		Func:   -1,
+		Sig:    sig,
+		Extern: bytecode.ExternRef{Name: name, ABI: bytecode.DefaultExternABI},
+	})
+	g.externMap[key] = id
+	return id
+}
+
 func (g *generator) internSig(ret bytecode.ValueType, params []bytecode.ValueType, variadic bool) int {
 	key := fmt.Sprintf("%s/%v/%v", ret, params, variadic)
 	if id, ok := g.sigMap[key]; ok {
@@ -187,16 +222,30 @@ func (g *generator) internSig(ret bytecode.ValueType, params []bytecode.ValueTyp
 }
 
 func (g *generator) emitFunction(fn *sema.FuncDef) error {
-	sig, err := g.lowerFuncSig(fn.T)
+	sig, err := g.lowerFuncDefSig(fn)
 	if err != nil {
 		return err
 	}
 	addressTaken := findAddressTaken(fn)
+	for sym := range g.capturedByOwner[fn] {
+		addressTaken[sym] = true
+	}
 	f := bytecode.Function{
 		ID:       len(g.mod.Functions),
 		GlobalID: fn.Sym.GlobalID,
 		Name:     fn.Sym.Name,
 		Sig:      sig,
+	}
+	maxSlot := -1
+	for _, p := range fn.Params {
+		if p.Sym != nil && p.Sym.SlotID > maxSlot {
+			maxSlot = p.Sym.SlotID
+		}
+	}
+	for _, local := range fn.Locals {
+		if local != nil && local.Sym != nil && local.Sym.SlotID > maxSlot {
+			maxSlot = local.Sym.SlotID
+		}
 	}
 	paramDeclsBySlot := map[int]*sema.VarDecl{}
 	for _, p := range fn.Params {
@@ -207,20 +256,43 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		f.Params = append(f.Params, bytecode.Param{Name: p.Sym.Name, Type: pt, Slot: p.Sym.SlotID})
 		paramDeclsBySlot[p.Sym.SlotID] = p
 	}
-	seenSlots := map[int]bool{}
-	maxSlot := -1
-	for _, p := range fn.Params {
-		if p.Sym != nil && p.Sym.SlotID > maxSlot {
-			maxSlot = p.Sym.SlotID
+	if len(fn.Params) == 0 && len(fn.OldStyleParamTypes) != 0 {
+		for i, t := range fn.OldStyleParamTypes {
+			pt, err := g.lowerValueType(t)
+			if err != nil {
+				return err
+			}
+			f.Params = append(f.Params, bytecode.Param{Name: fmt.Sprintf(".arg%d", i), Type: pt, Slot: i})
+			if i > maxSlot {
+				maxSlot = i
+			}
 		}
 	}
+	capturedObjectSlots := map[*sema.Symbol]int{}
+	capturedSizeSlots := map[*sema.Symbol]map[string]int{}
+	for _, cap := range g.nestedCaptures[fn] {
+		if cap.sym == nil {
+			continue
+		}
+		maxSlot++
+		capturedObjectSlots[cap.sym] = maxSlot
+		f.Params = append(f.Params, bytecode.Param{Name: ".static-chain." + cap.sym.Name, Type: bytecode.TypeObjectAddr, Slot: maxSlot})
+		for _, typ := range cap.sizeTypes {
+			maxSlot++
+			f.Params = append(f.Params, bytecode.Param{Name: ".static-chain." + cap.sym.Name + ".$size", Type: bytecode.TypeI64, Slot: maxSlot})
+			m := capturedSizeSlots[cap.sym]
+			if m == nil {
+				m = map[string]int{}
+				capturedSizeSlots[cap.sym] = m
+			}
+			m[dynamicSizeKey(typ)] = maxSlot
+		}
+	}
+	seenSlots := map[int]bool{}
 	objectMap := map[*sema.Symbol]int{}
 	for _, p := range f.Params {
 		seenSlots[p.Slot] = true
-		if p.Slot > maxSlot {
-			maxSlot = p.Slot
-		}
-		if pd := paramDeclsBySlot[p.Slot]; pd != nil && (addressTaken[pd.Sym] || isVolatile(pd.T)) {
+		if pd := paramDeclsBySlot[p.Slot]; pd != nil && (p.Type == bytecode.TypeObjectAddr || addressTaken[pd.Sym] || isVolatile(pd.T)) {
 			layout, err := g.lowerLayout(pd.T)
 			if err != nil {
 				return err
@@ -237,7 +309,7 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		if local.Sym.SlotID > maxSlot {
 			maxSlot = local.Sym.SlotID
 		}
-		if isVLAType(local.T) {
+		if typeHasVariableSize(local.T) {
 			continue
 		}
 		vt, err := g.lowerValueType(local.T)
@@ -269,6 +341,7 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		dynamicSizeSlotMap:    map[*sema.Symbol]int{},
 		dynamicSizeSymbolMap:  map[*sema.Symbol]map[string]int{},
 		dynamicPointerTypeMap: map[*sema.Symbol]map[string]int{},
+		capturedObjectSlot:    capturedObjectSlots,
 		nextSyntheticSlot:     maxSlot + 1,
 		addressTaken:          addressTaken,
 		namedBreaks:           map[string][]int{},
@@ -280,6 +353,9 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		caseLabels:            map[*sema.CaseStmt]int{},
 		defaultLabels:         map[*sema.DefaultStmt]int{},
 	}
+	for sym, slots := range capturedSizeSlots {
+		fg.dynamicSizeSymbolMap[sym] = slots
+	}
 	for _, p := range fn.Params {
 		objectID, ok := objectMap[p.Sym]
 		if !ok {
@@ -289,11 +365,12 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		if err != nil {
 			return err
 		}
-		fg.out.Instrs = append(fg.out.Instrs,
-			bytecode.AddrLocalObject(objectID),
-			bytecode.LoadLocal(vt, p.Sym.SlotID),
-			bytecode.Store(vt, g.alignof(p.T), isVolatile(p.T)),
-		)
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(objectID), bytecode.LoadLocal(vt, p.Sym.SlotID))
+		if vt == bytecode.TypeObjectAddr {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: g.sizeof(p.T), Align: 1, Volatile: isVolatile(p.T)})
+			continue
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, g.alignof(p.T), isVolatile(p.T)))
 	}
 	for _, p := range fn.Params {
 		if p != nil && p.T != nil && typeHasVariablyModifiedType(p.T) {
@@ -316,6 +393,61 @@ func (g *generator) emitFunction(fn *sema.FuncDef) error {
 		g.mod.Globals[fn.Sym.GlobalID].Extern = bytecode.ExternRef{}
 	}
 	return nil
+}
+
+func (g *generator) lowerFuncDefSig(fn *sema.FuncDef) (int, error) {
+	if fn == nil || fn.T == nil {
+		return 0, fmt.Errorf("cannot lower nil function definition signature")
+	}
+	var ret bytecode.ValueType
+	var params []bytecode.ValueType
+	variadic := false
+	if fn.T.HasProto {
+		var err error
+		ret, err = g.lowerValueType(fn.T.Ret)
+		if err != nil {
+			return 0, err
+		}
+		params = make([]bytecode.ValueType, 0, len(fn.T.Params))
+		for _, p := range fn.T.Params {
+			pt, err := g.lowerValueType(p)
+			if err != nil {
+				return 0, err
+			}
+			params = append(params, pt)
+		}
+		variadic = fn.T.Variadic
+	} else {
+		var err error
+		ret, err = g.lowerValueType(fn.T.Ret)
+		if err != nil {
+			return 0, err
+		}
+		params = make([]bytecode.ValueType, 0, len(fn.Params))
+		for _, p := range fn.Params {
+			pt, err := g.lowerValueType(p.T)
+			if err != nil {
+				return 0, err
+			}
+			params = append(params, pt)
+		}
+		if len(params) == 0 && len(fn.OldStyleParamTypes) != 0 {
+			for _, p := range fn.OldStyleParamTypes {
+				pt, err := g.lowerValueType(p)
+				if err != nil {
+					return 0, err
+				}
+				params = append(params, pt)
+			}
+		}
+	}
+	for _, cap := range g.nestedCaptures[fn] {
+		params = append(params, bytecode.TypeObjectAddr)
+		for range cap.sizeTypes {
+			params = append(params, bytecode.TypeI64)
+		}
+	}
+	return g.internSig(ret, params, variadic), nil
 }
 
 func (fg *funcGen) emitImplicitTerminal() error {
@@ -345,6 +477,9 @@ func isTerminalInstr(ins bytecode.Instr) bool {
 }
 
 func castOpFor(kind sema.CastKind, from, to bytecode.ValueType) bytecode.CastOp {
+	if to == bytecode.TypeBool && (isIntegerType(from) || isFloatType(from) || isPointerType(from)) {
+		return bytecode.CastBool
+	}
 	switch kind {
 	case sema.BoolConversion:
 		return bytecode.CastBool

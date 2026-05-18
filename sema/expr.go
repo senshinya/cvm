@@ -74,6 +74,9 @@ func (s *Sema) makeIntLit(node *entity.AstNode) Expr {
 		s.report(InvalidTypeSpec(node.SourceStart, "integer constant is too large for signed type"))
 	}
 	s.validateIntegerLiteralPrefix(lexeme, node.SourceStart)
+	if isImaginaryIntegerSuffix(lexeme) {
+		return &ImagLit{Value: parseImaginaryIntegerLiteral(lexeme), T: s.Types.Builtin(DoubleComplex), Range: node.SourceRange}
+	}
 	return &IntLit{Value: parseIntLiteral(lexeme), T: integerLiteralType(s, lexeme), Range: node.SourceRange}
 }
 
@@ -134,20 +137,31 @@ func (s *Sema) makeFloatLit(node *entity.AstNode) Expr {
 	if invalidFloatSuffix(node.Terminal.Lexeme, s.Options.PedanticErrors) {
 		s.report(InvalidTypeSpec(node.SourceStart, "invalid floating constant suffix"))
 	}
+	if isImaginaryFloatSuffix(node.Terminal.Lexeme) {
+		return &ImagLit{Value: parseFloatLiteral(node.Terminal.Lexeme), T: s.imaginaryFloatLiteralType(node.Terminal.Lexeme), Range: node.SourceRange}
+	}
 	return &FloatLit{Value: parseFloatLiteral(node.Terminal.Lexeme), T: s.Types.Builtin(Double), Range: node.SourceRange}
 }
 
-func invalidFloatSuffix(lexeme string, pedanticErrors bool) bool {
-	i := len(lexeme)
-	for i > 0 {
-		c := lexeme[i-1]
-		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
-			i--
-			continue
-		}
-		break
+func isImaginaryFloatSuffix(lexeme string) bool {
+	suffix := floatLiteralSuffix(lexeme)
+	return strings.ContainsAny(suffix, "ij")
+}
+
+func (s *Sema) imaginaryFloatLiteralType(lexeme string) Type {
+	suffix := floatLiteralSuffix(lexeme)
+	switch {
+	case strings.Contains(suffix, "f"):
+		return s.Types.Builtin(FloatComplex)
+	case strings.Contains(suffix, "l"):
+		return s.Types.Builtin(LongDoubleComplex)
+	default:
+		return s.Types.Builtin(DoubleComplex)
 	}
-	suffix := strings.ToLower(lexeme[i:])
+}
+
+func invalidFloatSuffix(lexeme string, pedanticErrors bool) bool {
+	suffix := floatLiteralSuffix(lexeme)
 	if suffix == "" || suffix == "f" || suffix == "l" {
 		return false
 	}
@@ -163,19 +177,59 @@ func invalidFloatSuffix(lexeme string, pedanticErrors bool) bool {
 	return true
 }
 
+func floatLiteralSuffix(lexeme string) string {
+	i := len(lexeme)
+	for i > 0 {
+		c := lexeme[i-1]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			i--
+			continue
+		}
+		break
+	}
+	return strings.ToLower(lexeme[i:])
+}
+
 func (s *Sema) makeCharLit(node *entity.AstNode) Expr {
 	return &CharLit{Value: parseCharLiteral(node.Terminal.Lexeme), T: s.Types.Builtin(Int), Range: node.SourceRange}
 }
 
 func (s *Sema) makeStringLit(node *entity.AstNode) Expr {
 	v := parseStringLiteral(node.Terminal.Lexeme)
-	return &StringLit{Value: v, T: s.Types.ArrayConstant(s.Types.Builtin(Char), int64(len(v)+1)), Range: node.SourceRange}
+	elem := s.Types.Builtin(Char)
+	if strings.HasPrefix(node.Terminal.Lexeme, "L\"") {
+		elem = s.Types.Builtin(Int)
+	}
+	return &StringLit{Value: v, T: s.Types.ArrayConstant(elem, int64(len(v)+1)), Range: node.SourceRange}
 }
 
 func parseIntLiteral(lexeme string) int64 {
 	body := integerLiteralBody(lexeme)
 	v, _ := parseBasedIntLiteral(body)
 	return int64(v)
+}
+
+func parseImaginaryIntegerLiteral(lexeme string) float64 {
+	body := lexeme[:len(lexeme)-len(imaginaryIntegerSuffix(lexeme))]
+	v, _ := parseBasedIntLiteral(body)
+	return float64(v)
+}
+
+func isImaginaryIntegerSuffix(lexeme string) bool {
+	return strings.ContainsAny(imaginaryIntegerSuffix(lexeme), "ij")
+}
+
+func imaginaryIntegerSuffix(lexeme string) string {
+	i := len(lexeme)
+	for i > 0 {
+		switch lexeme[i-1] {
+		case 'u', 'U', 'l', 'L', 'i', 'I', 'j', 'J':
+			i--
+			continue
+		}
+		break
+	}
+	return strings.ToLower(lexeme[i:])
 }
 
 func integerLiteralType(s *Sema, lexeme string) Type {
@@ -320,7 +374,43 @@ func parseStringLiteral(lexeme string) string {
 	if len(lexeme) < 2 {
 		return ""
 	}
-	return strings.ReplaceAll(lexeme[1:len(lexeme)-1], `\n`, "\n")
+	start := 1
+	if strings.HasPrefix(lexeme, "L\"") {
+		start = 2
+	}
+	s := lexeme[start : len(lexeme)-1]
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] != '\\' || i+1 >= len(s) {
+			b.WriteByte(s[i])
+			continue
+		}
+		i++
+		switch s[i] {
+		case 'n':
+			b.WriteByte('\n')
+		case 't':
+			b.WriteByte('\t')
+		case 'r':
+			b.WriteByte('\r')
+		case '\\':
+			b.WriteByte('\\')
+		case '\'':
+			b.WriteByte('\'')
+		case '"':
+			b.WriteByte('"')
+		case '0', '1', '2', '3', '4', '5', '6', '7':
+			v := int(s[i] - '0')
+			for n := 0; n < 2 && i+1 < len(s) && s[i+1] >= '0' && s[i+1] <= '7'; n++ {
+				i++
+				v = v*8 + int(s[i]-'0')
+			}
+			b.WriteByte(byte(v))
+		default:
+			b.WriteByte(s[i])
+		}
+	}
+	return b.String()
 }
 
 func (s *Sema) typePrimary(node *entity.AstNode, scope *Scope) Expr {
@@ -341,7 +431,7 @@ func (s *Sema) typePrimary(node *entity.AstNode, scope *Scope) Expr {
 		if !s.Options.GNUExtensions {
 			s.report(InvalidTypeSpec(node.SourceStart, "statement expression requires GNU C mode"))
 		}
-		block := s.typeBlock(node.Children[1], scope, &funcCtx{})
+		block := s.typeBlock(node.Children[1], scope, s.funcCtx)
 		return &StmtExpr{Block: block, T: blockResultType(s, block), Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
@@ -375,6 +465,9 @@ func (s *Sema) lookupVar(node *entity.AstNode, scope *Scope) Expr {
 	}
 	switch sym.Kind {
 	case SymVar, SymParam, SymFunc:
+		if sym.Name == "__func__" {
+			sym.Used = true
+		}
 		return &VarRef{Sym: sym, T: sym.T, Range: node.SourceRange}
 	case SymEnumerator:
 		var enumerator *Enumerator
@@ -720,17 +813,17 @@ func (s *Sema) typeConditional(node *entity.AstNode, scope *Scope) Expr {
 		return s.typeExpr(node.Children[0], scope)
 	case node.ReducedBy(parser.ConditionalExpression, 2):
 		cond := s.castBoolConversion(s.castLValueToRValue(s.typeExpr(node.Children[0], scope)))
-		then := s.castLValueToRValue(s.typeExpr(node.Children[2], scope))
-		els := s.castLValueToRValue(s.typeExpr(node.Children[4], scope))
+		then := s.castFunctionDecay(s.castLValueToRValue(s.typeExpr(node.Children[2], scope)))
+		els := s.castFunctionDecay(s.castLValueToRValue(s.typeExpr(node.Children[4], scope)))
 		then, els, common := s.balanceConditionalOperands(then, els, node.SourceStart)
 		return &CondExpr{Cond: cond, Then: then, Else: els, T: common, Range: node.SourceRange}
 	case node.ReducedBy(parser.ConditionalExpression, 3):
 		if !s.Options.GNUExtensions || s.Options.PedanticErrors {
 			s.report(InvalidTypeSpec(node.SourceStart, "omitted middle operand requires GNU C mode"))
 		}
-		then := s.castLValueToRValue(s.typeExpr(node.Children[0], scope))
+		then := s.castFunctionDecay(s.castLValueToRValue(s.typeExpr(node.Children[0], scope)))
 		cond := s.castBoolConversion(then)
-		els := s.castLValueToRValue(s.typeExpr(node.Children[3], scope))
+		els := s.castFunctionDecay(s.castLValueToRValue(s.typeExpr(node.Children[3], scope)))
 		then, els, common := s.balanceConditionalOperands(then, els, node.SourceStart)
 		return &CondExpr{Cond: cond, Then: then, Else: els, T: common, Range: node.SourceRange}
 	}
@@ -943,13 +1036,20 @@ func (s *Sema) typePostfix(node *entity.AstNode, scope *Scope) Expr {
 		return s.buildIncDec(node, x, UnDecPost)
 	case node.ReducedBy(parser.PostfixExpression, 9), node.ReducedBy(parser.PostfixExpression, 10):
 		t := s.parseTypeName(node.Children[1])
-		return &CompoundLit{T: t, Init: s.typeInitListForType(node.Children[4], t), Range: node.SourceRange}
+		init := s.typeInitListForType(node.Children[4], t)
+		t = s.completeCompoundLiteralType(t, init)
+		init.T = t
+		return &CompoundLit{T: t, Init: init, Range: node.SourceRange}
 	case node.ReducedBy(parser.PostfixExpression, 11):
 		s.reportEmptyInitializerExtension(node.SourceStart)
 		t := s.parseTypeName(node.Children[1])
 		return &CompoundLit{T: t, Init: &InitList{T: t, Range: node.SourceRange}, Range: node.SourceRange}
 	}
 	return s.errorExpr(node.SourceRange)
+}
+
+func (s *Sema) completeCompoundLiteralType(t Type, init *InitList) Type {
+	return s.completeUnsizedArrayInitializerType(t, init)
 }
 
 func indexExprCategory(base Expr) ValueCategory {
@@ -975,6 +1075,16 @@ func (s *Sema) typeCall(node *entity.AstNode, scope *Scope, argList *entity.AstN
 		return &CallExpr{Callee: callee, T: ErrorTypeSingleton, Range: node.SourceRange}
 	}
 	args := s.collectCallArgs(argList, scope)
+	if name := tgmathPseudoName(callee); name != "" {
+		for i, arg := range args {
+			args[i] = s.castFunctionDecay(s.castArrayDecay(s.castLValueToRValue(arg)))
+		}
+		if !tgmathArityOK(name, len(args)) {
+			s.report(InvalidTypeSpec(node.SourceStart, "wrong number of arguments"))
+			return &CallExpr{Callee: callee, Args: args, T: ft.Ret, Range: node.SourceRange}
+		}
+		return &CallExpr{Callee: callee, Args: args, T: s.tgmathReturnType(name, args), Range: node.SourceRange}
+	}
 	for i, arg := range args {
 		arg = s.castFunctionDecay(s.castArrayDecay(s.castLValueToRValue(arg)))
 		if ft.HasProto && i < len(ft.Params) {
@@ -989,6 +1099,152 @@ func (s *Sema) typeCall(node *entity.AstNode, scope *Scope, argList *entity.AstN
 	}
 	s.validateCallReturnType(ft.Ret, node.SourceStart)
 	return &CallExpr{Callee: callee, Args: args, T: ft.Ret, Range: node.SourceRange}
+}
+
+func tgmathPseudoName(e Expr) string {
+	for {
+		ic, ok := e.(*ImplicitCast)
+		if !ok || (ic.Kind != LValueToRValue && ic.Kind != FunctionDecay) {
+			break
+		}
+		e = ic.X
+	}
+	vr, ok := e.(*VarRef)
+	if !ok || vr.Sym == nil {
+		return ""
+	}
+	switch vr.Sym.Name {
+	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow", "__cvm_tgmath_sqrt", "__cvm_tgmath_fabs", "__cvm_tgmath_cos", "__cvm_tgmath_tan", "__cvm_tgmath_log", "__cvm_tgmath_sinh", "__cvm_tgmath_cosh", "__cvm_tgmath_tanh", "__cvm_tgmath_asin", "__cvm_tgmath_acos", "__cvm_tgmath_atan", "__cvm_tgmath_asinh", "__cvm_tgmath_acosh", "__cvm_tgmath_atanh", "__cvm_tgmath_atan2", "__cvm_tgmath_hypot", "__cvm_tgmath_cbrt", "__cvm_tgmath_ceil", "__cvm_tgmath_floor", "__cvm_tgmath_trunc", "__cvm_tgmath_round", "__cvm_tgmath_exp2", "__cvm_tgmath_expm1", "__cvm_tgmath_log10", "__cvm_tgmath_log1p", "__cvm_tgmath_log2", "__cvm_tgmath_fdim", "__cvm_tgmath_fmax", "__cvm_tgmath_fmin", "__cvm_tgmath_fmod", "__cvm_tgmath_remainder", "__cvm_tgmath_copysign", "__cvm_tgmath_fma", "__cvm_tgmath_nextafter", "__cvm_tgmath_nexttoward", "__cvm_tgmath_erf", "__cvm_tgmath_erfc", "__cvm_tgmath_tgamma", "__cvm_tgmath_lgamma", "__cvm_tgmath_nearbyint", "__cvm_tgmath_rint", "__cvm_tgmath_logb", "__cvm_tgmath_scalbn", "__cvm_tgmath_scalbln", "__cvm_tgmath_ldexp", "__cvm_tgmath_ilogb", "__cvm_tgmath_frexp", "__cvm_tgmath_remquo", "__cvm_tgmath_carg", "__cvm_tgmath_cimag", "__cvm_tgmath_creal", "__cvm_tgmath_conj", "__cvm_tgmath_cproj", "__cvm_tgmath_lrint", "__cvm_tgmath_lround", "__cvm_tgmath_llrint", "__cvm_tgmath_llround":
+		return vr.Sym.Name
+	default:
+		return ""
+	}
+}
+
+func tgmathArityOK(name string, argc int) bool {
+	switch name {
+	case "__cvm_tgmath_pow", "__cvm_tgmath_atan2", "__cvm_tgmath_hypot", "__cvm_tgmath_fdim", "__cvm_tgmath_fmax", "__cvm_tgmath_fmin", "__cvm_tgmath_fmod", "__cvm_tgmath_remainder", "__cvm_tgmath_copysign", "__cvm_tgmath_nextafter", "__cvm_tgmath_nexttoward", "__cvm_tgmath_scalbn", "__cvm_tgmath_scalbln", "__cvm_tgmath_ldexp", "__cvm_tgmath_frexp":
+		return argc == 2
+	case "__cvm_tgmath_fma":
+		return argc == 3
+	case "__cvm_tgmath_remquo":
+		return argc == 3
+	default:
+		return argc == 1
+	}
+}
+
+func (s *Sema) tgmathReturnType(name string, args []Expr) Type {
+	if (name == "__cvm_tgmath_fabs" || name == "__cvm_tgmath_carg" || name == "__cvm_tgmath_cimag" || name == "__cvm_tgmath_creal") && len(args) > 0 {
+		return s.tgmathRealReturnType(args[0])
+	}
+	if name == "__cvm_tgmath_remquo" && len(args) >= 2 {
+		return s.tgmathReturnType("", args[:2])
+	}
+	if name == "__cvm_tgmath_ilogb" {
+		return s.Types.Builtin(Int)
+	}
+	switch name {
+	case "__cvm_tgmath_lrint", "__cvm_tgmath_lround":
+		return s.Types.Builtin(Long)
+	case "__cvm_tgmath_llrint", "__cvm_tgmath_llround":
+		return s.Types.Builtin(LongLong)
+	}
+	if tgmathUsesFirstArgRank(name) && len(args) > 0 {
+		rank, complexResult, _ := tgmathTypeRank(args[0].GetType())
+		switch {
+		case complexResult && rank == tgmathRankLongDouble:
+			return s.Types.Builtin(LongDoubleComplex)
+		case complexResult && rank == tgmathRankDouble:
+			return s.Types.Builtin(DoubleComplex)
+		case complexResult:
+			return s.Types.Builtin(FloatComplex)
+		case rank == tgmathRankLongDouble:
+			return s.Types.Builtin(LongDouble)
+		case rank == tgmathRankDouble:
+			return s.Types.Builtin(Double)
+		default:
+			return s.Types.Builtin(Float)
+		}
+	}
+	rank := tgmathRankDouble
+	complexResult := false
+	allFloat := len(args) > 0
+	for _, arg := range args {
+		argRank, argComplex, argIsFloat := tgmathTypeRank(arg.GetType())
+		if argRank > rank {
+			rank = argRank
+		}
+		complexResult = complexResult || argComplex
+		allFloat = allFloat && argIsFloat
+	}
+	if allFloat {
+		rank = tgmathRankFloat
+	}
+	switch {
+	case complexResult && rank == tgmathRankLongDouble:
+		return s.Types.Builtin(LongDoubleComplex)
+	case complexResult && rank == tgmathRankDouble:
+		return s.Types.Builtin(DoubleComplex)
+	case complexResult:
+		return s.Types.Builtin(FloatComplex)
+	case rank == tgmathRankLongDouble:
+		return s.Types.Builtin(LongDouble)
+	case rank == tgmathRankDouble:
+		return s.Types.Builtin(Double)
+	default:
+		return s.Types.Builtin(Float)
+	}
+}
+
+func (s *Sema) tgmathRealReturnType(arg Expr) Type {
+	rank, _, _ := tgmathTypeRank(arg.GetType())
+	switch rank {
+	case tgmathRankLongDouble:
+		return s.Types.Builtin(LongDouble)
+	case tgmathRankFloat:
+		return s.Types.Builtin(Float)
+	default:
+		return s.Types.Builtin(Double)
+	}
+}
+
+func tgmathUsesFirstArgRank(name string) bool {
+	switch name {
+	case "__cvm_tgmath_nexttoward", "__cvm_tgmath_scalbn", "__cvm_tgmath_scalbln", "__cvm_tgmath_ldexp", "__cvm_tgmath_frexp":
+		return true
+	default:
+		return false
+	}
+}
+
+const (
+	tgmathRankFloat = iota + 1
+	tgmathRankDouble
+	tgmathRankLongDouble
+)
+
+func tgmathTypeRank(t Type) (rank int, complex bool, isFloat bool) {
+	bt, ok := unqualifiedBuiltin(t)
+	if !ok {
+		return tgmathRankDouble, false, false
+	}
+	switch bt.Kind {
+	case Float:
+		return tgmathRankFloat, false, true
+	case Double:
+		return tgmathRankDouble, false, false
+	case LongDouble:
+		return tgmathRankLongDouble, false, false
+	case FloatComplex:
+		return tgmathRankFloat, true, true
+	case DoubleComplex:
+		return tgmathRankDouble, true, false
+	case LongDoubleComplex:
+		return tgmathRankLongDouble, true, false
+	default:
+		return tgmathRankDouble, false, false
+	}
 }
 
 func (s *Sema) validateCallReturnType(t Type, pos entity.SourcePos) {

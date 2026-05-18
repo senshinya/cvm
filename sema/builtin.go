@@ -18,6 +18,10 @@ func (s *Sema) lookupBuiltin(name string, pos entity.SourcePos) *Symbol {
 func (s *Sema) builtinFunctionType(name string) *FunctionType {
 	sizeT := s.Types.Builtin(ULong)
 	intT := s.Types.Builtin(Int)
+	longT := s.Types.Builtin(Long)
+	unsignedLongT := s.Types.Builtin(ULong)
+	longLongT := s.Types.Builtin(LongLong)
+	unsignedLongLongT := s.Types.Builtin(ULongLong)
 	doubleT := s.Types.Builtin(Double)
 	floatT := s.Types.Builtin(Float)
 	longDoubleT := s.Types.Builtin(LongDouble)
@@ -26,15 +30,44 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 	constVoidPtr := s.Types.Pointer(s.Types.Qualified(s.Types.Builtin(Void), true, false, false))
 	constCharPtr := s.Types.Pointer(s.Types.Qualified(s.Types.Builtin(Char), true, false, false))
 	charPtr := s.Types.Pointer(s.Types.Builtin(Char))
+	charPtrPtr := s.Types.Pointer(charPtr)
 	vaList := voidPtr
 
 	switch name {
-	case "__builtin_malloc":
+	case "__builtin_malloc", "malloc":
 		return s.Types.Function(voidPtr, []Type{sizeT}, false, true)
-	case "__builtin_calloc":
+	case "__builtin_calloc", "calloc":
 		return s.Types.Function(voidPtr, []Type{sizeT, sizeT}, false, true)
-	case "__builtin_strdup":
+	case "realloc":
+		return s.Types.Function(voidPtr, []Type{voidPtr, sizeT}, false, true)
+	case "__builtin_strdup", "strdup":
 		return s.Types.Function(charPtr, []Type{constCharPtr}, false, true)
+	case "free":
+		return s.Types.Function(voidT, []Type{voidPtr}, false, true)
+	case "rand":
+		return s.Types.Function(intT, nil, false, true)
+	case "srand":
+		return s.Types.Function(voidT, []Type{s.Types.Builtin(UInt)}, false, true)
+	case "getenv":
+		return s.Types.Function(charPtr, []Type{constCharPtr}, false, true)
+	case "system":
+		return s.Types.Function(intT, []Type{constCharPtr}, false, true)
+	case "atof":
+		return s.Types.Function(doubleT, []Type{constCharPtr}, false, true)
+	case "strtol":
+		return s.Types.Function(longT, []Type{constCharPtr, charPtrPtr, intT}, false, true)
+	case "strtoul":
+		return s.Types.Function(unsignedLongT, []Type{constCharPtr, charPtrPtr, intT}, false, true)
+	case "strtoll":
+		return s.Types.Function(longLongT, []Type{constCharPtr, charPtrPtr, intT}, false, true)
+	case "strtoull":
+		return s.Types.Function(unsignedLongLongT, []Type{constCharPtr, charPtrPtr, intT}, false, true)
+	case "strtod":
+		return s.Types.Function(doubleT, []Type{constCharPtr, charPtrPtr}, false, true)
+	case "strtof":
+		return s.Types.Function(floatT, []Type{constCharPtr, charPtrPtr}, false, true)
+	case "strtold":
+		return s.Types.Function(longDoubleT, []Type{constCharPtr, charPtrPtr}, false, true)
 	case "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy":
 		return s.Types.Function(voidPtr, []Type{voidPtr, constVoidPtr, sizeT}, false, true)
 	case "memcpy", "memmove", "mempcpy":
@@ -43,8 +76,12 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(voidPtr, []Type{voidPtr, intT, sizeT}, false, true)
 	case "memset":
 		return s.Types.Function(voidPtr, []Type{voidPtr, intT, sizeT}, false, true)
-	case "__builtin_bzero":
+	case "__builtin_bzero", "bzero":
 		return s.Types.Function(voidT, []Type{voidPtr, sizeT}, false, true)
+	case "bcmp":
+		return s.Types.Function(intT, []Type{constVoidPtr, constVoidPtr, sizeT}, false, true)
+	case "bcopy":
+		return s.Types.Function(voidT, []Type{constVoidPtr, voidPtr, sizeT}, false, true)
 	case "__builtin_strcpy", "__builtin_stpcpy", "__builtin_strcat":
 		return s.Types.Function(charPtr, []Type{charPtr, constCharPtr}, false, true)
 	case "strcpy", "stpcpy", "strcat":
@@ -57,14 +94,34 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(sizeT, []Type{constCharPtr}, false, true)
 	case "strlen":
 		return s.Types.Function(sizeT, []Type{constCharPtr}, false, true)
+	case "strnlen":
+		return s.Types.Function(sizeT, []Type{constCharPtr, sizeT}, false, true)
+	case "strerror":
+		return s.Types.Function(charPtr, []Type{intT}, false, true)
+	case "strncmp":
+		return s.Types.Function(intT, []Type{constCharPtr, constCharPtr, sizeT}, false, true)
+	case "strcoll":
+		return s.Types.Function(intT, []Type{constCharPtr, constCharPtr}, false, true)
 	case "__builtin_strchr":
 		return s.Types.Function(charPtr, []Type{constCharPtr, intT}, false, true)
 	case "strchr":
+		return s.Types.Function(charPtr, []Type{constCharPtr, intT}, false, true)
+	case "strrchr":
 		return s.Types.Function(charPtr, []Type{constCharPtr, intT}, false, true)
 	case "__builtin_strstr":
 		return s.Types.Function(charPtr, []Type{constCharPtr, constCharPtr}, false, true)
 	case "strstr":
 		return s.Types.Function(charPtr, []Type{constCharPtr, constCharPtr}, false, true)
+	case "strpbrk":
+		return s.Types.Function(charPtr, []Type{constCharPtr, constCharPtr}, false, true)
+	case "strspn", "strcspn":
+		return s.Types.Function(sizeT, []Type{constCharPtr, constCharPtr}, false, true)
+	case "memchr":
+		return s.Types.Function(voidPtr, []Type{constVoidPtr, intT, sizeT}, false, true)
+	case "strtok":
+		return s.Types.Function(charPtr, []Type{charPtr, constCharPtr}, false, true)
+	case "strxfrm":
+		return s.Types.Function(sizeT, []Type{charPtr, constCharPtr, sizeT}, false, true)
 	case "__builtin_object_size", "__builtin_dynamic_object_size":
 		return s.Types.Function(sizeT, []Type{constVoidPtr, intT}, false, true)
 	case "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk":

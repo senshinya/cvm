@@ -47,6 +47,7 @@ const (
 	OpVaStart
 	OpVaArg
 	OpVaEnd
+	OpMakeClosure
 )
 
 func (op Opcode) String() string {
@@ -93,6 +94,7 @@ func (op Opcode) String() string {
 		"OpVaStart",
 		"OpVaArg",
 		"OpVaEnd",
+		"OpMakeClosure",
 	}
 	if int(op) >= 0 && int(op) < len(names) {
 		return names[op]
@@ -224,10 +226,13 @@ func Return(t ValueType) Instr { return Instr{Op: OpReturn, Type: t} }
 func Call(global, sig, argc int) Instr {
 	return Instr{Op: OpCall, Global: global, Sig: sig, Argc: argc}
 }
+func MakeClosure(global, sig, argc int) Instr {
+	return Instr{Op: OpMakeClosure, Global: global, Sig: sig, Argc: argc, Type: TypePtr}
+}
 
 func (i Instr) ResultType() (ValueType, bool) {
 	switch i.Op {
-	case OpConst, OpAddrString, OpAddrGlobal, OpAddrFunc, OpLoadConst, OpLoadLocal, OpAddrLocalObject, OpDynamicObjectAddr, OpLoad, OpBitFieldLoad:
+	case OpConst, OpAddrString, OpAddrGlobal, OpAddrFunc, OpLoadConst, OpLoadLocal, OpAddrLocalObject, OpDynamicObjectAddr, OpLoad, OpBitFieldLoad, OpMakeClosure:
 		return i.Type, true
 	case OpBinary:
 		if isCompare(i.Binary) {

@@ -2,6 +2,38 @@ package sema
 
 import "testing"
 
+func TestC99RejectsTypedefRedeclaration(t *testing.T) {
+	mustReject(t, `
+		typedef unsigned long size_t;
+		typedef unsigned long size_t;
+	`)
+	mustReject(t, `
+		void f(void) {
+			typedef int T;
+			typedef int T;
+		}
+	`)
+	mustReject(t, `
+		typedef int T;
+		typedef long T;
+	`)
+}
+
+func TestC99BuiltinHeadersMayRedeclareSizeT(t *testing.T) {
+	src := `
+		#include <stdio.h>
+		#include <string.h>
+		int main(void) {
+			char buf[8];
+			sprintf(buf, "%s", "ok");
+			return strcmp(buf, "ok");
+		}
+	`
+	if err := preprocessParseAnalyze(t, "header-size-t-redeclaration.c", src, SemaOptions{}); err != nil {
+		t.Fatalf("preprocessor+parser+sema rejected compatible size_t redeclaration: %v", err)
+	}
+}
+
 func TestC99FuncIdentifierIsImplicitInFunctionScope(t *testing.T) {
 	prog := mustAnalyze(t, `
 		extern int strcmp(const char *, const char *);
@@ -12,6 +44,70 @@ func TestC99FuncIdentifierIsImplicitInFunctionScope(t *testing.T) {
 	if len(prog.Funcs) != 1 {
 		t.Fatalf("expected one function, got %d", len(prog.Funcs))
 	}
+}
+
+func TestC99SelectionExpressionTagScopeDoesNotLeak(t *testing.T) {
+	prog := mustAnalyze(t, `
+		struct foo { char a; };
+		int sfoo(void) {
+			if (sizeof (struct foo { int a; double b; char *c; void *d; }))
+				(void) 0;
+			return sizeof (struct foo);
+		}
+	`)
+
+	outer := prog.SymTab.File.LookupTag("foo")
+	if outer == nil {
+		t.Fatal("outer struct foo tag missing")
+	}
+	fn := findFuncDef(t, prog, "sfoo")
+	if len(fn.Body.Items) != 2 {
+		t.Fatalf("sfoo body item count = %d, want 2", len(fn.Body.Items))
+	}
+	ret, ok := fn.Body.Items[1].(*ReturnStmt)
+	if !ok {
+		t.Fatalf("sfoo second body item = %T, want *ReturnStmt", fn.Body.Items[1])
+	}
+	retType := sizeofOperandType(ret.Value)
+	if retType == nil {
+		t.Fatalf("return value is not sizeof(type): %T", ret.Value)
+	}
+	if got, want := sizeofType(retType), sizeofType(outer.T); got != want {
+		t.Fatalf("return sizeof(struct foo) = %d, want outer struct size %d", got, want)
+	}
+}
+
+func TestC99NestedFunctionDiscoveredInBodyGetsAnalyzed(t *testing.T) {
+	prog := mustAnalyzeWithOptions(t, `
+		void outer(void) {
+			void inner(void) {}
+		}
+	`, SemaOptions{GNUExtensions: true})
+	inner := findFuncDef(t, prog, "inner")
+	if inner.Body == nil {
+		t.Fatalf("nested function body was not analyzed")
+	}
+}
+
+func TestC99NestedFunctionCanReferenceContainingScope(t *testing.T) {
+	mustAnalyzeWithOptions(t, `
+		void outer(int n) {
+			int a[n];
+			void inner(void) {
+				(void)a[0];
+			}
+		}
+	`, SemaOptions{GNUExtensions: true})
+}
+
+func sizeofOperandType(expr Expr) Type {
+	if ic, ok := expr.(*ImplicitCast); ok {
+		expr = ic.X
+	}
+	if sz, ok := expr.(*SizeofExpr); ok {
+		return sz.Operand.Type
+	}
+	return nil
 }
 
 func TestC99StringLiteralInitializesCharacterArray(t *testing.T) {

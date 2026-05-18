@@ -120,8 +120,8 @@ func NewMacroTable(target TargetInfo) *MacroTable {
 	m.DefineObject("__DBL_MAX__", []PPToken{{Kind: PPNumber, Lexeme: "1.79769313486231570815e+308"}})
 	m.DefineObject("__FLT_MIN__", []PPToken{{Kind: PPNumber, Lexeme: "1.17549435082228750797e-38F"}})
 	m.DefineObject("__FLT_MAX__", []PPToken{{Kind: PPNumber, Lexeme: "3.40282346638528859812e+38F"}})
-	m.DefineObject("__LDBL_MIN__", []PPToken{{Kind: PPNumber, Lexeme: "3.36210314311209350626e-4932L"}})
-	m.DefineObject("__LDBL_MAX__", []PPToken{{Kind: PPNumber, Lexeme: "1.18973149535723176502e+4932L"}})
+	m.DefineObject("__LDBL_MIN__", []PPToken{{Kind: PPNumber, Lexeme: "2.22507385850720138309e-308L"}})
+	m.DefineObject("__LDBL_MAX__", []PPToken{{Kind: PPNumber, Lexeme: "1.79769313486231570815e+308L"}})
 	return m
 }
 

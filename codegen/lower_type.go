@@ -37,6 +37,8 @@ func (g *generator) lowerValueType(t sema.Type) (bytecode.ValueType, error) {
 			return bytecode.TypeF64, nil
 		case sema.LongDouble:
 			return bytecode.TypeFLong, nil
+		case sema.FloatComplex, sema.DoubleComplex, sema.LongDoubleComplex:
+			return bytecode.TypeObjectAddr, nil
 		}
 	case *sema.PointerType, *sema.FunctionType:
 		return bytecode.TypePtr, nil
@@ -189,6 +191,12 @@ func (g *generator) sizeof(t sema.Type) int64 {
 			return 8
 		case sema.LongDouble:
 			return 16
+		case sema.FloatComplex:
+			return 8
+		case sema.DoubleComplex:
+			return 16
+		case sema.LongDoubleComplex:
+			return 32
 		}
 	case *sema.PointerType, *sema.FunctionType:
 		return g.mod.Target.PointerSize
@@ -225,12 +233,18 @@ func (g *generator) sizeof(t sema.Type) int64 {
 }
 
 func isObjectType(t sema.Type) bool {
-	switch sema.Unqual(t).(type) {
+	switch x := sema.Unqual(t).(type) {
 	case *sema.ArrayType, *sema.StructType, *sema.UnionType:
 		return true
+	case *sema.BuiltinType:
+		switch x.Kind {
+		case sema.FloatComplex, sema.DoubleComplex, sema.LongDoubleComplex:
+			return true
+		}
 	default:
 		return false
 	}
+	return false
 }
 
 func isVLAType(t sema.Type) bool {
@@ -246,8 +260,34 @@ func typeHasVariableSize(t sema.Type) bool {
 	switch x := sema.Unqual(t).(type) {
 	case *sema.ArrayType:
 		return x.SizeKind == sema.ArrayVLA || x.SizeKind == sema.ArrayStarSize || typeHasVariableSize(x.Elem)
+	case *sema.StructType:
+		for _, f := range x.Fields {
+			if f != nil && typeHasVariableSize(f.T) {
+				return true
+			}
+		}
+	case *sema.UnionType:
+		for _, f := range x.Fields {
+			if f != nil && typeHasVariableSize(f.T) {
+				return true
+			}
+		}
 	case *sema.PointerType:
 		return false
+	default:
+		return false
+	}
+	return false
+}
+
+func isComplexType(t sema.Type) bool {
+	bt, ok := sema.Unqual(t).(*sema.BuiltinType)
+	if !ok {
+		return false
+	}
+	switch bt.Kind {
+	case sema.FloatComplex, sema.DoubleComplex, sema.LongDoubleComplex:
+		return true
 	default:
 		return false
 	}
@@ -277,6 +317,12 @@ func (g *generator) alignof(t sema.Type) int64 {
 		case sema.Long, sema.ULong, sema.LongLong, sema.ULongLong, sema.Double:
 			return 8
 		case sema.LongDouble:
+			return 16
+		case sema.FloatComplex:
+			return 4
+		case sema.DoubleComplex:
+			return 8
+		case sema.LongDoubleComplex:
 			return 16
 		}
 	case *sema.PointerType, *sema.FunctionType:

@@ -220,6 +220,8 @@ func printExpr(b *strings.Builder, depth int, e Expr) {
 		fmt.Fprintf(b, "IntLit value=%d type=%s\n", x.Value, x.T)
 	case *FloatLit:
 		fmt.Fprintf(b, "FloatLit value=%v type=%s\n", x.Value, x.T)
+	case *ImagLit:
+		fmt.Fprintf(b, "ImagLit value=%v type=%s\n", x.Value, x.T)
 	case *CharLit:
 		fmt.Fprintf(b, "CharLit value=%d type=%s\n", x.Value, x.T)
 	case *StringLit:

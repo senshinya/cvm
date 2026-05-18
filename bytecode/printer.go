@@ -190,6 +190,8 @@ func FormatInstr(i Instr) string {
 		return fmt.Sprintf("Call global=%d sig=%d argc=%d", i.Global, i.Sig, i.Argc)
 	case OpCallIndirect:
 		return fmt.Sprintf("CallIndirect sig=%d argc=%d", i.Sig, i.Argc)
+	case OpMakeClosure:
+		return fmt.Sprintf("MakeClosure global=%d sig=%d argc=%d", i.Global, i.Sig, i.Argc)
 	case OpVaStart:
 		return fmt.Sprintf("VaStart slot=%d", i.Slot)
 	case OpVaArg:

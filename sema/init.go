@@ -30,6 +30,9 @@ func (s *Sema) typeInitializer(node *entity.AstNode, target Type) Expr {
 	case node.ReducedBy(parser.Initializer, 1):
 		expr := s.typeExpr(node.Children[0], s.scope)
 		expr = s.castFunctionDecay(s.castArrayDecay(s.castLValueToRValue(expr)))
+		if isAggregateInitType(target) && isAggregateInitType(expr.GetType()) {
+			return s.assignmentConversion(expr, target, node.SourceStart)
+		}
 		if sub := firstScalarInitializerType(target); sub != nil {
 			target = sub
 		}
@@ -145,6 +148,85 @@ func (s *Sema) typeInitListForType(node *entity.AstNode, t Type) *InitList {
 	s.collectRawInitList(node, t, &raw)
 	s.typeCollectedInitList(t, raw, il)
 	return il
+}
+
+func (s *Sema) completeUnsizedArrayInitializerType(t Type, init Expr) Type {
+	at, ok := unqual(t).(*ArrayType)
+	if !ok || at.SizeKind != ArrayUnsized {
+		return t
+	}
+	if lit, ok := stringLiteralInitializerExpr(init); ok && isStringInitializableArrayElem(unqual(at.Elem)) {
+		return s.Types.ArrayConstant(at.Elem, int64(len(lit.Value)+1))
+	}
+	il, ok := init.(*InitList)
+	if !ok || il == nil {
+		return t
+	}
+	if len(il.Elems) == 1 {
+		if lit, ok := stringLiteralInitializerExpr(il.Elems[0].Value); ok && isStringInitializableArrayElem(unqual(at.Elem)) {
+			return s.Types.ArrayConstant(at.Elem, int64(len(lit.Value)+1))
+		}
+	}
+	elemLeaves := initLeaves(at.Elem, nil)
+	leafCount := len(elemLeaves)
+	if leafCount == 0 {
+		leafCount = 1
+	}
+	cursor := 0
+	maxCursor := 0
+	for _, elem := range il.Elems {
+		if len(elem.Designators) > 0 && elem.Designators[0].Kind == DesigArrayIndex {
+			base := int(elem.Designators[0].Index) * leafCount
+			relStart, relEnd := 0, leafCount
+			elemType := at.Elem
+			if len(elem.Designators) > 1 {
+				if span, ok := designatedSpan(at.Elem, elem.Designators[1:]); ok {
+					relStart, relEnd = span.Start, span.End
+					elemType = span.T
+				}
+			}
+			if !isObjectType(elemType) || initExprUsesWholeObject(elem.Value, elemType) {
+				cursor = base + relEnd
+			} else {
+				cursor = base + relStart + 1
+			}
+		} else if initExprUsesWholeObject(elem.Value, at.Elem) {
+			cursor += leafCount
+		} else {
+			cursor++
+		}
+		if cursor > maxCursor {
+			maxCursor = cursor
+		}
+	}
+	size := int64(0)
+	if maxCursor > 0 {
+		size = int64((maxCursor + leafCount - 1) / leafCount)
+	}
+	return s.Types.ArrayConstant(at.Elem, size)
+}
+
+func initExprUsesWholeObject(e Expr, t Type) bool {
+	if _, ok := e.(*InitList); ok {
+		return true
+	}
+	if _, ok := unqual(t).(*ArrayType); ok {
+		_, ok := stringLiteralInitializerExpr(e)
+		return ok
+	}
+	return false
+}
+
+func stringLiteralInitializerExpr(e Expr) (*StringLit, bool) {
+	switch x := e.(type) {
+	case *StringLit:
+		return x, true
+	case *ImplicitCast:
+		if x.Kind == ArrayDecay || x.Kind == LValueToRValue {
+			return stringLiteralInitializerExpr(x.X)
+		}
+	}
+	return nil, false
 }
 
 func (s *Sema) collectRawInitList(node *entity.AstNode, target Type, out *[]rawInitElem) {

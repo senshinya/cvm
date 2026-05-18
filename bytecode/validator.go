@@ -293,7 +293,8 @@ func validateFunction(m *Module, index int, f *Function) error {
 		}
 		dynamicObjects[o.ID] = o
 	}
-	ret := m.Sigs[f.Sig].Ret
+	sig := m.Sigs[f.Sig]
+	ret := sig.Ret
 	stack := []ValueType{}
 	terminalReturn := false
 	for pc, ins := range f.Instrs {
@@ -312,7 +313,7 @@ func validateFunction(m *Module, index int, f *Function) error {
 			}
 			terminalReturn = false
 		}
-		next, err := validateInstrStack(m, stack, ins, ret, labels)
+		next, err := validateInstrStack(m, stack, ins, ret, sig.Variadic, labels)
 		if err != nil {
 			return fmt.Errorf("function %q pc %d: %w", f.Name, pc, err)
 		}
@@ -449,13 +450,31 @@ func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, labelPCs map[
 				return fmt.Errorf("%v signature %d does not match function %d signature %d", ins.Op, ins.Sig, fn, m.Functions[fn].Sig)
 			}
 		}
+	case OpMakeClosure:
+		if err := requireSig(ins.Sig); err != nil {
+			return err
+		}
+		if err := requireGlobal(ins.Global); err != nil {
+			return err
+		}
+		g := m.Globals[ins.Global]
+		if g.Kind != GlobalFunc {
+			return fmt.Errorf("%v references non-local function global %d", ins.Op, ins.Global)
+		}
+		fn := g.Func
+		if fn < 0 || fn >= len(m.Functions) {
+			return fmt.Errorf("%v references invalid function %d", ins.Op, fn)
+		}
+		if m.Functions[fn].Sig != ins.Sig {
+			return fmt.Errorf("%v signature %d does not match function %d signature %d", ins.Op, ins.Sig, fn, m.Functions[fn].Sig)
+		}
 	case OpCallIndirect:
 		return requireSig(ins.Sig)
 	}
 	return nil
 }
 
-func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, labels map[int]Label) ([]ValueType, error) {
+func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, variadic bool, labels map[int]Label) ([]ValueType, error) {
 	pop := func(want ValueType) error {
 		if len(stack) == 0 {
 			return fmt.Errorf("%v stack underflow", ins.Op)
@@ -706,13 +725,31 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, 
 			}
 		}
 		push(sig.Ret)
+	case OpMakeClosure:
+		sig := m.Sigs[ins.Sig]
+		if ins.Argc < 0 || ins.Argc > len(sig.Params) {
+			return nil, fmt.Errorf("%v argc %d is outside signature parameter count %d", ins.Op, ins.Argc, len(sig.Params))
+		}
+		for i := len(sig.Params) - 1; i >= len(sig.Params)-ins.Argc; i-- {
+			if err := pop(sig.Params[i]); err != nil {
+				return nil, err
+			}
+		}
+		push(TypePtr)
 	case OpDup:
 		if len(stack) == 0 {
 			return nil, fmt.Errorf("%v stack underflow", ins.Op)
 		}
 		push(stack[len(stack)-1])
-	case OpVaStart, OpVaArg, OpVaEnd:
-		return nil, fmt.Errorf("unsupported opcode %v", ins.Op)
+	case OpVaStart, OpVaEnd:
+		if ins.Slot < 0 {
+			return nil, fmt.Errorf("%v references negative va_list slot %d", ins.Op, ins.Slot)
+		}
+		if ins.Op == OpVaStart && !variadic {
+			return nil, fmt.Errorf("%v in non-variadic function", ins.Op)
+		}
+	case OpVaArg:
+		push(ins.Type)
 	default:
 		return nil, fmt.Errorf("unsupported opcode %v", ins.Op)
 	}

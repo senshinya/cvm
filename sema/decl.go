@@ -433,20 +433,54 @@ func (s *Sema) adjustParamType(t Type) Type {
 }
 
 func (s *Sema) collectParamDecls(declarator *entity.AstNode, ft *FunctionType) []*VarDecl {
+	if params := functionDefinitionParamList(declarator); params != nil {
+		return s.paramDeclsFromList(params)
+	}
+	_ = ft
+	return nil
+}
+
+func functionDefinitionParamList(declarator *entity.AstNode) *entity.AstNode {
+	if declarator == nil {
+		return nil
+	}
 	direct := declarator.Children[0]
 	if declarator.ReducedBy(parser.Declarator, 2) {
 		direct = declarator.Children[1]
 	}
-	for {
-		switch {
-		case direct.ReducedBy(parser.DirectDeclarator, 12):
-			return s.paramDeclsFromList(direct.Children[2])
-		case direct.ReducedBy(parser.DirectDeclarator, 13), direct.ReducedBy(parser.DirectDeclarator, 14), direct.ReducedBy(parser.DirectDeclarator, 1):
-			return nil
-		default:
-			direct = direct.Children[0]
+	return functionDefinitionParamListFromDirect(direct)
+}
+
+func functionDefinitionParamListFromDirect(direct *entity.AstNode) *entity.AstNode {
+	if direct == nil {
+		return nil
+	}
+	switch {
+	case direct.ReducedBy(parser.DirectDeclarator, 12):
+		if directDeclaratorNamesFunction(direct.Children[0]) {
+			return direct.Children[2]
 		}
-		_ = ft
+		return functionDefinitionParamListFromDirect(direct.Children[0])
+	case direct.ReducedBy(parser.DirectDeclarator, 2):
+		return functionDefinitionParamList(direct.Children[1])
+	case direct.ReducedBy(parser.DirectDeclarator, 1), direct.ReducedBy(parser.DirectDeclarator, 13), direct.ReducedBy(parser.DirectDeclarator, 14):
+		return nil
+	default:
+		return functionDefinitionParamListFromDirect(direct.Children[0])
+	}
+}
+
+func directDeclaratorNamesFunction(direct *entity.AstNode) bool {
+	if direct == nil {
+		return false
+	}
+	switch {
+	case direct.ReducedBy(parser.DirectDeclarator, 1):
+		return true
+	case direct.ReducedBy(parser.DirectDeclarator, 2):
+		return false
+	default:
+		return directDeclaratorNamesFunction(direct.Children[0])
 	}
 }
 

@@ -1,0 +1,19 @@
+path	exit	category	reason
+sema/testdata/gcc-c99/accept/c99-bool-1.c	0	bool	C99 _Bool conversions operators subscripts assignments and bit-field smoke test
+sema/testdata/gcc-c99/accept/c99-bool-3.c	0	bool	C99 _Bool bit-field assignment and readback semantics
+sema/testdata/gcc-c99/accept/c99-bool-4.c	0	extern	strcmp validates stdbool macro stringization through runtime extern calls
+sema/testdata/gcc-c99/accept/c99-complit-1.c	0	compound-literal	C99 compound literals cover static objects automatic objects arrays structs unions and lvalue writes
+sema/testdata/gcc-c99/accept/c99-digraph-1.c	0	extern	strcmp validates digraph stringization through runtime extern calls
+sema/testdata/gcc-c99/accept/c99-fordecl-1.c	0	scope	C99 for-loop declaration scope and iteration execute correctly
+sema/testdata/gcc-c99/accept/c99-func-1.c	0	static-data	__func__ static character array compares equal to the current function name
+sema/testdata/gcc-c99/accept/c99-func-3.c	0	pointer	__func__ static object address stays distinct from matching string literals
+sema/testdata/gcc-c99/accept/c99-hexfloat-2.c	0	extern	strcmp validates hexfloat token stringization through runtime extern calls
+sema/testdata/gcc-c99/accept/c99-init-1.c	0	initializer	C99 designated initializers cover arrays structs unions strings and wchar strings
+sema/testdata/gcc-c99/accept/c99-main-1.c	0	arithmetic	C99 implicit main return exercises binary load and entry return
+sema/testdata/gcc-c99/accept/c99-math-double-1.c	0	math	C99 double math classification comparison and fenv macros execute through runtime externs
+sema/testdata/gcc-c99/accept/c99-math-float-1.c	0	math	C99 float math classification preserves subnormal and signbit semantics
+sema/testdata/gcc-c99/accept/c99-math-long-double-1.c	0	math	C99 long double math classification runs on the current binary64-backed runtime model
+sema/testdata/gcc-c99/accept/c99-mixdecl-1.c	0	scope	C99 mixed declarations run after prefix/postfix decrement lowering
+sema/testdata/gcc-c99/accept/c99-scope-1.c	0	scope	C99 selection-statement tag scope does not leak past the if statement
+sema/testdata/gcc-c99/accept/c99-scope-2.c	0	scope	C99 statement scopes remain isolated across if switch while do and for
+sema/testdata/gcc-c99-extra/accept/signbit-sa.c	0	math	GCC c99_runtime signbit fixture executes float double and long double signbit macros

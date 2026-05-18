@@ -18,9 +18,9 @@ Func #0 global=0 name="sum_pair" sig=0 max_stack=0
   0009: I32Store align=4 volatile=false
   0010: AddrLocalObject 0
   0011: FieldAddr layout=0 field=0
-  0012: I32Load align=4 volatile=false
+  0012: I32Load align=1 volatile=false
   0013: AddrLocalObject 0
   0014: FieldAddr layout=0 field=1
-  0015: I32Load align=4 volatile=false
+  0015: I32Load align=1 volatile=false
   0016: I32Add
   0017: I32Return

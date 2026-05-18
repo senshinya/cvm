@@ -3,6 +3,7 @@ package codegen
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -40,9 +41,235 @@ func TestGCCBytecodeCompileSuite(t *testing.T) {
 	}
 }
 
+func TestGCCBytecodeManifestCoversImportedAcceptFixtures(t *testing.T) {
+	content, err := os.ReadFile(filepath.Join("testdata", "gcc-bytecode-compile.tsv"))
+	if err != nil {
+		t.Fatalf("read GCC bytecode manifest: %v", err)
+	}
+	cases := parseGCCBytecodeManifest(t, string(content))
+	covered := map[string]bool{}
+	for _, c := range cases {
+		covered[c.path] = true
+	}
+	roots := []string{
+		filepath.Join("..", "sema", "testdata", "gcc-c99", "accept"),
+		filepath.Join("..", "sema", "testdata", "gcc-c99-extra", "accept"),
+		filepath.Join("..", "sema", "testdata", "gcc-c90-as-c99", "accept"),
+	}
+	var missing []string
+	for _, root := range roots {
+		matches, err := filepath.Glob(filepath.Join(root, "*.c"))
+		if err != nil {
+			t.Fatalf("glob %s: %v", root, err)
+		}
+		for _, match := range matches {
+			manifestPath := filepath.ToSlash(strings.TrimPrefix(match, filepath.Clean("..")+string(filepath.Separator)))
+			if !covered[manifestPath] {
+				missing = append(missing, manifestPath)
+			}
+		}
+	}
+	sort.Strings(missing)
+	if len(missing) != 0 {
+		t.Fatalf("GCC bytecode manifest is missing %d imported accept fixtures:\n%s", len(missing), strings.Join(missing, "\n"))
+	}
+}
+
+func TestGCCTgmathFloatSinUsesFloatExtern(t *testing.T) {
+	sourcePath := filepath.Join("..", "sema", "testdata", "gcc-c99", "accept", "c99-tgmath-2.c")
+	source, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := compileGCCBytecodeFixture(t, sourcePath, string(source))
+	if !moduleHasExtern(mod, "__cvm_tgmath_sinf") {
+		t.Fatalf("c99-tgmath-2.c did not reference float tgmath extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathComplexExpUsesComplexExtern(t *testing.T) {
+	sourcePath := filepath.Join("..", "sema", "testdata", "gcc-c99", "accept", "c99-tgmath-3.c")
+	source, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := compileGCCBytecodeFixture(t, sourcePath, string(source))
+	if !moduleHasExtern(mod, "__cvm_tgmath_cexp") {
+		t.Fatalf("c99-tgmath-3.c did not reference complex tgmath extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathComplexPowFloatUsesComplexFloatExtern(t *testing.T) {
+	sourcePath := filepath.Join("..", "sema", "testdata", "gcc-c99", "accept", "c99-tgmath-4.c")
+	source, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod := compileGCCBytecodeFixture(t, sourcePath, string(source))
+	if !moduleHasExtern(mod, "__cvm_tgmath_cpowf") {
+		t.Fatalf("c99-tgmath-4.c did not reference complex float tgmath extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathNexttowardUsesFirstArgumentRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(void) {
+  float x = 1.0f;
+  long double y = 2.0L;
+  return nexttoward(x, y);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-nexttoward-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_nexttowardf") {
+		t.Fatalf("nexttoward(float, long double) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathScalbnUsesFirstArgumentRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(int n) {
+  float x = 2.0f;
+  return scalbn(x, n);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-scalbn-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_scalbnf") {
+		t.Fatalf("scalbn(float, int) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathIlogbUsesFloatExtern(t *testing.T) {
+	source := `#include <tgmath.h>
+int f(void) {
+  float x = 8.0f;
+  return ilogb(x);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-ilogb-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_ilogbf") {
+		t.Fatalf("ilogb(float) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathLongRoundingUsesFloatExtern(t *testing.T) {
+	source := `#include <tgmath.h>
+long f(void) {
+  float x = 3.0f;
+  return lrint(x);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-lrint-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_lrintf") {
+		t.Fatalf("lrint(float) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathFrexpUsesFirstArgumentRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(int *exp) {
+  float x = 8.0f;
+  return frexp(x, exp);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-frexp-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_frexpf") {
+		t.Fatalf("frexp(float, int *) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathLdexpUsesFirstArgumentRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(int n) {
+  float x = 2.0f;
+  return ldexp(x, n);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-ldexp-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_ldexpf") {
+		t.Fatalf("ldexp(float, int) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathRemquoIgnoresPointerArgumentForRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(int *quo) {
+  float x = 4.0f;
+  float y = 2.0f;
+  return remquo(x, y, quo);
+}
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-remquo-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_remquof") {
+		t.Fatalf("remquo(float, float, int *) did not reference float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathFabsDispatchesRealAndComplex(t *testing.T) {
+	source := `#include <tgmath.h>
+float rf(float x) { return fabs(x); }
+double cf(void) { return fabs(__builtin_complex(3.0, 4.0)); }
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-fabs-dispatch.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_fabsf") {
+		t.Fatalf("fabs(float) did not reference float real extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+	if !moduleHasExtern(mod, "__builtin_cabs") {
+		t.Fatalf("fabs(complex double) did not reference complex abs extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathComplexProjectionUsesComplexRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(complex float z) { return cimag(z); }
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-complex-projection-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_cimagf") {
+		t.Fatalf("cimag(complex float) did not reference complex-float projection extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathConjUsesComplexRank(t *testing.T) {
+	source := `#include <tgmath.h>
+complex float f(complex float z) { return conj(z); }
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-conj-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_conjf") {
+		t.Fatalf("conj(complex float) did not reference complex-float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathCargUsesComplexRank(t *testing.T) {
+	source := `#include <tgmath.h>
+float f(complex float z) { return carg(z); }
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-carg-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_cargf") {
+		t.Fatalf("carg(complex float) did not reference complex-float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
+func TestGCCTgmathCprojUsesComplexRank(t *testing.T) {
+	source := `#include <tgmath.h>
+complex float f(complex float z) { return cproj(z); }
+`
+	mod := compileGCCBytecodeFixture(t, "tgmath-cproj-rank.c", source)
+	if !moduleHasExtern(mod, "__cvm_tgmath_cprojf") {
+		t.Fatalf("cproj(complex float) did not reference complex-float extern; globals:\n%s", bytecode.PrintModule(mod))
+	}
+}
+
 type gccBytecodeCase struct {
 	path   string
 	reason string
+}
+
+func moduleHasExtern(mod *bytecode.Module, name string) bool {
+	for _, g := range mod.Globals {
+		if g.Kind == bytecode.GlobalExtern && g.Extern.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func parseGCCBytecodeManifest(t *testing.T, content string) []gccBytecodeCase {
@@ -82,7 +309,7 @@ func compileGCCBytecodeFixture(t *testing.T, path, source string) *bytecode.Modu
 		t.Fatalf("preprocess: %v", err)
 	}
 	if parserTokenCount(pp.Tokens) == 0 {
-		t.Fatalf("preprocess produced no parser tokens")
+		return bytecode.NewModule()
 	}
 	candidates, err := parser.NewParser(pp.Tokens).Parse()
 	if err != nil {

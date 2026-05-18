@@ -50,6 +50,8 @@ func (l *Lexer) scanToken() error {
 	switch {
 	case l.peek() == '\'':
 		sc = CharacterLiteralScanner()
+	case l.peek() == 'L' && l.lookForward(1) == '"':
+		sc = WideStringLiteralScanner()
 	case l.peek() == '"':
 		sc = StringLiteralScanner()
 	case IsLetter_(l.peek()):

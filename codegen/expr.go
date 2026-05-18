@@ -21,6 +21,8 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 			return err
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpConst, Type: t, Float: x.Value})
+	case *sema.ImagLit:
+		return fg.emitComplexRValueAddress(x)
 	case *sema.CharLit:
 		t, err := fg.g.lowerValueType(x.T)
 		if err != nil {
@@ -41,6 +43,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		if isFunctionDesignator(x) {
 			return fg.emitFunctionAddress(x)
 		}
+		if fg.isCapturedVar(x.Sym) {
+			return fg.emitLValueValue(x, x.T)
+		}
 		st, err := fg.storageForVar(x.Sym, x.T)
 		if err != nil {
 			return err
@@ -51,6 +56,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		}
 		return fg.emitLValueValue(x, x.T)
 	case *sema.ImplicitCast:
+		if isComplexType(x.From) && !isComplexType(x.To) {
+			return fg.emitComplexToScalarCast(x.X, x.From, x.To, x.Kind)
+		}
 		switch x.Kind {
 		case sema.LValueToRValue:
 			if isFunctionExpr(x.X) {
@@ -79,8 +87,29 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		}
 		fg.emitCast(from, to, x.Kind)
 	case *sema.ExplicitCast:
+		if isComplexType(x.To) {
+			return fg.emitComplexRValueAddress(x)
+		}
+		if isComplexType(x.X.GetType()) && !isComplexType(x.To) {
+			if b, ok := sema.Unqual(x.To).(*sema.BuiltinType); ok && b.Kind == sema.Void {
+				if err := fg.emitValue(x.X); err != nil {
+					return err
+				}
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
+				return nil
+			}
+			kind := sema.FloatingConversion
+			if to, err := fg.g.lowerValueType(x.To); err == nil && to == bytecode.TypeBool {
+				kind = sema.BoolConversion
+			}
+			return fg.emitComplexToScalarCast(x.X, x.X.GetType(), x.To, kind)
+		}
 		if err := fg.emitValue(x.X); err != nil {
 			return err
+		}
+		if b, ok := sema.Unqual(x.To).(*sema.BuiltinType); ok && b.Kind == sema.Void {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
+			return nil
 		}
 		from, err := fg.g.lowerValueType(x.X.GetType())
 		if err != nil {
@@ -99,8 +128,25 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		return fg.emitBinOp(x)
 	case *sema.AssignExpr:
 		return fg.emitAssign(x.L, x.R)
+	case *sema.CompoundAssign:
+		return fg.emitCompoundAssign(x)
 	case *sema.CallExpr:
+		if builtinComplexCall(x) != nil {
+			return fg.emitComplexRValueAddress(x)
+		}
 		return fg.emitCall(x)
+	case *sema.CommaExpr:
+		if err := fg.emitValue(x.L); err != nil {
+			return err
+		}
+		if exprLeavesValue(x.L) {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpPop})
+		}
+		return fg.emitValue(x.R)
+	case *sema.CondExpr:
+		return fg.emitCondExpr(x)
+	case *sema.StmtExpr:
+		return fg.emitStmtExpr(x)
 	case *sema.SizeofExpr:
 		return fg.emitSizeof(x)
 	case *sema.UnOp:
@@ -118,6 +164,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 		case sema.UnPlus:
 			return fg.emitValue(x.X)
 		case sema.UnMinus:
+			if isComplexType(x.T) {
+				return fg.emitComplexUnaryMinus(x)
+			}
 			if err := fg.emitValue(x.X); err != nil {
 				return err
 			}
@@ -126,6 +175,15 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 				return err
 			}
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: t, Unary: bytecode.UnaryNeg})
+		case sema.UnBitNot:
+			if err := fg.emitValue(x.X); err != nil {
+				return err
+			}
+			t, err := fg.g.lowerValueType(x.T)
+			if err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(t, -1), bytecode.Binary(t, bytecode.BinXor))
 		case sema.UnLogNot:
 			if err := fg.emitBoolValue(x.X); err != nil {
 				return err
@@ -139,6 +197,8 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 				bytecode.Binary(bytecode.TypeBool, bytecode.BinEq),
 			)
 			fg.emitCast(bytecode.TypeBool, t, sema.IntegralConversion)
+		case sema.UnIncPre, sema.UnIncPost, sema.UnDecPre, sema.UnDecPost:
+			return fg.emitIncDec(x)
 		default:
 			return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "unary expression lowering is not implemented for this operator"}
 		}
@@ -150,22 +210,619 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 	return nil
 }
 
+func (fg *funcGen) emitComplexUnaryMinus(x *sema.UnOp) error {
+	realType, err := complexRealType(x.T)
+	if err != nil {
+		return err
+	}
+	vt, err := fg.g.lowerValueType(realType)
+	if err != nil {
+		return err
+	}
+	object, err := fg.newLocalObject(".complex.neg", x.T)
+	if err != nil {
+		return err
+	}
+	srcSlot := fg.allocSyntheticSlot(".complex.neg.src", bytecode.TypeObjectAddr)
+	if err := fg.emitComplexSourceAddress(x.X); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, srcSlot))
+	imagOffset := fg.g.sizeof(realType)
+	fg.storeComplexUnaryNegComponent(object, 0, srcSlot, 0, vt, fg.g.alignof(realType), isVolatile(x.T))
+	fg.storeComplexUnaryNegComponent(object, imagOffset, srcSlot, imagOffset, vt, fg.g.alignof(realType), isVolatile(x.T))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(object))
+	return nil
+}
+
+func (fg *funcGen) emitComplexToScalarCast(src sema.Expr, fromType, toType sema.Type, kind sema.CastKind) error {
+	realType, err := complexRealType(fromType)
+	if err != nil {
+		return err
+	}
+	realVT, err := fg.g.lowerValueType(realType)
+	if err != nil {
+		return err
+	}
+	toVT, err := fg.g.lowerValueType(toType)
+	if err != nil {
+		return err
+	}
+	addrSlot := fg.allocSyntheticSlot(".complex.scalar.src", bytecode.TypeObjectAddr)
+	if err := fg.emitComplexSourceAddress(src); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot))
+	if toVT == bytecode.TypeBool {
+		fg.emitLoadComplexComponent(addrSlot, 0, realVT, realVT, fg.g.alignof(realType), isVolatile(fromType))
+		fg.emitCast(realVT, bytecode.TypeBool, sema.BoolConversion)
+		fg.emitLoadComplexComponent(addrSlot, fg.g.sizeof(realType), realVT, realVT, fg.g.alignof(realType), isVolatile(fromType))
+		fg.emitCast(realVT, bytecode.TypeBool, sema.BoolConversion)
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(bytecode.TypeBool, bytecode.BinOr))
+		return nil
+	}
+	fg.emitLoadComplexComponent(addrSlot, 0, realVT, realVT, fg.g.alignof(realType), isVolatile(fromType))
+	fg.emitCast(realVT, toVT, kind)
+	return nil
+}
+
+func (fg *funcGen) storeComplexUnaryNegComponent(dstObject int, dstOffset int64, srcSlot int, srcOffset int64, vt bytecode.ValueType, align int64, volatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.emitLoadComplexComponent(srcSlot, srcOffset, vt, vt, align, volatile)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: vt, Unary: bytecode.UnaryNeg}, bytecode.Store(vt, align, volatile))
+}
+
+func (fg *funcGen) emitCompoundAssign(x *sema.CompoundAssign) error {
+	if member, ok := x.L.(*sema.MemberExpr); ok && member.Field != nil && member.Field.IsBitField {
+		return fg.emitBitFieldCompoundAssign(member, x)
+	}
+	vr, ok := x.L.(*sema.VarRef)
+	if !ok || fg.isCapturedVar(vr.Sym) {
+		return fg.emitAddressableCompoundAssign(x)
+	}
+	st, err := fg.storageForVar(vr.Sym, vr.T)
+	if err != nil {
+		return err
+	}
+	if st.kind != storageLocalSlot {
+		return fg.emitAddressableCompoundAssign(x)
+	}
+	if st.typ == bytecode.TypeObjectAddr && isComplexType(x.L.GetType()) {
+		return fg.emitComplexCompoundAssign(x)
+	}
+	if isPointerType(st.typ) {
+		return fg.emitLocalSlotPointerCompoundAssign(x, st)
+	}
+	rt, err := fg.g.lowerValueType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	computeType, ok := compoundArithmeticType(st.typ, rt)
+	if !ok {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("compound assignment lowering is not implemented for %s", st.typ)}
+	}
+
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(st.typ, st.slot))
+	fg.emitCast(st.typ, computeType, sema.IntegralConversion)
+	if err := fg.emitValue(x.R); err != nil {
+		return err
+	}
+	fg.emitCast(rt, computeType, sema.IntegralConversion)
+	op, err := binaryOp(x.Op, computeType)
+	if err != nil {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
+	fg.emitCast(computeType, st.typ, sema.IntegralConversion)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(st.typ, st.slot))
+	return nil
+}
+
+func (fg *funcGen) emitAddressableCompoundAssign(x *sema.CompoundAssign) error {
+	vt, err := fg.g.lowerValueType(x.L.GetType())
+	if err != nil {
+		return err
+	}
+	if vt == bytecode.TypeObjectAddr && isComplexType(x.L.GetType()) {
+		return fg.emitComplexCompoundAssign(x)
+	}
+	if isPointerType(vt) {
+		return fg.emitAddressablePointerCompoundAssign(x, vt)
+	}
+	rt, err := fg.g.lowerValueType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	computeType, ok := compoundArithmeticType(vt, rt)
+	if !ok {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("compound assignment lowering is not implemented for %s", vt)}
+	}
+	addrSlot := fg.allocSyntheticSlot(".compound.assign.addr", bytecode.TypeObjectAddr)
+	valueSlot := fg.allocSyntheticSlot(".compound.assign.value", vt)
+	if err := fg.emitAddress(x.L); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Load(vt, fg.loadStoreAlign(x.L, x.L.GetType()), isVolatile(x.L.GetType())),
+	)
+	fg.emitCast(vt, computeType, sema.IntegralConversion)
+	if err := fg.emitValue(x.R); err != nil {
+		return err
+	}
+	fg.emitCast(rt, computeType, sema.IntegralConversion)
+	op, err := binaryOp(x.Op, computeType)
+	if err != nil {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
+	fg.emitCast(computeType, vt, sema.IntegralConversion)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.Instr{Op: bytecode.OpDup},
+		bytecode.StoreLocal(vt, valueSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Store(vt, fg.loadStoreAlign(x.L, x.L.GetType()), isVolatile(x.L.GetType())),
+		bytecode.LoadLocal(vt, valueSlot),
+	)
+	return nil
+}
+
+func (fg *funcGen) emitLocalSlotPointerCompoundAssign(x *sema.CompoundAssign, st storage) error {
+	if x.Op != sema.OpAdd && x.Op != sema.OpSub {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "pointer compound assignment is only implemented for addition and subtraction"}
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(st.typ, st.slot))
+	idxType, err := fg.emitPtrIndexValue(x.R)
+	if err != nil {
+		return err
+	}
+	if x.Op == sema.OpSub {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: idxType, Unary: bytecode.UnaryNeg})
+	}
+	if err := fg.emitPtrAddForExpr(x.L, x.L.GetType()); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(st.typ, st.slot))
+	return nil
+}
+
+func (fg *funcGen) emitAddressablePointerCompoundAssign(x *sema.CompoundAssign, vt bytecode.ValueType) error {
+	if x.Op != sema.OpAdd && x.Op != sema.OpSub {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "pointer compound assignment is only implemented for addition and subtraction"}
+	}
+	addrSlot := fg.allocSyntheticSlot(".ptr.compound.addr", bytecode.TypeObjectAddr)
+	valueSlot := fg.allocSyntheticSlot(".ptr.compound.value", vt)
+	if err := fg.emitAddress(x.L); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Load(vt, fg.loadStoreAlign(x.L, x.L.GetType()), isVolatile(x.L.GetType())),
+	)
+	idxType, err := fg.emitPtrIndexValue(x.R)
+	if err != nil {
+		return err
+	}
+	if x.Op == sema.OpSub {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: idxType, Unary: bytecode.UnaryNeg})
+	}
+	if err := fg.emitPtrAddForExpr(x.L, x.L.GetType()); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.Instr{Op: bytecode.OpDup},
+		bytecode.StoreLocal(vt, valueSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Store(vt, fg.loadStoreAlign(x.L, x.L.GetType()), isVolatile(x.L.GetType())),
+		bytecode.LoadLocal(vt, valueSlot),
+	)
+	return nil
+}
+
+func (fg *funcGen) emitComplexCompoundAssign(x *sema.CompoundAssign) error {
+	if x.Op != sema.OpAdd && x.Op != sema.OpSub && x.Op != sema.OpMul && x.Op != sema.OpDiv {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("complex compound assignment %v is not implemented", x.Op)}
+	}
+	lhsRealType, err := complexRealType(x.L.GetType())
+	if err != nil {
+		return err
+	}
+	rhsRealType := lhsRealType
+	if isComplexType(x.R.GetType()) {
+		rhsRealType, err = complexRealType(x.R.GetType())
+		if err != nil {
+			return err
+		}
+	}
+	lhsVT, err := fg.g.lowerValueType(lhsRealType)
+	if err != nil {
+		return err
+	}
+	rhsVT, err := fg.g.lowerValueType(rhsRealType)
+	if err != nil {
+		return err
+	}
+	lhsAddrSlot := fg.allocSyntheticSlot(".complex.compound.lhs", bytecode.TypeObjectAddr)
+	rhsAddrSlot := fg.allocSyntheticSlot(".complex.compound.rhs", bytecode.TypeObjectAddr)
+	lrSlot := fg.allocSyntheticSlot(".complex.compound.lr", lhsVT)
+	liSlot := fg.allocSyntheticSlot(".complex.compound.li", lhsVT)
+	rrSlot := fg.allocSyntheticSlot(".complex.compound.rr", lhsVT)
+	riSlot := fg.allocSyntheticSlot(".complex.compound.ri", lhsVT)
+	if err := fg.emitAddress(x.L); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+	if err := fg.emitComplexSourceAddressAs(x.R, x.L.GetType()); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, rhsAddrSlot))
+	lhsImagOffset := fg.g.sizeof(lhsRealType)
+	rhsImagOffset := fg.g.sizeof(rhsRealType)
+	lhsAlign := fg.accessAlignForExpr(x.L, lhsRealType)
+	rhsAlign := fg.accessAlignForExpr(x.R, rhsRealType)
+	fg.emitLoadComplexComponent(lhsAddrSlot, 0, lhsVT, lhsVT, lhsAlign, isVolatile(x.L.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(lhsVT, lrSlot))
+	fg.emitLoadComplexComponent(lhsAddrSlot, lhsImagOffset, lhsVT, lhsVT, lhsAlign, isVolatile(x.L.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(lhsVT, liSlot))
+	fg.emitLoadComplexComponent(rhsAddrSlot, 0, rhsVT, lhsVT, rhsAlign, isVolatile(x.R.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(lhsVT, rrSlot))
+	fg.emitLoadComplexComponent(rhsAddrSlot, rhsImagOffset, rhsVT, lhsVT, rhsAlign, isVolatile(x.R.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(lhsVT, riSlot))
+
+	if x.Op == sema.OpAdd || x.Op == sema.OpSub {
+		op := bytecode.BinAdd
+		if x.Op == sema.OpSub {
+			op = bytecode.BinSub
+		}
+		fg.storeComplexCompoundAddSubComponent(lhsAddrSlot, 0, lrSlot, rrSlot, lhsVT, op, lhsAlign, isVolatile(x.L.GetType()))
+		fg.storeComplexCompoundAddSubComponent(lhsAddrSlot, lhsImagOffset, liSlot, riSlot, lhsVT, op, lhsAlign, isVolatile(x.L.GetType()))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+		return nil
+	}
+
+	if x.Op == sema.OpDiv {
+		denomSlot := fg.allocSyntheticSlot(".complex.compound.denom", lhsVT)
+		fg.out.Instrs = append(fg.out.Instrs,
+			bytecode.LoadLocal(lhsVT, rrSlot),
+			bytecode.LoadLocal(lhsVT, rrSlot),
+			bytecode.Binary(lhsVT, bytecode.BinMul),
+			bytecode.LoadLocal(lhsVT, riSlot),
+			bytecode.LoadLocal(lhsVT, riSlot),
+			bytecode.Binary(lhsVT, bytecode.BinMul),
+			bytecode.Binary(lhsVT, bytecode.BinAdd),
+			bytecode.StoreLocal(lhsVT, denomSlot),
+		)
+		fg.storeComplexCompoundDivReal(lhsAddrSlot, 0, lrSlot, liSlot, rrSlot, riSlot, denomSlot, lhsVT, lhsAlign, isVolatile(x.L.GetType()))
+		fg.storeComplexCompoundDivImag(lhsAddrSlot, lhsImagOffset, lrSlot, liSlot, rrSlot, riSlot, denomSlot, lhsVT, lhsAlign, isVolatile(x.L.GetType()))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+		return nil
+	}
+
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot),
+		bytecode.LoadLocal(lhsVT, lrSlot),
+		bytecode.LoadLocal(lhsVT, rrSlot),
+		bytecode.Binary(lhsVT, bytecode.BinMul),
+		bytecode.LoadLocal(lhsVT, liSlot),
+		bytecode.LoadLocal(lhsVT, riSlot),
+		bytecode.Binary(lhsVT, bytecode.BinMul),
+		bytecode.Binary(lhsVT, bytecode.BinSub),
+		bytecode.Store(lhsVT, lhsAlign, isVolatile(x.L.GetType())),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot),
+		bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: lhsImagOffset},
+		bytecode.LoadLocal(lhsVT, lrSlot),
+		bytecode.LoadLocal(lhsVT, riSlot),
+		bytecode.Binary(lhsVT, bytecode.BinMul),
+		bytecode.LoadLocal(lhsVT, liSlot),
+		bytecode.LoadLocal(lhsVT, rrSlot),
+		bytecode.Binary(lhsVT, bytecode.BinMul),
+		bytecode.Binary(lhsVT, bytecode.BinAdd),
+		bytecode.Store(lhsVT, lhsAlign, isVolatile(x.L.GetType())),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot),
+	)
+	return nil
+}
+
+func (fg *funcGen) storeComplexCompoundAddSubComponent(lhsAddrSlot int, offset int64, leftSlot int, rightSlot int, vt bytecode.ValueType, op bytecode.BinaryOp, align int64, volatile bool) {
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+	if offset != 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: offset})
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(vt, leftSlot), bytecode.LoadLocal(vt, rightSlot))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(vt, op), bytecode.Store(vt, align, volatile))
+}
+
+func (fg *funcGen) storeComplexCompoundDivReal(lhsAddrSlot int, offset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, denomSlot int, vt bytecode.ValueType, align int64, volatile bool) {
+	fg.emitComplexCompoundAddress(lhsAddrSlot, offset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(vt, lrSlot),
+		bytecode.LoadLocal(vt, rrSlot),
+		bytecode.Binary(vt, bytecode.BinMul),
+		bytecode.LoadLocal(vt, liSlot),
+		bytecode.LoadLocal(vt, riSlot),
+		bytecode.Binary(vt, bytecode.BinMul),
+		bytecode.Binary(vt, bytecode.BinAdd),
+		bytecode.LoadLocal(vt, denomSlot),
+		bytecode.Binary(vt, bytecode.BinDivS),
+		bytecode.Store(vt, align, volatile),
+	)
+}
+
+func (fg *funcGen) storeComplexCompoundDivImag(lhsAddrSlot int, offset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, denomSlot int, vt bytecode.ValueType, align int64, volatile bool) {
+	fg.emitComplexCompoundAddress(lhsAddrSlot, offset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(vt, liSlot),
+		bytecode.LoadLocal(vt, rrSlot),
+		bytecode.Binary(vt, bytecode.BinMul),
+		bytecode.LoadLocal(vt, lrSlot),
+		bytecode.LoadLocal(vt, riSlot),
+		bytecode.Binary(vt, bytecode.BinMul),
+		bytecode.Binary(vt, bytecode.BinSub),
+		bytecode.LoadLocal(vt, denomSlot),
+		bytecode.Binary(vt, bytecode.BinDivS),
+		bytecode.Store(vt, align, volatile),
+	)
+}
+
+func (fg *funcGen) emitComplexCompoundAddress(lhsAddrSlot int, offset int64) {
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+	if offset != 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: offset})
+	}
+}
+
+func (fg *funcGen) emitLoadComplexComponent(addrSlot int, offset int64, from, to bytecode.ValueType, align int64, volatile bool) {
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot))
+	if offset != 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: offset})
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(from, align, volatile))
+	fg.emitCast(from, to, sema.UsualArithmetic)
+}
+
+func compoundIntegerType(t bytecode.ValueType) bytecode.ValueType {
+	switch t {
+	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeU8, bytecode.TypeU16:
+		return bytecode.TypeI32
+	default:
+		return t
+	}
+}
+
+func compoundArithmeticType(lhs, rhs bytecode.ValueType) (bytecode.ValueType, bool) {
+	if isFloatType(lhs) || isFloatType(rhs) {
+		switch {
+		case lhs == bytecode.TypeFLong || rhs == bytecode.TypeFLong:
+			return bytecode.TypeFLong, true
+		case lhs == bytecode.TypeF64 || rhs == bytecode.TypeF64:
+			return bytecode.TypeF64, true
+		case lhs == bytecode.TypeF32 || rhs == bytecode.TypeF32:
+			return bytecode.TypeF32, true
+		default:
+			return 0, false
+		}
+	}
+	if isIntegerType(lhs) && isIntegerType(rhs) {
+		return compoundIntegerType(lhs), true
+	}
+	return 0, false
+}
+
+func (fg *funcGen) emitCondExpr(x *sema.CondExpr) error {
+	if cv, ok := sema.NewEvaluator(nil).EvalC99IntegerConstantExpression(x.Cond); ok {
+		if cv.Int != 0 || cv.Uint != 0 {
+			return fg.emitValue(x.Then)
+		}
+		return fg.emitValue(x.Else)
+	}
+
+	var stack []bytecode.ValueType
+	if exprLeavesValue(x) {
+		t, err := fg.g.lowerValueType(x.T)
+		if err != nil {
+			return err
+		}
+		stack = []bytecode.ValueType{t}
+	}
+	elseLabel := fg.newLabel(true, nil)
+	endLabel := fg.newLabel(false, stack)
+	if err := fg.emitBoolValue(x.Cond); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.JumpIfZero(bytecode.TypeBool, elseLabel))
+	if err := fg.emitValue(x.Then); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Jump(endLabel))
+	fg.mark(elseLabel)
+	if err := fg.emitValue(x.Else); err != nil {
+		return err
+	}
+	fg.mark(endLabel)
+	return nil
+}
+
+func (fg *funcGen) emitStmtExpr(x *sema.StmtExpr) error {
+	if x.Block == nil {
+		return nil
+	}
+	if !exprLeavesValue(x) {
+		return fg.emitStmt(x.Block)
+	}
+	scopeMark := len(fg.activeDynamicObjects)
+	items := x.Block.Items
+	last := len(items) - 1
+	for i, item := range items {
+		if i == last {
+			if exprStmt, ok := item.(*sema.ExprStmt); ok && exprStmt.Expr != nil {
+				if err := fg.emitValue(exprStmt.Expr); err != nil {
+					return err
+				}
+				if !fg.lastInstrTerminal() {
+					fg.popDynamicObjectScope(scopeMark)
+				} else {
+					fg.activeDynamicObjects = fg.activeDynamicObjects[:scopeMark]
+				}
+				return nil
+			}
+		}
+		if err := fg.emitStmt(item); err != nil {
+			return err
+		}
+	}
+	if !fg.lastInstrTerminal() {
+		fg.popDynamicObjectScope(scopeMark)
+	} else {
+		fg.activeDynamicObjects = fg.activeDynamicObjects[:scopeMark]
+	}
+	return nil
+}
+
+func (fg *funcGen) emitIncDec(x *sema.UnOp) error {
+	if member, ok := x.X.(*sema.MemberExpr); ok && member.Field != nil && member.Field.IsBitField {
+		return fg.emitBitFieldIncDec(member, x)
+	}
+	if vr, ok := x.X.(*sema.VarRef); ok {
+		if fg.isCapturedVar(vr.Sym) {
+			return fg.emitAddressableIncDec(x)
+		}
+		st, err := fg.storageForVar(vr.Sym, vr.T)
+		if err != nil {
+			return err
+		}
+		if st.kind == storageLocalSlot {
+			return fg.emitLocalSlotIncDec(x, st)
+		}
+	}
+	return fg.emitAddressableIncDec(x)
+}
+
+func (fg *funcGen) emitLocalSlotIncDec(x *sema.UnOp, st storage) error {
+	post := x.Op == sema.UnIncPost || x.Op == sema.UnDecPost
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(st.typ, st.slot))
+	if post {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup})
+	}
+	if err := fg.emitIncDecOperation(x, st.typ); err != nil {
+		return err
+	}
+	if !post {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup})
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(st.typ, st.slot))
+	return nil
+}
+
+func (fg *funcGen) emitAddressableIncDec(x *sema.UnOp) error {
+	vt, err := fg.g.lowerValueType(x.X.GetType())
+	if err != nil {
+		return err
+	}
+	if !isIntegerType(vt) && !isFloatType(vt) && !isPointerType(vt) {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("++/-- lowering is not implemented for %s", vt)}
+	}
+	addrSlot := fg.allocSyntheticSlot(".incdec.addr", bytecode.TypeObjectAddr)
+	valueSlot := fg.allocSyntheticSlot(".incdec.value", vt)
+	if err := fg.emitAddress(x.X); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot))
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Load(vt, fg.loadStoreAlign(x.X, x.X.GetType()), isVolatile(x.X.GetType())),
+		bytecode.StoreLocal(vt, valueSlot),
+		bytecode.LoadLocal(vt, valueSlot),
+	)
+	if err := fg.emitIncDecOperation(x, vt); err != nil {
+		return err
+	}
+	if x.Op == sema.UnIncPre || x.Op == sema.UnDecPre {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(vt, valueSlot))
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Store(vt, fg.loadStoreAlign(x.X, x.X.GetType()), isVolatile(x.X.GetType())),
+		bytecode.LoadLocal(vt, valueSlot),
+	)
+	return nil
+}
+
+func (fg *funcGen) emitIncDecOperation(x *sema.UnOp, typ bytecode.ValueType) error {
+	dec := x.Op == sema.UnDecPre || x.Op == sema.UnDecPost
+	if isPointerType(typ) {
+		step := int64(1)
+		if dec {
+			step = -1
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(bytecode.TypeI32, step))
+		return fg.emitPtrAddForExpr(x.X, x.X.GetType())
+	}
+	if isIntegerType(typ) {
+		computeType := compoundIntegerType(typ)
+		fg.emitCast(typ, computeType, sema.IntegralConversion)
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Const(computeType, 1))
+		op := bytecode.BinAdd
+		if dec {
+			op = bytecode.BinSub
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
+		fg.emitCast(computeType, typ, sema.IntegralConversion)
+		return nil
+	}
+	if isFloatType(typ) {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpConst, Type: typ, Float: 1})
+		op := bytecode.BinAdd
+		if dec {
+			op = bytecode.BinSub
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(typ, op))
+		return nil
+	}
+	return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("++/-- lowering is not implemented for %s", typ)}
+}
+
 func (fg *funcGen) emitCall(x *sema.CallExpr) error {
+	if name := tgmathPseudoCallName(x.Callee); name != "" {
+		return fg.emitTgmathCall(x, name)
+	}
 	ft, err := functionTypeFromCallee(x.Callee.GetType())
 	if err != nil {
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
 	}
-	sig, err := fg.g.lowerFuncSig(ft)
+	sig, err := fg.lowerCallSig(ft, x.Args)
 	if err != nil {
 		return err
 	}
-	if global := directCallGlobal(x.Callee); global >= 0 {
+	if global, ok := fg.g.directCallGlobal(x.Callee, sig); ok {
 		for _, arg := range x.Args {
 			if err := fg.emitValue(arg); err != nil {
 				return err
 			}
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Call(global, sig, len(x.Args)))
+		argc := len(x.Args)
+		callSig := sig
+		if vr := functionVarRef(x.Callee); vr != nil && vr.Sym != nil {
+			if def := fg.g.funcDefForSymbol(vr.Sym); def != nil {
+				captures := fg.g.nestedCaptures[def]
+				if len(captures) > 0 {
+					callSig, err = fg.g.lowerFuncDefSig(def)
+					if err != nil {
+						return err
+					}
+					extra, err := fg.emitCaptureArgs(captures)
+					if err != nil {
+						return err
+					}
+					argc += extra
+				}
+			}
+		}
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Call(global, callSig, argc))
 		return nil
 	}
 	if err := fg.emitValue(x.Callee); err != nil {
@@ -178,6 +835,210 @@ func (fg *funcGen) emitCall(x *sema.CallExpr) error {
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpCallIndirect, Sig: sig, Argc: len(x.Args)})
 	return nil
+}
+
+func (fg *funcGen) lowerCallSig(ft *sema.FunctionType, args []sema.Expr) (int, error) {
+	if ft.HasProto {
+		return fg.g.lowerFuncSig(ft)
+	}
+	ret, err := fg.g.lowerValueType(ft.Ret)
+	if err != nil {
+		return 0, err
+	}
+	params := make([]bytecode.ValueType, 0, len(args))
+	for _, arg := range args {
+		pt, err := fg.g.lowerValueType(arg.GetType())
+		if err != nil {
+			return 0, err
+		}
+		params = append(params, pt)
+	}
+	return fg.g.internSig(ret, params, false), nil
+}
+
+func (fg *funcGen) emitTgmathCall(x *sema.CallExpr, pseudo string) error {
+	ret, err := fg.g.lowerValueType(x.GetType())
+	if err != nil {
+		return err
+	}
+	params := make([]bytecode.ValueType, 0, len(x.Args))
+	for _, arg := range x.Args {
+		if err := fg.emitValue(arg); err != nil {
+			return err
+		}
+		pt, err := fg.g.lowerValueType(arg.GetType())
+		if err != nil {
+			return err
+		}
+		params = append(params, pt)
+	}
+	global := fg.g.syntheticExtern(tgmathExternName(pseudo, x), ret, params, false)
+	sig := fg.g.internSig(ret, params, false)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Call(global, sig, len(x.Args)))
+	return nil
+}
+
+func tgmathPseudoCallName(e sema.Expr) string {
+	vr := functionVarRef(e)
+	if vr == nil || vr.Sym == nil {
+		return ""
+	}
+	switch vr.Sym.Name {
+	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow", "__cvm_tgmath_sqrt", "__cvm_tgmath_fabs", "__cvm_tgmath_cos", "__cvm_tgmath_tan", "__cvm_tgmath_log", "__cvm_tgmath_sinh", "__cvm_tgmath_cosh", "__cvm_tgmath_tanh", "__cvm_tgmath_asin", "__cvm_tgmath_acos", "__cvm_tgmath_atan", "__cvm_tgmath_asinh", "__cvm_tgmath_acosh", "__cvm_tgmath_atanh", "__cvm_tgmath_atan2", "__cvm_tgmath_hypot", "__cvm_tgmath_cbrt", "__cvm_tgmath_ceil", "__cvm_tgmath_floor", "__cvm_tgmath_trunc", "__cvm_tgmath_round", "__cvm_tgmath_exp2", "__cvm_tgmath_expm1", "__cvm_tgmath_log10", "__cvm_tgmath_log1p", "__cvm_tgmath_log2", "__cvm_tgmath_fdim", "__cvm_tgmath_fmax", "__cvm_tgmath_fmin", "__cvm_tgmath_fmod", "__cvm_tgmath_remainder", "__cvm_tgmath_copysign", "__cvm_tgmath_fma", "__cvm_tgmath_nextafter", "__cvm_tgmath_nexttoward", "__cvm_tgmath_erf", "__cvm_tgmath_erfc", "__cvm_tgmath_tgamma", "__cvm_tgmath_lgamma", "__cvm_tgmath_nearbyint", "__cvm_tgmath_rint", "__cvm_tgmath_logb", "__cvm_tgmath_scalbn", "__cvm_tgmath_scalbln", "__cvm_tgmath_ldexp", "__cvm_tgmath_ilogb", "__cvm_tgmath_frexp", "__cvm_tgmath_remquo", "__cvm_tgmath_carg", "__cvm_tgmath_cimag", "__cvm_tgmath_creal", "__cvm_tgmath_conj", "__cvm_tgmath_cproj", "__cvm_tgmath_lrint", "__cvm_tgmath_lround", "__cvm_tgmath_llrint", "__cvm_tgmath_llround":
+		return vr.Sym.Name
+	default:
+		return ""
+	}
+}
+
+func tgmathExternName(pseudo string, x *sema.CallExpr) string {
+	base := pseudo
+	if tgmathCallIsComplex(x) {
+		switch pseudo {
+		case "__cvm_tgmath_sin":
+			base = "__cvm_tgmath_csin"
+		case "__cvm_tgmath_exp":
+			base = "__cvm_tgmath_cexp"
+		case "__cvm_tgmath_pow":
+			base = "__cvm_tgmath_cpow"
+		case "__cvm_tgmath_sqrt":
+			base = "__cvm_tgmath_csqrt"
+		case "__cvm_tgmath_fabs":
+			base = "__builtin_cabs"
+		case "__cvm_tgmath_cos":
+			base = "__cvm_tgmath_ccos"
+		case "__cvm_tgmath_tan":
+			base = "__cvm_tgmath_ctan"
+		case "__cvm_tgmath_log":
+			base = "__cvm_tgmath_clog"
+		case "__cvm_tgmath_sinh":
+			base = "__cvm_tgmath_csinh"
+		case "__cvm_tgmath_cosh":
+			base = "__cvm_tgmath_ccosh"
+		case "__cvm_tgmath_tanh":
+			base = "__cvm_tgmath_ctanh"
+		case "__cvm_tgmath_asin":
+			base = "__cvm_tgmath_casin"
+		case "__cvm_tgmath_acos":
+			base = "__cvm_tgmath_cacos"
+		case "__cvm_tgmath_atan":
+			base = "__cvm_tgmath_catan"
+		case "__cvm_tgmath_asinh":
+			base = "__cvm_tgmath_casinh"
+		case "__cvm_tgmath_acosh":
+			base = "__cvm_tgmath_cacosh"
+		case "__cvm_tgmath_atanh":
+			base = "__cvm_tgmath_catanh"
+		}
+	}
+	switch tgmathCallRankForPseudo(pseudo, x) {
+	case sema.Float, sema.FloatComplex:
+		return base + "f"
+	case sema.LongDouble, sema.LongDoubleComplex:
+		return base + "l"
+	default:
+		return base
+	}
+}
+
+func tgmathCallRankForPseudo(pseudo string, x *sema.CallExpr) sema.BuiltinKind {
+	if pseudo == "__cvm_tgmath_remquo" && len(x.Args) >= 2 {
+		return tgmathCallRankFromArgs(x.Args[:2])
+	}
+	if tgmathUsesFirstArgRank(pseudo) && len(x.Args) > 0 {
+		if bt, ok := sema.Unqual(x.Args[0].GetType()).(*sema.BuiltinType); ok {
+			switch bt.Kind {
+			case sema.Float, sema.FloatComplex, sema.Double, sema.DoubleComplex, sema.LongDouble, sema.LongDoubleComplex:
+				return bt.Kind
+			}
+		}
+		return sema.Double
+	}
+	return tgmathCallRank(x)
+}
+
+func tgmathCallRankFromArgs(args []sema.Expr) sema.BuiltinKind {
+	rank := sema.Double
+	allFloat := len(args) > 0
+	for _, arg := range args {
+		bt, ok := sema.Unqual(arg.GetType()).(*sema.BuiltinType)
+		if !ok {
+			allFloat = false
+			continue
+		}
+		switch bt.Kind {
+		case sema.LongDouble, sema.LongDoubleComplex:
+			return bt.Kind
+		case sema.Double, sema.DoubleComplex:
+			rank = bt.Kind
+			allFloat = false
+		case sema.Float, sema.FloatComplex:
+		default:
+			allFloat = false
+		}
+	}
+	if allFloat {
+		for _, arg := range args {
+			if bt, ok := sema.Unqual(arg.GetType()).(*sema.BuiltinType); ok {
+				switch bt.Kind {
+				case sema.FloatComplex, sema.DoubleComplex, sema.LongDoubleComplex:
+					return sema.FloatComplex
+				}
+			}
+		}
+		return sema.Float
+	}
+	return rank
+}
+
+func tgmathUsesFirstArgRank(pseudo string) bool {
+	switch pseudo {
+	case "__cvm_tgmath_nexttoward", "__cvm_tgmath_scalbn", "__cvm_tgmath_scalbln", "__cvm_tgmath_ldexp", "__cvm_tgmath_frexp":
+		return true
+	default:
+		return false
+	}
+}
+
+func tgmathCallIsComplex(x *sema.CallExpr) bool {
+	for _, arg := range x.Args {
+		if bt, ok := sema.Unqual(arg.GetType()).(*sema.BuiltinType); ok {
+			switch bt.Kind {
+			case sema.FloatComplex, sema.DoubleComplex, sema.LongDoubleComplex:
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func tgmathCallRank(x *sema.CallExpr) sema.BuiltinKind {
+	rank := sema.Double
+	allFloat := len(x.Args) > 0
+	for _, arg := range x.Args {
+		bt, ok := sema.Unqual(arg.GetType()).(*sema.BuiltinType)
+		if !ok {
+			allFloat = false
+			continue
+		}
+		switch bt.Kind {
+		case sema.LongDouble, sema.LongDoubleComplex:
+			return bt.Kind
+		case sema.Double, sema.DoubleComplex:
+			rank = bt.Kind
+			allFloat = false
+		case sema.Float, sema.FloatComplex:
+		default:
+			allFloat = false
+		}
+	}
+	if allFloat {
+		if tgmathCallIsComplex(x) {
+			return sema.FloatComplex
+		}
+		return sema.Float
+	}
+	return rank
 }
 
 func (fg *funcGen) emitSizeof(x *sema.SizeofExpr) error {
@@ -269,6 +1130,21 @@ func (fg *funcGen) emitFunctionAddress(e sema.Expr) error {
 	if global >= len(fg.g.mod.Globals) {
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: fmt.Sprintf("function global %d is missing", global)}
 	}
+	if def := fg.g.funcDefForSymbol(vr.Sym); def != nil {
+		captures := fg.g.nestedCaptures[def]
+		if len(captures) > 0 {
+			sig, err := fg.g.lowerFuncDefSig(def)
+			if err != nil {
+				return err
+			}
+			argc, err := fg.emitCaptureArgs(captures)
+			if err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.MakeClosure(global, sig, argc))
+			return nil
+		}
+	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrFunc(global))
 	return nil
 }
@@ -295,6 +1171,16 @@ func (fg *funcGen) emitLValueValue(e sema.Expr, t sema.Type) error {
 		return err
 	}
 	if vr, ok := e.(*sema.VarRef); ok {
+		if fg.isCapturedVar(vr.Sym) {
+			if vt == bytecode.TypeObjectAddr {
+				return fg.emitAddress(e)
+			}
+			if err := fg.emitAddress(e); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(vt, fg.loadStoreAlign(e, t), isVolatile(t)))
+			return nil
+		}
 		st, err := fg.storageForVar(vr.Sym, vr.T)
 		if err != nil {
 			return err
@@ -321,7 +1207,7 @@ func (fg *funcGen) emitLValueValue(e sema.Expr, t sema.Type) error {
 	if err := fg.emitAddress(e); err != nil {
 		return err
 	}
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(vt, fg.g.alignof(t), isVolatile(t)))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Load(vt, fg.loadStoreAlign(e, t), isVolatile(t)))
 	return nil
 }
 
@@ -330,16 +1216,18 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 		return fg.emitBitFieldAssign(member, rhs)
 	}
 	if vr, ok := lhs.(*sema.VarRef); ok {
-		st, err := fg.storageForVar(vr.Sym, vr.T)
-		if err != nil {
-			return err
-		}
-		if st.kind == storageLocalSlot {
-			if err := fg.emitValue(rhs); err != nil {
+		if !fg.isCapturedVar(vr.Sym) {
+			st, err := fg.storageForVar(vr.Sym, vr.T)
+			if err != nil {
 				return err
 			}
-			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(st.typ, st.slot))
-			return nil
+			if st.kind == storageLocalSlot {
+				if err := fg.emitValue(rhs); err != nil {
+					return err
+				}
+				fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup}, bytecode.StoreLocal(st.typ, st.slot))
+				return nil
+			}
 		}
 	}
 	vt, err := fg.g.lowerValueType(lhs.GetType())
@@ -347,10 +1235,29 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 		return err
 	}
 	if vt == bytecode.TypeObjectAddr {
+		if isComplexType(lhs.GetType()) {
+			if err := fg.emitComplexAssign(lhs, rhs); err != nil {
+				return err
+			}
+			return fg.emitAddress(lhs)
+		}
+		if rhs.GetCategory() != sema.LValue {
+			rhsSlot := fg.allocSyntheticSlot(".assign.rhs", bytecode.TypeObjectAddr)
+			if err := fg.emitObjectSourceAddress(rhs); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, rhsSlot))
+			if err := fg.emitAddress(lhs); err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, rhsSlot))
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(lhs.GetType()), Align: fg.g.alignof(lhs.GetType()), Volatile: isVolatile(lhs.GetType())})
+			return fg.emitAddress(lhs)
+		}
 		if err := fg.emitAddress(lhs); err != nil {
 			return err
 		}
-		if err := fg.emitAddress(rhs); err != nil {
+		if err := fg.emitObjectSourceAddress(rhs); err != nil {
 			return err
 		}
 		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpMemCopy, Size: fg.g.sizeof(lhs.GetType()), Align: fg.g.alignof(lhs.GetType()), Volatile: isVolatile(lhs.GetType())})
@@ -364,8 +1271,49 @@ func (fg *funcGen) emitAssign(lhs, rhs sema.Expr) error {
 		return err
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpSwap})
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.g.alignof(lhs.GetType()), isVolatile(lhs.GetType())))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Store(vt, fg.loadStoreAlign(lhs, lhs.GetType()), isVolatile(lhs.GetType())))
 	return nil
+}
+
+func (fg *funcGen) emitComplexAssign(lhs, rhs sema.Expr) error {
+	dst := fg.addressForExpr(lhs)
+	return fg.emitComplexInitializer(dst, rhs, lhs.GetType())
+}
+
+func (fg *funcGen) addressForExpr(e sema.Expr) address {
+	addr := address{emit: func() error {
+		return fg.emitAddress(e)
+	}}
+	addr.align = fg.explicitAccessAlignForExpr(e, e.GetType())
+	return addr
+}
+
+func (fg *funcGen) accessAlignForExpr(e sema.Expr, accessType sema.Type) int64 {
+	if align := fg.explicitAccessAlignForExpr(e, accessType); align > 0 {
+		return align
+	}
+	return fg.g.alignof(accessType)
+}
+
+func (fg *funcGen) explicitAccessAlignForExpr(e sema.Expr, accessType sema.Type) int64 {
+	if member, ok := e.(*sema.MemberExpr); ok && member.Field != nil && !member.Field.IsBitField {
+		if align := fg.g.alignof(accessType); align > 1 && member.Field.Offset%align != 0 {
+			return 1
+		}
+	}
+	if un, ok := e.(*sema.UnOp); ok && un.Op == sema.UnDeref {
+		if align := fg.g.alignof(accessType); align > 1 {
+			return 1
+		}
+	}
+	return 0
+}
+
+func (fg *funcGen) loadStoreAlign(e sema.Expr, t sema.Type) int64 {
+	if _, ok := e.(*sema.MemberExpr); ok {
+		return 1
+	}
+	return fg.g.alignof(t)
 }
 
 func (fg *funcGen) emitBitFieldAssign(lhs *sema.MemberExpr, rhs sema.Expr) error {
@@ -373,15 +1321,100 @@ func (fg *funcGen) emitBitFieldAssign(lhs *sema.MemberExpr, rhs sema.Expr) error
 	if err != nil {
 		return err
 	}
+	addrSlot := fg.allocSyntheticSlot(".bitfield.assign.addr", bytecode.TypeObjectAddr)
 	if err := fg.emitValue(rhs); err != nil {
 		return err
 	}
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDup})
 	if err := addr.emit(); err != nil {
 		return err
 	}
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpSwap})
-	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpBitFieldStore, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile})
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Instr{Op: bytecode.OpBitFieldStore, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpBitFieldLoad, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+	)
+	return nil
+}
+
+func (fg *funcGen) emitBitFieldCompoundAssign(lhs *sema.MemberExpr, x *sema.CompoundAssign) error {
+	addr, err := fg.bitFieldAddress(lhs)
+	if err != nil {
+		return err
+	}
+	rt, err := fg.g.lowerValueType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	computeType, ok := compoundArithmeticType(addr.valueType, rt)
+	if !ok {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("compound assignment lowering is not implemented for bit-field %s", addr.valueType)}
+	}
+	op, err := binaryOp(x.Op, computeType)
+	if err != nil {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: err.Error()}
+	}
+	addrSlot := fg.allocSyntheticSlot(".bitfield.compound.addr", bytecode.TypeObjectAddr)
+	if err := addr.emit(); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpBitFieldLoad, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+	)
+	fg.emitCast(addr.valueType, computeType, sema.IntegralConversion)
+	if err := fg.emitValue(x.R); err != nil {
+		return err
+	}
+	fg.emitCast(rt, computeType, sema.IntegralConversion)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(computeType, op))
+	fg.emitCast(computeType, addr.valueType, sema.IntegralConversion)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Instr{Op: bytecode.OpBitFieldStore, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpBitFieldLoad, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+	)
+	return nil
+}
+
+func (fg *funcGen) emitBitFieldIncDec(member *sema.MemberExpr, x *sema.UnOp) error {
+	addr, err := fg.bitFieldAddress(member)
+	if err != nil {
+		return err
+	}
+	addrSlot := fg.allocSyntheticSlot(".bitfield.incdec.addr", bytecode.TypeObjectAddr)
+	valueSlot := fg.allocSyntheticSlot(".bitfield.incdec.value", addr.valueType)
+	if err := addr.emit(); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.StoreLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpBitFieldLoad, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+		bytecode.StoreLocal(addr.valueType, valueSlot),
+		bytecode.LoadLocal(addr.valueType, valueSlot),
+	)
+	if err := fg.emitIncDecOperation(x, addr.valueType); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+		bytecode.Instr{Op: bytecode.OpSwap},
+		bytecode.Instr{Op: bytecode.OpBitFieldStore, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+	)
+	if x.Op == sema.UnIncPre || x.Op == sema.UnDecPre {
+		fg.out.Instrs = append(fg.out.Instrs,
+			bytecode.LoadLocal(bytecode.TypeObjectAddr, addrSlot),
+			bytecode.Instr{Op: bytecode.OpBitFieldLoad, Type: addr.valueType, Layout: addr.layout, Field: addr.field, Volatile: addr.volatile},
+		)
+		return nil
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(addr.valueType, valueSlot))
 	return nil
 }
 
@@ -395,6 +1428,12 @@ func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
 	}
 	if x.Op == sema.OpLAnd || x.Op == sema.OpLOr {
 		return fg.emitLogical(x, resultType)
+	}
+	if (x.Op == sema.OpEq || x.Op == sema.OpNe) && (isComplexType(x.L.GetType()) || isComplexType(x.R.GetType())) {
+		return fg.emitComplexCompare(x, resultType)
+	}
+	if isComplexType(x.T) {
+		return fg.emitComplexBinOp(x)
 	}
 
 	leftType, err := fg.g.lowerValueType(x.L.GetType())
@@ -423,6 +1462,237 @@ func (fg *funcGen) emitBinOp(x *sema.BinOp) error {
 		fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
 	}
 	return nil
+}
+
+func (fg *funcGen) emitComplexCompare(x *sema.BinOp, resultType bytecode.ValueType) error {
+	if x.Op != sema.OpEq && x.Op != sema.OpNe {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("complex comparison %v is not implemented", x.Op)}
+	}
+	lhsRealType, err := complexRealType(x.L.GetType())
+	if err != nil {
+		return err
+	}
+	rhsRealType, err := complexRealType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	lhsVT, err := fg.g.lowerValueType(lhsRealType)
+	if err != nil {
+		return err
+	}
+	rhsVT, err := fg.g.lowerValueType(rhsRealType)
+	if err != nil {
+		return err
+	}
+	cmpVT := lhsVT
+	if typeSize(rhsVT) > typeSize(cmpVT) {
+		cmpVT = rhsVT
+	}
+	lhsAddrSlot := fg.allocSyntheticSlot(".complex.cmp.lhs", bytecode.TypeObjectAddr)
+	rhsAddrSlot := fg.allocSyntheticSlot(".complex.cmp.rhs", bytecode.TypeObjectAddr)
+	lrSlot := fg.allocSyntheticSlot(".complex.cmp.lr", cmpVT)
+	liSlot := fg.allocSyntheticSlot(".complex.cmp.li", cmpVT)
+	rrSlot := fg.allocSyntheticSlot(".complex.cmp.rr", cmpVT)
+	riSlot := fg.allocSyntheticSlot(".complex.cmp.ri", cmpVT)
+	if err := fg.emitComplexSourceAddress(x.L); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+	if err := fg.emitComplexSourceAddress(x.R); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, rhsAddrSlot))
+
+	lhsImagOffset := fg.g.sizeof(lhsRealType)
+	rhsImagOffset := fg.g.sizeof(rhsRealType)
+	fg.emitLoadComplexComponent(lhsAddrSlot, 0, lhsVT, cmpVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(cmpVT, lrSlot))
+	fg.emitLoadComplexComponent(lhsAddrSlot, lhsImagOffset, lhsVT, cmpVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(cmpVT, liSlot))
+	fg.emitLoadComplexComponent(rhsAddrSlot, 0, rhsVT, cmpVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(cmpVT, rrSlot))
+	fg.emitLoadComplexComponent(rhsAddrSlot, rhsImagOffset, rhsVT, cmpVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(cmpVT, riSlot))
+
+	componentOp := bytecode.BinEq
+	combineOp := bytecode.BinAnd
+	if x.Op == sema.OpNe {
+		componentOp = bytecode.BinNe
+		combineOp = bytecode.BinOr
+	}
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(cmpVT, lrSlot),
+		bytecode.LoadLocal(cmpVT, rrSlot),
+		bytecode.Binary(cmpVT, componentOp),
+		bytecode.LoadLocal(cmpVT, liSlot),
+		bytecode.LoadLocal(cmpVT, riSlot),
+		bytecode.Binary(cmpVT, componentOp),
+		bytecode.Binary(bytecode.TypeBool, combineOp),
+	)
+	fg.emitCast(bytecode.TypeBool, resultType, sema.IntegralConversion)
+	return nil
+}
+
+func (fg *funcGen) emitComplexBinOp(x *sema.BinOp) error {
+	if x.Op != sema.OpAdd && x.Op != sema.OpSub && x.Op != sema.OpMul && x.Op != sema.OpDiv {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: fmt.Sprintf("complex binary %v is not implemented", x.Op)}
+	}
+	lhsRealType, err := complexRealType(x.L.GetType())
+	if err != nil {
+		return err
+	}
+	rhsRealType, err := complexRealType(x.R.GetType())
+	if err != nil {
+		return err
+	}
+	dstRealType, err := complexRealType(x.T)
+	if err != nil {
+		return err
+	}
+	lhsVT, err := fg.g.lowerValueType(lhsRealType)
+	if err != nil {
+		return err
+	}
+	rhsVT, err := fg.g.lowerValueType(rhsRealType)
+	if err != nil {
+		return err
+	}
+	dstVT, err := fg.g.lowerValueType(dstRealType)
+	if err != nil {
+		return err
+	}
+	resultObject, err := fg.newLocalObject(".complex.binop", x.T)
+	if err != nil {
+		return err
+	}
+	lhsAddrSlot := fg.allocSyntheticSlot(".complex.binop.lhs", bytecode.TypeObjectAddr)
+	rhsAddrSlot := fg.allocSyntheticSlot(".complex.binop.rhs", bytecode.TypeObjectAddr)
+	lrSlot := fg.allocSyntheticSlot(".complex.binop.lr", dstVT)
+	liSlot := fg.allocSyntheticSlot(".complex.binop.li", dstVT)
+	rrSlot := fg.allocSyntheticSlot(".complex.binop.rr", dstVT)
+	riSlot := fg.allocSyntheticSlot(".complex.binop.ri", dstVT)
+	if err := fg.emitComplexSourceAddress(x.L); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, lhsAddrSlot))
+	if err := fg.emitComplexSourceAddress(x.R); err != nil {
+		return err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(bytecode.TypeObjectAddr, rhsAddrSlot))
+
+	lhsImagOffset := fg.g.sizeof(lhsRealType)
+	rhsImagOffset := fg.g.sizeof(rhsRealType)
+	dstImagOffset := fg.g.sizeof(dstRealType)
+	fg.emitLoadComplexComponent(lhsAddrSlot, 0, lhsVT, dstVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(dstVT, lrSlot))
+	fg.emitLoadComplexComponent(lhsAddrSlot, lhsImagOffset, lhsVT, dstVT, fg.g.alignof(lhsRealType), isVolatile(x.L.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(dstVT, liSlot))
+	fg.emitLoadComplexComponent(rhsAddrSlot, 0, rhsVT, dstVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(dstVT, rrSlot))
+	fg.emitLoadComplexComponent(rhsAddrSlot, rhsImagOffset, rhsVT, dstVT, fg.g.alignof(rhsRealType), isVolatile(x.R.GetType()))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.StoreLocal(dstVT, riSlot))
+
+	switch x.Op {
+	case sema.OpAdd, sema.OpSub:
+		op := bytecode.BinAdd
+		if x.Op == sema.OpSub {
+			op = bytecode.BinSub
+		}
+		fg.storeComplexBinOpAddSubComponent(resultObject, 0, lrSlot, rrSlot, dstVT, op, fg.g.alignof(dstRealType), isVolatile(x.T))
+		fg.storeComplexBinOpAddSubComponent(resultObject, dstImagOffset, liSlot, riSlot, dstVT, op, fg.g.alignof(dstRealType), isVolatile(x.T))
+	case sema.OpMul:
+		fg.storeComplexBinOpMulReal(resultObject, 0, lrSlot, liSlot, rrSlot, riSlot, dstVT, fg.g.alignof(dstRealType), isVolatile(x.T))
+		fg.storeComplexBinOpMulImag(resultObject, dstImagOffset, lrSlot, liSlot, rrSlot, riSlot, dstVT, fg.g.alignof(dstRealType), isVolatile(x.T))
+	case sema.OpDiv:
+		denomSlot := fg.allocSyntheticSlot(".complex.binop.denom", dstVT)
+		fg.out.Instrs = append(fg.out.Instrs,
+			bytecode.LoadLocal(dstVT, rrSlot),
+			bytecode.LoadLocal(dstVT, rrSlot),
+			bytecode.Binary(dstVT, bytecode.BinMul),
+			bytecode.LoadLocal(dstVT, riSlot),
+			bytecode.LoadLocal(dstVT, riSlot),
+			bytecode.Binary(dstVT, bytecode.BinMul),
+			bytecode.Binary(dstVT, bytecode.BinAdd),
+			bytecode.StoreLocal(dstVT, denomSlot),
+		)
+		fg.storeComplexBinOpDivReal(resultObject, 0, lrSlot, liSlot, rrSlot, riSlot, denomSlot, dstVT, fg.g.alignof(dstRealType), isVolatile(x.T))
+		fg.storeComplexBinOpDivImag(resultObject, dstImagOffset, lrSlot, liSlot, rrSlot, riSlot, denomSlot, dstVT, fg.g.alignof(dstRealType), isVolatile(x.T))
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(resultObject))
+	return nil
+}
+
+func (fg *funcGen) emitComplexResultAddress(dstObject int, dstOffset int64) {
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(dstObject))
+	if dstOffset != 0 {
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpOffset, Type: bytecode.TypeObjectAddr, Int: dstOffset})
+	}
+}
+
+func (fg *funcGen) storeComplexBinOpAddSubComponent(dstObject int, dstOffset int64, leftSlot int, rightSlot int, dstVT bytecode.ValueType, op bytecode.BinaryOp, dstAlign int64, dstVolatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(dstVT, leftSlot), bytecode.LoadLocal(dstVT, rightSlot))
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Binary(dstVT, op), bytecode.Store(dstVT, dstAlign, dstVolatile))
+}
+
+func (fg *funcGen) storeComplexBinOpMulReal(dstObject int, dstOffset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, dstVT bytecode.ValueType, dstAlign int64, dstVolatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(dstVT, lrSlot),
+		bytecode.LoadLocal(dstVT, rrSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.LoadLocal(dstVT, liSlot),
+		bytecode.LoadLocal(dstVT, riSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.Binary(dstVT, bytecode.BinSub),
+		bytecode.Store(dstVT, dstAlign, dstVolatile),
+	)
+}
+
+func (fg *funcGen) storeComplexBinOpMulImag(dstObject int, dstOffset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, dstVT bytecode.ValueType, dstAlign int64, dstVolatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(dstVT, lrSlot),
+		bytecode.LoadLocal(dstVT, riSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.LoadLocal(dstVT, liSlot),
+		bytecode.LoadLocal(dstVT, rrSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.Binary(dstVT, bytecode.BinAdd),
+		bytecode.Store(dstVT, dstAlign, dstVolatile),
+	)
+}
+
+func (fg *funcGen) storeComplexBinOpDivReal(dstObject int, dstOffset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, denomSlot int, dstVT bytecode.ValueType, dstAlign int64, dstVolatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(dstVT, lrSlot),
+		bytecode.LoadLocal(dstVT, rrSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.LoadLocal(dstVT, liSlot),
+		bytecode.LoadLocal(dstVT, riSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.Binary(dstVT, bytecode.BinAdd),
+		bytecode.LoadLocal(dstVT, denomSlot),
+		bytecode.Binary(dstVT, bytecode.BinDivS),
+		bytecode.Store(dstVT, dstAlign, dstVolatile),
+	)
+}
+
+func (fg *funcGen) storeComplexBinOpDivImag(dstObject int, dstOffset int64, lrSlot int, liSlot int, rrSlot int, riSlot int, denomSlot int, dstVT bytecode.ValueType, dstAlign int64, dstVolatile bool) {
+	fg.emitComplexResultAddress(dstObject, dstOffset)
+	fg.out.Instrs = append(fg.out.Instrs,
+		bytecode.LoadLocal(dstVT, liSlot),
+		bytecode.LoadLocal(dstVT, rrSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.LoadLocal(dstVT, lrSlot),
+		bytecode.LoadLocal(dstVT, riSlot),
+		bytecode.Binary(dstVT, bytecode.BinMul),
+		bytecode.Binary(dstVT, bytecode.BinSub),
+		bytecode.LoadLocal(dstVT, denomSlot),
+		bytecode.Binary(dstVT, bytecode.BinDivS),
+		bytecode.Store(dstVT, dstAlign, dstVolatile),
+	)
 }
 
 func (fg *funcGen) emitLogical(x *sema.BinOp, resultType bytecode.ValueType) error {
@@ -465,7 +1735,7 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		if err := fg.emitValue(x.L); err != nil {
 			return err
 		}
-		if err := fg.emitValue(x.R); err != nil {
+		if _, err := fg.emitPtrIndexValue(x.R); err != nil {
 			return err
 		}
 		return fg.emitPtrAddForExpr(x.L, x.L.GetType())
@@ -473,7 +1743,7 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		if err := fg.emitValue(x.R); err != nil {
 			return err
 		}
-		if err := fg.emitValue(x.L); err != nil {
+		if _, err := fg.emitPtrIndexValue(x.L); err != nil {
 			return err
 		}
 		return fg.emitPtrAddForExpr(x.R, x.R.GetType())
@@ -481,10 +1751,11 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		if err := fg.emitValue(x.L); err != nil {
 			return err
 		}
-		if err := fg.emitValue(x.R); err != nil {
+		idxType, err := fg.emitPtrIndexValue(x.R)
+		if err != nil {
 			return err
 		}
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: rightType, Unary: bytecode.UnaryNeg})
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpUnary, Type: idxType, Unary: bytecode.UnaryNeg})
 		return fg.emitPtrAddForExpr(x.L, x.L.GetType())
 	case x.Op == sema.OpSub && isPointerType(leftType) && isPointerType(rightType):
 		if err := fg.emitValue(x.L); err != nil {
@@ -509,6 +1780,28 @@ func (fg *funcGen) emitPointerArithmetic(x *sema.BinOp) error {
 		return nil
 	default:
 		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "unsupported pointer arithmetic"}
+	}
+}
+
+func (fg *funcGen) emitPtrIndexValue(e sema.Expr) (bytecode.ValueType, error) {
+	if err := fg.emitValue(e); err != nil {
+		return bytecode.TypeVoid, err
+	}
+	from, err := fg.g.lowerValueType(e.GetType())
+	if err != nil {
+		return bytecode.TypeVoid, err
+	}
+	to := ptrIndexValueType(from)
+	fg.emitCast(from, to, sema.IntegralConversion)
+	return to, nil
+}
+
+func ptrIndexValueType(t bytecode.ValueType) bytecode.ValueType {
+	switch t {
+	case bytecode.TypeBool, bytecode.TypeI8, bytecode.TypeI16, bytecode.TypeU8, bytecode.TypeU16:
+		return bytecode.TypeI32
+	default:
+		return t
 	}
 }
 
@@ -589,11 +1882,38 @@ func functionTypeFromCallee(t sema.Type) (*sema.FunctionType, error) {
 	return nil, fmt.Errorf("callee type %s is not a function pointer", t)
 }
 
-func directCallGlobal(e sema.Expr) int {
+func (g *generator) directCallGlobal(e sema.Expr, sig int) (int, bool) {
 	if vr := functionVarRef(e); vr != nil && vr.Sym != nil {
-		return vr.Sym.GlobalID
+		if global, ok := g.globalMap[vr.Sym]; ok {
+			return global, true
+		}
+		if def := g.funcDefForSymbol(vr.Sym); def != nil && def.Sym != nil && def.Sym.GlobalID >= 0 {
+			return def.Sym.GlobalID, true
+		}
+		if vr.Sym.Kind == sema.SymFunc && vr.Sym.Storage == sema.StorageExtern && sig >= 0 && sig < len(g.mod.Sigs) {
+			callSig := g.mod.Sigs[sig]
+			return g.syntheticExtern(vr.Sym.Name, callSig.Ret, callSig.Params, callSig.Variadic), true
+		}
 	}
-	return -1
+	return -1, false
+}
+
+func (g *generator) funcDefForSymbol(sym *sema.Symbol) *sema.FuncDef {
+	if sym == nil {
+		return nil
+	}
+	if def := g.funcMap[sym]; def != nil {
+		return def
+	}
+	if sym.Storage != sema.StorageExtern && sym.GlobalID >= 0 {
+		if def := g.funcByGlobal[sym.GlobalID]; def != nil {
+			return def
+		}
+	}
+	if sym.Storage == sema.StorageExtern {
+		return nil
+	}
+	return g.funcByName[sym.Name]
 }
 
 func functionVarRef(e sema.Expr) *sema.VarRef {
@@ -647,6 +1967,8 @@ func dynamicObjectSymbol(e sema.Expr) *sema.Symbol {
 		if x.Kind == sema.LValueToRValue || x.Kind == sema.ArrayDecay {
 			return dynamicObjectSymbol(x.X)
 		}
+	case *sema.MemberExpr:
+		return dynamicObjectSymbol(x.Base)
 	case *sema.IndexExpr:
 		return dynamicObjectSymbol(x.Base)
 	}

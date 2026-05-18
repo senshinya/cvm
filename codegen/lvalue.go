@@ -33,7 +33,7 @@ func (fg *funcGen) storageForVar(sym *sema.Symbol, t sema.Type) (storage, error)
 			return storage{kind: storageAddress, object: id, global: -1, typ: vt, sym: sym}, nil
 		}
 	}
-	if sym != nil && sym.SlotID >= 0 && isSlotType(vt) {
+	if sym != nil && sym.SlotID >= 0 && (isSlotType(vt) || isComplexType(t)) {
 		return storage{kind: storageLocalSlot, slot: sym.SlotID, object: -1, global: -1, typ: vt, sym: sym}, nil
 	}
 	if sym != nil && sym.Storage != sema.StorageAuto && sym.Storage != sema.StorageRegister && sym.GlobalID >= 0 {
@@ -47,9 +47,18 @@ func (fg *funcGen) storageForVar(sym *sema.Symbol, t sema.Type) (storage, error)
 	return storage{kind: storageAddress, object: -1, global: -1, typ: vt, sym: sym}, nil
 }
 
+func (fg *funcGen) isCapturedVar(sym *sema.Symbol) bool {
+	_, ok := fg.capturedObjectSlot[sym]
+	return ok
+}
+
 func (fg *funcGen) emitAddress(e sema.Expr) error {
 	switch x := e.(type) {
 	case *sema.VarRef:
+		if slot, ok := fg.capturedObjectSlot[x.Sym]; ok {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, slot))
+			return nil
+		}
 		if object, ok := fg.dynamicObjectMap[x.Sym]; ok {
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpDynamicObjectAddr, Object: object, Type: bytecode.TypeObjectAddr})
 			return nil
@@ -64,6 +73,10 @@ func (fg *funcGen) emitAddress(e sema.Expr) error {
 		}
 		if st.object >= 0 {
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrLocalObject(st.object))
+			return nil
+		}
+		if st.kind == storageLocalSlot && st.typ == bytecode.TypeObjectAddr {
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.LoadLocal(bytecode.TypeObjectAddr, st.slot))
 			return nil
 		}
 	case *sema.UnOp:
@@ -91,8 +104,19 @@ func (fg *funcGen) emitAddress(e sema.Expr) error {
 			if pt, ok := sema.Unqual(x.Base.GetType()).(*sema.PointerType); ok {
 				layoutType = pt.Pointee
 			}
-		} else if err := fg.emitAddress(x.Base); err != nil {
-			return err
+		} else {
+			if x.Base.GetCategory() == sema.LValue {
+				if err := fg.emitAddress(x.Base); err != nil {
+					return err
+				}
+			} else {
+				if err := fg.emitValue(x.Base); err != nil {
+					return err
+				}
+				if err := fg.ensureObjectAddr(x.Base.GetType()); err != nil {
+					return err
+				}
+			}
 		}
 		layout, err := fg.g.lowerLayout(layoutType)
 		if err != nil {
@@ -111,12 +135,12 @@ func (fg *funcGen) emitAddress(e sema.Expr) error {
 		if err := fg.ensureObjectAddr(x.Base.GetType()); err != nil {
 			return err
 		}
-		if err := fg.emitValue(x.Index); err != nil {
+		if _, err := fg.emitPtrIndexValue(x.Index); err != nil {
 			return err
 		}
 		return fg.emitPtrAddForExpr(x.Base, x.Base.GetType())
 	case *sema.StringLit:
-		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrString(fg.g.internString(x.Value)))
+		fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrString(fg.g.internStringLit(x)))
 		return nil
 	case *sema.CompoundLit:
 		object, err := fg.newLocalObject(".compound", x.T)
