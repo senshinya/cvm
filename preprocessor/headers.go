@@ -496,6 +496,9 @@ func mathHeader() string {
 #define FP_SUBNORMAL 3
 #define FP_ZERO 4
 #ifndef __CVM_TGMATH_INCLUDE
+float nanf(const char *);
+double nan(const char *);
+long double nanl(const char *);
 float fabsf(float);
 double fabs(double);
 long double fabsl(long double);

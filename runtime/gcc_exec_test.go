@@ -927,7 +927,7 @@ int main(void)
 func TestBuiltinFloatingConstantsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
-double nan(const char *);
+#include <math.h>
 
 int main(void)
 {
@@ -935,7 +935,9 @@ int main(void)
   double h = __builtin_huge_val();
   long double hl = __builtin_huge_vall();
   double n = __builtin_nan("");
+  float nf = nanf("");
   double m = nan("");
+  long double nl = nanl("");
 
   if (!(hf > 1e30f))
     return 1;
@@ -945,7 +947,11 @@ int main(void)
     return 3;
   if (!(n != n))
     return 4;
-  return m != m ? 0 : 5;
+  if (!(nf != nf))
+    return 5;
+  if (!(m != m))
+    return 6;
+  return nl != nl ? 0 : 7;
 }
 `
 	st := runGCCExecFixture(t, "builtin-floating-constants-runtime.c", source)

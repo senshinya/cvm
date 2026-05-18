@@ -1769,8 +1769,10 @@ func registerMathExterns(r *ExternRegistry) {
 	r.Register("__builtin_huge_valf", mathConstantFloatExtern("__builtin_huge_valf", bytecode.TypeF32, math.Inf(1)))
 	r.Register("__builtin_huge_val", mathConstantFloatExtern("__builtin_huge_val", bytecode.TypeF64, math.Inf(1)))
 	r.Register("__builtin_huge_vall", mathConstantFloatExtern("__builtin_huge_vall", bytecode.TypeFLong, math.Inf(1)))
-	r.Register("__builtin_nan", mathNanExtern("__builtin_nan"))
-	r.Register("nan", mathNanExtern("nan"))
+	r.Register("__builtin_nan", mathNanExtern("__builtin_nan", bytecode.TypeF64))
+	r.Register("nanf", mathNanExtern("nanf", bytecode.TypeF32))
+	r.Register("nan", mathNanExtern("nan", bytecode.TypeF64))
+	r.Register("nanl", mathNanExtern("nanl", bytecode.TypeFLong))
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_atan2", math.Atan2)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_hypot", math.Hypot)
 	registerTgmathRealBinaryExterns(r, "__cvm_tgmath_fdim", math.Dim)
@@ -4056,7 +4058,7 @@ func mathConstantFloatExtern(name string, ret bytecode.ValueType, value float64)
 	}
 }
 
-func mathNanExtern(name string) ExternFunc {
+func mathNanExtern(name string, ret bytecode.ValueType) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
@@ -4064,7 +4066,7 @@ func mathNanExtern(name string) ExternFunc {
 		if !isPointerType(args[0].Type) {
 			return Value{}, nil, fmt.Errorf("%s expects string argument", name)
 		}
-		return FloatValue(bytecode.TypeF64, math.NaN()), nil, nil
+		return FloatValue(ret, math.NaN()), nil, nil
 	}
 }
 
