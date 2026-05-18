@@ -104,6 +104,8 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("fseek", fseekExtern("fseek", r))
 	r.Register("ftell", ftellExtern("ftell", r))
 	r.Register("rewind", rewindExtern("rewind", r))
+	r.Register("fgetpos", fgetposExtern("fgetpos", r))
+	r.Register("fsetpos", fsetposExtern("fsetpos", r))
 	r.Register("setbuf", setbufExtern("setbuf", r))
 	r.Register("setvbuf", setvbufExtern("setvbuf", r))
 	r.Register("flockfile", streamLockExtern("flockfile", r, false))
@@ -613,6 +615,48 @@ func rewindExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		delete(r.hostEOF, args[0].Int)
 		return Value{}, nil, nil
+	}
+}
+
+func fgetposExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream and position pointers", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, _, err := ec.Memory.rangeAccess(args[1].Int, int64(valueSize(ec.Memory.target, bytecode.TypeI64)), true); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, -1), nil, nil
+	}
+}
+
+func fsetposExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream and position pointers", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, _, err := ec.Memory.rangeAccess(args[1].Int, int64(valueSize(ec.Memory.target, bytecode.TypeI64)), false); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, -1), nil, nil
 	}
 }
 

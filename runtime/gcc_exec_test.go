@@ -251,12 +251,17 @@ func TestStdioPositionStubsExecuteThroughRuntime(t *testing.T) {
 
 int main(void)
 {
+  fpos_t pos;
   if (fseek(stdout, 0, SEEK_SET) != -1)
     return 1;
   if (ftell(stdout) != -1L)
     return 2;
   rewind(stdin);
-  return SEEK_SET == 0 && SEEK_CUR == 1 && SEEK_END == 2 ? 0 : 3;
+  if (fgetpos(stdout, &pos) != -1)
+    return 3;
+  if (fsetpos(stdout, &pos) != -1)
+    return 4;
+  return SEEK_SET == 0 && SEEK_CUR == 1 && SEEK_END == 2 ? 0 : 5;
 }
 `
 	st := runGCCExecFixture(t, "stdio-position-stubs-runtime.c", source)

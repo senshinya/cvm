@@ -62,6 +62,7 @@ func stdioHeader() string {
 #define __CVM_STDIO_H
 typedef __SIZE_TYPE__ size_t;
 typedef struct __cvm_FILE FILE;
+typedef long fpos_t;
 #define EOF (-1)
 #define _IOFBF 0
 #define _IOLBF 1
@@ -84,6 +85,8 @@ char *tmpnam(char *);
 int fseek(FILE *, long, int);
 long ftell(FILE *);
 void rewind(FILE *);
+int fgetpos(FILE * restrict, fpos_t * restrict);
+int fsetpos(FILE *, const fpos_t *);
 int fputs(const char * restrict, FILE * restrict);
 int fputs_unlocked(const char * restrict, FILE * restrict);
 int fputc(int, FILE *);
