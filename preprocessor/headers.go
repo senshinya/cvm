@@ -36,6 +36,8 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return ctypeHeader(), true
 	case "locale.h":
 		return localeHeader(), true
+	case "time.h":
+		return timeHeader(), true
 	case "string.h":
 		return stringHeader(), true
 	case "strings.h":
@@ -201,6 +203,19 @@ func localeHeader() string {
 #define LC_NUMERIC 4
 #define LC_TIME 5
 char *setlocale(int, const char *);
+#endif
+`
+}
+
+func timeHeader() string {
+	return `#ifndef __CVM_TIME_H
+#define __CVM_TIME_H
+typedef long clock_t;
+typedef long time_t;
+#define CLOCKS_PER_SEC 1000000L
+clock_t clock(void);
+double difftime(time_t, time_t);
+time_t time(time_t *);
 #endif
 `
 }

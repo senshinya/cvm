@@ -139,6 +139,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("system", systemExtern("system"))
 	r.Register("atexit", atexitExtern("atexit"))
 	r.Register("setlocale", setlocaleExtern("setlocale", r))
+	r.Register("clock", clockExtern("clock"))
+	r.Register("difftime", difftimeExtern("difftime"))
+	r.Register("time", timeExtern("time"))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
@@ -989,6 +992,48 @@ func setlocaleExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, err
 		}
 		return PtrValue(addr), nil, nil
+	}
+}
+
+func clockExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 0 {
+			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
+		}
+		return IntValue(bytecode.TypeI64, 0), nil, nil
+	}
+}
+
+func difftimeExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects time arguments", name)
+		}
+		return FloatValue(bytecode.TypeF64, float64(signedInt(args[0])-signedInt(args[1]))), nil, nil
+	}
+}
+
+func timeExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects result pointer", name)
+		}
+		now := IntValue(bytecode.TypeI64, 0)
+		if args[0].Int != 0 {
+			if ec == nil || ec.Memory == nil {
+				return Value{}, nil, fmt.Errorf("%s requires memory", name)
+			}
+			if err := ec.Memory.Store(args[0].Int, bytecode.TypeI64, 8, now); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return now, nil, nil
 	}
 }
 

@@ -1007,6 +1007,30 @@ int main(void)
 	}
 }
 
+func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <time.h>
+
+int main(void)
+{
+  time_t now = 99;
+  if (CLOCKS_PER_SEC != 1000000L)
+    return 1;
+  if (time(0) != 0)
+    return 2;
+  if (time(&now) != 0 || now != 0)
+    return 3;
+  if (difftime(7, 2) != 5.0)
+    return 4;
+  return clock() == 0 ? 0 : 5;
+}
+`
+	st := runGCCExecFixture(t, "time-header-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibDivExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>

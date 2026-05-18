@@ -121,6 +121,26 @@ int categories[] = { LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY, LC_NUMERIC, LC_T
 	}
 }
 
+func TestBuiltinTimeHeaderDeclaresRuntimeSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <time.h>
+clock_t c;
+time_t t;
+long ticks = CLOCKS_PER_SEC;
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	for _, name := range []string{"clock_t", "time_t", "clock", "difftime", "time"} {
+		if !hasIdentifier(res.Tokens, name) {
+			t.Fatalf("time identifier %q missing: %#v", name, res.Tokens)
+		}
+	}
+	if !hasLexeme(res.Tokens, "1000000L") {
+		t.Fatalf("CLOCKS_PER_SEC did not expand: %#v", res.Tokens)
+	}
+}
+
 func TestBuiltinStringHeaderDeclaresReadOnlySurface(t *testing.T) {
 	res, err := PreprocessSource("main.c", `
 #include <string.h>
