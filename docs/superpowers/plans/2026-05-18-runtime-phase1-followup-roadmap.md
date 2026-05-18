@@ -840,6 +840,22 @@ go test ./runtime -run 'TestPlainMathBinaryExterns|TestMathPlainUnaryExecuteThro
   - `feat(runtime): add plain nextafter math externs`
   - `docs: record plain nextafter math externs`
 
+## Plan 63: Plain Rint/Logb `math.h` Helpers - Completed
+
+The pre-plan adjustment returned to unary real math helpers and selected stable exact cases. This plan adds plain `nearbyint*`, `rint*`, and `logb*` declarations and extern registrations.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain rint logb math externs`
+  - `docs: record plain rint logb math externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
