@@ -1467,6 +1467,12 @@ func registerMathExterns(r *ExternRegistry) {
 	}
 	registerTgmathRealExterns(r, "__cvm_tgmath_sin", math.Sin)
 	registerTgmathRealExterns(r, "__cvm_tgmath_exp", math.Exp)
+	r.Register("fabsf", mathUnaryFloatExtern("fabsf", bytecode.TypeF32, math.Abs))
+	r.Register("fabs", mathUnaryFloatExtern("fabs", bytecode.TypeF64, math.Abs))
+	r.Register("fabsl", mathUnaryFloatExtern("fabsl", bytecode.TypeFLong, math.Abs))
+	r.Register("sqrtf", mathUnaryFloatExtern("sqrtf", bytecode.TypeF32, math.Sqrt))
+	r.Register("sqrt", mathUnaryFloatExtern("sqrt", bytecode.TypeF64, math.Sqrt))
+	r.Register("sqrtl", mathUnaryFloatExtern("sqrtl", bytecode.TypeFLong, math.Sqrt))
 	registerTgmathRealExterns(r, "__cvm_tgmath_sqrt", math.Sqrt)
 	registerTgmathRealExterns(r, "__cvm_tgmath_fabs", math.Abs)
 	registerTgmathRealExterns(r, "__cvm_tgmath_cos", math.Cos)

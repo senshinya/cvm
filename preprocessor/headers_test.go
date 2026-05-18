@@ -141,6 +141,20 @@ long ticks = CLOCKS_PER_SEC;
 	}
 }
 
+func TestBuiltinMathHeaderDeclaresRuntimeSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <math.h>
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	for _, name := range []string{"fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl"} {
+		if !hasIdentifier(res.Tokens, name) {
+			t.Fatalf("math identifier %q missing: %#v", name, res.Tokens)
+		}
+	}
+}
+
 func TestBuiltinErrnoHeaderDeclaresRuntimeSurface(t *testing.T) {
 	res, err := PreprocessSource("main.c", `
 #include <errno.h>

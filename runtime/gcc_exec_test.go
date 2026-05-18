@@ -321,6 +321,31 @@ int main(void)
 	}
 }
 
+func TestMathPlainUnaryExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <math.h>
+
+int main(void)
+{
+  if (fabs(-3.0) != 3.0)
+    return 1;
+  if (fabsf(-2.0f) != 2.0f)
+    return 2;
+  if (fabsl(-4.0L) != 4.0L)
+    return 3;
+  if (sqrt(9.0) != 3.0)
+    return 4;
+  if (sqrtf(4.0f) != 2.0f)
+    return 5;
+  return sqrtl(16.0L) == 4.0L ? 0 : 6;
+}
+`
+	st := runGCCExecFixture(t, "math-plain-unary-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathCosExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

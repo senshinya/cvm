@@ -406,6 +406,12 @@ func mathHeader() string {
 #define FP_NORMAL 2
 #define FP_SUBNORMAL 3
 #define FP_ZERO 4
+float fabsf(float);
+double fabs(double);
+long double fabsl(long double);
+float sqrtf(float);
+double sqrt(double);
+long double sqrtl(long double);
 int __cvm_fpclassifyf(float);
 int __cvm_fpclassify(double);
 int __cvm_fpclassifyl(long double);
