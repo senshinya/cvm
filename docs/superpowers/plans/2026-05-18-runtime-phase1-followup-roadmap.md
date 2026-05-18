@@ -435,6 +435,22 @@ go test ./runtime -run 'TestStdioTmpnamStub|TestStdioTmpnamExecuteThroughRuntime
   - `feat(runtime): add stdio tmpnam stub`
   - `docs: record stdio tmpnam stub`
 
+## Plan 38: `stdlib.h` `_Exit` Immediate Exit - Completed
+
+Add the C99 `_Exit` declaration, register it in the default extern registry, and share the existing exit-code termination path. Since phase 1 does not maintain an `atexit` callback queue, `_Exit` is currently equivalent to `exit` at runtime.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestStdlibProcessTerminationExterns|TestStdlibImmediateExitExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdlib immediate exit extern`
+  - `docs: record stdlib immediate exit extern`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
