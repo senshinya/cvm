@@ -1390,7 +1390,7 @@ The pre-plan adjustment compared the builtin header smoke surfaces for stdlib, s
 
 ## Plan 112: Plain Stdio Formatter Coverage - Completed
 
-The pre-plan adjustment added coverage for the existing plain `sprintf` and `snprintf` extern registrations. The focused C test includes `<stdio.h>` for the plain prototypes and declares `strcmp` manually, matching existing formatter tests and avoiding the currently unrelated duplicate-`size_t` limitation when combining `<stdio.h>` and `<string.h>`.
+The pre-plan adjustment added coverage for the existing plain `sprintf` and `snprintf` extern registrations. The original focused C test included `<stdio.h>` for the plain prototypes and declared `strcmp` manually, matching existing formatter tests and avoiding the then-unresolved duplicate-`size_t` limitation when combining `<stdio.h>` and `<string.h>`. Plan 147 later updated this test to include `<string.h>` now that shared `size_t` header guards exist.
 
 - Files: `runtime/extern_test.go`, `runtime/gcc_exec_test.go`
 - Focused test:
@@ -1497,6 +1497,24 @@ git diff --check
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./codegen -count=1
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./... -count=1
 ```
+
+## Plan 146: Remaining Runtime Fixture Candidate Scan - Completed
+
+The pre-plan adjustment rescanned GCC accept fixtures with `main`. The C99 `{ dg-do run }` fixtures are already represented in `runtime/testdata/gcc-exec/manifest.tsv`. The remaining compile-only `main` candidates were not better low-risk direct runtime targets: `inline-10.c` intentionally returns 1, `transparent-union-1.c` calls unresolved extern declarations, `pr70418.c` relies on GNU nested-function/VLA-in-struct extension behavior, and the originally requested VLA/conversion surfaces already have direct runtime-derived coverage. The next coherent increment was therefore adjusted toward exercising the newly fixed header composition through an existing runtime test.
+
+## Plan 147: Plain Formatter Header Composition Runtime Coverage - Completed
+
+Updated `TestPlainSprintfExecutesThroughRuntime` to include both `<stdio.h>` and `<string.h>` instead of manually declaring `strcmp`. This preserves plain `sprintf`/`snprintf` execution coverage and adds runtime compile-and-execute coverage for the shared guarded `size_t` typedef path.
+
+- Files: `runtime/gcc_exec_test.go`
+- Focused test:
+
+```bash
+go test ./runtime -run TestPlainSprintfExecutesThroughRuntime -count=1 -v
+```
+
+- Commit message:
+  - `test(runtime): include string header in plain sprintf coverage`
 
 ## Continuous Execution Rule
 

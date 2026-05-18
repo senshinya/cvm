@@ -92,7 +92,7 @@ Plan 97 rechecked `codegen/testdata/gcc-bytecode-compile.tsv`: it still has 232 
 
 Plans 103-106 scanned long double and complex GCC accept candidates after the VLA increment. No new low-risk entry-point fixture remained: the only long-double `main` fixture is already in the runtime manifest, and complex accept files are either no-entry compile diagnostics or already covered by the direct complex runtime suite. Plan 110 rejected `overflow-2.c` as a runtime candidate after system `cc` also returned exit 1; the fixture is compile-only warning coverage, not an exit-0 runtime test. Plan 118 then added direct runtime coverage for `pr27639.c`, using a fixture-specific higher step limit for its 50000-iteration static array loop.
 
-Plan 111 rescanned stdlib/string/stdio header-vs-registry coverage. The only actionable stdio mismatch was coverage bookkeeping for plain `sprintf` and `snprintf`: the externs were already registered, but the default registry smoke list and GCC runtime execution coverage only named builtin/chk variants. Plan 112 added plain stdio formatting coverage. During the focused test, including both `<stdio.h>` and `<string.h>` exposed the existing duplicate `size_t` typedef limitation, so the runtime test keeps `<stdio.h>` and declares `strcmp` manually like the existing formatter tests.
+Plan 111 rescanned stdlib/string/stdio header-vs-registry coverage. The only actionable stdio mismatch was coverage bookkeeping for plain `sprintf` and `snprintf`: the externs were already registered, but the default registry smoke list and GCC runtime execution coverage only named builtin/chk variants. Plan 112 added plain stdio formatting coverage. A later header guard increment fixed the duplicate `size_t` typedef limitation, and the plain formatter runtime test now includes both `<stdio.h>` and `<string.h>`.
 
 Plan 117 rescanned the remaining self-contained compile-only `main` candidates and selected `pr71969-1.c`. Plan 118 added direct runtime coverage for its inline function calls and volatile global increments using the fixture-specific high step-limit helper.
 
@@ -138,6 +138,9 @@ Recent commits at the tip of this branch:
   - Adds plain `sprintf` and `snprintf` to the default extern registry smoke list.
   - Adds GCC runtime execution coverage through `<stdio.h>` for plain `sprintf`/`snprintf`.
   - Confirms plain stdio formatter externs share the existing builtin formatter implementation path.
+- `55b3876 test(runtime): include string header in plain sprintf coverage`
+  - Updates the plain formatter runtime source to include both `<stdio.h>` and `<string.h>`.
+  - Confirms the shared guarded `size_t` typedef path is exercised during runtime compile-and-execute coverage.
 
 - `43f0676 test(runtime): execute GCC large static array loop`
   - Adds direct runtime coverage for `sema/testdata/gcc-c99-extra/accept/pr27639.c`.
