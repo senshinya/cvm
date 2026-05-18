@@ -69,6 +69,9 @@ typedef struct __cvm_FILE FILE;
 #define BUFSIZ 8192
 #define L_tmpnam 20
 #define TMP_MAX 25
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
 extern FILE *stdin;
 extern FILE *stdout;
 extern FILE *stderr;
@@ -78,6 +81,9 @@ FILE *fopen(const char * restrict, const char * restrict);
 FILE *freopen(const char * restrict, const char * restrict, FILE * restrict);
 FILE *tmpfile(void);
 char *tmpnam(char *);
+int fseek(FILE *, long, int);
+long ftell(FILE *);
+void rewind(FILE *);
 int fputs(const char * restrict, FILE * restrict);
 int fputs_unlocked(const char * restrict, FILE * restrict);
 int fputc(int, FILE *);

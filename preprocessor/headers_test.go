@@ -40,7 +40,7 @@ func TestBuiltinStdioHeaderDeclaresFormattingSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"FILE", "size_t", "stdin", "stdout", "stderr", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fputs", "fputs_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "perror", "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vprintf_unlocked", "vfprintf", "vfprintf_unlocked", "vsprintf", "vsnprintf"} {
+	for _, name := range []string{"FILE", "size_t", "stdin", "stdout", "stderr", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fputs", "fputs_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "perror", "printf", "fprintf", "sprintf", "snprintf", "vprintf", "vprintf_unlocked", "vfprintf", "vfprintf_unlocked", "vsprintf", "vsnprintf"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("stdio identifier %q missing: %#v", name, res.Tokens)
 		}
@@ -50,7 +50,7 @@ func TestBuiltinStdioHeaderDeclaresFormattingSurface(t *testing.T) {
 func TestBuiltinStdioHeaderDefinesBufferingMacros(t *testing.T) {
 	res, err := PreprocessSource("main.c", `
 #include <stdio.h>
-int values[] = { _IOFBF, _IOLBF, _IONBF, BUFSIZ, L_tmpnam, TMP_MAX };
+int values[] = { _IOFBF, _IOLBF, _IONBF, BUFSIZ, L_tmpnam, TMP_MAX, SEEK_SET, SEEK_CUR, SEEK_END };
 `, Options{})
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)

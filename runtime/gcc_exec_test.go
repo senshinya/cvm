@@ -245,6 +245,26 @@ func TestGCCExecutionFixtures(t *testing.T) {
 	}
 }
 
+func TestStdioPositionStubsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (fseek(stdout, 0, SEEK_SET) != -1)
+    return 1;
+  if (ftell(stdout) != -1L)
+    return 2;
+  rewind(stdin);
+  return SEEK_SET == 0 && SEEK_CUR == 1 && SEEK_END == 2 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "stdio-position-stubs-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathSinFloatExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

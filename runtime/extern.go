@@ -101,6 +101,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	for _, name := range []string{"fileno", "fileno_unlocked"} {
 		r.Register(name, filenoExtern(name, r))
 	}
+	r.Register("fseek", fseekExtern("fseek", r))
+	r.Register("ftell", ftellExtern("ftell", r))
+	r.Register("rewind", rewindExtern("rewind", r))
 	r.Register("setbuf", setbufExtern("setbuf", r))
 	r.Register("setvbuf", setvbufExtern("setvbuf", r))
 	r.Register("flockfile", streamLockExtern("flockfile", r, false))
@@ -564,6 +567,52 @@ func filenoExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
 		return IntValue(bytecode.TypeI32, int64(fd)), nil, nil
+	}
+}
+
+func fseekExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream, offset, and whence arguments", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		return IntValue(bytecode.TypeI32, -1), nil, nil
+	}
+}
+
+func ftellExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream pointer", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		return IntValue(bytecode.TypeI64, -1), nil, nil
+	}
+}
+
+func rewindExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream pointer", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		delete(r.hostEOF, args[0].Int)
+		return Value{}, nil, nil
 	}
 }
 
