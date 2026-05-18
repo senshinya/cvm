@@ -984,6 +984,22 @@ go test ./runtime -run 'TestComplexProjectionExterns|TestComplexProjectionExecut
   - `feat(runtime): add complex projection externs`
   - `docs: record complex projection externs`
 
+## Plan 72: Plain `<complex.h>` Absolute-Value Helpers - Completed
+
+The pre-plan adjustment selected `cabs*` because the runtime already had `__builtin_cabs*` helper support while the plain `<complex.h>` declarations and default registry names were still missing.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinComplexHeaderDeclaresProjectionSurface -count=1 -v
+go test ./runtime -run 'TestComplexAbsExterns|TestComplexAbsExecutesThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add complex abs externs`
+  - `docs: record complex abs externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
