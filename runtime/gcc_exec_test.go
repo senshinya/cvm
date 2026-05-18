@@ -1204,6 +1204,31 @@ int main(void)
 	}
 }
 
+func TestStringReverseAndSetSearchExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  const char *text = "abacad";
+
+  if (strrchr(text, 'a') != text + 4)
+    return 1;
+  if (strrchr(text, 0) != text + 6)
+    return 2;
+  if (strrchr(text, 'z') != 0)
+    return 3;
+  if (strpbrk(text, "xyc") != text + 3)
+    return 4;
+  return strpbrk(text, "xyz") == 0 ? 0 : 5;
+}
+`
+	st := runGCCExecFixture(t, "string-reverse-set-search-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestPlainMemoryOperationsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <string.h>

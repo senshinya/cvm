@@ -786,9 +786,11 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
 		r.Register(name, stringCharSearchExtern(name))
 	}
+	r.Register("strrchr", stringReverseCharSearchExtern("strrchr"))
 	for _, name := range []string{"__builtin_strstr", "strstr"} {
 		r.Register(name, stringSearchExtern(name))
 	}
+	r.Register("strpbrk", stringSetSearchExtern("strpbrk"))
 	r.Register("strncmp", stringNCompareExtern("strncmp"))
 	r.Register("memchr", memoryCharSearchExtern("memchr"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
@@ -1287,6 +1289,41 @@ func stringCharSearchExtern(name string) ExternFunc {
 	}
 }
 
+func stringReverseCharSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string and integer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		ch := byte(unsignedInt(args[1]))
+		if ch == 0 {
+			addr, err := addSignedOffset(args[0].Int, int64(len(s)))
+			if err != nil {
+				return Value{}, nil, err
+			}
+			return PtrValue(addr), nil, nil
+		}
+		idx := strings.LastIndexByte(s, ch)
+		if idx < 0 {
+			return PtrValue(0), nil, nil
+		}
+		addr, err := addSignedOffset(args[0].Int, int64(idx))
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
 func stringSearchExtern(name string) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
@@ -1311,6 +1348,39 @@ func stringSearchExtern(name string) ExternFunc {
 			return PtrValue(0), nil, nil
 		}
 		return PtrValue(args[0].Int + uint64(idx)), nil, nil
+	}
+}
+
+func stringSetSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		accept, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		for i := 0; i < len(s); i++ {
+			if strings.IndexByte(accept, s[i]) < 0 {
+				continue
+			}
+			addr, err := addSignedOffset(args[0].Int, int64(i))
+			if err != nil {
+				return Value{}, nil, err
+			}
+			return PtrValue(addr), nil, nil
+		}
+		return PtrValue(0), nil, nil
 	}
 }
 

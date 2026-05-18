@@ -65,9 +65,13 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(charPtr, []Type{constCharPtr, intT}, false, true)
 	case "strchr":
 		return s.Types.Function(charPtr, []Type{constCharPtr, intT}, false, true)
+	case "strrchr":
+		return s.Types.Function(charPtr, []Type{constCharPtr, intT}, false, true)
 	case "__builtin_strstr":
 		return s.Types.Function(charPtr, []Type{constCharPtr, constCharPtr}, false, true)
 	case "strstr":
+		return s.Types.Function(charPtr, []Type{constCharPtr, constCharPtr}, false, true)
+	case "strpbrk":
 		return s.Types.Function(charPtr, []Type{constCharPtr, constCharPtr}, false, true)
 	case "memchr":
 		return s.Types.Function(voidPtr, []Type{constVoidPtr, intT, sizeT}, false, true)
