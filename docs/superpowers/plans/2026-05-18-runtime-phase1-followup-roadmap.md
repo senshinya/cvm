@@ -243,7 +243,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib realloc extern`
   - `docs: record stdlib realloc extern`
 
-## Plan 26: `string.h` `strerror`
+## Plan 26: `string.h` `strerror` - Completed
 
 Add `strerror` declaration, sema signature, runtime extern, direct coverage, and GCC runtime execution coverage. Phase 1 behavior should return a stable runtime C string for any input error number, using `"error"` as the deterministic message.
 
