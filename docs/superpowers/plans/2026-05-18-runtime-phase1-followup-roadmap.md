@@ -547,6 +547,22 @@ go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThrou
   - `feat(runtime): add plain math unary externs`
   - `docs: record plain math unary externs`
 
+## Plan 45: `string.h` `memccpy` Helper - Completed
+
+The pre-plan adjustment found `mempcpy`, `memcpy`, and `memmove` already covered, while `memccpy` was absent from builtin `<string.h>` and the runtime registry. This plan adds `memccpy` as a narrow memory helper: copy bytes from source to destination through the first matching byte, return the destination pointer just after the match, or return null if no match is copied.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -count=1 -v
+go test ./runtime -run 'TestMemoryCharCopyExtern|TestMemoryCharCopyExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add string memccpy extern`
+  - `docs: record string memccpy extern`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
