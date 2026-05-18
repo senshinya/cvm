@@ -1689,6 +1689,63 @@ The Phase 2 runtime environment milestone is complete. Handoff and roadmap docs 
 - Commit message:
   - `docs: record phase 2 runtime environment closure`
 
+## Plan 167: Memory `va_list` v-format Runtime - Completed
+
+Added a CVM-owned memory `va_list` layout for v-format externs. The first increment covers integer and pointer payloads through `vsprintf`/`vprintf`.
+
+- Files: `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `runtime/testutil_test.go`, `docs/superpowers/plans/2026-05-19-phase2b-memory-va-list.md`
+- Commit message:
+  - `feat(runtime): consume memory backed va lists`
+
+## Plan 168: Memory `va_list` Alias Coverage - Completed
+
+Covered checked buffer v-format and FILE/stdout v-format aliases over the same memory layout.
+
+- Files: `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/superpowers/plans/2026-05-19-phase2b-memory-va-list.md`
+- Commit message:
+  - `test(runtime): cover memory va lists in vformat aliases`
+
+## Plan 169: Memory `va_list` Floating/Count Coverage - Completed
+
+Covered double payloads and `%n` pointer count writes through direct extern and GCC runtime tests.
+
+- Files: `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/superpowers/plans/2026-05-19-phase2b-memory-va-list.md`
+- Commit message:
+  - `test(runtime): cover floating memory va list formats`
+
+## Plan 170: Configured Read-Only File Streams - Completed
+
+Added hermetic registry-backed file contents through `ExternRegistry.AddFile`, with `fopen(path, "r")` returning FILE handles consumed by `fgetc` and `fread`.
+
+- Files: `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/superpowers/plans/2026-05-19-phase2b-file-streams.md`
+- Commit message:
+  - `feat(runtime): open configured read only files`
+
+## Plan 171: Configured File Positioning - Completed
+
+Implemented `fseek`, `ftell`, and `rewind` for configured file handles while preserving standard-stream stub behavior.
+
+- Commit message:
+  - `feat(runtime): seek configured read only files`
+
+## Plan 172: Configured File Write/Mutation - Completed
+
+Added hermetic write-mode file handles, registry-backed `remove`/`rename`, anonymous `tmpfile` read/write streams, and append-mode coverage.
+
+- Commit messages:
+  - `feat(runtime): write configured files`
+  - `feat(runtime): remove and rename configured files`
+  - `feat(runtime): support hermetic tmpfile streams`
+  - `test(runtime): cover configured file append mode`
+
+## Plan 173: Phase 2B Stop Condition - Documented
+
+The remaining Phase 2B item, escaping GNU nested-function trampolines, cannot be implemented as another narrow runtime extern increment. Current bytecode function pointers are plain static function addresses, and `CallIndirect` resolves only those addresses back to globals. Capturing nested functions need a bytecode-level closure/trampoline representation carrying the callee plus static-chain environment. Continue only after writing and approving that representation.
+
+- Files: `docs/bytecode-runtime-handoff.md`, `docs/superpowers/plans/2026-05-18-runtime-phase1-followup-roadmap.md`
+- Commit message:
+  - `docs: record phase 2b runtime closure and blocker`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.
