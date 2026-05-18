@@ -128,6 +128,9 @@ long double complex clogl(long double complex);
 float complex csqrtf(float complex);
 double complex csqrt(double complex);
 long double complex csqrtl(long double complex);
+float complex cpowf(float complex, float complex);
+double complex cpow(double complex, double complex);
+long double complex cpowl(long double complex, long double complex);
 #endif
 `
 }

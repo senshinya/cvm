@@ -2897,6 +2897,31 @@ int main(void)
 	}
 }
 
+func TestComplexPowExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <complex.h>
+
+int main(void)
+{
+  float complex lf = __builtin_complex(1.0f, 0.0f);
+  double complex ld = __builtin_complex(1.0, 0.0);
+  long double complex ll = __builtin_complex(1.0L, 0.0L);
+  float complex rf = __builtin_complex(2.0f, 0.0f);
+  double complex rd = __builtin_complex(2.0, 0.0);
+  long double complex rl = __builtin_complex(2.0L, 0.0L);
+  if (crealf(cpowf(lf, rf)) != 1.0f || cimagf(cpowf(lf, rf)) != 0.0f)
+    return 1;
+  if (creal(cpow(ld, rd)) != 1.0 || cimag(cpow(ld, rd)) != 0.0)
+    return 2;
+  return creall(cpowl(ll, rl)) == 1.0L && cimagl(cpowl(ll, rl)) == 0.0L ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "complex-pow.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathConjExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

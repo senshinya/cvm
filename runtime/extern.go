@@ -1810,6 +1810,7 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathComplexExterns(r, "cexp", cmplx.Exp)
 	registerTgmathComplexExterns(r, "clog", cmplx.Log)
 	registerTgmathComplexExterns(r, "csqrt", cmplx.Sqrt)
+	registerTgmathComplexBinaryExterns(r, "cpow", cmplx.Pow)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_conj", cmplx.Conj)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cproj", cvmComplexProject)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csin", cmplx.Sin)
