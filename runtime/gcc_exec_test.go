@@ -199,6 +199,23 @@ int main(void)
 	}
 }
 
+func TestStdioTmpnamExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (L_tmpnam < 1 || TMP_MAX < 1)
+    return 1;
+  return tmpnam(0) == 0 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "stdio-tmpnam-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCExecutionFixtures(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("testdata", "gcc-exec", "manifest.tsv"))
 	if err != nil {

@@ -59,6 +59,8 @@ typedef struct __cvm_FILE FILE;
 #define _IOLBF 1
 #define _IONBF 2
 #define BUFSIZ 8192
+#define L_tmpnam 20
+#define TMP_MAX 25
 extern FILE *stdin;
 extern FILE *stdout;
 extern FILE *stderr;
@@ -67,6 +69,7 @@ int rename(const char *, const char *);
 FILE *fopen(const char * restrict, const char * restrict);
 FILE *freopen(const char * restrict, const char * restrict, FILE * restrict);
 FILE *tmpfile(void);
+char *tmpnam(char *);
 int fputs(const char * restrict, FILE * restrict);
 int fputs_unlocked(const char * restrict, FILE * restrict);
 int fputc(int, FILE *);
