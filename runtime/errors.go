@@ -70,5 +70,6 @@ func (e *TrapError) Unwrap() error {
 }
 
 type ExitStatus struct {
-	Code int
+	Code       int
+	SkipAtexit bool
 }

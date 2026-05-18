@@ -22,24 +22,25 @@ type ExternContext struct {
 }
 
 type ExternRegistry struct {
-	funcs         map[string]ExternFunc
-	stdin         io.Reader
-	stdout        io.Writer
-	stderr        io.Writer
-	hostWriters   map[uint64]io.Writer
-	hostFDs       map[uint64]int32
-	hostPushback  map[uint64][]byte
-	hostEOF       map[uint64]bool
-	hostError     map[uint64]bool
-	hostClosed    map[uint64]bool
-	hostFiles     map[uint64]*hostFile
-	files         map[string][]byte
-	env           map[string]string
-	stdinHandle   uint64
-	staticStrings map[*Memory]map[string]uint64
-	staticVars    map[*Memory]map[string]uint64
-	strtokNext    map[*Memory]uint64
-	randSeed      uint32
+	funcs          map[string]ExternFunc
+	stdin          io.Reader
+	stdout         io.Writer
+	stderr         io.Writer
+	hostWriters    map[uint64]io.Writer
+	hostFDs        map[uint64]int32
+	hostPushback   map[uint64][]byte
+	hostEOF        map[uint64]bool
+	hostError      map[uint64]bool
+	hostClosed     map[uint64]bool
+	hostFiles      map[uint64]*hostFile
+	files          map[string][]byte
+	env            map[string]string
+	atexitHandlers []uint64
+	stdinHandle    uint64
+	staticStrings  map[*Memory]map[string]uint64
+	staticVars     map[*Memory]map[string]uint64
+	strtokNext     map[*Memory]uint64
+	randSeed       uint32
 }
 
 type hostFile struct {
@@ -183,7 +184,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("srand", srandExtern("srand", r))
 	r.Register("getenv", getenvExtern("getenv", r))
 	r.Register("system", systemExtern("system"))
-	r.Register("atexit", atexitExtern("atexit"))
+	r.Register("atexit", atexitExtern("atexit", r))
 	r.Register("setlocale", setlocaleExtern("setlocale", r))
 	r.Register("clock", clockExtern("clock"))
 	r.Register("difftime", difftimeExtern("difftime"))
@@ -241,6 +242,22 @@ func (r *ExternRegistry) SetEnv(name, value string) {
 		return
 	}
 	r.env[name] = value
+}
+
+func (r *ExternRegistry) registerAtexitHandler(addr uint64) {
+	if r == nil {
+		return
+	}
+	r.atexitHandlers = append(r.atexitHandlers, addr)
+}
+
+func (r *ExternRegistry) takeAtexitHandlers() []uint64 {
+	if r == nil || len(r.atexitHandlers) == 0 {
+		return nil
+	}
+	handlers := append([]uint64(nil), r.atexitHandlers...)
+	r.atexitHandlers = nil
+	return handlers
 }
 
 func (w hostFileWriter) Write(p []byte) (int, error) {
@@ -1384,7 +1401,7 @@ func systemExtern(name string) ExternFunc {
 	}
 }
 
-func atexitExtern(name string) ExternFunc {
+func atexitExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
@@ -1392,6 +1409,7 @@ func atexitExtern(name string) ExternFunc {
 		if !isPointerType(args[0].Type) {
 			return Value{}, nil, fmt.Errorf("%s expects function pointer", name)
 		}
+		r.registerAtexitHandler(args[0].Int)
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
@@ -1405,7 +1423,7 @@ func exitExtern(name string) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		return Value{}, &ExitStatus{Code: code}, nil
+		return Value{}, &ExitStatus{Code: code, SkipAtexit: name == "_Exit"}, nil
 	}
 }
 

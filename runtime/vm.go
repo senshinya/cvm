@@ -23,6 +23,7 @@ type VM struct {
 
 type frame struct {
 	fn             *bytecode.Function
+	entry          bool
 	pc             int
 	locals         []Value
 	variadicArgs   []Value
@@ -59,7 +60,7 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 		closures: make(map[uint64]closure),
 		limit:    opts.StepLimit,
 	}
-	if err := vm.pushFrame(p.entryFunc, p.entryArgs); err != nil {
+	if err := vm.pushFrameAsEntry(p.entryFunc, p.entryArgs); err != nil {
 		return ExitStatus{}, err
 	}
 	for {
@@ -72,12 +73,29 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 			if cleanupErr != nil {
 				return st, cleanupErr
 			}
-			return st, err
+			if !st.SkipAtexit {
+				atexitStatus, atexitDone, atexitErr := vm.runAtexitHandlers(ctx)
+				if atexitErr != nil {
+					return st, atexitErr
+				}
+				if atexitDone {
+					st = atexitStatus
+				}
+			}
+			return st, nil
 		}
 	}
 }
 
 func (vm *VM) pushFrame(funcID int, args []Value) error {
+	return vm.pushFrameWithMode(funcID, args, false)
+}
+
+func (vm *VM) pushFrameAsEntry(funcID int, args []Value) error {
+	return vm.pushFrameWithMode(funcID, args, true)
+}
+
+func (vm *VM) pushFrameWithMode(funcID int, args []Value, entry bool) error {
 	if funcID < 0 || funcID >= len(vm.program.module.Functions) {
 		return vm.trap("invalid function id")
 	}
@@ -148,6 +166,7 @@ func (vm *VM) pushFrame(funcID int, args []Value) error {
 
 	vm.frames = append(vm.frames, frame{
 		fn:             fn,
+		entry:          entry,
 		locals:         locals,
 		variadicArgs:   variadicArgs,
 		vaLists:        make(map[int]int),
@@ -556,7 +575,7 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if err != nil {
 			return ExitStatus{}, true, err
 		}
-		if len(vm.frames) == 1 {
+		if fr.entry {
 			code, err := v.ExitCode()
 			if err != nil {
 				return ExitStatus{}, true, vm.trapWithCause("invalid exit code", err)
@@ -571,7 +590,7 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		}
 		vm.stack = append(vm.stack, v)
 	case bytecode.OpReturnVoid:
-		if len(vm.frames) == 1 {
+		if fr.entry {
 			return ExitStatus{}, true, vm.trap("void return from entry function")
 		}
 		if err := vm.popFrame(); err != nil {
@@ -582,7 +601,7 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if err != nil {
 			return ExitStatus{}, true, err
 		}
-		if len(vm.frames) == 1 {
+		if fr.entry {
 			return ExitStatus{}, true, vm.trap("object return from entry function")
 		}
 		retAddr, err := vm.copyReturnObject(ins.Object, addr.Int)
@@ -721,6 +740,56 @@ func (vm *VM) cleanupFrames() error {
 		}
 	}
 	return nil
+}
+
+func (vm *VM) runAtexitHandlers(ctx context.Context) (ExitStatus, bool, error) {
+	if vm.program == nil || vm.program.externReg == nil {
+		return ExitStatus{}, false, nil
+	}
+	handlers := vm.program.externReg.takeAtexitHandlers()
+	for i := len(handlers) - 1; i >= 0; i-- {
+		st, done, err := vm.invokeAtexitHandler(ctx, handlers[i])
+		if done || err != nil {
+			cleanupErr := vm.cleanupFrames()
+			if err != nil {
+				return st, done, err
+			}
+			if cleanupErr != nil {
+				return st, done, cleanupErr
+			}
+			return st, done, nil
+		}
+		for len(vm.frames) != 0 {
+			st, done, err = vm.step(ctx)
+			if done || err != nil {
+				cleanupErr := vm.cleanupFrames()
+				if err != nil {
+					return st, done, err
+				}
+				if cleanupErr != nil {
+					return st, done, cleanupErr
+				}
+				return st, done, nil
+			}
+		}
+	}
+	return ExitStatus{}, false, nil
+}
+
+func (vm *VM) invokeAtexitHandler(ctx context.Context, addr uint64) (ExitStatus, bool, error) {
+	globalID, err := vm.program.FuncGlobalByAddress(addr)
+	if err != nil {
+		return ExitStatus{}, true, vm.trapWithCause("invalid atexit handler", err)
+	}
+	g, err := vm.program.global(globalID)
+	if err != nil {
+		return ExitStatus{}, true, vm.trapWithCause("invalid atexit handler", err)
+	}
+	sig := vm.program.module.Sigs[g.Sig]
+	if sig.Ret != bytecode.TypeVoid || sig.Variadic || len(sig.Params) != 0 {
+		return ExitStatus{}, true, vm.trap(fmt.Sprintf("atexit handler global %d has incompatible signature", globalID))
+	}
+	return vm.invokeGlobal(ctx, globalID, g.Sig, nil)
 }
 
 func (vm *VM) popCallArgs(sigID, argc int) ([]Value, error) {

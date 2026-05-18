@@ -305,7 +305,34 @@ git push
 
 ## Milestone 8: Program Termination Semantics
 
-**Calibration:** Pending after environment runtime.
+**Calibration:** Completed after environment runtime. `exit`, `_Exit`, and `atexit` were all declared and executable, but `atexit` only accepted callback pointers and returned success. The VM treated every single-frame return as the program entry return, so normal top-level callback execution also needed a small frame-mode distinction before void handlers could be scheduled after program termination.
+
+**Files:**
+- Modify: `runtime/errors.go`
+- Modify: `runtime/extern.go`
+- Modify: `runtime/program.go`
+- Modify: `runtime/vm.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add failing termination tests**
+
+Added GCC-runtime coverage showing `atexit` handlers must run in reverse registration order after `main` returns, must run when `exit(code)` terminates the program, and must not run for `_Exit(code)`.
+
+- [x] **Step 2: Execute registered `atexit` handlers**
+
+Added deterministic handler storage on the extern registry, retained the registry on loaded programs, marked `_Exit` statuses as skipping cleanup, and taught `Run` to drain handlers after normal termination. The VM now distinguishes the true entry frame from top-level callback frames so void cleanup callbacks can return normally.
+
+- [x] **Step 3: Verify, commit, and push termination semantics**
+
+Run Common Verification, then:
+
+```bash
+git add runtime/errors.go runtime/extern.go runtime/program.go runtime/vm.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(runtime): execute atexit handlers"
+git push
+```
 
 ## Milestone 9: Long Double And Complex Runtime Fidelity Sweep
 

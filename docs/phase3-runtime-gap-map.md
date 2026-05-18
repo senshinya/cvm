@@ -10,10 +10,9 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 
 ## Current High-Value Gaps
 
-1. `atexit` currently accepts callbacks without executing them. Phase 3 can add deterministic callback execution at normal program termination.
-2. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
-3. Runtime diagnostics should be audited after the larger hosted surfaces settle.
-4. `cvm run` should expose only stable deterministic runtime knobs.
+1. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
+2. Runtime diagnostics should be audited after the larger hosted surfaces settle.
+3. `cvm run` should expose only stable deterministic runtime knobs.
 
 ## Closed During Phase 3
 
@@ -29,6 +28,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 - Append-mode files now force writes to the current end of the hermetic file even after `fseek`, matching `a`/`a+` write positioning.
 - The hermetic file mode milestone is closed for C99 `r`, `w`, `a`, and `+` behavior. Strict read/write sequencing rules for update streams remain a documented residual limit.
 - `getenv` now reads only explicit `ExternRegistry.SetEnv` values and remains isolated from the ambient host environment by default.
+- `atexit` now records registered callbacks and the VM runs them in reverse registration order after normal `main` return or `exit`. `_Exit` remains immediate and skips registered callbacks.
 
 ## Residual Bounded Runtime Surface
 

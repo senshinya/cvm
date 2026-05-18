@@ -1459,6 +1459,97 @@ int main(void)
 	}
 }
 
+func TestStdlibAtexitRunsHandlersInReverseOrderThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+#include <stdio.h>
+
+static void first(void)
+{
+  putchar('1');
+}
+
+static void second(void)
+{
+  putchar('2');
+}
+
+int main(void)
+{
+  if (atexit(first) != 0)
+    return 1;
+  if (atexit(second) != 0)
+    return 2;
+  return 0;
+}
+`
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdlib-atexit-order-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+	if got := out.String(); got != "21" {
+		t.Fatalf("stdout = %q, want %q", got, "21")
+	}
+}
+
+func TestStdlibExitRunsAtexitHandlersThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+#include <stdio.h>
+
+static void cleanup(void)
+{
+  putchar('x');
+}
+
+int main(void)
+{
+  if (atexit(cleanup) != 0)
+    return 1;
+  exit(7);
+}
+`
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdlib-exit-atexit-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+	if got := out.String(); got != "x" {
+		t.Fatalf("stdout = %q, want %q", got, "x")
+	}
+}
+
+func TestStdlibUnderscoreExitSkipsAtexitHandlersThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+#include <stdio.h>
+
+static void cleanup(void)
+{
+  putchar('x');
+}
+
+int main(void)
+{
+  if (atexit(cleanup) != 0)
+    return 1;
+  _Exit(9);
+}
+`
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdlib-underscore-exit-atexit-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 9 {
+		t.Fatalf("exit code = %d, want 9", st.Code)
+	}
+	if got := out.String(); got != "" {
+		t.Fatalf("stdout = %q, want empty", got)
+	}
+}
+
 func TestLocaleSetlocaleExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <locale.h>
