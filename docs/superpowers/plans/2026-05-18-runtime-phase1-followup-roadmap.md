@@ -1384,6 +1384,25 @@ The coverage increment passed focused runtime tests plus full verification.
 - Commit message:
   - `docs: record GCC large static array runtime coverage`
 
+## Plan 111: Stdlib/String/Stdio Surface Recheck - Completed
+
+The pre-plan adjustment compared the builtin header smoke surfaces for stdlib, string, strings, and stdio against the default extern registry smoke list. Typedefs and stdio stream variables were intentionally ignored. The actionable result was not an implementation gap: plain `sprintf` and `snprintf` were already registered, but the registry smoke list and GCC runtime execution coverage only named builtin/chk formatter paths.
+
+## Plan 112: Plain Stdio Formatter Coverage - Completed
+
+The pre-plan adjustment added coverage for the existing plain `sprintf` and `snprintf` extern registrations. The focused C test includes `<stdio.h>` for the plain prototypes and declares `strcmp` manually, matching existing formatter tests and avoiding the currently unrelated duplicate-`size_t` limitation when combining `<stdio.h>` and `<string.h>`.
+
+- Files: `runtime/extern_test.go`, `runtime/gcc_exec_test.go`
+- Focused test:
+
+```bash
+go test ./runtime -run 'TestPlainSprintfExecutesThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `test(runtime): cover plain stdio sprintf externs`
+  - `docs: record plain stdio formatter coverage`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.
