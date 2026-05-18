@@ -270,6 +270,10 @@ git commit -m "feat(runtime): honor append-mode write positioning"
 git push
 ```
 
+- [x] **Step 4: Close hermetic file mode milestone**
+
+Calibration found C99 `r`, `w`, `a`, and `+` behavior covered after append write positioning. Strict update-stream read/write sequencing remains a residual limit because it has no current fixture pressure and would require more intrusive per-stream direction state.
+
 ## Milestone 7: Environment Runtime
 
 **Calibration:** Pending after file milestones.
