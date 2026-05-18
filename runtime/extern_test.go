@@ -488,6 +488,79 @@ func TestFopenAppendsConfiguredFile(t *testing.T) {
 	}
 }
 
+func TestFopenAppendModeWritesAtEndAfterSeek(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("log.txt", []byte("AB"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:file-append-seek-path", []byte("log.txt\x00"), true, blockString)
+	appendMode := mustAllocBytes(t, mem, "stdio:file-append-seek-mode", []byte("a+\x00"), true, blockString)
+	readMode := mustAllocBytes(t, mem, "stdio:file-append-seek-read-mode", []byte("r\x00"), true, blockString)
+	buf := mustAllocBytes(t, mem, "stdio:file-append-seek-buf", []byte{0, 0, 0}, false, blockLocal)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	fseekFn, ok := reg.Lookup("fseek")
+	if !ok {
+		t.Fatal("missing fseek extern")
+	}
+	fputcFn, ok := reg.Lookup("fputc")
+	if !ok {
+		t.Fatal("missing fputc extern")
+	}
+	fcloseFn, ok := reg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+	freadFn, ok := reg.Lookup("fread")
+	if !ok {
+		t.Fatal("missing fread extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(appendMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen append ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(file),
+		IntValue(bytecode.TypeI64, 0),
+		IntValue(bytecode.TypeI32, 0),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fseek ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fputcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'Z'), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'Z' {
+		t.Fatalf("fputc ret=%#v exit=%#v err=%v, want Z", ret, exit, err)
+	}
+	if _, exit, err = fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)}); err != nil || exit != nil {
+		t.Fatalf("fclose append exit=%#v err=%v", exit, err)
+	}
+
+	ret, exit, err = fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(readMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen read ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	ret, exit, err = freadFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(buf),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 3),
+		PtrValue(ret.Int),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 3 {
+		t.Fatalf("fread ret=%#v exit=%#v err=%v, want 3", ret, exit, err)
+	}
+	block, off, err := mem.rangeAccess(buf, 3, false)
+	if err != nil {
+		t.Fatalf("rangeAccess buf: %v", err)
+	}
+	if got := string(block.data[off : off+3]); got != "ABZ" {
+		t.Fatalf("append after seek bytes = %q, want ABZ", got)
+	}
+}
+
 func TestStdioTmpnamStub(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	fn, ok := reg.Lookup("tmpnam")

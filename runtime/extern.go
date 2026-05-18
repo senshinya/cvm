@@ -42,11 +42,12 @@ type ExternRegistry struct {
 }
 
 type hostFile struct {
-	path     string
-	data     []byte
-	pos      int64
-	readable bool
-	writable bool
+	path       string
+	data       []byte
+	pos        int64
+	readable   bool
+	writable   bool
+	appendMode bool
 }
 
 type hostFileWriter struct {
@@ -246,6 +247,9 @@ func (w hostFileWriter) Write(p []byte) (int, error) {
 		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q is not open for writing", file.path)
 	}
+	if file.appendMode {
+		file.pos = int64(len(file.data))
+	}
 	if file.pos < 0 {
 		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q has negative offset", file.path)
@@ -369,10 +373,11 @@ func fopenExtern(name string, r *ExternRegistry) ExternFunc {
 			return PtrValue(0), nil, nil
 		}
 		file := &hostFile{
-			path:     path,
-			data:     append([]byte(nil), data...),
-			readable: readable,
-			writable: writable,
+			path:       path,
+			data:       append([]byte(nil), data...),
+			readable:   readable,
+			writable:   writable,
+			appendMode: strings.HasPrefix(mode, "a"),
 		}
 		if strings.HasPrefix(mode, "w") {
 			file.data = nil

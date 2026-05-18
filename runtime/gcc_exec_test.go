@@ -372,6 +372,38 @@ int main(void)
 	}
 }
 
+func TestGCCFopenAppendModeWritesAtEndAfterSeekExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[3] = { 0, 0, 0 };
+  FILE *f = fopen("log.txt", "a+");
+  if (!f)
+    return 1;
+  if (fseek(f, 0, SEEK_SET) != 0)
+    return 2;
+  if (fputc('Z', f) != 'Z')
+    return 3;
+  if (fclose(f) != 0)
+    return 4;
+  f = fopen("log.txt", "r");
+  if (!f)
+    return 5;
+  if (fread(buf, 1, 3, f) != 3)
+    return 6;
+  return buf[0] == 'A' && buf[1] == 'B' && buf[2] == 'Z' ? 0 : 7;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("log.txt", []byte("AB"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-fopen-append-after-seek-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioTmpnamExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

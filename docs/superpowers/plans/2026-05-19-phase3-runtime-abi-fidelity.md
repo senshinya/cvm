@@ -243,7 +243,32 @@ Calibration after EOF/error changes found the remaining high-value work is mode 
 
 ## Milestone 6: Hermetic File Mode Expansion
 
-**Calibration:** Pending after FILE state model.
+**Calibration:** In progress after FILE state model. `r`, `w`, `a`, and `+` are recognized, but append mode only initialized the position at EOF. After an explicit `fseek`, writes in `a`/`a+` still overwrote earlier bytes instead of appending.
+
+**Files:**
+- Modify: `runtime/extern.go`
+- Modify: `runtime/extern_test.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add failing append-position tests**
+
+Added direct and GCC-runtime coverage for opening `a+`, seeking to the beginning, writing, closing, and reading back appended content.
+
+- [x] **Step 2: Track append mode on host files**
+
+Added append-mode state to hermetic file handles and forced writes to the current file end.
+
+- [x] **Step 3: Verify, commit, and push append mode positioning**
+
+Run Common Verification, then:
+
+```bash
+git add runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(runtime): honor append-mode write positioning"
+git push
+```
 
 ## Milestone 7: Environment Runtime
 
