@@ -44,6 +44,44 @@ git commit -m "feat(runtime): open configured read only files"
 git push origin codex/bytecode-runtime-phase-1
 ```
 
+## Task 3: Configured File Write Mode
+
+**Files:**
+- Modify: `runtime/extern.go`
+- Modify: `runtime/extern_test.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/superpowers/plans/2026-05-19-phase2b-file-streams.md`
+
+- [x] **Step 1: Add failing direct write-mode coverage**
+
+Cover `fopen(path, "w")`, byte writes, close/reopen, and reads from the registry-backed file content.
+
+- [x] **Step 2: Add failing GCC runtime coverage**
+
+Add a GCC runtime test that writes a small file with stdio calls, closes it, reopens it for reading, and validates bytes.
+
+- [x] **Step 3: Implement hermetic write handles**
+
+Add per-handle write support for configured file streams. Keep writes in the registry file map and avoid host filesystem effects.
+
+- [x] **Step 4: Focused tests**
+
+Run:
+
+```bash
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestFopenWritesConfiguredFile|TestGCCFopenConfiguredFileWriteModeExecutesThroughRuntime' -count=1 -v
+```
+
+- [x] **Step 5: Full verification, commit, push**
+
+Run Common Verification, then commit:
+
+```bash
+git add runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go docs/superpowers/plans/2026-05-19-phase2b-file-streams.md
+git commit -m "feat(runtime): write configured files"
+git push origin codex/bytecode-runtime-phase-1
+```
+
 ## Task 2: Configured File Positioning
 
 **Files:**

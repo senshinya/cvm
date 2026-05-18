@@ -41,8 +41,16 @@ type ExternRegistry struct {
 }
 
 type hostFile struct {
-	data []byte
-	pos  int64
+	path     string
+	data     []byte
+	pos      int64
+	readable bool
+	writable bool
+}
+
+type hostFileWriter struct {
+	registry *ExternRegistry
+	addr     uint64
 }
 
 func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
@@ -222,6 +230,41 @@ func (r *ExternRegistry) AddFile(path string, data []byte) {
 	r.files[path] = append([]byte(nil), data...)
 }
 
+func (w hostFileWriter) Write(p []byte) (int, error) {
+	if w.registry == nil {
+		return 0, fmt.Errorf("file writer has no registry")
+	}
+	file := w.registry.hostFiles[w.addr]
+	if file == nil {
+		return 0, fmt.Errorf("unknown file handle %#x", w.addr)
+	}
+	if !file.writable {
+		return 0, fmt.Errorf("file %q is not open for writing", file.path)
+	}
+	if file.pos < 0 {
+		return 0, fmt.Errorf("file %q has negative offset", file.path)
+	}
+	end := file.pos + int64(len(p))
+	if end < file.pos {
+		return 0, fmt.Errorf("file %q write offset overflows", file.path)
+	}
+	if end > int64(maxInt()) {
+		return 0, fmt.Errorf("file %q write offset exceeds host int range", file.path)
+	}
+	if end > int64(len(file.data)) {
+		grown := make([]byte, int(end))
+		copy(grown, file.data)
+		file.data = grown
+	}
+	copy(file.data[file.pos:end], p)
+	file.pos = end
+	if file.path != "" {
+		w.registry.files[file.path] = append([]byte(nil), file.data...)
+	}
+	delete(w.registry.hostEOF, w.addr)
+	return len(p), nil
+}
+
 func registerVaListExterns(r *ExternRegistry) {
 	r.Register("__builtin_va_start", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
@@ -295,18 +338,36 @@ func fopenExtern(name string, r *ExternRegistry) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		if !strings.HasPrefix(mode, "r") {
+		readable := strings.HasPrefix(mode, "r") || strings.Contains(mode, "+")
+		writable := strings.HasPrefix(mode, "w") || strings.HasPrefix(mode, "a") || strings.Contains(mode, "+")
+		if !readable && !writable {
 			return PtrValue(0), nil, nil
 		}
 		data, ok := r.files[path]
-		if !ok {
+		if strings.HasPrefix(mode, "r") && !ok {
 			return PtrValue(0), nil, nil
 		}
-		addr, err := r.allocHostWriter("file:"+path, ec.Memory, io.Discard, -1)
+		file := &hostFile{
+			path:     path,
+			data:     append([]byte(nil), data...),
+			readable: readable,
+			writable: writable,
+		}
+		if strings.HasPrefix(mode, "w") {
+			file.data = nil
+		}
+		if strings.HasPrefix(mode, "a") {
+			file.pos = int64(len(file.data))
+		}
+		addr, err := r.allocHostWriter("file:"+path, ec.Memory, hostFileWriter{registry: r}, -1)
 		if err != nil {
 			return Value{}, nil, err
 		}
-		r.hostFiles[addr] = &hostFile{data: append([]byte(nil), data...)}
+		r.hostFiles[addr] = file
+		r.hostWriters[addr] = hostFileWriter{registry: r, addr: addr}
+		if writable {
+			r.files[path] = append([]byte(nil), file.data...)
+		}
 		delete(r.hostEOF, addr)
 		return PtrValue(addr), nil, nil
 	}
@@ -605,6 +666,9 @@ func fcloseExtern(name string, r *ExternRegistry) ExternFunc {
 		delete(r.hostFDs, args[0].Int)
 		delete(r.hostPushback, args[0].Int)
 		delete(r.hostEOF, args[0].Int)
+		if file := r.hostFiles[args[0].Int]; file != nil && file.writable && file.path != "" {
+			r.files[file.path] = append([]byte(nil), file.data...)
+		}
 		delete(r.hostFiles, args[0].Int)
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
@@ -4544,6 +4608,9 @@ func (r *ExternRegistry) readHostChar(addr uint64) (byte, bool) {
 	buf := r.hostPushback[addr]
 	if len(buf) == 0 {
 		if file := r.hostFiles[addr]; file != nil {
+			if !file.readable {
+				return 0, false
+			}
 			if file.pos < 0 || file.pos >= int64(len(file.data)) {
 				return 0, false
 			}

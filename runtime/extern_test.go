@@ -260,6 +260,83 @@ func TestConfiguredFilePositioning(t *testing.T) {
 	}
 }
 
+func TestFopenWritesConfiguredFile(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:file-write-path", []byte("out.txt\x00"), true, blockString)
+	writeMode := mustAllocBytes(t, mem, "stdio:file-write-mode", []byte("w\x00"), true, blockString)
+	readMode := mustAllocBytes(t, mem, "stdio:file-read-mode", []byte("r\x00"), true, blockString)
+	data := mustAllocBytes(t, mem, "stdio:file-write-data", []byte("AB"), true, blockString)
+	buf := mustAllocBytes(t, mem, "stdio:file-read-buf", []byte{0, 0, 0}, false, blockLocal)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	fwriteFn, ok := reg.Lookup("fwrite")
+	if !ok {
+		t.Fatal("missing fwrite extern")
+	}
+	fputcFn, ok := reg.Lookup("fputc")
+	if !ok {
+		t.Fatal("missing fputc extern")
+	}
+	fcloseFn, ok := reg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+	freadFn, ok := reg.Lookup("fread")
+	if !ok {
+		t.Fatal("missing fread extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(writeMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen write ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = fwriteFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(data),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 2),
+		PtrValue(file),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("fwrite ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
+	}
+	ret, exit, err = fputcFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		IntValue(bytecode.TypeI32, 'C'),
+		PtrValue(file),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'C' {
+		t.Fatalf("fputc ret=%#v exit=%#v err=%v, want C", ret, exit, err)
+	}
+	if _, exit, err = fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)}); err != nil || exit != nil {
+		t.Fatalf("fclose write exit=%#v err=%v", exit, err)
+	}
+
+	ret, exit, err = fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(readMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen read ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	ret, exit, err = freadFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(buf),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 3),
+		PtrValue(ret.Int),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 3 {
+		t.Fatalf("fread ret=%#v exit=%#v err=%v, want 3", ret, exit, err)
+	}
+	block, off, err := mem.rangeAccess(buf, 3, false)
+	if err != nil {
+		t.Fatalf("rangeAccess buf: %v", err)
+	}
+	if got := string(block.data[off : off+3]); got != "ABC" {
+		t.Fatalf("file bytes = %q, want ABC", got)
+	}
+}
+
 func TestStdioTmpnamStub(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	fn, ok := reg.Lookup("tmpnam")
