@@ -83,6 +83,15 @@ long double complex conjl(long double complex);
 float complex cprojf(float complex);
 double complex cproj(double complex);
 long double complex cprojl(long double complex);
+float complex csinf(float complex);
+double complex csin(double complex);
+long double complex csinl(long double complex);
+float complex ccosf(float complex);
+double complex ccos(double complex);
+long double complex ccosl(long double complex);
+float complex ctanf(float complex);
+double complex ctan(double complex);
+long double complex ctanl(long double complex);
 #endif
 `
 }

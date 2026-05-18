@@ -2718,6 +2718,40 @@ int main(void)
 	}
 }
 
+func TestComplexTrigExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <complex.h>
+
+int main(void)
+{
+  float complex zf = __builtin_complex(0.0f, 0.0f);
+  double complex zd = __builtin_complex(0.0, 0.0);
+  long double complex zl = __builtin_complex(0.0L, 0.0L);
+  if (crealf(csinf(zf)) != 0.0f || cimagf(csinf(zf)) != 0.0f)
+    return 1;
+  if (creal(csin(zd)) != 0.0 || cimag(csin(zd)) != 0.0)
+    return 2;
+  if (creall(csinl(zl)) != 0.0L || cimagl(csinl(zl)) != 0.0L)
+    return 3;
+  if (crealf(ccosf(zf)) != 1.0f || cimagf(ccosf(zf)) != 0.0f)
+    return 4;
+  if (creal(ccos(zd)) != 1.0 || cimag(ccos(zd)) != 0.0)
+    return 5;
+  if (creall(ccosl(zl)) != 1.0L || cimagl(ccosl(zl)) != 0.0L)
+    return 6;
+  if (crealf(ctanf(zf)) != 0.0f || cimagf(ctanf(zf)) != 0.0f)
+    return 7;
+  if (creal(ctan(zd)) != 0.0 || cimag(ctan(zd)) != 0.0)
+    return 8;
+  return creall(ctanl(zl)) == 0.0L && cimagl(ctanl(zl)) == 0.0L ? 0 : 9;
+}
+`
+	st := runGCCExecFixture(t, "complex-trig.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathConjExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
