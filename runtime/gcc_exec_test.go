@@ -2786,6 +2786,43 @@ int main(void)
 	}
 }
 
+func TestComplexInverseTrigExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <complex.h>
+
+int main(void)
+{
+  float complex zf = __builtin_complex(0.0f, 0.0f);
+  double complex zd = __builtin_complex(0.0, 0.0);
+  long double complex zl = __builtin_complex(0.0L, 0.0L);
+  float complex of = __builtin_complex(1.0f, 0.0f);
+  double complex od = __builtin_complex(1.0, 0.0);
+  long double complex ol = __builtin_complex(1.0L, 0.0L);
+  if (crealf(casinf(zf)) != 0.0f || cimagf(casinf(zf)) != 0.0f)
+    return 1;
+  if (creal(casin(zd)) != 0.0 || cimag(casin(zd)) != 0.0)
+    return 2;
+  if (creall(casinl(zl)) != 0.0L || cimagl(casinl(zl)) != 0.0L)
+    return 3;
+  if (crealf(cacosf(of)) != 0.0f || cimagf(cacosf(of)) != 0.0f)
+    return 4;
+  if (creal(cacos(od)) != 0.0 || cimag(cacos(od)) != 0.0)
+    return 5;
+  if (creall(cacosl(ol)) != 0.0L || cimagl(cacosl(ol)) != 0.0L)
+    return 6;
+  if (crealf(catanf(zf)) != 0.0f || cimagf(catanf(zf)) != 0.0f)
+    return 7;
+  if (creal(catan(zd)) != 0.0 || cimag(catan(zd)) != 0.0)
+    return 8;
+  return creall(catanl(zl)) == 0.0L && cimagl(catanl(zl)) == 0.0L ? 0 : 9;
+}
+`
+	st := runGCCExecFixture(t, "complex-inverse-trig.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathConjExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

@@ -12,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "_Exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fgetpos", "fsetpos", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "perror", "abs", "labs", "llabs", "div", "ldiv", "lldiv", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "rand", "srand", "getenv", "system", "atexit", "setlocale", "clock", "difftime", "time", "fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl", "sinh", "sinhf", "sinhl", "cosh", "coshf", "coshl", "tanh", "tanhf", "tanhl", "asin", "asinf", "asinl", "acos", "acosf", "acosl", "atan", "atanf", "atanl", "asinh", "asinhf", "asinhl", "acosh", "acoshf", "acoshl", "atanh", "atanhf", "atanhl", "cbrt", "cbrtf", "cbrtl", "erf", "erff", "erfl", "erfc", "erfcf", "erfcl", "tgamma", "tgammaf", "tgammal", "lgamma", "lgammaf", "lgammal", "exp", "expf", "expl", "exp2", "exp2f", "exp2l", "expm1", "expm1f", "expm1l", "log", "logf", "logl", "log10", "log10f", "log10l", "log1p", "log1pf", "log1pl", "log2", "log2f", "log2l", "ceil", "ceilf", "ceill", "floor", "floorf", "floorl", "trunc", "truncf", "truncl", "round", "roundf", "roundl", "nearbyint", "nearbyintf", "nearbyintl", "rint", "rintf", "rintl", "logb", "logbf", "logbl", "ilogb", "ilogbf", "ilogbl", "lrint", "lrintf", "lrintl", "lround", "lroundf", "lroundl", "llrint", "llrintf", "llrintl", "llround", "llroundf", "llroundl", "scalbn", "scalbnf", "scalbnl", "scalbln", "scalblnf", "scalblnl", "ldexp", "ldexpf", "ldexpl", "frexp", "frexpf", "frexpl", "remquo", "remquof", "remquol", "pow", "powf", "powl", "atan2", "atan2f", "atan2l", "hypot", "hypotf", "hypotl", "fdim", "fdimf", "fdiml", "fmax", "fmaxf", "fmaxl", "fmin", "fminf", "fminl", "fmod", "fmodf", "fmodl", "remainder", "remainderf", "remainderl", "copysign", "copysignf", "copysignl", "fma", "fmaf", "fmal", "nextafter", "nextafterf", "nextafterl", "nexttoward", "nexttowardf", "nexttowardl", "cabs", "cabsf", "cabsl", "creal", "crealf", "creall", "cimag", "cimagf", "cimagl", "carg", "cargf", "cargl", "conj", "conjf", "conjl", "cproj", "cprojf", "cprojl", "csin", "csinf", "csinl", "ccos", "ccosf", "ccosl", "ctan", "ctanf", "ctanl", "csinh", "csinhf", "csinhl", "ccosh", "ccoshf", "ccoshl", "ctanh", "ctanhf", "ctanhl", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper", "strcmp", "memcmp", "bcmp", "strncmp", "strcoll", "memchr", "strrchr", "strpbrk", "strspn", "strcspn", "strtok", "strxfrm", "strnlen", "strerror", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "realloc", "__builtin_strdup", "strdup", "strndup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "memccpy", "bcopy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
+	for _, name := range []string{"exit", "_Exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fgetpos", "fsetpos", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "perror", "abs", "labs", "llabs", "div", "ldiv", "lldiv", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "rand", "srand", "getenv", "system", "atexit", "setlocale", "clock", "difftime", "time", "fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl", "sinh", "sinhf", "sinhl", "cosh", "coshf", "coshl", "tanh", "tanhf", "tanhl", "asin", "asinf", "asinl", "acos", "acosf", "acosl", "atan", "atanf", "atanl", "asinh", "asinhf", "asinhl", "acosh", "acoshf", "acoshl", "atanh", "atanhf", "atanhl", "cbrt", "cbrtf", "cbrtl", "erf", "erff", "erfl", "erfc", "erfcf", "erfcl", "tgamma", "tgammaf", "tgammal", "lgamma", "lgammaf", "lgammal", "exp", "expf", "expl", "exp2", "exp2f", "exp2l", "expm1", "expm1f", "expm1l", "log", "logf", "logl", "log10", "log10f", "log10l", "log1p", "log1pf", "log1pl", "log2", "log2f", "log2l", "ceil", "ceilf", "ceill", "floor", "floorf", "floorl", "trunc", "truncf", "truncl", "round", "roundf", "roundl", "nearbyint", "nearbyintf", "nearbyintl", "rint", "rintf", "rintl", "logb", "logbf", "logbl", "ilogb", "ilogbf", "ilogbl", "lrint", "lrintf", "lrintl", "lround", "lroundf", "lroundl", "llrint", "llrintf", "llrintl", "llround", "llroundf", "llroundl", "scalbn", "scalbnf", "scalbnl", "scalbln", "scalblnf", "scalblnl", "ldexp", "ldexpf", "ldexpl", "frexp", "frexpf", "frexpl", "remquo", "remquof", "remquol", "pow", "powf", "powl", "atan2", "atan2f", "atan2l", "hypot", "hypotf", "hypotl", "fdim", "fdimf", "fdiml", "fmax", "fmaxf", "fmaxl", "fmin", "fminf", "fminl", "fmod", "fmodf", "fmodl", "remainder", "remainderf", "remainderl", "copysign", "copysignf", "copysignl", "fma", "fmaf", "fmal", "nextafter", "nextafterf", "nextafterl", "nexttoward", "nexttowardf", "nexttowardl", "cabs", "cabsf", "cabsl", "creal", "crealf", "creall", "cimag", "cimagf", "cimagl", "carg", "cargf", "cargl", "conj", "conjf", "conjl", "cproj", "cprojf", "cprojl", "csin", "csinf", "csinl", "ccos", "ccosf", "ccosl", "ctan", "ctanf", "ctanl", "csinh", "csinhf", "csinhl", "ccosh", "ccoshf", "ccoshl", "ctanh", "ctanhf", "ctanhl", "casin", "casinf", "casinl", "cacos", "cacosf", "cacosl", "catan", "catanf", "catanl", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper", "strcmp", "memcmp", "bcmp", "strncmp", "strcoll", "memchr", "strrchr", "strpbrk", "strspn", "strcspn", "strtok", "strxfrm", "strnlen", "strerror", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "realloc", "__builtin_strdup", "strdup", "strndup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "memccpy", "bcopy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -3916,6 +3916,57 @@ func TestComplexHyperbolicExterns(t *testing.T) {
 			}
 			if realPart.Float != tt.wantReal || imagPart.Float != 0 {
 				t.Fatalf("%s result = (%v, %v), want (%v, 0)", tt.name, realPart.Float, imagPart.Float, tt.wantReal)
+			}
+		})
+	}
+}
+
+func TestComplexInverseTrigExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	tests := []struct {
+		name      string
+		realType  bytecode.ValueType
+		realSize  uint64
+		inputReal float64
+	}{
+		{name: "casinf", realType: bytecode.TypeF32, realSize: 4, inputReal: 0},
+		{name: "casin", realType: bytecode.TypeF64, realSize: 8, inputReal: 0},
+		{name: "casinl", realType: bytecode.TypeFLong, realSize: 16, inputReal: 0},
+		{name: "cacosf", realType: bytecode.TypeF32, realSize: 4, inputReal: 1},
+		{name: "cacos", realType: bytecode.TypeF64, realSize: 8, inputReal: 1},
+		{name: "cacosl", realType: bytecode.TypeFLong, realSize: 16, inputReal: 1},
+		{name: "catanf", realType: bytecode.TypeF32, realSize: 4, inputReal: 0},
+		{name: "catan", realType: bytecode.TypeF64, realSize: 8, inputReal: 0},
+		{name: "catanl", realType: bytecode.TypeFLong, realSize: 16, inputReal: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fn, ok := reg.Lookup(tt.name)
+			if !ok {
+				t.Fatalf("missing %s extern", tt.name)
+			}
+			mem := NewMemory(bytecode.DefaultTarget())
+			z := mustAlloc(t, mem, "z", int64(tt.realSize*2), int64(tt.realSize), false, blockLocal)
+			if err := mem.Store(z, tt.realType, int64(tt.realSize), FloatValue(tt.realType, tt.inputReal)); err != nil {
+				t.Fatalf("store real: %v", err)
+			}
+			if err := mem.Store(z+tt.realSize, tt.realType, int64(tt.realSize), FloatValue(tt.realType, 0)); err != nil {
+				t.Fatalf("store imag: %v", err)
+			}
+			ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(z)})
+			if err != nil || exit != nil {
+				t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+			}
+			realPart, err := mem.Load(ret.Int, tt.realType, int64(tt.realSize))
+			if err != nil {
+				t.Fatalf("load real: %v", err)
+			}
+			imagPart, err := mem.Load(ret.Int+tt.realSize, tt.realType, int64(tt.realSize))
+			if err != nil {
+				t.Fatalf("load imag: %v", err)
+			}
+			if realPart.Float != 0 || imagPart.Float != 0 {
+				t.Fatalf("%s result = (%v, %v), want (0, 0)", tt.name, realPart.Float, imagPart.Float)
 			}
 		})
 	}
