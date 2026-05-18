@@ -387,6 +387,22 @@ go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -coun
   - `feat(runtime): add string collation externs`
   - `docs: record string collation externs`
 
+## Plan 35: GCC Runtime Manifest Expansion - Skipped
+
+The pre-plan adjustment found no uncovered GCC runtime accept candidates. `runtime/testdata/gcc-exec/gap-report.md` reports 18 runnable `{ dg-do run }` or `c99_runtime` fixtures, and all 18 are already present in `runtime/testdata/gcc-exec/manifest.tsv`.
+
+- Verification used for the adjustment:
+
+```bash
+git status --short --branch
+sed -n '1,220p' runtime/testdata/gcc-exec/manifest.tsv
+rg -l "dg-do run|dg-require-effective-target c99_runtime" sema/testdata/gcc-c99/accept sema/testdata/gcc-c99-extra/accept sema/testdata/gcc-c90-as-c99/accept | sort
+sed -n '1,120p' runtime/testdata/gcc-exec/gap-report.md
+```
+
+- Commit messages:
+  - `docs: record gcc runtime manifest adjustment`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.

@@ -82,6 +82,8 @@ Recent related commits:
 - `67c4f41 include c99 runtime fixture in GCC execution suite`
 - `de11b2a support real tgmath runtime externs`
 
+The latest Plan 35 adjustment found no uncovered GCC runtime accept candidates: `runtime/testdata/gcc-exec/gap-report.md` reports 18 runnable fixtures, all currently represented in `runtime/testdata/gcc-exec/manifest.tsv`.
+
 ### Bytecode GCC Compile Coverage
 
 `codegen/testdata/gcc-bytecode-compile.tsv` currently has 232 lines including the header, so 231 fixture entries.
