@@ -403,6 +403,22 @@ sed -n '1,120p' runtime/testdata/gcc-exec/gap-report.md
 - Commit messages:
   - `docs: record gcc runtime manifest adjustment`
 
+## Plan 36: `stdlib.h` `atexit` Stub - Completed
+
+Add a phase 1 `atexit` declaration and runtime stub. The stub accepts a callback pointer and returns `0` to model successful registration, but it does not execute callbacks during process shutdown.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestStdlibAtexitExtern|TestStdlibAtexitExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdlib atexit extern`
+  - `docs: record stdlib atexit extern`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
