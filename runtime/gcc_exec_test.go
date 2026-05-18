@@ -3474,6 +3474,28 @@ int main(void)
 	}
 }
 
+func TestGCCVLAMemcpyDynamicSizeExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+int main(void)
+{
+  int n = 3;
+  float x[n];
+  float y[n];
+  x[0] = 1.0f;
+  x[1] = 2.0f;
+  x[2] = 3.0f;
+  if (__builtin_memcpy(y, x, n * sizeof(*x)) != y)
+    return 1;
+  return y[0] == 1.0f && y[1] == 2.0f && y[2] == 3.0f ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "vla-memcpy-dynamic-size-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCIntegerConversionWarningsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <limits.h>
