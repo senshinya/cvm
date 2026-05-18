@@ -391,7 +391,35 @@ git push
 
 ## Milestone 11: GCC Runtime Fixture Expansion
 
-**Calibration:** Pending after ABI sweeps.
+**Calibration:** Completed after ABI sweeps. A fresh `TestGCCExecutionGapReportIsCurrent` run reports the runtime manifest gap closed: 18 runnable `{ dg-do run }` or `c99_runtime` fixtures, all represented, with no preprocess/parse/sema/codegen/load/runtime/exit mismatches. The broader compile-only `main` scan has 28 entry-point fixtures: 18 manifest fixtures, 5 direct runtime tests already present (`Wdeclaration-after-statement-4.c`, `pr27639.c`, `pr71969-1.c`, `pr71969-3.c`, `Wstrict-aliasing-bogus-vla-1.c`), and 5 documented non-runtime targets (`inline-8.c`, `inline-10.c`, `overflow-2.c`, `pr70418.c`, `transparent-union-1.c`).
+
+**Files:**
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Re-run GCC runtime gap report**
+
+Ran:
+
+```bash
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1 -v
+```
+
+It passed without regenerating `runtime/testdata/gcc-exec/gap-report.md`.
+
+- [x] **Step 2: Re-scan compile-only `main` fixtures**
+
+Confirmed no new low-risk GCC accept fixture needs adding after Phase 3 ABI work.
+
+- [x] **Step 3: Verify, commit, and push fixture expansion closure**
+
+Run Common Verification, then:
+
+```bash
+git add docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "docs: close phase 3 gcc fixture sweep"
+git push
+```
 
 ## Milestone 12: Runtime Error And Diagnostics Stabilization
 
