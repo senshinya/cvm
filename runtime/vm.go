@@ -13,11 +13,12 @@ type RunOptions struct {
 }
 
 type VM struct {
-	program *Program
-	stack   []Value
-	frames  []frame
-	steps   int
-	limit   int
+	program  *Program
+	stack    []Value
+	frames   []frame
+	closures map[uint64]closure
+	steps    int
+	limit    int
 }
 
 type frame struct {
@@ -31,6 +32,13 @@ type frame struct {
 	labels         map[int]int
 	localObjects   map[int]uint64
 	dynamicObjects map[int]uint64
+	closures       []uint64
+}
+
+type closure struct {
+	global   int
+	sig      int
+	captures []Value
 }
 
 func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
@@ -47,8 +55,9 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 		return ExitStatus{}, &TrapError{Reason: "program memory is nil"}
 	}
 	vm := &VM{
-		program: p,
-		limit:   opts.StepLimit,
+		program:  p,
+		closures: make(map[uint64]closure),
+		limit:    opts.StepLimit,
 	}
 	if err := vm.pushFrame(p.entryFunc, p.entryArgs); err != nil {
 		return ExitStatus{}, err
@@ -516,6 +525,14 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if err != nil {
 			return ExitStatus{}, true, err
 		}
+		if cl, ok := vm.closures[callee.Int]; ok {
+			fullArgs := append(append([]Value(nil), args...), cl.captures...)
+			st, done, err := vm.invokeGlobal(ctx, cl.global, cl.sig, fullArgs)
+			if done || err != nil {
+				return st, done, err
+			}
+			break
+		}
 		globalID, err := vm.program.FuncGlobalByAddress(callee.Int)
 		if err != nil {
 			return ExitStatus{}, true, vm.trapWithCause("invalid indirect call target", err)
@@ -524,6 +541,16 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if done || err != nil {
 			return st, done, err
 		}
+	case bytecode.OpMakeClosure:
+		captures, err := vm.popClosureCaptures(ins.Sig, ins.Argc)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		addr, err := vm.makeClosure(ins.Global, ins.Sig, captures)
+		if err != nil {
+			return ExitStatus{}, true, err
+		}
+		vm.stack = append(vm.stack, PtrValue(addr))
 	case bytecode.OpReturn:
 		v, err := vm.pop(ins.Type)
 		if err != nil {
@@ -631,6 +658,12 @@ func (vm *VM) popFrame() error {
 			return vm.trapWithCause(fmt.Sprintf("dynamic object %d free failed", objectID), err)
 		}
 	}
+	for _, addr := range fr.closures {
+		delete(vm.closures, addr)
+		if err := vm.program.Memory().Free(addr, blockLocal); err != nil {
+			return vm.trapWithCause(fmt.Sprintf("closure %x free failed", addr), err)
+		}
+	}
 	for objectID, addr := range fr.localObjects {
 		if err := vm.program.Memory().Free(addr, blockLocal); err != nil {
 			return vm.trapWithCause(fmt.Sprintf("local object %d free failed", objectID), err)
@@ -711,6 +744,69 @@ func (vm *VM) popCallArgs(sigID, argc int) ([]Value, error) {
 		args[i] = v
 	}
 	return args, nil
+}
+
+func (vm *VM) popClosureCaptures(sigID, argc int) ([]Value, error) {
+	if vm.program == nil || vm.program.module == nil {
+		return nil, vm.trap("nil program")
+	}
+	if sigID < 0 || sigID >= len(vm.program.module.Sigs) {
+		return nil, vm.trap(fmt.Sprintf("invalid closure signature %d", sigID))
+	}
+	if argc < 0 {
+		return nil, vm.trap(fmt.Sprintf("negative closure argc %d", argc))
+	}
+
+	sig := vm.program.module.Sigs[sigID]
+	if argc > len(sig.Params) {
+		return nil, vm.trap(fmt.Sprintf("closure argc %d exceeds signature parameter count %d", argc, len(sig.Params)))
+	}
+
+	args := make([]Value, argc)
+	start := len(sig.Params) - argc
+	for i := argc - 1; i >= 0; i-- {
+		v, err := vm.pop(sig.Params[start+i])
+		if err != nil {
+			return nil, err
+		}
+		args[i] = v
+	}
+	return args, nil
+}
+
+func (vm *VM) makeClosure(globalID, sigID int, captures []Value) (uint64, error) {
+	if len(vm.frames) == 0 {
+		return 0, vm.trap("empty call stack")
+	}
+	g, err := vm.program.global(globalID)
+	if err != nil {
+		return 0, vm.trapWithCause("invalid closure target", err)
+	}
+	if g.Sig != sigID {
+		return 0, vm.trap(fmt.Sprintf("closure signature %d does not match global %d signature %d", sigID, globalID, g.Sig))
+	}
+	if g.Kind != bytecode.GlobalFunc {
+		return 0, vm.trap(fmt.Sprintf("closure target global %d is not a function", globalID))
+	}
+
+	fr := &vm.frames[len(vm.frames)-1]
+	addr, err := vm.program.Memory().TryAlloc(
+		fmt.Sprintf("closure:%s:%d", fr.fn.Name, len(fr.closures)),
+		vm.program.module.Target.PointerSize,
+		vm.program.module.Target.PointerAlign,
+		false,
+		blockLocal,
+	)
+	if err != nil {
+		return 0, vm.trapWithCause("closure allocation failed", err)
+	}
+	vm.closures[addr] = closure{
+		global:   globalID,
+		sig:      sigID,
+		captures: append([]Value(nil), captures...),
+	}
+	fr.closures = append(fr.closures, addr)
+	return addr, nil
 }
 
 func (vm *VM) invokeGlobal(ctx context.Context, globalID, sigID int, args []Value) (ExitStatus, bool, error) {

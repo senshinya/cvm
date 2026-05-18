@@ -846,19 +846,19 @@ int main(void) {
 	}
 }
 
-func TestGenerateRejectsEscapingCapturingNestedFunction(t *testing.T) {
-	err := generateModuleError(t, `
+func TestGenerateCapturingNestedFunctionPointerUsesClosure(t *testing.T) {
+	mod := compileModuleWithOptions(t, `
 int main(void) {
 	int x = 1;
 	int inner(void) { return x; }
 	int (*fp)(void) = inner;
 	return fp();
 }`, sema.SemaOptions{GNUExtensions: true})
-	if err == nil {
-		t.Fatal("Generate succeeded, want escaping capturing nested function error")
-	}
-	if !strings.Contains(err.Error(), "capturing nested function") {
-		t.Fatalf("error = %v, want capturing nested function diagnostic", err)
+	out := bytecode.PrintModule(mod)
+	for _, want := range []string{"MakeClosure", "CallIndirect"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("bytecode missing %q:\n%s", want, out)
+		}
 	}
 }
 
@@ -1150,6 +1150,31 @@ func compileModule(t *testing.T, source string) *bytecode.Module {
 	t.Helper()
 
 	prog := analyzeProgram(t, source)
+	mod, err := Generate(prog)
+	if err != nil {
+		t.Fatalf("codegen: %v", err)
+	}
+	if err := bytecode.ValidateModule(mod); err != nil {
+		t.Fatalf("validate bytecode: %v\n%s", err, bytecode.PrintModule(mod))
+	}
+	return mod
+}
+
+func compileModuleWithOptions(t *testing.T, source string, opts sema.SemaOptions) *bytecode.Module {
+	t.Helper()
+
+	tokens, err := lexer.NewLexer(source).ScanTokens()
+	if err != nil {
+		t.Fatalf("lex: %v", err)
+	}
+	candidates, err := parser.NewParser(tokens).Parse()
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	prog, err := sema.AnalyzeWithOptions(candidates, opts)
+	if err != nil {
+		t.Fatalf("sema: %v", err)
+	}
 	mod, err := Generate(prog)
 	if err != nil {
 		t.Fatalf("codegen: %v", err)

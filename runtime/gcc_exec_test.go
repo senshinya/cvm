@@ -4776,6 +4776,46 @@ int main(void)
 	}
 }
 
+func TestGCCNestedFunctionPointerCaptureExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+/* { dg-options "-std=gnu99" } */
+
+int main(void)
+{
+  int x = 40;
+  int inner(int y) { return x + y; }
+  int (*fn)(int) = inner;
+  return fn(2) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "nested-function-pointer-capture-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCNestedFunctionPointerPassedToCalleeExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+/* { dg-options "-std=gnu99" } */
+
+int apply(int (*fn)(int), int x)
+{
+  return fn(x);
+}
+
+int main(void)
+{
+  int x = 40;
+  int inner(int y) { return x + y; }
+  return apply(inner, 2) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "nested-function-pointer-passed-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCComplexReciprocalImaginaryExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

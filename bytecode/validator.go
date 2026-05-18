@@ -450,6 +450,24 @@ func validateInstrRefs(m *Module, ins Instr, labels map[int]Label, labelPCs map[
 				return fmt.Errorf("%v signature %d does not match function %d signature %d", ins.Op, ins.Sig, fn, m.Functions[fn].Sig)
 			}
 		}
+	case OpMakeClosure:
+		if err := requireSig(ins.Sig); err != nil {
+			return err
+		}
+		if err := requireGlobal(ins.Global); err != nil {
+			return err
+		}
+		g := m.Globals[ins.Global]
+		if g.Kind != GlobalFunc {
+			return fmt.Errorf("%v references non-local function global %d", ins.Op, ins.Global)
+		}
+		fn := g.Func
+		if fn < 0 || fn >= len(m.Functions) {
+			return fmt.Errorf("%v references invalid function %d", ins.Op, fn)
+		}
+		if m.Functions[fn].Sig != ins.Sig {
+			return fmt.Errorf("%v signature %d does not match function %d signature %d", ins.Op, ins.Sig, fn, m.Functions[fn].Sig)
+		}
 	case OpCallIndirect:
 		return requireSig(ins.Sig)
 	}
@@ -707,6 +725,17 @@ func validateInstrStack(m *Module, stack []ValueType, ins Instr, ret ValueType, 
 			}
 		}
 		push(sig.Ret)
+	case OpMakeClosure:
+		sig := m.Sigs[ins.Sig]
+		if ins.Argc < 0 || ins.Argc > len(sig.Params) {
+			return nil, fmt.Errorf("%v argc %d is outside signature parameter count %d", ins.Op, ins.Argc, len(sig.Params))
+		}
+		for i := len(sig.Params) - 1; i >= len(sig.Params)-ins.Argc; i-- {
+			if err := pop(sig.Params[i]); err != nil {
+				return nil, err
+			}
+		}
+		push(TypePtr)
 	case OpDup:
 		if len(stack) == 0 {
 			return nil, fmt.Errorf("%v stack underflow", ins.Op)

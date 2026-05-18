@@ -1126,12 +1126,24 @@ func (fg *funcGen) emitFunctionAddress(e sema.Expr) error {
 	if vr == nil || vr.Sym == nil || vr.Sym.GlobalID < 0 {
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: "function address is not backed by a global symbol"}
 	}
-	if def := fg.g.funcDefForSymbol(vr.Sym); def != nil && len(fg.g.nestedCaptures[def]) > 0 {
-		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: fmt.Sprintf("capturing nested function %q cannot be used as a function pointer", vr.Sym.Name)}
-	}
 	global := vr.Sym.GlobalID
 	if global >= len(fg.g.mod.Globals) {
 		return &Error{Pos: e.Pos().SourceStart, Node: fmt.Sprintf("%T", e), Op: "emitValue", Reason: fmt.Sprintf("function global %d is missing", global)}
+	}
+	if def := fg.g.funcDefForSymbol(vr.Sym); def != nil {
+		captures := fg.g.nestedCaptures[def]
+		if len(captures) > 0 {
+			sig, err := fg.g.lowerFuncDefSig(def)
+			if err != nil {
+				return err
+			}
+			argc, err := fg.emitCaptureArgs(captures)
+			if err != nil {
+				return err
+			}
+			fg.out.Instrs = append(fg.out.Instrs, bytecode.MakeClosure(global, sig, argc))
+			return nil
+		}
 	}
 	fg.out.Instrs = append(fg.out.Instrs, bytecode.AddrFunc(global))
 	return nil
