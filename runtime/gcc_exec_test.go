@@ -1036,6 +1036,7 @@ int main(void)
 func TestPlainAllocationExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>
+#include <string.h>
 
 int main(void)
 {
@@ -1059,7 +1060,7 @@ int main(void)
   char *r = strdup("hi");
   if (r == 0)
     return 6;
-  if (r[0] != 'h' || r[1] != 'i' || r[2] != 0)
+  if (strlen(r) != 2 || strcmp(r, "hi") != 0)
     return 7;
 
   free(p);
