@@ -1177,6 +1177,33 @@ int main(void)
 	}
 }
 
+func TestStringBoundedCompareSearchExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  const char *left = "abcdef";
+  const char *right = "abcxyz";
+  char data[5] = {1, 2, 3, 2, 0};
+
+  if (strncmp(left, right, 3) != 0)
+    return 1;
+  if (strncmp(left, right, 4) >= 0)
+    return 2;
+  if (strncmp(left, "abbzzz", 3) <= 0)
+    return 3;
+  if (memchr(data, 2, 4) != data + 1)
+    return 4;
+  return memchr(data, 9, 4) == 0 ? 0 : 5;
+}
+`
+	st := runGCCExecFixture(t, "string-bounded-compare-search-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestPlainMemoryOperationsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <string.h>

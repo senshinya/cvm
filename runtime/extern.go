@@ -789,6 +789,8 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_strstr", "strstr"} {
 		r.Register(name, stringSearchExtern(name))
 	}
+	r.Register("strncmp", stringNCompareExtern("strncmp"))
+	r.Register("memchr", memoryCharSearchExtern("memchr"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
 		r.Register(name, stringCopyExtern(name, false))
 	}
@@ -1309,6 +1311,69 @@ func stringSearchExtern(name string) ExternFunc {
 			return PtrValue(0), nil, nil
 		}
 		return PtrValue(args[0].Int + uint64(idx)), nil, nil
+	}
+}
+
+func stringNCompareExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects two strings and size argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		n, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		left, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		right, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(strncmpResult(left, right, n))), nil, nil
+	}
+}
+
+func memoryCharSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects memory, character, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		n, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if n == 0 {
+			return PtrValue(0), nil, nil
+		}
+		block, off, err := ec.Memory.rangeAccess(args[0].Int, n, false)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		needle := byte(args[1].Int)
+		for i, b := range block.data[off : off+int(n)] {
+			if b == needle {
+				addr, err := addSignedOffset(args[0].Int, int64(i))
+				if err != nil {
+					return Value{}, nil, err
+				}
+				return PtrValue(addr), nil, nil
+			}
+		}
+		return PtrValue(0), nil, nil
 	}
 }
 
@@ -2789,6 +2854,28 @@ func memcmpResult(left, right []byte) int {
 	}
 	if len(left) > len(right) {
 		return 1
+	}
+	return 0
+}
+
+func strncmpResult(left, right string, n int64) int {
+	for i := int64(0); i < n; i++ {
+		var lb, rb byte
+		if i < int64(len(left)) {
+			lb = left[i]
+		}
+		if i < int64(len(right)) {
+			rb = right[i]
+		}
+		if lb < rb {
+			return -1
+		}
+		if lb > rb {
+			return 1
+		}
+		if lb == 0 {
+			return 0
+		}
 	}
 	return 0
 }
