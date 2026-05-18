@@ -612,6 +612,23 @@ go test ./codegen -run 'TestGCCTgmathFloatSinUsesFloatExtern|TestGCCBytecodeComp
   - `feat(runtime): add plain trig math externs`
   - `docs: record plain trig math externs`
 
+## Plan 49: Plain Binary `math.h` Helpers - Completed
+
+The pre-plan adjustment selected a small binary math subset already supported by the tgmath runtime helper shape. This plan adds direct `pow*`, `atan2*`, and `hypot*` declarations and extern registrations, while retaining the `<tgmath.h>` macro isolation introduced in Plan 48.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathUnaryExterns|TestPlainMathBinaryExterns|TestMathPlainUnaryExecuteThroughRuntime|TestTgmathExpPowExecuteThroughRuntime|TestTgmathAtan2ExecuteThroughRuntime|TestTgmathHypotExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./codegen -run 'TestGCCTgmathComplexPowFloatUsesComplexFloatExtern|TestGCCBytecodeCompileSuite/c99-tgmath' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain binary math externs`
+  - `docs: record plain binary math externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
