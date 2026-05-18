@@ -205,7 +205,7 @@ func TestBuiltinStringHeaderDeclaresReadOnlySurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"size_t", "strcmp", "memcmp", "strncmp", "strcoll", "strlen", "strnlen", "strerror", "strchr", "strrchr", "strstr", "strpbrk", "strspn", "strcspn", "memchr", "strtok", "strxfrm", "memcpy", "memmove", "mempcpy", "memset", "bzero", "strcpy", "stpcpy", "strcat", "strncpy", "stpncpy", "strncat"} {
+	for _, name := range []string{"size_t", "strcmp", "memcmp", "strncmp", "strcoll", "strlen", "strnlen", "strerror", "strchr", "strrchr", "strstr", "strpbrk", "strspn", "strcspn", "memchr", "strtok", "strxfrm", "memcpy", "memmove", "mempcpy", "memccpy", "memset", "bzero", "strcpy", "stpcpy", "strcat", "strncpy", "stpncpy", "strncat"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("string identifier %q missing: %#v", name, res.Tokens)
 		}

@@ -1798,6 +1798,30 @@ int main(void)
 	}
 }
 
+func TestMemoryCharCopyExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  char dst[8] = "xxxxxxx";
+
+  if (memccpy(dst, "abczef", 'z', 6) != dst + 4)
+    return 1;
+  if (dst[0] != 'a' || dst[1] != 'b' || dst[2] != 'c' || dst[3] != 'z' || dst[4] != 'x')
+    return 2;
+  dst[3] = 'Z';
+  if (memccpy(dst, "abc", 'q', 3) != 0)
+    return 3;
+  return dst[0] == 'a' && dst[1] == 'b' && dst[2] == 'c' && dst[3] == 'Z' ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "string-memccpy-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStringsBSDMemoryExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <strings.h>

@@ -1348,6 +1348,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_mempcpy", "mempcpy"} {
 		r.Register(name, memoryCopyExtern(name, true))
 	}
+	r.Register("memccpy", memoryCharCopyExtern("memccpy"))
 	r.Register("bcopy", memoryBcopyExtern("bcopy"))
 	for _, name := range []string{"__builtin_memset", "memset"} {
 		r.Register(name, memorySetExtern(name))
@@ -1811,6 +1812,44 @@ func memoryCopyExtern(name string, returnEnd bool) ExternFunc {
 			addr += uint64(size)
 		}
 		return PtrValue(addr), nil, nil
+	}
+}
+
+func memoryCharCopyExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) || !isIntegerLike(args[3].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, pointer, integer, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[3])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if size == 0 {
+			return PtrValue(0), nil, nil
+		}
+		dstBlock, dstOff, err := ec.Memory.rangeAccess(args[0].Int, size, true)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		srcBlock, srcOff, err := ec.Memory.rangeAccess(args[1].Int, size, false)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		needle := byte(args[2].Int)
+		for i := 0; i < int(size); i++ {
+			ch := srcBlock.data[srcOff+i]
+			dstBlock.data[dstOff+i] = ch
+			if ch == needle {
+				return PtrValue(args[0].Int + uint64(i) + 1), nil, nil
+			}
+		}
+		return PtrValue(0), nil, nil
 	}
 }
 

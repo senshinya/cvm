@@ -253,6 +253,7 @@ size_t strxfrm(char * restrict, const char * restrict, size_t);
 void *memcpy(void *, const void *, size_t);
 void *memmove(void *, const void *, size_t);
 void *mempcpy(void *, const void *, size_t);
+void *memccpy(void *, const void *, int, size_t);
 void *memset(void *, int, size_t);
 void bzero(void *, size_t);
 char *strcpy(char *, const char *);
