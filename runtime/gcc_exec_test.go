@@ -362,6 +362,12 @@ int main(void)
     return 21;
   if (atan(0.0) != 0.0 || atanf(0.0f) != 0.0f || atanl(0.0L) != 0.0L)
     return 22;
+  if (asinh(0.0) != 0.0 || asinhf(0.0f) != 0.0f || asinhl(0.0L) != 0.0L)
+    return 26;
+  if (acosh(1.0) != 0.0 || acoshf(1.0f) != 0.0f || acoshl(1.0L) != 0.0L)
+    return 27;
+  if (atanh(0.0) != 0.0 || atanhf(0.0f) != 0.0f || atanhl(0.0L) != 0.0L)
+    return 28;
   if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
