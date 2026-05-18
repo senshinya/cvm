@@ -394,6 +394,10 @@ int main(void)
     return 47;
   if (ilogb(8.0) != 3 || ilogbf(8.0f) != 3 || ilogbl(8.0L) != 3)
     return 50;
+  if (lrint(3.0) != 3L || lrintf(3.0f) != 3L || lrintl(3.0L) != 3L)
+    return 51;
+  if (lround(4.0) != 4L || lroundf(4.0f) != 4L || lroundl(4.0L) != 4L)
+    return 52;
   if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
