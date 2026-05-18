@@ -563,6 +563,22 @@ go test ./runtime -run 'TestMemoryCharCopyExtern|TestMemoryCharCopyExecuteThroug
   - `feat(runtime): add string memccpy extern`
   - `docs: record string memccpy extern`
 
+## Plan 46: `string.h` `strndup` Helper - Completed
+
+The pre-plan adjustment found `strdup` already covered, while POSIX-style bounded duplication was absent. This plan adds builtin `<string.h>` declaration and runtime support for `strndup`, allocating a new writable NUL-terminated string containing at most the requested number of source bytes.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -count=1 -v
+go test ./runtime -run 'TestPlainAllocationExterns|TestStringBoundedDupExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add string strndup extern`
+  - `docs: record string strndup extern`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
