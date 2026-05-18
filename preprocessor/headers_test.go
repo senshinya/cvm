@@ -103,6 +103,24 @@ func TestBuiltinCtypeHeaderDeclaresRuntimeSurface(t *testing.T) {
 	}
 }
 
+func TestBuiltinLocaleHeaderDeclaresRuntimeSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <locale.h>
+int categories[] = { LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY, LC_NUMERIC, LC_TIME };
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	if !hasIdentifier(res.Tokens, "setlocale") {
+		t.Fatalf("locale identifier %q missing: %#v", "setlocale", res.Tokens)
+	}
+	for _, value := range []string{"0", "1", "2", "3", "4", "5"} {
+		if !hasLexeme(res.Tokens, value) {
+			t.Fatalf("locale category macro value %q missing: %#v", value, res.Tokens)
+		}
+	}
+}
+
 func TestBuiltinStringHeaderDeclaresReadOnlySurface(t *testing.T) {
 	res, err := PreprocessSource("main.c", `
 #include <string.h>

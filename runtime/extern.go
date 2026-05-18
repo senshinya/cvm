@@ -138,6 +138,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("getenv", getenvExtern("getenv"))
 	r.Register("system", systemExtern("system"))
 	r.Register("atexit", atexitExtern("atexit"))
+	r.Register("setlocale", setlocaleExtern("setlocale", r))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
@@ -951,6 +952,43 @@ func exitExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		return Value{}, &ExitStatus{Code: code}, nil
+	}
+}
+
+func setlocaleExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects category argument", name)
+		}
+		category := signedInt(args[0])
+		if category < 0 || category > 5 {
+			return PtrValue(0), nil, nil
+		}
+		if !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects locale pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		locale := "C"
+		if args[1].Int != 0 {
+			var err error
+			locale, err = ec.Memory.ReadCString(args[1].Int)
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
+		if locale != "" && locale != "C" {
+			return PtrValue(0), nil, nil
+		}
+		addr, err := r.staticCString(ec.Memory, name, "C")
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
 	}
 }
 

@@ -986,6 +986,27 @@ int main(void)
 	}
 }
 
+func TestLocaleSetlocaleExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <locale.h>
+#include <string.h>
+
+int main(void)
+{
+  char *current = setlocale(LC_ALL, 0);
+  if (current == 0 || strcmp(current, "C") != 0)
+    return 1;
+  if (setlocale(LC_NUMERIC, "C") == 0)
+    return 2;
+  return setlocale(LC_TIME, "ja_JP.UTF-8") == 0 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "locale-setlocale-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibDivExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>

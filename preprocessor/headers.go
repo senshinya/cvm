@@ -34,6 +34,8 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return stdlibHeader(), true
 	case "ctype.h":
 		return ctypeHeader(), true
+	case "locale.h":
+		return localeHeader(), true
 	case "string.h":
 		return stringHeader(), true
 	case "strings.h":
@@ -185,6 +187,20 @@ int isgraph(int);
 int ispunct(int);
 int tolower(int);
 int toupper(int);
+#endif
+`
+}
+
+func localeHeader() string {
+	return `#ifndef __CVM_LOCALE_H
+#define __CVM_LOCALE_H
+#define LC_ALL 0
+#define LC_COLLATE 1
+#define LC_CTYPE 2
+#define LC_MONETARY 3
+#define LC_NUMERIC 4
+#define LC_TIME 5
+char *setlocale(int, const char *);
 #endif
 `
 }
