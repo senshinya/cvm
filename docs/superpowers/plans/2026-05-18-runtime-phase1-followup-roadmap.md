@@ -147,7 +147,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib strtoll externs`
   - `docs: record stdlib strtoll externs`
 
-## Plan 20: `stdlib.h` Floating String Parsers
+## Plan 20: `stdlib.h` Floating String Parsers - Completed
 
 Add `atof` and `strtod` declarations, sema signatures, runtime externs, direct coverage, and GCC runtime execution coverage. Parsing should skip ASCII whitespace, use Go decimal/hex float parsing for the consumed prefix, return `0.0` when no conversion is possible, and write `endptr` when non-null.
 
