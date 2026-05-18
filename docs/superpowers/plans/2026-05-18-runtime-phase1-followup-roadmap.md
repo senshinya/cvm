@@ -467,6 +467,22 @@ go test ./runtime -run 'TestLocaleSetlocaleExtern|TestLocaleSetlocaleExecuteThro
   - `feat(runtime): add locale setlocale extern`
   - `docs: record locale setlocale extern`
 
+## Plan 40: `time.h` Deterministic Time Helpers - Completed
+
+Add a minimal builtin `<time.h>` plus deterministic runtime externs for `clock`, `difftime`, and `time`. `clock()` and `time(NULL)` return `0`, `time(&slot)` stores `0`, and `difftime` returns the numeric difference between its two `time_t` arguments.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinTimeHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestTimeExterns|TestTimeHeaderExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add time header externs`
+  - `docs: record time header externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
