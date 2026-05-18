@@ -1793,6 +1793,8 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathComplexRealExterns(r, "cimag", func(z complex128) float64 { return imag(z) })
 	registerTgmathComplexRealExterns(r, "creal", func(z complex128) float64 { return real(z) })
 	registerTgmathRealTernaryExterns(r, "__cvm_tgmath_fma", math.FMA)
+	registerTgmathComplexExterns(r, "conj", cmplx.Conj)
+	registerTgmathComplexExterns(r, "cproj", cvmComplexProject)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_conj", cmplx.Conj)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_cproj", cvmComplexProject)
 	registerTgmathComplexExterns(r, "__cvm_tgmath_csin", cmplx.Sin)

@@ -2684,6 +2684,40 @@ int main(void)
 	}
 }
 
+func TestComplexUnaryExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <complex.h>
+
+int main(void)
+{
+  float complex zf = __builtin_complex(3.0f, 4.0f);
+  double complex zd = __builtin_complex(3.0, 4.0);
+  long double complex zl = __builtin_complex(3.0L, 4.0L);
+  float complex cf = conjf(zf);
+  double complex cd = conj(zd);
+  long double complex cl = conjl(zl);
+  float complex pf = cprojf(zf);
+  double complex pd = cproj(zd);
+  long double complex pl = cprojl(zl);
+  if (crealf(cf) != 3.0f || cimagf(cf) != -4.0f)
+    return 1;
+  if (creal(cd) != 3.0 || cimag(cd) != -4.0)
+    return 2;
+  if (creall(cl) != 3.0L || cimagl(cl) != -4.0L)
+    return 3;
+  if (crealf(pf) != 3.0f || cimagf(pf) != 4.0f)
+    return 4;
+  if (creal(pd) != 3.0 || cimag(pd) != 4.0)
+    return 5;
+  return creall(pl) == 3.0L && cimagl(pl) == 4.0L ? 0 : 6;
+}
+`
+	st := runGCCExecFixture(t, "complex-unary.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathConjExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>

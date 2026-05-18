@@ -77,6 +77,12 @@ long double cimagl(long double complex);
 float cargf(float complex);
 double carg(double complex);
 long double cargl(long double complex);
+float complex conjf(float complex);
+double complex conj(double complex);
+long double complex conjl(long double complex);
+float complex cprojf(float complex);
+double complex cproj(double complex);
+long double complex cprojl(long double complex);
 #endif
 `
 }
