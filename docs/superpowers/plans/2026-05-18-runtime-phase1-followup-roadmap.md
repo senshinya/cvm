@@ -744,6 +744,22 @@ go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThrou
   - `feat(runtime): add plain inverse hyperbolic math externs`
   - `docs: record plain inverse hyperbolic math externs`
 
+## Plan 57: Plain `cbrt`/`erf` `math.h` Helpers - Completed
+
+The pre-plan adjustment found `cbrt*`, `erf*`, and `erfc*` already supported by tgmath runtime helpers but still absent from the plain `<math.h>` surface. This plan adds the plain declarations and extern registrations.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain cbrt erf math externs`
+  - `docs: record plain cbrt erf math externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
