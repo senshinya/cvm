@@ -140,6 +140,11 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("strtod", strtoFloatExtern("strtod", bytecode.TypeF64))
 	r.Register("strtof", strtoFloatExtern("strtof", bytecode.TypeF32))
 	r.Register("strtold", strtoFloatExtern("strtold", bytecode.TypeFLong))
+	r.Register("mblen", mblenExtern("mblen"))
+	r.Register("mbtowc", mbtowcExtern("mbtowc"))
+	r.Register("wctomb", wctombExtern("wctomb"))
+	r.Register("mbstowcs", mbstowcsExtern("mbstowcs"))
+	r.Register("wcstombs", wcstombsExtern("wcstombs"))
 	r.Register("rand", randExtern("rand", r))
 	r.Register("srand", srandExtern("srand", r))
 	r.Register("getenv", getenvExtern("getenv"))
@@ -963,6 +968,151 @@ func strtoFloatExtern(name string, ret bytecode.ValueType) ExternFunc {
 			}
 		}
 		return FloatValue(ret, parsed.value), nil, nil
+	}
+}
+
+func mblenExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if args[0].Int == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if unsignedInt(args[1]) == 0 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		ch, err := readMemoryByte(ec.Memory, args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if ch == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func mbtowcExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if args[1].Int == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if unsignedInt(args[2]) == 0 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		ch, err := readMemoryByte(ec.Memory, args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if args[0].Int != 0 {
+			if err := ec.Memory.Store(args[0].Int, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(ch))); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		if ch == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func wctombExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if args[0].Int == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		wc := signedInt(args[1])
+		if wc < 0 || wc > 255 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		if err := writeMemoryByte(ec.Memory, args[0].Int, byte(wc)); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func mbstowcsExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		src, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if args[0].Int == 0 {
+			return UIntValue(bytecode.TypeU64, uint64(len(src))), nil, nil
+		}
+		n := unsignedInt(args[2])
+		count := uint64(0)
+		for count < n && count < uint64(len(src)) {
+			if err := ec.Memory.Store(args[0].Int+count*4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(src[count]))); err != nil {
+				return Value{}, nil, err
+			}
+			count++
+		}
+		if count < n {
+			if err := ec.Memory.Store(args[0].Int+count*4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return UIntValue(bytecode.TypeU64, count), nil, nil
+	}
+}
+
+func wcstombsExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		chars, err := readWideCString(ec.Memory, args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if args[0].Int == 0 {
+			return UIntValue(bytecode.TypeU64, uint64(len(chars))), nil, nil
+		}
+		n := unsignedInt(args[2])
+		count := uint64(0)
+		for count < n && count < uint64(len(chars)) {
+			wc := chars[count]
+			if wc > 255 {
+				return UIntValue(bytecode.TypeU64, ^uint64(0)), nil, nil
+			}
+			if err := writeMemoryByte(ec.Memory, args[0].Int+count, byte(wc)); err != nil {
+				return Value{}, nil, err
+			}
+			count++
+		}
+		if count < n {
+			if err := writeMemoryByte(ec.Memory, args[0].Int+count, 0); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return UIntValue(bytecode.TypeU64, count), nil, nil
 	}
 }
 
@@ -2810,6 +2960,20 @@ func writeMemoryByte(mem *Memory, addr uint64, value byte) error {
 	}
 	block.data[off] = value
 	return nil
+}
+
+func readWideCString(mem *Memory, addr uint64) ([]uint64, error) {
+	var out []uint64
+	for {
+		ch, err := mem.Load(addr+uint64(len(out))*4, bytecode.TypeI32, 4)
+		if err != nil {
+			return nil, err
+		}
+		if ch.Int == 0 {
+			return out, nil
+		}
+		out = append(out, unsignedInt(ch))
+	}
 }
 
 func sprintfExtern(name string) ExternFunc {

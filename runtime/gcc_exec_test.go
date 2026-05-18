@@ -1483,6 +1483,45 @@ int main(void)
 	}
 }
 
+func TestStdlibMultibyteExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  wchar_t wide[4];
+  char out[4];
+
+  if (mblen("A", 2) != 1)
+    return 1;
+  if (mblen("", 1) != 0)
+    return 2;
+  if (mblen(0, 0) != 0)
+    return 3;
+  if (mbtowc(&wide[0], "B", 2) != 1 || wide[0] != L'B')
+    return 4;
+  wide[0] = L'O';
+  wide[1] = L'K';
+  wide[2] = 0;
+  if (wcstombs(out, wide, sizeof out) != 2)
+    return 5;
+  if (out[0] != 'O' || out[1] != 'K' || out[2] != 0)
+    return 6;
+  if (mbstowcs(wide, "xy", 4) != 2)
+    return 7;
+  if (wide[0] != L'x' || wide[1] != L'y' || wide[2] != 0)
+    return 8;
+  if (wctomb(out, L'Z') != 1 || out[0] != 'Z')
+    return 9;
+  return wctomb(0, 0) == 0 ? 0 : 10;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-multibyte-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibStrtolExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>

@@ -147,6 +147,7 @@ func stdlibHeader() string {
 	return `#ifndef __CVM_STDLIB_H
 #define __CVM_STDLIB_H
 typedef __SIZE_TYPE__ size_t;
+typedef __WCHAR_TYPE__ wchar_t;
 typedef struct { int quot; int rem; } div_t;
 typedef struct { long quot; long rem; } ldiv_t;
 typedef struct { long long quot; long long rem; } lldiv_t;
@@ -168,6 +169,11 @@ unsigned long long strtoull(const char *, char **, int);
 double strtod(const char *, char **);
 float strtof(const char *, char **);
 long double strtold(const char *, char **);
+int mblen(const char *, size_t);
+int mbtowc(wchar_t *, const char *, size_t);
+int wctomb(char *, wchar_t);
+size_t mbstowcs(wchar_t *, const char *, size_t);
+size_t wcstombs(char *, const wchar_t *, size_t);
 void *malloc(size_t);
 void *calloc(size_t, size_t);
 void *realloc(void *, size_t);
