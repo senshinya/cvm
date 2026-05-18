@@ -22,6 +22,8 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return "#ifndef __CVM_FENV_H\n#define __CVM_FENV_H\n#define FE_ALL_EXCEPT 0\nint feclearexcept(int);\nint fetestexcept(int);\n#endif\n", true
 	case "errno.h":
 		return "#ifndef __CVM_ERRNO_H\n#define __CVM_ERRNO_H\n#define EDOM 33\n#define ERANGE 34\n#define EILSEQ 84\nextern int errno;\n#endif\n", true
+	case "assert.h":
+		return "#ifndef __CVM_ASSERT_H\n#define __CVM_ASSERT_H\n#ifdef NDEBUG\n#define assert(expr) ((void)0)\n#else\nvoid abort(void);\n#define assert(expr) ((expr) ? (void)0 : abort())\n#endif\n#endif\n", true
 	case "tgmath.h":
 		return tgmathHeader(), true
 	case "chk.h":

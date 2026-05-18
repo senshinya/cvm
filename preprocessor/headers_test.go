@@ -160,6 +160,30 @@ int values[] = { EDOM, ERANGE, EILSEQ };
 	}
 }
 
+func TestBuiltinAssertHeaderDeclaresRuntimeSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <assert.h>
+void f(void) { assert(1); }
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	if !hasIdentifier(res.Tokens, "abort") {
+		t.Fatalf("assert did not expand to abort path: %#v", res.Tokens)
+	}
+
+	res, err = PreprocessSource("main.c", `
+#include <assert.h>
+void f(void) { assert(0); }
+`, Options{MacroActions: []MacroAction{{Kind: MacroDefine, Name: "NDEBUG", Value: "1"}}})
+	if err != nil {
+		t.Fatalf("PreprocessSource with NDEBUG failed: %v", err)
+	}
+	if hasIdentifier(res.Tokens, "abort") {
+		t.Fatalf("NDEBUG assert expanded to abort path: %#v", res.Tokens)
+	}
+}
+
 func TestBuiltinStringHeaderDeclaresReadOnlySurface(t *testing.T) {
 	res, err := PreprocessSource("main.c", `
 #include <string.h>

@@ -1053,6 +1053,22 @@ int main(void)
 	}
 }
 
+func TestAssertHeaderExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <assert.h>
+
+int main(void)
+{
+  assert(1);
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "assert-header-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibDivExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>
