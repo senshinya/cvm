@@ -1403,6 +1403,37 @@ go test ./runtime -run 'TestPlainSprintfExecutesThroughRuntime|TestDefaultExtern
   - `test(runtime): cover plain stdio sprintf externs`
   - `docs: record plain stdio formatter coverage`
 
+## Plan 117: Remaining Compile-Only Main Candidate Scan - Completed
+
+The pre-plan adjustment returned to self-contained compile-only GCC accept fixtures after stdio formatter coverage landed. `overflow-2.c` had already been rejected as not runtime-stable, and `pr27639.c` was covered, so the next low-risk candidate was `pr71969-1.c`.
+
+## Plan 118: Inline Volatile Calls Runtime Coverage - Completed
+
+The pre-plan adjustment added direct runtime coverage for `sema/testdata/gcc-c99-extra/accept/pr71969-1.c`. The fixture repeatedly calls inline functions that increment a volatile global, then returns zero. It runs cleanly with the fixture-specific step-limit helper.
+
+- Files: `runtime/gcc_exec_test.go`
+- Focused tests:
+
+```bash
+go test ./runtime -run TestGCCInlineVolatileCallsExecuteThroughRuntime -count=1 -v
+go test ./runtime -run 'TestGCCInlineVolatileCallsExecuteThroughRuntime|TestGCCLargeStaticArrayLoopExecutesThroughRuntime' -count=1 -v
+```
+
+- Commit messages:
+  - `test(runtime): execute GCC inline volatile calls`
+  - `docs: record GCC inline volatile runtime coverage`
+
+## Plan 119: Inline Candidate Triage - Completed
+
+The Plan 118 focused probe passed immediately, so no sema, codegen, or runtime fix was required.
+
+## Plan 120: Inline Coverage Verification - Completed
+
+The inline/volatile coverage increment passed focused runtime tests plus full verification.
+
+- Commit message:
+  - `docs: record GCC inline volatile runtime coverage`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.
