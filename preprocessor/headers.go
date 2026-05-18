@@ -125,6 +125,8 @@ long long llabs(long long);
 int atoi(const char *);
 long atol(const char *);
 long long atoll(const char *);
+long strtol(const char *, char **, int);
+unsigned long strtoul(const char *, char **, int);
 void *malloc(size_t);
 void *calloc(size_t, size_t);
 void free(void *);

@@ -18,6 +18,8 @@ func (s *Sema) lookupBuiltin(name string, pos entity.SourcePos) *Symbol {
 func (s *Sema) builtinFunctionType(name string) *FunctionType {
 	sizeT := s.Types.Builtin(ULong)
 	intT := s.Types.Builtin(Int)
+	longT := s.Types.Builtin(Long)
+	unsignedLongT := s.Types.Builtin(ULong)
 	doubleT := s.Types.Builtin(Double)
 	floatT := s.Types.Builtin(Float)
 	longDoubleT := s.Types.Builtin(LongDouble)
@@ -26,6 +28,7 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 	constVoidPtr := s.Types.Pointer(s.Types.Qualified(s.Types.Builtin(Void), true, false, false))
 	constCharPtr := s.Types.Pointer(s.Types.Qualified(s.Types.Builtin(Char), true, false, false))
 	charPtr := s.Types.Pointer(s.Types.Builtin(Char))
+	charPtrPtr := s.Types.Pointer(charPtr)
 	vaList := voidPtr
 
 	switch name {
@@ -37,6 +40,10 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(charPtr, []Type{constCharPtr}, false, true)
 	case "free":
 		return s.Types.Function(voidT, []Type{voidPtr}, false, true)
+	case "strtol":
+		return s.Types.Function(longT, []Type{constCharPtr, charPtrPtr, intT}, false, true)
+	case "strtoul":
+		return s.Types.Function(unsignedLongT, []Type{constCharPtr, charPtrPtr, intT}, false, true)
 	case "__builtin_memcpy", "__builtin_memmove", "__builtin_mempcpy":
 		return s.Types.Function(voidPtr, []Type{voidPtr, constVoidPtr, sizeT}, false, true)
 	case "memcpy", "memmove", "mempcpy":

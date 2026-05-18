@@ -1080,6 +1080,35 @@ int main(void)
 	}
 }
 
+func TestStdlibStrtolExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  char *end = 0;
+
+  if (strtol(" \t-0x2a tail", &end, 0) != -42L)
+    return 1;
+  if (*end != ' ')
+    return 2;
+  if (strtoul("077z", &end, 0) != 63UL)
+    return 3;
+  if (*end != 'z')
+    return 4;
+  if (strtoul("7f!", 0, 16) != 127UL)
+    return 5;
+  if (strtol("xyz", &end, 10) != 0L)
+    return 6;
+  return *end == 'x' ? 0 : 7;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-strtol-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestCtypeClassificationExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <ctype.h>

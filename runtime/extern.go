@@ -117,6 +117,8 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("atoi", atoiExtern("atoi", bytecode.TypeI32))
 	r.Register("atol", atoiExtern("atol", bytecode.TypeI64))
 	r.Register("atoll", atoiExtern("atoll", bytecode.TypeI64))
+	r.Register("strtol", strtoIntegerExtern("strtol", bytecode.TypeI64, true))
+	r.Register("strtoul", strtoIntegerExtern("strtoul", bytecode.TypeU64, false))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
@@ -528,6 +530,121 @@ func parseAtoiString(s string) int64 {
 		return -v
 	}
 	return v
+}
+
+func strtoIntegerExtern(name string, ret bytecode.ValueType, signed bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || (args[1].Int != 0 && !isPointerType(args[1].Type)) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string, end pointer, and base arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		parsed, err := parseStrtoIntegerString(name, s, signedInt(args[2]))
+		if err != nil {
+			return Value{}, nil, err
+		}
+		end := args[0].Int
+		if parsed.converted {
+			end, err = addSignedOffset(args[0].Int, int64(parsed.end))
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
+		if args[1].Int != 0 {
+			if err := ec.Memory.WritePointer(args[1].Int, end); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		if signed {
+			v := int64(parsed.value)
+			if parsed.neg {
+				v = -v
+			}
+			return normalizeInt(IntValue(ret, v)), nil, nil
+		}
+		v := parsed.value
+		if parsed.neg {
+			v = -v
+		}
+		return normalizeInt(UIntValue(ret, v)), nil, nil
+	}
+}
+
+type parsedStrtoInteger struct {
+	value     uint64
+	neg       bool
+	end       int
+	converted bool
+}
+
+func parseStrtoIntegerString(name, s string, base int64) (parsedStrtoInteger, error) {
+	if base != 0 && base != 8 && base != 10 && base != 16 {
+		return parsedStrtoInteger{}, fmt.Errorf("%s unsupported base %d", name, base)
+	}
+	i := 0
+	for i < len(s) && isASCIIWhitespace(s[i]) {
+		i++
+	}
+	neg := false
+	if i < len(s) {
+		switch s[i] {
+		case '-':
+			neg = true
+			i++
+		case '+':
+			i++
+		}
+	}
+	digitStart := i
+	actualBase := base
+	if actualBase == 0 {
+		actualBase = 10
+		if i < len(s) && s[i] == '0' {
+			actualBase = 8
+			if i+1 < len(s) && (s[i+1] == 'x' || s[i+1] == 'X') {
+				actualBase = 16
+				i += 2
+				digitStart = i
+			}
+		}
+	} else if actualBase == 16 && i+1 < len(s) && s[i] == '0' && (s[i+1] == 'x' || s[i+1] == 'X') {
+		i += 2
+		digitStart = i
+	}
+	var v uint64
+	for i < len(s) {
+		digit := strtoDigit(s[i])
+		if digit < 0 || int64(digit) >= actualBase {
+			break
+		}
+		v = v*uint64(actualBase) + uint64(digit)
+		i++
+	}
+	if i == digitStart {
+		return parsedStrtoInteger{neg: neg}, nil
+	}
+	return parsedStrtoInteger{value: v, neg: neg, end: i, converted: true}, nil
+}
+
+func strtoDigit(ch byte) int {
+	switch {
+	case ch >= '0' && ch <= '9':
+		return int(ch - '0')
+	case ch >= 'a' && ch <= 'f':
+		return int(ch-'a') + 10
+	case ch >= 'A' && ch <= 'F':
+		return int(ch-'A') + 10
+	default:
+		return -1
+	}
 }
 
 func isASCIIWhitespace(ch byte) bool {
