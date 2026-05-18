@@ -131,7 +131,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib strtol externs`
   - `docs: record stdlib strtol externs`
 
-## Plan 19: `stdlib.h` `strtoll` And `strtoull`
+## Plan 19: `stdlib.h` `strtoll` And `strtoull` - Completed
 
 Add `strtoll` and `strtoull` by reusing the Plan 18 parser with `long long`/`unsigned long long` return types.
 
