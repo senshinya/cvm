@@ -1554,6 +1554,41 @@ go test ./runtime -run TestGCCVLAStructAndUnionMembersExecuteThroughRuntime -cou
 - Commit message:
   - `test(runtime): execute VLA typedef pointer access`
 
+## Plan 156: Phase 1 Maths Surface Rescan - Completed
+
+The pre-plan adjustment rescanned builtin header prototypes, runtime registry entries, and runtime/direct test coverage for the Phase 1 maths surface. The scan found no remaining gaps:
+
+- `<math.h>`: 171 plain prototypes, no missing registry entries, no untested names.
+- `<complex.h>`: 66 plain prototypes, no missing registry entries, no untested names.
+- `<tgmath.h>`: 61 pseudo functions, no missing declarations or registry entries.
+
+## Plan 157: Type-Generic `signbit` Completion - Completed
+
+The scan found one semantic cleanup rather than a missing extern: `<math.h>` `signbit` still forced its argument through `(double)` while the runtime already had `__cvm_signbitf`, `__cvm_signbit`, and `__cvm_signbitl`. Updating `signbit` to use `__cvm_math_select1` exposed a codegen bug for `sizeof`-based conditional macro dispatch nested inside a larger expression. Codegen now folds C99 integer-constant conditional expressions before emitting runtime branch labels.
+
+- Files: `preprocessor/headers.go`, `codegen/expr.go`, `codegen/codegen_test.go`, `runtime/gcc_exec_test.go`
+- Focused tests:
+
+```bash
+go test ./codegen -run 'TestGenerateConstantConditionalExpressionWithOuterStackValue|TestGCCBytecodeCompileSuite/signbit-sa.c' -count=1 -v
+go test ./runtime -run 'TestGCCExecutionFixtures/signbit-sa.c|TestBuiltinFloatingConstantsExecuteThroughRuntime' -count=1 -v
+```
+
+- Commit message:
+  - `fix(codegen): fold constant conditional expressions`
+
+## Plan 158: Phase 1 Maths Closure Verification - Completed
+
+The `signbit` increment passed full verification and was pushed as `e60581b`. A final mechanical scan confirmed the Phase 1 maths surface remains closed after the codegen fix:
+
+```text
+mathCount=171 missingMath=[] untestedMath=[]
+complexCount=66 missingComplex=[] untestedComplex=[]
+tgmathPseudoCount=61 missingPseudoDecl=[] missingPseudoReg=[]
+```
+
+Phase 1 maths is complete. Further runtime work should move to non-math execution gaps unless a new imported fixture reveals a regression in this surface.
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.

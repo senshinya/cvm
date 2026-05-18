@@ -8,7 +8,7 @@ This document records the current state of the bytecode/runtime work so the bran
 
 - Workspace: `/Users/shinya/Downloads/cvm`
 - Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document: `8396282 test(runtime): execute GCC GNU89 inline volatile calls`
+- Latest implementation/coverage commit before this handoff document: `e60581b fix(codegen): fold constant conditional expressions`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-1`
 - Working tree at handoff time: clean
@@ -84,7 +84,7 @@ Recent related commits:
 
 The latest Plan 82 adjustment found no uncovered GCC runtime accept candidates: `runtime/testdata/gcc-exec/gap-report.md` reports 18 runnable fixtures, all currently represented in `runtime/testdata/gcc-exec/manifest.tsv`.
 
-The latest Plan 89 math surface scan found no remaining expected C99 `<math.h>` function gaps in either builtin header declarations or the default runtime registry after the `nan*` and `modf*` increments.
+The latest Phase 1 maths completion scan found no remaining expected C99 `<math.h>`, `<complex.h>`, or `<tgmath.h>` gaps: 171 math prototypes, 66 complex prototypes, and 61 tgmath pseudo functions are declared, registered where runtime execution needs them, and represented in direct/runtime coverage.
 
 Plan 90 rechecked the GCC runtime execution gap report and it remains closed. Plan 91 then scanned compile-only GCC accept fixtures with a `main` and selected `sema/testdata/gcc-c90-as-c99/accept/Wdeclaration-after-statement-4.c` as a low-risk direct runtime coverage candidate. The fixture now executes through a focused runtime test without joining `runtime/testdata/gcc-exec/manifest.tsv`, because that manifest is intentionally limited to fixtures with `{ dg-do run }` or `c99_runtime` directives.
 
@@ -123,6 +123,11 @@ Notable recent coverage additions:
 ### Codegen/Sema Fixes Landed
 
 Recent commits at the tip of this branch:
+
+- `e60581b fix(codegen): fold constant conditional expressions`
+  - Folds C99 integer-constant conditional expressions during bytecode generation, avoiding expression-internal branch labels when `sizeof`-based macro dispatch is compile-time decidable.
+  - Updates `<math.h>` `signbit` to use the same type-generic `__cvm_math_select1` path as the other classification macros.
+  - Adds focused codegen regression coverage plus runtime coverage for `signbit(-0.0f)`, `signbit(-0.0)`, and `signbit(-0.0L)`.
 
 - `8396282 test(runtime): execute GCC GNU89 inline volatile calls`
   - Adds direct runtime coverage for `sema/testdata/gcc-c99-extra/accept/pr71969-3.c`.
@@ -1444,14 +1449,14 @@ Sema preserves argument types for these pseudo calls, and codegen dispatches to 
 - real: `__cvm_tgmath_sinf`, `__cvm_tgmath_sinh`, `__cvm_tgmath_asinh`, `__cvm_tgmath_asin`, `__cvm_tgmath_acosh`, `__cvm_tgmath_acos`, `__cvm_tgmath_atan`, `__cvm_tgmath_atanh`, `__cvm_tgmath_atan2`, `__cvm_tgmath_hypot`, `__cvm_tgmath_cbrt`, `__cvm_tgmath_ceil`, `__cvm_tgmath_floor`, `__cvm_tgmath_trunc`, `__cvm_tgmath_round`, `__cvm_tgmath_exp2`, `__cvm_tgmath_expm1`, `__cvm_tgmath_fdim`, `__cvm_tgmath_fmax`, `__cvm_tgmath_fmin`, `__cvm_tgmath_fmod`, `__cvm_tgmath_remainder`, `__cvm_tgmath_copysign`, `__cvm_tgmath_fma`, `__cvm_tgmath_nextafter`, `__cvm_tgmath_nexttoward`, `__cvm_tgmath_erf`, `__cvm_tgmath_erfc`, `__cvm_tgmath_tgamma`, `__cvm_tgmath_lgamma`, `__cvm_tgmath_nearbyint`, `__cvm_tgmath_rint`, `__cvm_tgmath_logb`, `__cvm_tgmath_scalbn`, `__cvm_tgmath_scalbln`, `__cvm_tgmath_ilogb`, `__cvm_tgmath_lrint`, `__cvm_tgmath_lround`, `__cvm_tgmath_llrint`, `__cvm_tgmath_llround`, `__cvm_tgmath_frexp`, `__cvm_tgmath_modf`, `__cvm_tgmath_ldexp`, `__cvm_tgmath_remquo`, `__cvm_tgmath_fabs`, `__cvm_tgmath_carg`, `__cvm_tgmath_creal`, `__cvm_tgmath_cimag`, `__cvm_tgmath_log10`, `__cvm_tgmath_log1p`, `__cvm_tgmath_log2`, `__cvm_tgmath_cos`, `__cvm_tgmath_cosh`, `__cvm_tgmath_tan`, `__cvm_tgmath_tanh`, `__cvm_tgmath_exp`, `__cvm_tgmath_log`, `__cvm_tgmath_sqrtl`, `__cvm_tgmath_powl`, etc.
 - complex: `__builtin_cabs`, `__cvm_tgmath_conj`, `__cvm_tgmath_cproj`, `__cvm_tgmath_csinh`, `__cvm_tgmath_casinh`, `__cvm_tgmath_casin`, `__cvm_tgmath_cacosh`, `__cvm_tgmath_cacos`, `__cvm_tgmath_catan`, `__cvm_tgmath_catanh`, `__cvm_tgmath_ccos`, `__cvm_tgmath_ccosh`, `__cvm_tgmath_ctan`, `__cvm_tgmath_ctanh`, `__cvm_tgmath_cexp`, `__cvm_tgmath_clog`, `__cvm_tgmath_csqrt`, `__cvm_tgmath_cpowf`, etc.
 
-Runtime support exists for real math externs and for the currently covered complex `csin*`/`csinh*`/`casinh*`/`casin*`/`cacosh*`/`cacos*`/`catan*`/`catanh*`/`ccos*`/`ccosh*`/`ctan*`/`ctanh*`/`cexp*`/`clog*`/`csqrt*`/`cpow*` externs. Plan 80's scan found no remaining C99 plain `<complex.h>` header or runtime registry gap: all 66 plain names are declared, and all non-`cabs*` bases are registered through the real/unary/binary complex helper registrars. Broader complex tgmath coverage remains a later phase.
+Runtime support exists for real math externs and for the Phase 1 complex math extern surface. Plan 80's scan found no remaining C99 plain `<complex.h>` header or runtime registry gap, and the final maths scan confirmed all 66 plain complex names plus all 61 tgmath pseudo functions are covered by declarations, registry entries, and tests. Phase 1 maths is therefore considered complete.
 
 ## Known Limits
 
 - The interpreter/runtime is intentionally not complete yet.
 - Bytecode design is intended to be complete enough for the compiler artifact, but execution support is still catching up.
-- Complex runtime execution is not complete.
-- Long double runtime memory/operations are still limited in places.
+- Broader complex runtime execution outside the Phase 1 math extern surface is not complete.
+- Broader long double runtime memory/operations outside the Phase 1 math extern surface are still limited in places.
 - `va_list` execution currently uses an interpreter-internal frame cursor for bytecode `OpVa*`; it is not yet a memory-backed C ABI object. The v-format extern families are registered, but only support formats that do not consume `va_list` values.
 - `getchar`, `fgetc`, `fgets`, and `fread` currently consume interpreter-local `ungetc` pushback and otherwise return `EOF`/null/zero; they do not read from a host input stream.
 - `fclose` currently validates known host stream handles and returns zero, but does not model stream lifetime or prevent later use of that stream handle.
@@ -1464,7 +1469,7 @@ Runtime support exists for real math externs and for the currently covered compl
 The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots. Suggested next directions:
 
 - Expand runtime execution coverage fixture-by-fixture, starting with cases that already compile cleanly and exercise existing runtime opcodes.
-- Continue complex and long double runtime work where execution still lags behind bytecode generation.
+- Move beyond Phase 1 maths into non-math runtime execution gaps where bytecode generation already succeeds.
 - Revisit static-chain support if the bytecode format grows an explicit closure/trampoline representation.
 
 Recommended workflow:
