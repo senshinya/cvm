@@ -56,3 +56,36 @@ git add runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go docs/s
 git commit -m "feat(runtime): consume memory backed va lists"
 git push origin codex/bytecode-runtime-phase-1
 ```
+
+## Task 2: Checked And FILE v-format Coverage
+
+**Files:**
+- Modify: `runtime/extern_test.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/superpowers/plans/2026-05-19-phase2b-memory-va-list.md`
+
+- [x] **Step 1: Add direct coverage for shared v-format entry points**
+
+Cover checked buffer v-format and FILE/stdout v-format entry points with the same memory-backed `va_list` layout.
+
+- [x] **Step 2: Add GCC runtime coverage**
+
+Add a source-level runtime test that constructs the CVM memory layout and calls `vsnprintf` plus `vfprintf` with consuming formats.
+
+- [x] **Step 3: Run focused tests**
+
+Run:
+
+```bash
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestCheckedVFormatExternsReadMemoryVaList|TestGCCVFormatMemoryVaListSharedEntrypointsExecuteThroughRuntime' -count=1 -v
+```
+
+- [x] **Step 4: Full verification, commit, push**
+
+Run Common Verification, then commit:
+
+```bash
+git add runtime/extern_test.go runtime/gcc_exec_test.go docs/superpowers/plans/2026-05-19-phase2b-memory-va-list.md
+git commit -m "test(runtime): cover memory va lists in vformat aliases"
+git push origin codex/bytecode-runtime-phase-1
+```

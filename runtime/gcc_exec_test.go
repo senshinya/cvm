@@ -4431,6 +4431,41 @@ int main(void)
 	}
 }
 
+func TestGCCVFormatMemoryVaListSharedEntrypointsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <string.h>
+
+#define CVM_VA_I32 1UL
+#define CVM_VA_U32 2UL
+#define CVM_VA_PTR 5UL
+
+int main(void)
+{
+  char buf[16];
+  unsigned long ap[7];
+  ap[0] = 3;
+  ap[1] = CVM_VA_I32;
+  ap[2] = 4;
+  ap[3] = CVM_VA_PTR;
+  ap[4] = (unsigned long)"ok";
+  ap[5] = CVM_VA_U32;
+  ap[6] = 9;
+  if (vsnprintf(buf, sizeof buf, "%*s %u", ap) != 6)
+    return 1;
+  if (strcmp(buf, "  ok 9") != 0)
+    return 2;
+  if (vfprintf(stderr, "%*s %u", ap) != 6)
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "vformat-memory-va-list-shared-entrypoints-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioVFormatUnlockedAliasesExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdarg.h>
