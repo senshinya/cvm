@@ -29,6 +29,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 - The hermetic file mode milestone is closed for C99 `r`, `w`, `a`, and `+` behavior. Strict read/write sequencing rules for update streams remain a documented residual limit.
 - `getenv` now reads only explicit `ExternRegistry.SetEnv` values and remains isolated from the ambient host environment by default.
 - `atexit` now records registered callbacks and the VM runs them in reverse registration order after normal `main` return or `exit`. `_Exit` remains immediate and skips registered callbacks.
+- The long double/complex ABI sweep found and fixed unsuffixed variadic coverage around floating literal suffixes: `long double` literals now keep `LongDouble` type before default argument promotion, so `va_arg(ap, long double)` receives `flong`. Source-level `va_arg` coverage now includes `long double` and `_Complex double`.
 
 ## Residual Bounded Runtime Surface
 

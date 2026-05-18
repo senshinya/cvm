@@ -4881,6 +4881,55 @@ int main(void)
 	}
 }
 
+func TestGCCSourceVaArgLongDoubleExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+long double first(int count, ...)
+{
+  va_list ap;
+  va_start(ap, count);
+  long double value = va_arg(ap, long double);
+  va_end(ap);
+  return value;
+}
+
+int main(void)
+{
+  return first(1, 4.0L) == 4.0L ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-long-double-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaArgComplexExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+__complex__ double first(int count, ...)
+{
+  va_list ap;
+  va_start(ap, count);
+  __complex__ double value = va_arg(ap, __complex__ double);
+  va_end(ap);
+  return value;
+}
+
+int main(void)
+{
+  __complex__ double value = first(1, __builtin_complex(3.0, 4.0));
+  return __builtin_cabs(value) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-complex-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCSourceVaArgMultipleListsExecuteIndependently(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdarg.h>

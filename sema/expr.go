@@ -140,7 +140,7 @@ func (s *Sema) makeFloatLit(node *entity.AstNode) Expr {
 	if isImaginaryFloatSuffix(node.Terminal.Lexeme) {
 		return &ImagLit{Value: parseFloatLiteral(node.Terminal.Lexeme), T: s.imaginaryFloatLiteralType(node.Terminal.Lexeme), Range: node.SourceRange}
 	}
-	return &FloatLit{Value: parseFloatLiteral(node.Terminal.Lexeme), T: s.Types.Builtin(Double), Range: node.SourceRange}
+	return &FloatLit{Value: parseFloatLiteral(node.Terminal.Lexeme), T: s.floatLiteralType(node.Terminal.Lexeme), Range: node.SourceRange}
 }
 
 func isImaginaryFloatSuffix(lexeme string) bool {
@@ -157,6 +157,18 @@ func (s *Sema) imaginaryFloatLiteralType(lexeme string) Type {
 		return s.Types.Builtin(LongDoubleComplex)
 	default:
 		return s.Types.Builtin(DoubleComplex)
+	}
+}
+
+func (s *Sema) floatLiteralType(lexeme string) Type {
+	suffix := floatLiteralSuffix(lexeme)
+	switch {
+	case strings.Contains(suffix, "f"):
+		return s.Types.Builtin(Float)
+	case strings.Contains(suffix, "l"):
+		return s.Types.Builtin(LongDouble)
+	default:
+		return s.Types.Builtin(Double)
 	}
 }
 

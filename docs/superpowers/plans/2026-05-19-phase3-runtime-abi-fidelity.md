@@ -336,7 +336,31 @@ git push
 
 ## Milestone 9: Long Double And Complex Runtime Fidelity Sweep
 
-**Calibration:** Pending after termination semantics.
+**Calibration:** Completed after termination semantics. Existing runtime coverage already exercised long double scalar operations, complex object-address arithmetic, complex tgmath, complex by-value arguments/returns, and complex aggregate fields. The highest-value Phase 3 seam was the new source-level varargs path: earlier tests covered integer and pointer `va_arg`, but not long double or complex ABI values. Probing that path exposed that ordinary `4.0L` literals were typed as `double`, so default argument promotion placed `f64` in the variadic argument list and `va_arg(ap, long double)` trapped expecting `flong`.
+
+**Files:**
+- Modify: `sema/expr.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add failing long double and complex vararg ABI tests**
+
+Added runtime coverage for source-level `va_arg(ap, long double)` and `va_arg(ap, __complex__ double)`. The complex case already passed; the long double case failed with `va_arg has type f64, want flong`.
+
+- [x] **Step 2: Preserve floating literal suffix types**
+
+Changed sema floating literal typing so `f` suffixes produce `float`, `l` suffixes produce `long double`, and unsuffixed literals remain `double`. This keeps long double variadic arguments as `flong` unless an explicit conversion changes them.
+
+- [x] **Step 3: Verify, commit, and push ABI sweep**
+
+Run Common Verification, then:
+
+```bash
+git add sema/expr.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "fix(sema): preserve long double literal varargs"
+git push
+```
 
 ## Milestone 10: Struct And Union ABI Edge Runtime Sweep
 
