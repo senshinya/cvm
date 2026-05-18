@@ -307,7 +307,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib system extern`
   - `docs: record stdlib system extern`
 
-## Plan 30: `string.h` `strtok`
+## Plan 30: `string.h` `strtok` - Completed
 
 Add `strtok` declaration, sema signature, runtime extern, direct coverage, and GCC runtime execution coverage. Store tokenizer continuation state on the registry and mutate delimiters in-place to match C token splitting behavior for single-threaded phase 1 execution.
 
