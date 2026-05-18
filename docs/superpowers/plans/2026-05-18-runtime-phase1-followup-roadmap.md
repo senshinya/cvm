@@ -856,6 +856,22 @@ go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThrou
   - `feat(runtime): add plain rint logb math externs`
   - `docs: record plain rint logb math externs`
 
+## Plan 64: Plain Gamma `math.h` Helpers - Completed
+
+The pre-plan adjustment selected another unary real group with existing tgmath runtime support and stable exact checks. This plan adds plain `tgamma*` and `lgamma*` declarations and extern registrations.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain gamma math externs`
+  - `docs: record plain gamma math externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
