@@ -392,6 +392,8 @@ int main(void)
     return 46;
   if (logb(8.0) != 3.0 || logbf(8.0f) != 3.0f || logbl(8.0L) != 3.0L)
     return 47;
+  if (ilogb(8.0) != 3 || ilogbf(8.0f) != 3 || ilogbl(8.0L) != 3)
+    return 50;
   if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
