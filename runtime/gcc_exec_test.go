@@ -245,6 +245,13 @@ func TestGCCExecutionFixtures(t *testing.T) {
 	}
 }
 
+func TestGCCC90DeclarationAfterStatementExecutesThroughRuntime(t *testing.T) {
+	st := runGCCAcceptFixture(t, "sema/testdata/gcc-c90-as-c99/accept/Wdeclaration-after-statement-4.c")
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioPositionStubsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
@@ -5696,6 +5703,16 @@ func runGCCExecFixture(t *testing.T, path, source string) ExitStatus {
 		t.Fatalf("%s Run: %v", path, err)
 	}
 	return st
+}
+
+func runGCCAcceptFixture(t *testing.T, path string) ExitStatus {
+	t.Helper()
+	sourcePath := filepath.Join("..", path)
+	source, err := os.ReadFile(sourcePath)
+	if err != nil {
+		t.Fatalf("read fixture %s: %v", path, err)
+	}
+	return runGCCExecFixture(t, sourcePath, string(source))
 }
 
 func gccSemaOptions(src string) sema.SemaOptions {
