@@ -1321,6 +1321,69 @@ The coverage-only VLA increment passed focused runtime tests plus full verificat
 - Commit message:
   - `docs: record VLA memcpy dynamic-size runtime coverage`
 
+## Plan 103: Long Double Runtime Candidate Scan - Completed
+
+The pre-plan adjustment scanned current long double runtime coverage and GCC accept files containing long double or long-double-like constants. Existing runtime coverage is already broad across plain math, tgmath, complex long double externs, direct long double arithmetic, by-value calls/returns, struct fields, compound assignment, and inc/dec.
+
+- Result: no new low-risk long-double GCC accept entry-point fixture remained. The only long-double accept file with `main` is `c99-math-long-double-1.c`, already covered by the runtime manifest.
+
+## Plan 104: Long Double Followup - Completed
+
+The Plan 103 scan produced no low-risk implementation or coverage target, so this plan completed without code changes.
+
+## Plan 105: Complex Runtime Candidate Scan - Completed
+
+The pre-plan adjustment scanned complex-related GCC accept fixtures and the direct runtime complex suite. Complex runtime coverage already includes direct complex arithmetic, casts, argument/return passing, struct and array storage, pointer dereference, compound assignment, conditional/comma expressions, static initializers, and tgmath/extern paths.
+
+- Result: no new low-risk complex GCC accept entry-point fixture remained. The remaining complex accept files are no-entry compile diagnostics/assembler-shape tests or are already represented by direct runtime coverage.
+
+## Plan 106: Complex Followup - Completed
+
+The Plan 105 scan produced no low-risk implementation or coverage target, so this plan completed without code changes.
+
+## Plan 107: Documentation Timing Adjustment - Completed
+
+The pre-plan adjustment deferred documentation until the next concrete coverage increment so the no-code scan results could be recorded together with actionable work.
+
+## Plan 108: Rolling Plan Reorder - Completed
+
+The plan list was reordered toward compile-only GCC accept fixtures with self-contained `main` functions after long double and complex scans produced no new low-risk target.
+
+## Plan 109: Compile-Only Runtime Candidate Scan - Completed
+
+The scan reused the compile-only `main` candidate list and selected `overflow-2.c` first because it was self-contained and small enough to test quickly.
+
+## Plan 110: `overflow-2.c` Runtime Candidate Rejection - Completed
+
+The focused probe returned exit 1. Root-cause confirmation with system `cc -std=c99 -pedantic-errors` produced the same exit status, so this is not a cvm runtime bug. `overflow-2.c` is compile-only warning coverage for an overflowing constant expression and does not promise exit-0 runtime semantics.
+
+## Plan 118: Large Static Array Loop Runtime Coverage - Completed
+
+The pre-plan adjustment selected `sema/testdata/gcc-c99-extra/accept/pr27639.c` after `overflow-2.c` was rejected. The fixture is self-contained and exercises a large static array write loop. The first probe exceeded the default 100000-step GCC runtime helper budget, so the helper was extended with a fixture-specific step-limit path while preserving the default budget for other tests.
+
+- Files: `runtime/gcc_exec_test.go`
+- Focused tests:
+
+```bash
+go test ./runtime -run TestGCCLargeStaticArrayLoopExecutesThroughRuntime -count=1 -v
+go test ./runtime -run 'TestGCCLargeStaticArrayLoopExecutesThroughRuntime|TestGCCC90DeclarationAfterStatementExecutesThroughRuntime' -count=1 -v
+```
+
+- Commit messages:
+  - `test(runtime): execute GCC large static array loop`
+  - `docs: record GCC large static array runtime coverage`
+
+## Plan 119: Large Static Array Failure Triage - Completed
+
+The only failure was the helper step budget. Raising the budget only for `pr27639.c` resolved the focused probe without changing runtime semantics.
+
+## Plan 120: Large Static Array Coverage Verification - Completed
+
+The coverage increment passed focused runtime tests plus full verification.
+
+- Commit message:
+  - `docs: record GCC large static array runtime coverage`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.
