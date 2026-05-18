@@ -148,6 +148,8 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(intT, []Type{charPtr, sizeT, constCharPtr}, true, true)
 	case "snprintf":
 		return s.Types.Function(intT, []Type{charPtr, sizeT, constCharPtr}, true, true)
+	case "sscanf":
+		return s.Types.Function(intT, []Type{constCharPtr, constCharPtr}, true, true)
 	case "__builtin_vprintf":
 		return s.Types.Function(intT, []Type{constCharPtr, vaList}, false, true)
 	case "vprintf":

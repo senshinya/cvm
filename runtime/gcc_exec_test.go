@@ -2536,6 +2536,33 @@ int main(void)
 	}
 }
 
+func TestGCCStdioSscanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+  int n = 0;
+  unsigned u = 0;
+  char word[8] = {0};
+  char ch = 0;
+  int r = sscanf(" -12 34 hello Z", "%d %u %5s %c", &n, &u, word, &ch);
+  if (r != 4)
+    return 1;
+  if (n != -12 || u != 34)
+    return 2;
+  if (strcmp(word, "hello") != 0)
+    return 3;
+  return ch == 'Z' ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdio-sscanf-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioUngetcExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

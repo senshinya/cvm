@@ -207,6 +207,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	registerAllocationExterns(r)
 	registerMemoryExterns(r)
 	registerOutputFormatExterns(r)
+	registerInputFormatExterns(r)
 	r.Register("feclearexcept", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("feclearexcept expects 1 argument")
@@ -1802,6 +1803,10 @@ func registerOutputFormatExterns(r *ExternRegistry) {
 	r.Register("__builtin___fprintf_chk", fprintfCheckedExtern("__builtin___fprintf_chk", r))
 	r.Register("__builtin___vprintf_chk", vprintfCheckedExtern("__builtin___vprintf_chk", r))
 	r.Register("__builtin___vfprintf_chk", vfprintfCheckedExtern("__builtin___vfprintf_chk", r))
+}
+
+func registerInputFormatExterns(r *ExternRegistry) {
+	r.Register("sscanf", sscanfExtern("sscanf"))
 }
 
 func registerMathExterns(r *ExternRegistry) {
@@ -3644,6 +3649,231 @@ func vfprintfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, err
 		}
 		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func sscanfExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 2 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects input and format string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		n, err := scanCString(name, ec.Memory, args[0].Int, args[1].Int, args[2:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(n)), nil, nil
+	}
+}
+
+func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []Value) (int, error) {
+	input, err := mem.ReadCString(inputAddr)
+	if err != nil {
+		return 0, err
+	}
+	format, err := mem.ReadCString(formatAddr)
+	if err != nil {
+		return 0, err
+	}
+	inputIndex := 0
+	argIndex := 0
+	assigned := 0
+	for formatIndex := 0; formatIndex < len(format); formatIndex++ {
+		ch := format[formatIndex]
+		if isASCIIWhitespace(ch) {
+			for formatIndex+1 < len(format) && isASCIIWhitespace(format[formatIndex+1]) {
+				formatIndex++
+			}
+			inputIndex = scanSkipWhitespace(input, inputIndex)
+			continue
+		}
+		if ch != '%' {
+			if inputIndex >= len(input) || input[inputIndex] != ch {
+				return assigned, nil
+			}
+			inputIndex++
+			continue
+		}
+		formatIndex++
+		if formatIndex >= len(format) {
+			return 0, fmt.Errorf("%s has trailing %% in format", name)
+		}
+		if format[formatIndex] == '%' {
+			if inputIndex >= len(input) || input[inputIndex] != '%' {
+				return assigned, nil
+			}
+			inputIndex++
+			continue
+		}
+		suppress := false
+		if format[formatIndex] == '*' {
+			suppress = true
+			formatIndex++
+			if formatIndex >= len(format) {
+				return 0, fmt.Errorf("%s has trailing %% in format", name)
+			}
+		}
+		width := 0
+		for formatIndex < len(format) && format[formatIndex] >= '0' && format[formatIndex] <= '9' {
+			width = width*10 + int(format[formatIndex]-'0')
+			formatIndex++
+		}
+		lengthMod := ""
+		for formatIndex < len(format) {
+			switch format[formatIndex] {
+			case 'h', 'l':
+				lengthMod = string(format[formatIndex])
+				if formatIndex+1 < len(format) && format[formatIndex+1] == format[formatIndex] {
+					lengthMod += string(format[formatIndex])
+					formatIndex += 2
+				} else {
+					formatIndex++
+				}
+			case 'j', 'z', 't', 'L':
+				lengthMod = string(format[formatIndex])
+				formatIndex++
+			default:
+				goto verb
+			}
+		}
+	verb:
+		if formatIndex >= len(format) {
+			return 0, fmt.Errorf("%s has trailing %% in format", name)
+		}
+		verb := format[formatIndex]
+		if !suppress {
+			if argIndex >= len(args) {
+				return 0, fmt.Errorf("%s format needs more arguments", name)
+			}
+			if !isPointerType(args[argIndex].Type) {
+				return 0, fmt.Errorf("%s %%%c expects pointer argument", name, verb)
+			}
+		}
+		switch verb {
+		case 'd', 'i', 'u':
+			base := int64(10)
+			if verb == 'i' {
+				base = 0
+			}
+			inputIndex = scanSkipWhitespace(input, inputIndex)
+			token := scanLimit(input, inputIndex, width)
+			parsed, err := parseStrtoIntegerString(name, token, base)
+			if err != nil {
+				return 0, err
+			}
+			if !parsed.converted {
+				return assigned, nil
+			}
+			if !suppress {
+				if err := scanStoreInteger(mem, args[argIndex].Int, lengthMod, verb == 'u', parsed); err != nil {
+					return 0, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex += parsed.end
+		case 's':
+			inputIndex = scanSkipWhitespace(input, inputIndex)
+			end := inputIndex
+			limit := len(input)
+			if width > 0 && inputIndex+width < limit {
+				limit = inputIndex + width
+			}
+			for end < limit && !isASCIIWhitespace(input[end]) {
+				end++
+			}
+			if end == inputIndex {
+				return assigned, nil
+			}
+			if !suppress {
+				data := append([]byte(input[inputIndex:end]), 0)
+				if err := writeMemoryBytes(mem, args[argIndex].Int, data); err != nil {
+					return 0, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex = end
+		case 'c':
+			count := width
+			if count == 0 {
+				count = 1
+			}
+			if inputIndex+count > len(input) {
+				return assigned, nil
+			}
+			if !suppress {
+				if err := writeMemoryBytes(mem, args[argIndex].Int, []byte(input[inputIndex:inputIndex+count])); err != nil {
+					return 0, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex += count
+		default:
+			return 0, fmt.Errorf("%s unsupported scan format %%%c", name, verb)
+		}
+	}
+	return assigned, nil
+}
+
+func scanSkipWhitespace(s string, i int) int {
+	for i < len(s) && isASCIIWhitespace(s[i]) {
+		i++
+	}
+	return i
+}
+
+func scanLimit(s string, start, width int) string {
+	if width <= 0 || start+width > len(s) {
+		return s[start:]
+	}
+	return s[start : start+width]
+}
+
+func scanStoreInteger(mem *Memory, addr uint64, lengthMod string, unsigned bool, parsed parsedStrtoInteger) error {
+	t, align := scanIntegerType(lengthMod, unsigned)
+	if unsigned {
+		v := parsed.value
+		if parsed.neg {
+			v = -v
+		}
+		return mem.Store(addr, t, align, normalizeInt(UIntValue(t, v)))
+	}
+	v := int64(parsed.value)
+	if parsed.neg {
+		v = -v
+	}
+	return mem.Store(addr, t, align, normalizeInt(IntValue(t, v)))
+}
+
+func scanIntegerType(lengthMod string, unsigned bool) (bytecode.ValueType, int64) {
+	switch lengthMod {
+	case "hh":
+		if unsigned {
+			return bytecode.TypeU8, 1
+		}
+		return bytecode.TypeI8, 1
+	case "h":
+		if unsigned {
+			return bytecode.TypeU16, 2
+		}
+		return bytecode.TypeI16, 2
+	case "l", "ll", "j", "z", "t":
+		if unsigned {
+			return bytecode.TypeU64, 8
+		}
+		return bytecode.TypeI64, 8
+	default:
+		if unsigned {
+			return bytecode.TypeU32, 4
+		}
+		return bytecode.TypeI32, 4
 	}
 }
 

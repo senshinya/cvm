@@ -10,7 +10,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 
 ## Current High-Value Gaps
 
-1. Formatted input functions are not yet modeled as a bounded runtime surface.
+1. Formatted input functions have initial `sscanf` coverage, but stream-backed `scanf`/`fscanf`, wider conversions, assignment suppression, scansets, `%n`, and EOF-edge semantics still need expansion.
 2. Hermetic `FILE *` handles have useful read/write/seek behavior, but Phase 3 should calibrate remaining mode and state transitions before expanding them.
 3. `getenv` currently returns null from a hermetic stub. Phase 3 can add configured environment variables without reading ambient host environment.
 4. `atexit` currently accepts callbacks without executing them. Phase 3 can add deterministic callback execution at normal program termination.
@@ -23,6 +23,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 - `va_arg(ap, type)` now lowers through `__builtin_va_arg` and executes VM `OpVaArg` for source-level integer and pointer reads.
 - Multiple live source-level `va_list` cursors are independent because codegen emits slot-aware `OpVaArg`.
 - `va_copy(dst, src)` now lowers through `__builtin_va_copy` and executes VM `OpVaCopy`.
+- `sscanf` is declared by `<stdio.h>`, typed by sema, registered as a runtime extern, and handles bounded `%d`, `%i`, `%u`, `%s`, `%c`, and `%%` string input for the first formatted-input slice.
 
 ## First Milestone Decision
 

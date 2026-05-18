@@ -214,6 +214,7 @@ int fprintf(FILE *, const char *, ...);
 int fprintf_unlocked(FILE *, const char *, ...);
 int sprintf(char *, const char *, ...);
 int snprintf(char *, size_t, const char *, ...);
+int sscanf(const char *, const char *, ...);
 int vprintf(const char *, void *);
 int vprintf_unlocked(const char *, void *);
 int vfprintf(FILE *, const char *, void *);

@@ -129,7 +129,38 @@ git push
 
 ## Milestone 4: Formatted Input Runtime
 
-**Calibration:** Pending after varargs milestones.
+**Calibration:** In progress after Milestone 3. `printf`/`vprintf` output formatting is broad, and runtime already has memory string reads plus stream input primitives (`fgetc`, `ungetc`, `fgets`, `fread`). Formatted input was absent from `<stdio.h>`, sema, and extern registration. The milestone is split so the first coherent increment builds a deterministic `sscanf` core before stream-backed `scanf`/`fscanf`.
+
+**Files:**
+- Modify: `preprocessor/headers.go`
+- Modify: `sema/builtin.go`
+- Modify: `runtime/extern.go`
+- Modify: `runtime/extern_test.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add failing `sscanf` registry, direct extern, and GCC runtime tests**
+
+Added coverage for `<stdio.h>` declaration/sema visibility and runtime execution of `%d %u %5s %c`.
+
+- [x] **Step 2: Implement bounded `sscanf` core**
+
+Added `<stdio.h>` declaration, sema builtin signature, extern registration, and runtime scanning for whitespace/literal matching plus `%d`, `%i`, `%u`, `%s`, `%c`, and `%%`.
+
+- [x] **Step 3: Verify, commit, and push**
+
+Run Common Verification, then:
+
+```bash
+git add preprocessor/headers.go sema/builtin.go runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(runtime): add bounded sscanf extern"
+git push
+```
+
+- [ ] **Step 4: Calibrate next formatted-input slice**
+
+Decide whether to expand `sscanf` conversions first or layer stream-backed `scanf`/`fscanf` over the string scanner.
 
 ## Milestone 5: FILE State Model Completion
 
