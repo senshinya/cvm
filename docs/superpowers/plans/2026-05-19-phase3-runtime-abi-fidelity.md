@@ -55,9 +55,38 @@ git push -u origin codex/bytecode-runtime-phase-3
 
 ## Milestone 2: Source-Level `va_arg` And Memory `va_list` Unification
 
-**Calibration:** Pending. Start by inspecting `<stdarg.h>` macro lowering, sema representation for `__builtin_va_arg` if any, bytecode `OpVa*`, and runtime memory-backed `va_list` layout.
+**Calibration:** Completed. `<stdarg.h>` still lowered `va_arg(ap, type)` to `((type)0)`, while VM bytecode already supported `OpVaStart`, `OpVaArg`, and `OpVaEnd`. Source-level `va_start` and `va_end` called no-op externs, so source code never activated the VM variadic cursor.
 
 **Initial target:** Replace the `va_arg(ap, type)` placeholder with a source-level path that executes real argument reads for integer and pointer values.
+
+**Files:**
+- Modify: `preprocessor/headers.go`
+- Modify: `sema/builtin.go`
+- Modify: `codegen/expr.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add failing source-level integer `va_arg` runtime test**
+
+Added `TestGCCSourceVaArgIntegerExecutesThroughRuntime`, which failed when `va_arg` still returned `0`.
+
+- [x] **Step 2: Lower source-level stdarg builtins to VM vararg ops**
+
+Updated `<stdarg.h>` so `va_arg(ap, type)` expands through `__builtin_va_arg`, added the builtin signature, and taught codegen to emit `OpVaStart`, `OpVaArg`, and `OpVaEnd` for the recognized source-level shapes.
+
+- [x] **Step 3: Add pointer `va_arg` runtime coverage**
+
+Added `TestGCCSourceVaArgPointerExecutesThroughRuntime`.
+
+- [x] **Step 4: Verify, commit, and push**
+
+Run Common Verification, then:
+
+```bash
+git add preprocessor/headers.go sema/builtin.go codegen/expr.go runtime/gcc_exec_test.go docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(codegen): lower source va_arg to runtime varargs"
+git push
+```
 
 ## Milestone 3: `va_copy`, Multiple `va_list`, And Nested Varargs
 

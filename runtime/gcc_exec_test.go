@@ -4540,6 +4540,56 @@ int main(void)
 	}
 }
 
+func TestGCCSourceVaArgIntegerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+int sum2(int n, ...)
+{
+  va_list ap;
+  va_start(ap, n);
+  int a = va_arg(ap, int);
+  int b = va_arg(ap, int);
+  va_end(ap);
+  return a + b;
+}
+
+int main(void)
+{
+  return sum2(2, 19, 23) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-integer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaArgPointerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+int first(int n, ...)
+{
+  va_list ap;
+  va_start(ap, n);
+  int *p = va_arg(ap, int *);
+  va_end(ap);
+  return *p;
+}
+
+int main(void)
+{
+  int x = 42;
+  return first(1, &x) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-pointer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCVFormatNoArgumentExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdarg.h>

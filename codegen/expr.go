@@ -64,6 +64,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 			if isFunctionExpr(x.X) {
 				return fg.emitFunctionAddress(x.X)
 			}
+			if ok, err := fg.emitBuiltinVaArgValue(x.X); ok || err != nil {
+				return err
+			}
 			return fg.emitLValueValue(x.X, x.From)
 		case sema.ArrayDecay:
 			if err := fg.emitAddress(x.X); err != nil {
@@ -160,6 +163,9 @@ func (fg *funcGen) emitValue(e sema.Expr) error {
 			}
 			fg.out.Instrs = append(fg.out.Instrs, bytecode.Cast(bytecode.TypeObjectAddr, bytecode.TypePtr, bytecode.CastBit))
 		case sema.UnDeref:
+			if ok, err := fg.emitBuiltinVaArgValue(x); ok || err != nil {
+				return err
+			}
 			return fg.emitLValueValue(x, x.T)
 		case sema.UnPlus:
 			return fg.emitValue(x.X)
@@ -787,6 +793,11 @@ func (fg *funcGen) emitIncDecOperation(x *sema.UnOp, typ bytecode.ValueType) err
 }
 
 func (fg *funcGen) emitCall(x *sema.CallExpr) error {
+	if name := builtinCallName(x.Callee); name == "__builtin_va_start" {
+		return fg.emitBuiltinVaStart(x)
+	} else if name == "__builtin_va_end" {
+		return fg.emitBuiltinVaEnd(x)
+	}
 	if name := tgmathPseudoCallName(x.Callee); name != "" {
 		return fg.emitTgmathCall(x, name)
 	}
@@ -837,6 +848,76 @@ func (fg *funcGen) emitCall(x *sema.CallExpr) error {
 	return nil
 }
 
+func (fg *funcGen) emitBuiltinVaStart(x *sema.CallExpr) error {
+	if len(x.Args) < 1 {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "__builtin_va_start requires a va_list argument"}
+	}
+	slot, err := fg.vaListSlot(x.Args[0])
+	if err != nil {
+		return &Error{Pos: x.Args[0].Pos().SourceStart, Node: fmt.Sprintf("%T", x.Args[0]), Op: "emitValue", Reason: err.Error()}
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpVaStart, Slot: slot})
+	return nil
+}
+
+func (fg *funcGen) emitBuiltinVaEnd(x *sema.CallExpr) error {
+	if len(x.Args) < 1 {
+		return &Error{Pos: x.Pos().SourceStart, Node: fmt.Sprintf("%T", x), Op: "emitValue", Reason: "__builtin_va_end requires a va_list argument"}
+	}
+	slot, err := fg.vaListSlot(x.Args[0])
+	if err != nil {
+		return &Error{Pos: x.Args[0].Pos().SourceStart, Node: fmt.Sprintf("%T", x.Args[0]), Op: "emitValue", Reason: err.Error()}
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpVaEnd, Slot: slot})
+	return nil
+}
+
+func (fg *funcGen) vaListSlot(e sema.Expr) (int, error) {
+	for {
+		cast, ok := e.(*sema.ImplicitCast)
+		if !ok || cast.Kind != sema.LValueToRValue {
+			break
+		}
+		e = cast.X
+	}
+	vr, ok := e.(*sema.VarRef)
+	if !ok || vr.Sym == nil {
+		return 0, fmt.Errorf("va_list argument must be a local variable")
+	}
+	st, err := fg.storageForVar(vr.Sym, vr.T)
+	if err != nil {
+		return 0, err
+	}
+	if st.kind != storageLocalSlot || st.slot < 0 {
+		return 0, fmt.Errorf("va_list %q is not stored in a local slot", vr.Sym.Name)
+	}
+	return st.slot, nil
+}
+
+func (fg *funcGen) emitBuiltinVaArgValue(e sema.Expr) (bool, error) {
+	un, ok := e.(*sema.UnOp)
+	if !ok || un.Op != sema.UnDeref {
+		return false, nil
+	}
+	cast, ok := un.X.(*sema.ExplicitCast)
+	if !ok {
+		return false, nil
+	}
+	if _, ok := sema.Unqual(cast.To).(*sema.PointerType); !ok {
+		return false, nil
+	}
+	call, ok := cast.X.(*sema.CallExpr)
+	if !ok || builtinCallName(call.Callee) != "__builtin_va_arg" {
+		return false, nil
+	}
+	typ, err := fg.g.lowerValueType(un.T)
+	if err != nil {
+		return true, err
+	}
+	fg.out.Instrs = append(fg.out.Instrs, bytecode.Instr{Op: bytecode.OpVaArg, Type: typ})
+	return true, nil
+}
+
 func (fg *funcGen) lowerCallSig(ft *sema.FunctionType, args []sema.Expr) (int, error) {
 	if ft.HasProto {
 		return fg.g.lowerFuncSig(ft)
@@ -879,16 +960,24 @@ func (fg *funcGen) emitTgmathCall(x *sema.CallExpr, pseudo string) error {
 }
 
 func tgmathPseudoCallName(e sema.Expr) string {
+	name := builtinCallName(e)
+	if name == "" {
+		return ""
+	}
+	switch name {
+	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow", "__cvm_tgmath_sqrt", "__cvm_tgmath_fabs", "__cvm_tgmath_cos", "__cvm_tgmath_tan", "__cvm_tgmath_log", "__cvm_tgmath_sinh", "__cvm_tgmath_cosh", "__cvm_tgmath_tanh", "__cvm_tgmath_asin", "__cvm_tgmath_acos", "__cvm_tgmath_atan", "__cvm_tgmath_asinh", "__cvm_tgmath_acosh", "__cvm_tgmath_atanh", "__cvm_tgmath_atan2", "__cvm_tgmath_hypot", "__cvm_tgmath_cbrt", "__cvm_tgmath_ceil", "__cvm_tgmath_floor", "__cvm_tgmath_trunc", "__cvm_tgmath_round", "__cvm_tgmath_exp2", "__cvm_tgmath_expm1", "__cvm_tgmath_log10", "__cvm_tgmath_log1p", "__cvm_tgmath_log2", "__cvm_tgmath_fdim", "__cvm_tgmath_fmax", "__cvm_tgmath_fmin", "__cvm_tgmath_fmod", "__cvm_tgmath_remainder", "__cvm_tgmath_copysign", "__cvm_tgmath_fma", "__cvm_tgmath_nextafter", "__cvm_tgmath_nexttoward", "__cvm_tgmath_erf", "__cvm_tgmath_erfc", "__cvm_tgmath_tgamma", "__cvm_tgmath_lgamma", "__cvm_tgmath_nearbyint", "__cvm_tgmath_rint", "__cvm_tgmath_logb", "__cvm_tgmath_scalbn", "__cvm_tgmath_scalbln", "__cvm_tgmath_ldexp", "__cvm_tgmath_ilogb", "__cvm_tgmath_frexp", "__cvm_tgmath_remquo", "__cvm_tgmath_carg", "__cvm_tgmath_cimag", "__cvm_tgmath_creal", "__cvm_tgmath_conj", "__cvm_tgmath_cproj", "__cvm_tgmath_lrint", "__cvm_tgmath_lround", "__cvm_tgmath_llrint", "__cvm_tgmath_llround":
+		return name
+	default:
+		return ""
+	}
+}
+
+func builtinCallName(e sema.Expr) string {
 	vr := functionVarRef(e)
 	if vr == nil || vr.Sym == nil {
 		return ""
 	}
-	switch vr.Sym.Name {
-	case "__cvm_tgmath_sin", "__cvm_tgmath_exp", "__cvm_tgmath_pow", "__cvm_tgmath_sqrt", "__cvm_tgmath_fabs", "__cvm_tgmath_cos", "__cvm_tgmath_tan", "__cvm_tgmath_log", "__cvm_tgmath_sinh", "__cvm_tgmath_cosh", "__cvm_tgmath_tanh", "__cvm_tgmath_asin", "__cvm_tgmath_acos", "__cvm_tgmath_atan", "__cvm_tgmath_asinh", "__cvm_tgmath_acosh", "__cvm_tgmath_atanh", "__cvm_tgmath_atan2", "__cvm_tgmath_hypot", "__cvm_tgmath_cbrt", "__cvm_tgmath_ceil", "__cvm_tgmath_floor", "__cvm_tgmath_trunc", "__cvm_tgmath_round", "__cvm_tgmath_exp2", "__cvm_tgmath_expm1", "__cvm_tgmath_log10", "__cvm_tgmath_log1p", "__cvm_tgmath_log2", "__cvm_tgmath_fdim", "__cvm_tgmath_fmax", "__cvm_tgmath_fmin", "__cvm_tgmath_fmod", "__cvm_tgmath_remainder", "__cvm_tgmath_copysign", "__cvm_tgmath_fma", "__cvm_tgmath_nextafter", "__cvm_tgmath_nexttoward", "__cvm_tgmath_erf", "__cvm_tgmath_erfc", "__cvm_tgmath_tgamma", "__cvm_tgmath_lgamma", "__cvm_tgmath_nearbyint", "__cvm_tgmath_rint", "__cvm_tgmath_logb", "__cvm_tgmath_scalbn", "__cvm_tgmath_scalbln", "__cvm_tgmath_ldexp", "__cvm_tgmath_ilogb", "__cvm_tgmath_frexp", "__cvm_tgmath_remquo", "__cvm_tgmath_carg", "__cvm_tgmath_cimag", "__cvm_tgmath_creal", "__cvm_tgmath_conj", "__cvm_tgmath_cproj", "__cvm_tgmath_lrint", "__cvm_tgmath_lround", "__cvm_tgmath_llrint", "__cvm_tgmath_llround":
-		return vr.Sym.Name
-	default:
-		return ""
-	}
+	return vr.Sym.Name
 }
 
 func tgmathExternName(pseudo string, x *sema.CallExpr) string {
