@@ -451,6 +451,22 @@ go test ./runtime -run 'TestStdlibProcessTerminationExterns|TestStdlibImmediateE
   - `feat(runtime): add stdlib immediate exit extern`
   - `docs: record stdlib immediate exit extern`
 
+## Plan 39: `locale.h` `setlocale` C-Locale Stub - Completed
+
+Add a minimal builtin `<locale.h>` and a deterministic C-locale `setlocale` extern. The header exposes `LC_ALL`, `LC_COLLATE`, `LC_CTYPE`, `LC_MONETARY`, `LC_NUMERIC`, `LC_TIME`, and `setlocale`; runtime supports querying the current locale and selecting `"C"` or `""`, while unsupported locale names return null.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinLocaleHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestLocaleSetlocaleExtern|TestLocaleSetlocaleExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add locale setlocale extern`
+  - `docs: record locale setlocale extern`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
