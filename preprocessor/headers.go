@@ -65,6 +65,9 @@ func complexHeader() string {
 #ifndef complex
 #define complex _Complex
 #endif
+float cabsf(float complex);
+double cabs(double complex);
+long double cabsl(long double complex);
 float crealf(float complex);
 double creal(double complex);
 long double creall(long double complex);

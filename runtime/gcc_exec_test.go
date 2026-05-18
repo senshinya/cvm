@@ -2662,6 +2662,28 @@ int main(void)
 	}
 }
 
+func TestComplexAbsExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <complex.h>
+
+int main(void)
+{
+  float complex zf = __builtin_complex(3.0f, 4.0f);
+  double complex zd = __builtin_complex(3.0, 4.0);
+  long double complex zl = __builtin_complex(3.0L, 4.0L);
+  if (cabsf(zf) != 5.0f)
+    return 1;
+  if (cabs(zd) != 5.0)
+    return 2;
+  return cabsl(zl) == 5.0L ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "complex-abs.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTgmathConjExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <tgmath.h>
