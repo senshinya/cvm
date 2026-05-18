@@ -182,6 +182,36 @@ int main(void)
 	}
 }
 
+func TestGCCConfiguredFileRemoveRenameExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[2] = { 0, 0 };
+  FILE *f;
+  if (rename("old.txt", "new.txt") != 0)
+    return 1;
+  if (fopen("old.txt", "r") != 0)
+    return 2;
+  f = fopen("new.txt", "r");
+  if (!f)
+    return 3;
+  if (fread(buf, 1, 1, f) != 1 || buf[0] != 'A')
+    return 4;
+  if (remove("new.txt") != 0)
+    return 5;
+  return fopen("new.txt", "r") == 0 ? 0 : 6;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("ABC"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-configured-file-remove-rename-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioOpenStubsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

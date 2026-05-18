@@ -89,6 +89,49 @@ func TestStdioFileOperationStubs(t *testing.T) {
 	}
 }
 
+func TestConfiguredFileRemoveRename(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("ABC"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	oldPath := mustAllocBytes(t, mem, "stdio:configured-old-path", []byte("old.txt\x00"), true, blockString)
+	newPath := mustAllocBytes(t, mem, "stdio:configured-new-path", []byte("new.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "stdio:configured-mode", []byte("r\x00"), true, blockString)
+
+	renameFn, ok := reg.Lookup("rename")
+	if !ok {
+		t.Fatal("missing rename extern")
+	}
+	removeFn, ok := reg.Lookup("remove")
+	if !ok {
+		t.Fatal("missing remove extern")
+	}
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+
+	ret, exit, err := renameFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(oldPath), PtrValue(newPath)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("rename ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(oldPath), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("fopen old ret=%#v exit=%#v err=%v, want null", ret, exit, err)
+	}
+	ret, exit, err = fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(newPath), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen new ret=%#v exit=%#v err=%v, want handle", ret, exit, err)
+	}
+	ret, exit, err = removeFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(newPath)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("remove ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(newPath), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("fopen removed ret=%#v exit=%#v err=%v, want null", ret, exit, err)
+	}
+}
+
 func TestStdioOpenStubs(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

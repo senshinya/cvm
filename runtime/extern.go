@@ -94,8 +94,8 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("abort", abortExtern())
 	r.Register("__builtin_abort", abortExtern())
 	registerVaListExterns(r)
-	r.Register("remove", removeExtern("remove"))
-	r.Register("rename", renameExtern("rename"))
+	r.Register("remove", removeExtern("remove", r))
+	r.Register("rename", renameExtern("rename", r))
 	r.Register("fopen", fopenExtern("fopen", r))
 	r.Register("freopen", freopenExtern("freopen", r))
 	r.Register("tmpfile", tmpfileExtern("tmpfile"))
@@ -280,7 +280,7 @@ func registerVaListExterns(r *ExternRegistry) {
 	})
 }
 
-func removeExtern(name string) ExternFunc {
+func removeExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
@@ -291,14 +291,19 @@ func removeExtern(name string) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+		path, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
 			return Value{}, nil, err
+		}
+		if _, ok := r.files[path]; ok {
+			delete(r.files, path)
+			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, -1), nil, nil
 	}
 }
 
-func renameExtern(name string) ExternFunc {
+func renameExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
@@ -309,11 +314,19 @@ func renameExtern(name string) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+		oldPath, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
 			return Value{}, nil, err
 		}
-		if _, err := ec.Memory.ReadCString(args[1].Int); err != nil {
+		newPath, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
 			return Value{}, nil, err
+		}
+		data, ok := r.files[oldPath]
+		if ok {
+			r.files[newPath] = append([]byte(nil), data...)
+			delete(r.files, oldPath)
+			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, -1), nil, nil
 	}
