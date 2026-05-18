@@ -38,6 +38,8 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(voidPtr, []Type{sizeT}, false, true)
 	case "__builtin_calloc", "calloc":
 		return s.Types.Function(voidPtr, []Type{sizeT, sizeT}, false, true)
+	case "realloc":
+		return s.Types.Function(voidPtr, []Type{voidPtr, sizeT}, false, true)
 	case "__builtin_strdup", "strdup":
 		return s.Types.Function(charPtr, []Type{constCharPtr}, false, true)
 	case "free":

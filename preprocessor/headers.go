@@ -138,6 +138,7 @@ float strtof(const char *, char **);
 long double strtold(const char *, char **);
 void *malloc(size_t);
 void *calloc(size_t, size_t);
+void *realloc(void *, size_t);
 void free(void *);
 char *strdup(const char *);
 void exit(int);

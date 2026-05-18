@@ -807,6 +807,49 @@ int main(void)
 	}
 }
 
+func TestStdlibReallocExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  char *p = malloc(3);
+  char *q;
+  if (p == 0)
+    return 1;
+  p[0] = 'a';
+  p[1] = 'b';
+  p[2] = 0;
+
+  q = realloc(p, 6);
+  if (q == 0)
+    return 2;
+  if (q[0] != 'a' || q[1] != 'b' || q[2] != 0)
+    return 3;
+  q[3] = 'c';
+  q[4] = 0;
+
+  p = realloc(q, 2);
+  if (p == 0)
+    return 4;
+  if (p[0] != 'a' || p[1] != 'b')
+    return 5;
+  if (realloc(p, 0) != 0)
+    return 6;
+
+  p = realloc(0, 4);
+  if (p == 0)
+    return 7;
+  free(p);
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-realloc-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibExitExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>

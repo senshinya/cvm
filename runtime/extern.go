@@ -956,6 +956,7 @@ func registerAllocationExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_calloc", "calloc"} {
 		r.Register(name, callocExtern(name))
 	}
+	r.Register("realloc", reallocExtern("realloc"))
 	for _, name := range []string{"__builtin_strdup", "strdup"} {
 		r.Register(name, strdupExtern(name))
 	}
@@ -1231,6 +1232,66 @@ func callocExtern(name string) ExternFunc {
 		}
 		addr, err := ec.Memory.TryAlloc("extern:"+name, nonzeroAllocSize(int64(total)), ec.Memory.target.PointerAlign, false, blockGlobal)
 		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
+func reallocExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if args[0].Int != 0 && !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer argument", name)
+		}
+		if !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects size argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if args[0].Int == 0 {
+			addr, err := ec.Memory.TryAlloc("extern:"+name, nonzeroAllocSize(size), ec.Memory.target.PointerAlign, false, blockGlobal)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			return PtrValue(addr), nil, nil
+		}
+		oldBlock, oldOff, err := ec.Memory.rangeAccess(args[0].Int, 1, false)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if oldOff != 0 || oldBlock.kind != blockGlobal {
+			return Value{}, nil, fmt.Errorf("%s expects pointer returned by allocation extern", name)
+		}
+		if size == 0 {
+			if err := ec.Memory.Free(args[0].Int, blockGlobal); err != nil {
+				return Value{}, nil, err
+			}
+			return PtrValue(0), nil, nil
+		}
+		addr, err := ec.Memory.TryAlloc("extern:"+name, nonzeroAllocSize(size), ec.Memory.target.PointerAlign, false, blockGlobal)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		copySize := int64(len(oldBlock.data))
+		if size < copySize {
+			copySize = size
+		}
+		if copySize > 0 {
+			newBlock, newOff, err := ec.Memory.rangeAccess(addr, copySize, true)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			copy(newBlock.data[newOff:newOff+int(copySize)], oldBlock.data[:int(copySize)])
+		}
+		if err := ec.Memory.Free(args[0].Int, blockGlobal); err != nil {
 			return Value{}, nil, err
 		}
 		return PtrValue(addr), nil, nil
