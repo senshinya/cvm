@@ -44,6 +44,44 @@ git commit -m "feat(runtime): open configured read only files"
 git push origin codex/bytecode-runtime-phase-1
 ```
 
+## Task 5: Hermetic `tmpfile`
+
+**Files:**
+- Modify: `runtime/extern.go`
+- Modify: `runtime/extern_test.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/superpowers/plans/2026-05-19-phase2b-file-streams.md`
+
+- [x] **Step 1: Add failing direct tmpfile coverage**
+
+Cover `tmpfile()` returning an anonymous read/write handle that can be written, rewound, and read.
+
+- [x] **Step 2: Add failing GCC runtime coverage**
+
+Add a runtime test that uses `tmpfile`, `fputs`, `rewind`, and `fread`.
+
+- [x] **Step 3: Implement anonymous hermetic tmpfile handles**
+
+Allocate an unnamed host file handle backed by in-memory bytes and exclude it from the registry path map.
+
+- [x] **Step 4: Focused tests**
+
+Run:
+
+```bash
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestTmpfileReadWrite|TestGCCTmpfileReadWriteExecutesThroughRuntime|TestStdioOpenStubsExecuteThroughRuntime' -count=1 -v
+```
+
+- [x] **Step 5: Full verification, commit, push**
+
+Run Common Verification, then commit:
+
+```bash
+git add runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go docs/superpowers/plans/2026-05-19-phase2b-file-streams.md
+git commit -m "feat(runtime): support hermetic tmpfile streams"
+git push origin codex/bytecode-runtime-phase-1
+```
+
 ## Task 4: Configured File Remove/Rename
 
 **Files:**

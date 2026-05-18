@@ -222,10 +222,34 @@ int main(void)
     return 1;
   if (freopen("missing.tmp", "r", stdout) != 0)
     return 2;
-  return tmpfile() == 0 ? 0 : 3;
+  return 0;
 }
 `
 	st := runGCCExecFixture(t, "stdio-open-stubs-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCTmpfileReadWriteExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[3] = { 0, 0, 0 };
+  FILE *f = tmpfile();
+  if (!f)
+    return 1;
+  if (fputs("AB", f) < 0)
+    return 2;
+  rewind(f);
+  if (fread(buf, 1, 2, f) != 2)
+    return 3;
+  return buf[0] == 'A' && buf[1] == 'B' ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdio-tmpfile-read-write-runtime.c", source)
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}

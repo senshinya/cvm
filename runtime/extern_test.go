@@ -132,7 +132,7 @@ func TestConfiguredFileRemoveRename(t *testing.T) {
 	}
 }
 
-func TestStdioOpenStubs(t *testing.T) {
+func TestStdioOpenMissingFileStubs(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
 	path := mustAllocBytes(t, mem, "stdio:path", []byte("missing.txt\x00"), true, blockString)
@@ -165,17 +165,62 @@ func TestStdioOpenStubs(t *testing.T) {
 	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
 		t.Fatalf("freopen ret=%#v, want null", ret)
 	}
+}
 
+func TestTmpfileReadWrite(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	data := mustAllocBytes(t, mem, "stdio:tmpfile-data", []byte("AB"), true, blockString)
+	buf := mustAllocBytes(t, mem, "stdio:tmpfile-buf", []byte{0, 0}, false, blockLocal)
 	tmpfileFn, ok := reg.Lookup("tmpfile")
 	if !ok {
 		t.Fatal("missing tmpfile extern")
 	}
-	ret, exit, err = tmpfileFn(context.Background(), &ExternContext{Memory: mem}, nil)
-	if err != nil || exit != nil {
-		t.Fatalf("tmpfile ret=%#v exit=%#v err=%v", ret, exit, err)
+	fwriteFn, ok := reg.Lookup("fwrite")
+	if !ok {
+		t.Fatal("missing fwrite extern")
 	}
-	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
-		t.Fatalf("tmpfile ret=%#v, want null", ret)
+	rewindFn, ok := reg.Lookup("rewind")
+	if !ok {
+		t.Fatal("missing rewind extern")
+	}
+	freadFn, ok := reg.Lookup("fread")
+	if !ok {
+		t.Fatal("missing fread extern")
+	}
+
+	ret, exit, err := tmpfileFn(context.Background(), &ExternContext{Memory: mem}, nil)
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("tmpfile ret=%#v exit=%#v err=%v, want handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = fwriteFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(data),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 2),
+		PtrValue(file),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("fwrite ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
+	}
+	if _, exit, err = rewindFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)}); err != nil || exit != nil {
+		t.Fatalf("rewind exit=%#v err=%v", exit, err)
+	}
+	ret, exit, err = freadFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(buf),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 2),
+		PtrValue(file),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("fread ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
+	}
+	block, off, err := mem.rangeAccess(buf, 2, false)
+	if err != nil {
+		t.Fatalf("rangeAccess buf: %v", err)
+	}
+	if got := string(block.data[off : off+2]); got != "AB" {
+		t.Fatalf("tmpfile bytes = %q, want AB", got)
 	}
 }
 

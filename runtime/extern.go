@@ -98,7 +98,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("rename", renameExtern("rename", r))
 	r.Register("fopen", fopenExtern("fopen", r))
 	r.Register("freopen", freopenExtern("freopen", r))
-	r.Register("tmpfile", tmpfileExtern("tmpfile"))
+	r.Register("tmpfile", tmpfileExtern("tmpfile", r))
 	r.Register("tmpnam", tmpnamExtern("tmpnam"))
 	for _, name := range []string{"puts", "puts_unlocked"} {
 		r.Register(name, putsExtern(name, r))
@@ -410,12 +410,22 @@ func freopenExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
-func tmpfileExtern(name string) ExternFunc {
+func tmpfileExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 0 {
 			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
 		}
-		return PtrValue(0), nil, nil
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		file := &hostFile{readable: true, writable: true}
+		addr, err := r.allocHostWriter("tmpfile", ec.Memory, hostFileWriter{registry: r}, -1)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		r.hostFiles[addr] = file
+		r.hostWriters[addr] = hostFileWriter{registry: r, addr: addr}
+		return PtrValue(addr), nil, nil
 	}
 }
 
