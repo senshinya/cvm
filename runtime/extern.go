@@ -1706,6 +1706,8 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathIntExterns(r, "ilogb", math.Ilogb)
 	registerTgmathLongExterns(r, "lrint", math.RoundToEven)
 	registerTgmathLongExterns(r, "lround", math.Round)
+	registerTgmathLongExterns(r, "llrint", math.RoundToEven)
+	registerTgmathLongExterns(r, "llround", math.Round)
 	registerTgmathRealBinaryExterns(r, "pow", math.Pow)
 	registerTgmathRealBinaryExterns(r, "atan2", math.Atan2)
 	registerTgmathRealBinaryExterns(r, "hypot", math.Hypot)

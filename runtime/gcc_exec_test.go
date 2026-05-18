@@ -398,6 +398,10 @@ int main(void)
     return 51;
   if (lround(4.0) != 4L || lroundf(4.0f) != 4L || lroundl(4.0L) != 4L)
     return 52;
+  if (llrint(5.0) != 5LL || llrintf(5.0f) != 5LL || llrintl(5.0L) != 5LL)
+    return 53;
+  if (llround(6.0) != 6LL || llroundf(6.0f) != 6LL || llroundl(6.0L) != 6LL)
+    return 54;
   if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
