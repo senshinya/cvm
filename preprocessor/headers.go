@@ -18,6 +18,8 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return "#ifndef __CVM_ISO646_H\n#define __CVM_ISO646_H\n#define and &&\n#define and_eq &=\n#define bitand &\n#define bitor |\n#define compl ~\n#define not !\n#define not_eq !=\n#define or ||\n#define or_eq |=\n#define xor ^\n#define xor_eq ^=\n#endif\n", true
 	case "math.h":
 		return mathHeader(), true
+	case "complex.h":
+		return complexHeader(), true
 	case "fenv.h":
 		return "#ifndef __CVM_FENV_H\n#define __CVM_FENV_H\n#define FE_ALL_EXCEPT 0\nint feclearexcept(int);\nint fetestexcept(int);\n#endif\n", true
 	case "errno.h":
@@ -55,6 +57,25 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func complexHeader() string {
+	return `#ifndef __CVM_COMPLEX_H
+#define __CVM_COMPLEX_H
+#ifndef complex
+#define complex _Complex
+#endif
+float crealf(float complex);
+double creal(double complex);
+long double creall(long double complex);
+float cimagf(float complex);
+double cimag(double complex);
+long double cimagl(long double complex);
+float cargf(float complex);
+double carg(double complex);
+long double cargl(long double complex);
+#endif
+`
 }
 
 func stdioHeader() string {

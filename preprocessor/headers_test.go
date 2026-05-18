@@ -155,6 +155,20 @@ func TestBuiltinMathHeaderDeclaresRuntimeSurface(t *testing.T) {
 	}
 }
 
+func TestBuiltinComplexHeaderDeclaresProjectionSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <complex.h>
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	for _, name := range []string{"crealf", "creal", "creall", "cimagf", "cimag", "cimagl", "cargf", "carg", "cargl"} {
+		if !hasIdentifier(res.Tokens, name) {
+			t.Fatalf("complex identifier %q missing: %#v", name, res.Tokens)
+		}
+	}
+}
+
 func TestBuiltinErrnoHeaderDeclaresRuntimeSurface(t *testing.T) {
 	res, err := PreprocessSource("main.c", `
 #include <errno.h>
