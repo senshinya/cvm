@@ -1412,8 +1412,7 @@ int main(void)
 func TestPlainSprintfExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
-
-int strcmp(const char *, const char *);
+#include <string.h>
 
 int main(void)
 {
