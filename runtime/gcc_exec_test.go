@@ -3545,6 +3545,31 @@ int main(void)
 	}
 }
 
+func TestGCCVLATypedefPointerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+
+static int sum_typedef_vla(int n)
+{
+  typedef int A[n];
+  A a;
+  A *p = &a;
+
+  for (int i = 0; i < n; i++)
+    (*p)[i] = i + 1;
+  return (*p)[0] + (*p)[n - 1];
+}
+
+int main(void)
+{
+  return sum_typedef_vla(5) == 6 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "vla-typedef-pointer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCIntegerConversionWarningsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <limits.h>
