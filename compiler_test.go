@@ -169,3 +169,24 @@ func TestMainRunBytecodeUsesExitCode(t *testing.T) {
 		t.Fatalf("runMain exit code = %d, want 7", code)
 	}
 }
+
+func TestRunBytecodeForwardsArgs(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "main.c")
+	out := filepath.Join(dir, "main.cvmbc")
+	source := `int main(int argc, char **argv) {
+	if (argc != 3) return 1;
+	if (argv[1][0] != 'x') return 2;
+	if (argv[2][0] != 'y') return 3;
+	return 9;
+}`
+	if err := os.WriteFile(src, []byte(source), 0644); err != nil {
+		t.Fatalf("write source: %v", err)
+	}
+	if err := (&Compiler{EmitBytecode: out}).RunFile(src); err != nil {
+		t.Fatalf("emit bytecode: %v", err)
+	}
+	if code := runMain([]string{"run", out, "xray", "yak"}); code != 9 {
+		t.Fatalf("runMain exit code = %d, want 9", code)
+	}
+}

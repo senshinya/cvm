@@ -26,6 +26,8 @@ type gccExecCase struct {
 	reason   string
 }
 
+const gccExecStepLimit = 100000
+
 func TestGCCExecutionManifestParses(t *testing.T) {
 	content := "path\texit\tcategory\treason\n" +
 		"sema/testdata/gcc-c99/accept/c99-main-1.c\t0\tarithmetic\treturns zero\n"
@@ -3559,6 +3561,27 @@ func TestGCCStrictAliasingVLADereferenceExecutesThroughRuntime(t *testing.T) {
 	}
 }
 
+func TestGCCMainArgvExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+int main(int argc, char **argv)
+{
+  if (argc != 3)
+    return 1;
+  if (argv[0][0] != 'p' || argv[0][1] != 'r')
+    return 2;
+  if (argv[1][0] != 'a' || argv[1][4] != 'a')
+    return 3;
+  if (argv[2][0] != 'b' || argv[2][3] != 'a')
+    return 4;
+  return argv[3] == 0 ? 0 : 5;
+}
+`
+	st := runGCCExecFixtureWithLoadOptions(t, "main-argv-runtime.c", source, gccExecStepLimit, LoadOptions{Args: []string{"prog", "alpha", "beta"}})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCVLATypedefPointerExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
@@ -5778,11 +5801,15 @@ func parseGCCExecManifestContent(content string) ([]gccExecCase, error) {
 
 func runGCCExecFixture(t *testing.T, path, source string) ExitStatus {
 	t.Helper()
-	const gccExecStepLimit = 100000
 	return runGCCExecFixtureWithStepLimit(t, path, source, gccExecStepLimit)
 }
 
 func runGCCExecFixtureWithStepLimit(t *testing.T, path, source string, stepLimit int) ExitStatus {
+	t.Helper()
+	return runGCCExecFixtureWithLoadOptions(t, path, source, stepLimit, LoadOptions{})
+}
+
+func runGCCExecFixtureWithLoadOptions(t *testing.T, path, source string, stepLimit int, loadOpts LoadOptions) ExitStatus {
 	t.Helper()
 	src := stripGCCDirectives(source)
 	pp, err := preprocessor.PreprocessSource(path, src, preprocessor.Options{})
@@ -5808,7 +5835,7 @@ func runGCCExecFixtureWithStepLimit(t *testing.T, path, source string, stepLimit
 	if err := bytecode.EncodeModule(&encoded, mod); err != nil {
 		t.Fatalf("%s EncodeModule: %v", path, err)
 	}
-	p, err := Load(bytes.NewReader(encoded.Bytes()), LoadOptions{})
+	p, err := Load(bytes.NewReader(encoded.Bytes()), loadOpts)
 	if err != nil {
 		t.Fatalf("%s Load: %v", path, err)
 	}

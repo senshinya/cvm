@@ -12,6 +12,7 @@ const funcAddrBase = uint64(0x80000000)
 
 type LoadOptions struct {
 	Externs *ExternRegistry
+	Args    []string
 }
 
 type Program struct {
@@ -59,7 +60,7 @@ func Load(r io.Reader, opts LoadOptions) (*Program, error) {
 
 	entryGlobal := mod.Globals[mod.Entry.Global]
 	p.entryFunc = entryGlobal.Func
-	entryArgs, err := p.defaultEntryArgs(entryGlobal.Sig)
+	entryArgs, err := p.defaultEntryArgs(entryGlobal.Sig, opts.Args)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +283,7 @@ func (p *Program) relocationTarget(r bytecode.Relocation) (uint64, error) {
 	}
 }
 
-func (p *Program) defaultEntryArgs(sigID int) ([]Value, error) {
+func (p *Program) defaultEntryArgs(sigID int, args []string) ([]Value, error) {
 	if sigID < 0 || sigID >= len(p.module.Sigs) {
 		return nil, &LoadError{Reason: "entry has invalid signature"}
 	}
@@ -294,38 +295,48 @@ func (p *Program) defaultEntryArgs(sigID int) ([]Value, error) {
 		return nil, nil
 	}
 	if len(sig.Params) == 2 && sig.Params[0] == bytecode.TypeI32 && sig.Params[1] == bytecode.TypePtr {
-		args, err := p.defaultArgcArgv()
+		entryArgs, err := p.defaultArgcArgv(args)
 		if err != nil {
 			return nil, &LoadError{Reason: "initialize entry argc/argv", Cause: err}
 		}
-		return args, nil
+		return entryArgs, nil
 	}
 	return nil, &LoadError{Reason: "phase 1 supports no-argument or argc/argv integer-returning main"}
 }
 
-func (p *Program) defaultArgcArgv() ([]Value, error) {
-	argv0 := []byte("cvm\x00")
-	argv0Addr, err := p.memory.TryAlloc("entry:argv0", int64(len(argv0)), 1, false, blockGlobal)
+func (p *Program) defaultArgcArgv(args []string) ([]Value, error) {
+	if args == nil {
+		args = []string{"cvm"}
+	}
+	stringAddrs := make([]uint64, len(args))
+	for i, arg := range args {
+		data := append([]byte(arg), 0)
+		addr, err := p.memory.TryAlloc(fmt.Sprintf("entry:argv%d", i), int64(len(data)), 1, false, blockGlobal)
+		if err != nil {
+			return nil, err
+		}
+		if err := writeMemoryBytes(p.memory, addr, data); err != nil {
+			return nil, err
+		}
+		stringAddrs[i] = addr
+	}
+	ptrSize := p.module.Target.PointerSize
+	if len(args) > int(int64(maxInt())/ptrSize)-1 {
+		return nil, fmt.Errorf("entry argv is too large")
+	}
+	argvAddr, err := p.memory.TryAlloc("entry:argv", ptrSize*int64(len(args)+1), p.module.Target.PointerAlign, false, blockGlobal)
 	if err != nil {
 		return nil, err
 	}
-	for i, b := range argv0 {
-		if err := p.memory.Store(argv0Addr+uint64(i), bytecode.TypeU8, 1, UIntValue(bytecode.TypeU8, uint64(b))); err != nil {
+	for i, addr := range stringAddrs {
+		if err := p.memory.Store(argvAddr+uint64(int64(i)*ptrSize), bytecode.TypePtr, p.module.Target.PointerAlign, PtrValue(addr)); err != nil {
 			return nil, err
 		}
 	}
-	ptrSize := p.module.Target.PointerSize
-	argvAddr, err := p.memory.TryAlloc("entry:argv", ptrSize*2, p.module.Target.PointerAlign, false, blockGlobal)
-	if err != nil {
+	if err := p.memory.Store(argvAddr+uint64(int64(len(args))*ptrSize), bytecode.TypePtr, p.module.Target.PointerAlign, PtrValue(0)); err != nil {
 		return nil, err
 	}
-	if err := p.memory.Store(argvAddr, bytecode.TypePtr, p.module.Target.PointerAlign, PtrValue(argv0Addr)); err != nil {
-		return nil, err
-	}
-	if err := p.memory.Store(argvAddr+uint64(ptrSize), bytecode.TypePtr, p.module.Target.PointerAlign, PtrValue(0)); err != nil {
-		return nil, err
-	}
-	return []Value{IntValue(bytecode.TypeI32, 1), PtrValue(argvAddr)}, nil
+	return []Value{IntValue(bytecode.TypeI32, int64(len(args))), PtrValue(argvAddr)}, nil
 }
 
 func isExternFunction(g bytecode.Global) bool {

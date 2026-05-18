@@ -20,8 +20,8 @@ func runMain(args []string) int {
 }
 
 func runBytecode(args []string) int {
-	if len(args) != 1 {
-		fmt.Fprintln(os.Stderr, "Usage: cvm run file.cvmbc")
+	if len(args) < 1 {
+		fmt.Fprintln(os.Stderr, "Usage: cvm run file.cvmbc [args...]")
 		return 2
 	}
 	f, err := os.Open(args[0])
@@ -30,7 +30,8 @@ func runBytecode(args []string) int {
 		return 1
 	}
 	defer f.Close()
-	prog, err := cvmruntime.Load(f, cvmruntime.LoadOptions{})
+	progArgs := append([]string(nil), args...)
+	prog, err := cvmruntime.Load(f, cvmruntime.LoadOptions{Args: progArgs})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
