@@ -374,6 +374,14 @@ int main(void)
     return 30;
   if (erfc(0.0) != 1.0 || erfcf(0.0f) != 1.0f || erfcl(0.0L) != 1.0L)
     return 31;
+  if (exp2(3.0) != 8.0 || exp2f(3.0f) != 8.0f || exp2l(3.0L) != 8.0L)
+    return 32;
+  if (expm1(0.0) != 0.0 || expm1f(0.0f) != 0.0f || expm1l(0.0L) != 0.0L)
+    return 33;
+  if (log1p(0.0) != 0.0 || log1pf(0.0f) != 0.0f || log1pl(0.0L) != 0.0L)
+    return 34;
+  if (log2(8.0) != 3.0 || log2f(8.0f) != 3.0f || log2l(8.0L) != 3.0L)
+    return 35;
   if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
