@@ -208,6 +208,8 @@ int getc_unlocked(FILE *);
 int ungetc(int, FILE *);
 char *fgets(char * restrict, int, FILE * restrict);
 char *fgets_unlocked(char * restrict, int, FILE * restrict);
+int scanf(const char *, ...);
+int fscanf(FILE *, const char *, ...);
 int printf(const char *, ...);
 int printf_unlocked(const char *, ...);
 int fprintf(FILE *, const char *, ...);

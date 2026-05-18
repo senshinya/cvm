@@ -2563,6 +2563,52 @@ int main(void)
 	}
 }
 
+func TestGCCStdioScanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  int n = 0;
+  if (scanf("%d", &n) != 1)
+    return 1;
+  if (n != 41)
+    return 2;
+  return getchar() == ' ' ? 0 : 3;
+}
+`
+	reg := DefaultExternRegistryWithIO(strings.NewReader("41 tail"), nil, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-scanf-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioFscanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  int n = 0;
+  FILE *f = fopen("input.txt", "r");
+  if (!f)
+    return 1;
+  if (fscanf(f, "%d", &n) != 1)
+    return 2;
+  if (n != 52)
+    return 3;
+  return fgetc(f) == ' ' ? 0 : 4;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("input.txt", []byte("52 tail"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-fscanf-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioUngetcExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

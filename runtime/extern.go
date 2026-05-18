@@ -1806,6 +1806,8 @@ func registerOutputFormatExterns(r *ExternRegistry) {
 }
 
 func registerInputFormatExterns(r *ExternRegistry) {
+	r.Register("scanf", scanfExtern("scanf", r))
+	r.Register("fscanf", fscanfExtern("fscanf", r))
 	r.Register("sscanf", sscanfExtern("sscanf"))
 }
 
@@ -3652,6 +3654,52 @@ func vfprintfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
+func scanfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 1 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects format string argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if r.stdinHandle == 0 {
+			if _, ok := r.LookupVariable("stdin", ec.Memory); !ok {
+				return Value{}, nil, fmt.Errorf("%s could not initialize stdin", name)
+			}
+		}
+		n, err := scanHostStream(name, r, ec.Memory, r.stdinHandle, args[0].Int, args[1:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(n)), nil, nil
+	}
+}
+
+func fscanfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 2 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream and format string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		n, err := scanHostStream(name, r, ec.Memory, args[0].Int, args[1].Int, args[2:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(n)), nil, nil
+	}
+}
+
 func sscanfExtern(name string) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) < 2 {
@@ -3680,6 +3728,43 @@ func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []
 	if err != nil {
 		return 0, err
 	}
+	assigned, _, err := scanString(name, mem, input, format, args)
+	return assigned, err
+}
+
+func scanHostStream(name string, r *ExternRegistry, mem *Memory, stream, formatAddr uint64, args []Value) (int, error) {
+	format, err := mem.ReadCString(formatAddr)
+	if err != nil {
+		return 0, err
+	}
+	var input []byte
+	for {
+		ch, ok := r.readHostChar(stream)
+		if !ok {
+			break
+		}
+		input = append(input, ch)
+	}
+	assigned, consumed, err := scanString(name, mem, string(input), format, args)
+	if consumed < len(input) {
+		r.pushBackHostBytes(stream, input[consumed:])
+	}
+	if consumed == len(input) && len(input) == 0 {
+		r.hostEOF[stream] = true
+	}
+	return assigned, err
+}
+
+func (r *ExternRegistry) pushBackHostBytes(addr uint64, data []byte) {
+	for i := len(data) - 1; i >= 0; i-- {
+		r.hostPushback[addr] = append(r.hostPushback[addr], data[i])
+	}
+	if len(data) > 0 {
+		r.hostEOF[addr] = false
+	}
+}
+
+func scanString(name string, mem *Memory, input, format string, args []Value) (int, int, error) {
 	inputIndex := 0
 	argIndex := 0
 	assigned := 0
@@ -3694,18 +3779,18 @@ func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []
 		}
 		if ch != '%' {
 			if inputIndex >= len(input) || input[inputIndex] != ch {
-				return assigned, nil
+				return assigned, inputIndex, nil
 			}
 			inputIndex++
 			continue
 		}
 		formatIndex++
 		if formatIndex >= len(format) {
-			return 0, fmt.Errorf("%s has trailing %% in format", name)
+			return 0, inputIndex, fmt.Errorf("%s has trailing %% in format", name)
 		}
 		if format[formatIndex] == '%' {
 			if inputIndex >= len(input) || input[inputIndex] != '%' {
-				return assigned, nil
+				return assigned, inputIndex, nil
 			}
 			inputIndex++
 			continue
@@ -3715,7 +3800,7 @@ func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []
 			suppress = true
 			formatIndex++
 			if formatIndex >= len(format) {
-				return 0, fmt.Errorf("%s has trailing %% in format", name)
+				return 0, inputIndex, fmt.Errorf("%s has trailing %% in format", name)
 			}
 		}
 		width := 0
@@ -3743,15 +3828,15 @@ func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []
 		}
 	verb:
 		if formatIndex >= len(format) {
-			return 0, fmt.Errorf("%s has trailing %% in format", name)
+			return 0, inputIndex, fmt.Errorf("%s has trailing %% in format", name)
 		}
 		verb := format[formatIndex]
 		if !suppress {
 			if argIndex >= len(args) {
-				return 0, fmt.Errorf("%s format needs more arguments", name)
+				return 0, inputIndex, fmt.Errorf("%s format needs more arguments", name)
 			}
 			if !isPointerType(args[argIndex].Type) {
-				return 0, fmt.Errorf("%s %%%c expects pointer argument", name, verb)
+				return 0, inputIndex, fmt.Errorf("%s %%%c expects pointer argument", name, verb)
 			}
 		}
 		switch verb {
@@ -3764,14 +3849,14 @@ func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []
 			token := scanLimit(input, inputIndex, width)
 			parsed, err := parseStrtoIntegerString(name, token, base)
 			if err != nil {
-				return 0, err
+				return 0, inputIndex, err
 			}
 			if !parsed.converted {
-				return assigned, nil
+				return assigned, inputIndex, nil
 			}
 			if !suppress {
 				if err := scanStoreInteger(mem, args[argIndex].Int, lengthMod, verb == 'u', parsed); err != nil {
-					return 0, err
+					return 0, inputIndex, err
 				}
 				argIndex++
 				assigned++
@@ -3788,12 +3873,12 @@ func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []
 				end++
 			}
 			if end == inputIndex {
-				return assigned, nil
+				return assigned, inputIndex, nil
 			}
 			if !suppress {
 				data := append([]byte(input[inputIndex:end]), 0)
 				if err := writeMemoryBytes(mem, args[argIndex].Int, data); err != nil {
-					return 0, err
+					return 0, inputIndex, err
 				}
 				argIndex++
 				assigned++
@@ -3805,21 +3890,21 @@ func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []
 				count = 1
 			}
 			if inputIndex+count > len(input) {
-				return assigned, nil
+				return assigned, inputIndex, nil
 			}
 			if !suppress {
 				if err := writeMemoryBytes(mem, args[argIndex].Int, []byte(input[inputIndex:inputIndex+count])); err != nil {
-					return 0, err
+					return 0, inputIndex, err
 				}
 				argIndex++
 				assigned++
 			}
 			inputIndex += count
 		default:
-			return 0, fmt.Errorf("%s unsupported scan format %%%c", name, verb)
+			return 0, inputIndex, fmt.Errorf("%s unsupported scan format %%%c", name, verb)
 		}
 	}
-	return assigned, nil
+	return assigned, inputIndex, nil
 }
 
 func scanSkipWhitespace(s string, i int) int {

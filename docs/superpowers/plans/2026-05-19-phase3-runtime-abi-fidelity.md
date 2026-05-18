@@ -158,9 +158,23 @@ git commit -m "feat(runtime): add bounded sscanf extern"
 git push
 ```
 
-- [ ] **Step 4: Calibrate next formatted-input slice**
+- [x] **Step 4: Calibrate next formatted-input slice**
 
-Decide whether to expand `sscanf` conversions first or layer stream-backed `scanf`/`fscanf` over the string scanner.
+Chose stream-backed `scanf`/`fscanf` over wider `sscanf` verbs because existing `readHostChar` and pushback support made a small deterministic increment possible.
+
+- [x] **Step 5: Add stream-backed formatted input**
+
+Added `<stdio.h>` declarations, sema signatures, extern registration, runtime scanning over stdin and hermetic file handles, and tests that confirm unread input remains available to `getchar`/`fgetc`.
+
+- [x] **Step 6: Verify, commit, and push stream scanning**
+
+Run Common Verification, then:
+
+```bash
+git add preprocessor/headers.go sema/builtin.go runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(runtime): add stream scanf externs"
+git push
+```
 
 ## Milestone 5: FILE State Model Completion
 
