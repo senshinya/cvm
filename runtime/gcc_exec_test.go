@@ -382,6 +382,12 @@ int main(void)
     return 34;
   if (log2(8.0) != 3.0 || log2f(8.0f) != 3.0f || log2l(8.0L) != 3.0L)
     return 35;
+  if (nearbyint(1.5) != 2.0 || nearbyintf(1.5f) != 2.0f || nearbyintl(1.5L) != 2.0L)
+    return 45;
+  if (rint(1.5) != 2.0 || rintf(1.5f) != 2.0f || rintl(1.5L) != 2.0L)
+    return 46;
+  if (logb(8.0) != 3.0 || logbf(8.0f) != 3.0f || logbl(8.0L) != 3.0L)
+    return 47;
   if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
