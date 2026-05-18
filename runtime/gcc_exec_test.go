@@ -4403,6 +4403,34 @@ int main(void)
 	}
 }
 
+func TestGCCVFormatMemoryVaListExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <string.h>
+
+#define CVM_VA_I32 1UL
+#define CVM_VA_PTR 5UL
+
+int main(void)
+{
+  char buf[16];
+  unsigned long ap[5];
+  ap[0] = 2;
+  ap[1] = CVM_VA_I32;
+  ap[2] = 42;
+  ap[3] = CVM_VA_PTR;
+  ap[4] = (unsigned long)"ok";
+  if (vsprintf(buf, "%d %s", ap) != 5)
+    return 1;
+  return strcmp(buf, "42 ok") == 0 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "vformat-memory-va-list-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioVFormatUnlockedAliasesExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdarg.h>

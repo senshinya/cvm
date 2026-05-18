@@ -3194,6 +3194,55 @@ func TestVFormatExternsWriteLiteralOutput(t *testing.T) {
 	}
 }
 
+func TestVFormatExternsReadMemoryVaList(t *testing.T) {
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+
+	bufAddr := mustAlloc(t, mem, "buf:vformat-va-list", 32, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:vformat-va-list", []byte("%d %s\x00"), true, blockString)
+	strAddr := mustAllocBytes(t, mem, "str:vformat-va-list", []byte("ok\x00"), true, blockString)
+	apAddr := mustAllocVaList(t, mem, "ap:vformat-va-list",
+		IntValue(bytecode.TypeI32, 42),
+		ObjectAddrValue(strAddr),
+	)
+
+	fn, ok := reg.Lookup("vsprintf")
+	if !ok {
+		t.Fatal("missing vsprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(apAddr),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("vsprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 5 || got != "42 ok" {
+		t.Fatalf("vsprintf ret=%#v output=%q, want i32 5 and 42 ok", ret, got)
+	}
+
+	fn, ok = reg.Lookup("vprintf")
+	if !ok {
+		t.Fatal("missing vprintf extern")
+	}
+	ret, exit, callErr = fn(context.Background(), &ExternContext{Memory: mem, Stdout: &out}, []Value{
+		ObjectAddrValue(fmtAddr),
+		PtrValue(apAddr),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("vprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 5 || out.String() != "42 ok" {
+		t.Fatalf("vprintf ret=%#v output=%q, want i32 5 and 42 ok", ret, out.String())
+	}
+}
+
 func TestCheckedVFormatExternsWriteLiteralOutput(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

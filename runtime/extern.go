@@ -3138,7 +3138,7 @@ func vsprintfExtern(name string) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		out, err := formatCString(name, ec.Memory, args[1].Int, nil)
+		out, err := formatVaListCString(name, ec.Memory, args[1].Int, args[2].Int)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -3160,7 +3160,7 @@ func vsnprintfExtern(name string) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		out, err := formatCString(name, ec.Memory, args[2].Int, nil)
+		out, err := formatVaListCString(name, ec.Memory, args[2].Int, args[3].Int)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -3256,7 +3256,7 @@ func vsprintfCheckedExtern(name string) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		out, err := formatCString(name, ec.Memory, args[3].Int, nil)
+		out, err := formatVaListCString(name, ec.Memory, args[3].Int, args[4].Int)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -3288,7 +3288,7 @@ func vsnprintfCheckedExtern(name string) ExternFunc {
 		if err := checkObjectSize(name, uint64(size), args[3]); err != nil {
 			return Value{}, nil, err
 		}
-		out, err := formatCString(name, ec.Memory, args[4].Int, nil)
+		out, err := formatVaListCString(name, ec.Memory, args[4].Int, args[5].Int)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -3340,7 +3340,7 @@ func vprintfExtern(name string, r *ExternRegistry) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		out, err := formatCString(name, ec.Memory, args[0].Int, nil)
+		out, err := formatVaListCString(name, ec.Memory, args[0].Int, args[1].Int)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -3392,7 +3392,7 @@ func vfprintfExtern(name string, r *ExternRegistry) ExternFunc {
 		if !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
-		out, err := formatCString(name, ec.Memory, args[1].Int, nil)
+		out, err := formatVaListCString(name, ec.Memory, args[1].Int, args[2].Int)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -3436,7 +3436,7 @@ func vprintfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		out, err := formatCString(name, ec.Memory, args[1].Int, nil)
+		out, err := formatVaListCString(name, ec.Memory, args[1].Int, args[2].Int)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -3488,7 +3488,7 @@ func vfprintfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
 		if !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
-		out, err := formatCString(name, ec.Memory, args[2].Int, nil)
+		out, err := formatVaListCString(name, ec.Memory, args[2].Int, args[3].Int)
 		if err != nil {
 			return Value{}, nil, err
 		}
@@ -3497,6 +3497,68 @@ func vfprintfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
 	}
+}
+
+const (
+	memoryVaListTagI32  = 1
+	memoryVaListTagU32  = 2
+	memoryVaListTagI64  = 3
+	memoryVaListTagU64  = 4
+	memoryVaListTagPtr  = 5
+	memoryVaListTagF64  = 6
+	memoryVaListMaxArgs = 1024
+)
+
+func formatVaListCString(name string, mem *Memory, formatAddr, vaListAddr uint64) (string, error) {
+	args, err := readMemoryVaList(name, mem, vaListAddr)
+	if err != nil {
+		return "", err
+	}
+	return formatCString(name, mem, formatAddr, args)
+}
+
+func readMemoryVaList(name string, mem *Memory, vaListAddr uint64) ([]Value, error) {
+	if vaListAddr == 0 {
+		return nil, nil
+	}
+	countValue, err := mem.Load(vaListAddr, bytecode.TypeU64, 8)
+	if err != nil {
+		return nil, err
+	}
+	count := countValue.Int
+	if count > memoryVaListMaxArgs {
+		return nil, fmt.Errorf("%s va_list count %d exceeds limit", name, count)
+	}
+	args := make([]Value, 0, int(count))
+	for i := uint64(0); i < count; i++ {
+		entry := vaListAddr + 8 + i*16
+		tagValue, err := mem.Load(entry, bytecode.TypeU64, 8)
+		if err != nil {
+			return nil, err
+		}
+		payloadValue, err := mem.Load(entry+8, bytecode.TypeU64, 8)
+		if err != nil {
+			return nil, err
+		}
+		payload := payloadValue.Int
+		switch tagValue.Int {
+		case memoryVaListTagI32:
+			args = append(args, IntValue(bytecode.TypeI32, int64(int32(payload))))
+		case memoryVaListTagU32:
+			args = append(args, UIntValue(bytecode.TypeU32, uint64(uint32(payload))))
+		case memoryVaListTagI64:
+			args = append(args, IntValue(bytecode.TypeI64, int64(payload)))
+		case memoryVaListTagU64:
+			args = append(args, UIntValue(bytecode.TypeU64, payload))
+		case memoryVaListTagPtr:
+			args = append(args, PtrValue(payload))
+		case memoryVaListTagF64:
+			args = append(args, FloatValue(bytecode.TypeF64, math.Float64frombits(payload)))
+		default:
+			return nil, fmt.Errorf("%s unsupported va_list tag %d at index %d", name, tagValue.Int, i)
+		}
+	}
+	return args, nil
 }
 
 func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (string, error) {
