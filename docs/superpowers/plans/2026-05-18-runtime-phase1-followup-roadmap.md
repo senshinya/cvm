@@ -629,6 +629,22 @@ go test ./codegen -run 'TestGCCTgmathComplexPowFloatUsesComplexFloatExtern|TestG
   - `feat(runtime): add plain binary math externs`
   - `docs: record plain binary math externs`
 
+## Plan 50: `stdlib.h` Multibyte Helpers - Completed
+
+The pre-plan adjustment found the safe stdlib conversion/allocation/process surface already covered and avoided broader callback-based `qsort`/`bsearch` work. This plan adds a narrow C locale single-byte multibyte/wide-char surface: `mblen`, `mbtowc`, `wctomb`, `mbstowcs`, and `wcstombs`.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestStdlibMultibyteExterns|TestStdlibMultibyteExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdlib multibyte externs`
+  - `docs: record stdlib multibyte externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
