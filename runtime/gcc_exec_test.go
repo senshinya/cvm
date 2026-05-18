@@ -201,6 +201,31 @@ int main(void)
 	}
 }
 
+func TestGCCFopenConfiguredFileExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[3] = { 0, 0, 0 };
+  FILE *f = fopen("data.txt", "r");
+  if (!f)
+    return 1;
+  if (fgetc(f) != 'A')
+    return 2;
+  if (fread(buf, 1, 2, f) != 2)
+    return 3;
+  return buf[0] == 'B' && buf[1] == 'C' ? 0 : 4;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("ABC"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-fopen-configured-file-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioTmpnamExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

@@ -136,6 +136,58 @@ func TestStdioOpenStubs(t *testing.T) {
 	}
 }
 
+func TestFopenReadsConfiguredFile(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("ABC"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:file-path", []byte("data.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "stdio:file-mode", []byte("r\x00"), true, blockString)
+	buf := mustAllocBytes(t, mem, "stdio:file-buf", []byte{0, 0}, false, blockLocal)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	fgetcFn, ok := reg.Lookup("fgetc")
+	if !ok {
+		t.Fatal("missing fgetc extern")
+	}
+	freadFn, ok := reg.Lookup("fread")
+	if !ok {
+		t.Fatal("missing fread extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+	if err != nil || exit != nil {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v, want file handle", ret)
+	}
+	file := ret.Int
+
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'A' {
+		t.Fatalf("fgetc ret=%#v exit=%#v err=%v, want 'A'", ret, exit, err)
+	}
+	ret, exit, err = freadFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(buf),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 2),
+		PtrValue(file),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("fread ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
+	}
+	block, off, err := mem.rangeAccess(buf, 2, false)
+	if err != nil {
+		t.Fatalf("rangeAccess buf: %v", err)
+	}
+	if got := string(block.data[off : off+2]); got != "BC" {
+		t.Fatalf("fread bytes = %q, want BC", got)
+	}
+}
+
 func TestStdioTmpnamStub(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	fn, ok := reg.Lookup("tmpnam")

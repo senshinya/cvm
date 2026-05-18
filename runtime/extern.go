@@ -31,11 +31,18 @@ type ExternRegistry struct {
 	hostPushback  map[uint64][]byte
 	hostEOF       map[uint64]bool
 	hostClosed    map[uint64]bool
+	hostFiles     map[uint64]*hostFile
+	files         map[string][]byte
 	stdinHandle   uint64
 	staticStrings map[*Memory]map[string]uint64
 	staticVars    map[*Memory]map[string]uint64
 	strtokNext    map[*Memory]uint64
 	randSeed      uint32
+}
+
+type hostFile struct {
+	data []byte
+	pos  int64
 }
 
 func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
@@ -59,6 +66,8 @@ func NewExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *ExternR
 		hostPushback:  make(map[uint64][]byte),
 		hostEOF:       make(map[uint64]bool),
 		hostClosed:    make(map[uint64]bool),
+		hostFiles:     make(map[uint64]*hostFile),
+		files:         make(map[string][]byte),
 		staticStrings: make(map[*Memory]map[string]uint64),
 		staticVars:    make(map[*Memory]map[string]uint64),
 		strtokNext:    make(map[*Memory]uint64),
@@ -79,7 +88,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	registerVaListExterns(r)
 	r.Register("remove", removeExtern("remove"))
 	r.Register("rename", renameExtern("rename"))
-	r.Register("fopen", fopenExtern("fopen"))
+	r.Register("fopen", fopenExtern("fopen", r))
 	r.Register("freopen", freopenExtern("freopen", r))
 	r.Register("tmpfile", tmpfileExtern("tmpfile"))
 	r.Register("tmpnam", tmpnamExtern("tmpnam"))
@@ -206,6 +215,13 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	return r
 }
 
+func (r *ExternRegistry) AddFile(path string, data []byte) {
+	if r == nil {
+		return
+	}
+	r.files[path] = append([]byte(nil), data...)
+}
+
 func registerVaListExterns(r *ExternRegistry) {
 	r.Register("__builtin_va_start", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
@@ -260,7 +276,7 @@ func renameExtern(name string) ExternFunc {
 	}
 }
 
-func fopenExtern(name string) ExternFunc {
+func fopenExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
@@ -271,13 +287,28 @@ func fopenExtern(name string) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+		path, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
 			return Value{}, nil, err
 		}
-		if _, err := ec.Memory.ReadCString(args[1].Int); err != nil {
+		mode, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
 			return Value{}, nil, err
 		}
-		return PtrValue(0), nil, nil
+		if !strings.HasPrefix(mode, "r") {
+			return PtrValue(0), nil, nil
+		}
+		data, ok := r.files[path]
+		if !ok {
+			return PtrValue(0), nil, nil
+		}
+		addr, err := r.allocHostWriter("file:"+path, ec.Memory, io.Discard, -1)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		r.hostFiles[addr] = &hostFile{data: append([]byte(nil), data...)}
+		delete(r.hostEOF, addr)
+		return PtrValue(addr), nil, nil
 	}
 }
 
@@ -574,6 +605,7 @@ func fcloseExtern(name string, r *ExternRegistry) ExternFunc {
 		delete(r.hostFDs, args[0].Int)
 		delete(r.hostPushback, args[0].Int)
 		delete(r.hostEOF, args[0].Int)
+		delete(r.hostFiles, args[0].Int)
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
@@ -4482,16 +4514,23 @@ func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {
 func (r *ExternRegistry) readHostChar(addr uint64) (byte, bool) {
 	buf := r.hostPushback[addr]
 	if len(buf) == 0 {
-		if addr != r.stdinHandle || r.stdin == nil {
-			return 0, false
+		if file := r.hostFiles[addr]; file != nil {
+			if file.pos < 0 || file.pos >= int64(len(file.data)) {
+				return 0, false
+			}
+			ch := file.data[file.pos]
+			file.pos++
+			return ch, true
 		}
-		var one [1]byte
-		n, err := r.stdin.Read(one[:])
-		if n > 0 {
-			return one[0], true
-		}
-		if err != nil {
-			return 0, false
+		if addr == r.stdinHandle && r.stdin != nil {
+			var one [1]byte
+			n, err := r.stdin.Read(one[:])
+			if n > 0 {
+				return one[0], true
+			}
+			if err != nil {
+				return 0, false
+			}
 		}
 		return 0, false
 	}
