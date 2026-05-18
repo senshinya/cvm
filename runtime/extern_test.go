@@ -3243,6 +3243,43 @@ func TestVFormatExternsReadMemoryVaList(t *testing.T) {
 	}
 }
 
+func TestVFormatExternsReadFloatingAndCountMemoryVaList(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+
+	bufAddr := mustAlloc(t, mem, "buf:vformat-va-list-float", 32, 1, false, blockLocal)
+	countAddr := mustAlloc(t, mem, "count:vformat-va-list-float", 4, 4, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:vformat-va-list-float", []byte("%+.1f%n\x00"), true, blockString)
+	apAddr := mustAllocVaList(t, mem, "ap:vformat-va-list-float",
+		FloatValue(bytecode.TypeF64, 1.5),
+		ObjectAddrValue(countAddr),
+	)
+
+	fn, ok := reg.Lookup("vsprintf")
+	if !ok {
+		t.Fatal("missing vsprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(apAddr),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("vsprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	count, err := mem.Load(countAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("Load count: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 4 || got != "+1.5" || signedInt(count) != 4 {
+		t.Fatalf("vsprintf ret=%#v output=%q count=%d, want i32 4, +1.5, count 4", ret, got, signedInt(count))
+	}
+}
+
 func TestCheckedVFormatExternsWriteLiteralOutput(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

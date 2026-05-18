@@ -57,6 +57,39 @@ git commit -m "feat(runtime): consume memory backed va lists"
 git push origin codex/bytecode-runtime-phase-1
 ```
 
+## Task 3: Floating And Count v-format Arguments
+
+**Files:**
+- Modify: `runtime/extern_test.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/superpowers/plans/2026-05-19-phase2b-memory-va-list.md`
+
+- [x] **Step 1: Add direct floating/count coverage**
+
+Cover `F64` memory `va_list` payloads and `%n` count pointer writes through a v-format extern.
+
+- [x] **Step 2: Add GCC runtime coverage**
+
+Add a source-level runtime test that constructs a double payload with a union and verifies both formatted output and `%n` count storage.
+
+- [x] **Step 3: Run focused tests**
+
+Run:
+
+```bash
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestVFormatExternsReadFloatingAndCountMemoryVaList|TestGCCVFormatMemoryVaListFloatingAndCountExecutesThroughRuntime' -count=1 -v
+```
+
+- [x] **Step 4: Full verification, commit, push**
+
+Run Common Verification, then commit:
+
+```bash
+git add runtime/extern_test.go runtime/gcc_exec_test.go docs/superpowers/plans/2026-05-19-phase2b-memory-va-list.md
+git commit -m "test(runtime): cover floating memory va list formats"
+git push origin codex/bytecode-runtime-phase-1
+```
+
 ## Task 2: Checked And FILE v-format Coverage
 
 **Files:**

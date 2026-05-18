@@ -4466,6 +4466,39 @@ int main(void)
 	}
 }
 
+func TestGCCVFormatMemoryVaListFloatingAndCountExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <string.h>
+
+#define CVM_VA_PTR 5UL
+#define CVM_VA_F64 6UL
+
+int main(void)
+{
+  char buf[16];
+  int n = 0;
+  union { double d; unsigned long u; } bits;
+  unsigned long ap[5];
+  bits.d = 1.5;
+  ap[0] = 2;
+  ap[1] = CVM_VA_F64;
+  ap[2] = bits.u;
+  ap[3] = CVM_VA_PTR;
+  ap[4] = (unsigned long)&n;
+  if (vsprintf(buf, "%+.1f%n", ap) != 4)
+    return 1;
+  if (strcmp(buf, "+1.5") != 0)
+    return 2;
+  return n == 4 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "vformat-memory-va-list-floating-count-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioVFormatUnlockedAliasesExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdarg.h>
