@@ -728,6 +728,22 @@ go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThrou
   - `feat(runtime): add plain hyperbolic math externs`
   - `docs: record plain hyperbolic math externs`
 
+## Plan 56: Plain Inverse Hyperbolic `math.h` Helpers - Completed
+
+The pre-plan adjustment continued the plain `<math.h>` sweep with another exact-value unary subset. This plan adds `asinh*`, `acosh*`, and `atanh*` declarations and extern registrations.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathUnaryExterns|TestMathPlainUnaryExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add plain inverse hyperbolic math externs`
+  - `docs: record plain inverse hyperbolic math externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
