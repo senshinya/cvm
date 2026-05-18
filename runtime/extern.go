@@ -1203,7 +1203,9 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("strspn", stringSpanExtern("strspn", true))
 	r.Register("strcspn", stringSpanExtern("strcspn", false))
 	r.Register("strtok", stringTokenExtern("strtok", r))
+	r.Register("strxfrm", stringTransformExtern("strxfrm"))
 	r.Register("strncmp", stringNCompareExtern("strncmp"))
+	r.Register("strcoll", stringCollateExtern("strcoll"))
 	r.Register("memchr", memoryCharSearchExtern("memchr"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
 		r.Register(name, stringCopyExtern(name, false))
@@ -2064,6 +2066,40 @@ func stringTokenExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
+func stringTransformExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, source, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		src, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		n, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if n > 0 {
+			limit := int(n) - 1
+			if limit > len(src) {
+				limit = len(src)
+			}
+			out := make([]byte, limit+1)
+			copy(out, src[:limit])
+			if err := writeMemoryBytes(ec.Memory, args[0].Int, out); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return UIntValue(bytecode.TypeU64, uint64(len(src))), nil, nil
+	}
+}
+
 func stringNCompareExtern(name string) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 3 {
@@ -2124,6 +2160,29 @@ func memoryCharSearchExtern(name string) ExternFunc {
 			}
 		}
 		return PtrValue(0), nil, nil
+	}
+}
+
+func stringCollateExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		left, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		right, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(strcmpResult(left, right))), nil, nil
 	}
 }
 
