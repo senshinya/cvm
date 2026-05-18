@@ -73,7 +73,7 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 			if cleanupErr != nil {
 				return st, cleanupErr
 			}
-			if !st.SkipAtexit {
+			if !st.skipAtexit {
 				atexitStatus, atexitDone, atexitErr := vm.runAtexitHandlers(ctx)
 				if atexitErr != nil {
 					return st, atexitErr
@@ -82,6 +82,7 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 					st = atexitStatus
 				}
 			}
+			st.skipAtexit = false
 			return st, nil
 		}
 	}

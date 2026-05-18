@@ -1550,6 +1550,24 @@ int main(void)
 	}
 }
 
+func TestStdlibUnderscoreExitDoesNotExposeCleanupControlThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  _Exit(7);
+}
+`
+	st := runGCCExecFixture(t, "stdlib-underscore-exit-public-status-runtime.c", source)
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+	if st.skipAtexit {
+		t.Fatalf("ExitStatus exposed internal cleanup control")
+	}
+}
+
 func TestLocaleSetlocaleExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <locale.h>

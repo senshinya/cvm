@@ -423,7 +423,33 @@ git push
 
 ## Milestone 12: Runtime Error And Diagnostics Stabilization
 
-**Calibration:** Pending after fixture expansion.
+**Calibration:** Completed after fixture expansion. Recent hosted-runtime work added an internal cleanup-control bit to `ExitStatus` so `_Exit` can skip atexit handlers. That bit leaked through the public `Run` return value, making `_Exit(7)` produce an `ExitStatus` that carried internal VM control state in addition to the observable exit code.
+
+**Files:**
+- Modify: `runtime/errors.go`
+- Modify: `runtime/extern.go`
+- Modify: `runtime/vm.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add failing public-status test**
+
+Added runtime coverage showing `_Exit(7)` should return code `7` without exposing the internal cleanup-control flag.
+
+- [x] **Step 2: Keep cleanup control internal**
+
+Made the atexit-skip flag unexported and cleared it before returning from `Run`, while preserving `_Exit` handler-skipping behavior inside the VM.
+
+- [x] **Step 3: Verify, commit, and push diagnostics stabilization**
+
+Run Common Verification, then:
+
+```bash
+git add runtime/errors.go runtime/extern.go runtime/vm.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "fix(runtime): keep exit cleanup state internal"
+git push
+```
 
 ## Milestone 13: CLI Runtime UX
 

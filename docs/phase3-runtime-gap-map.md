@@ -32,6 +32,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 - The long double/complex ABI sweep found and fixed unsuffixed variadic coverage around floating literal suffixes: `long double` literals now keep `LongDouble` type before default argument promotion, so `va_arg(ap, long double)` receives `flong`. Source-level `va_arg` coverage now includes `long double` and `_Complex double`.
 - The struct/union ABI sweep found existing object-address vararg handling sufficient for `va_arg(ap, struct S)` and `va_arg(ap, union U)`, and added runtime coverage for both cases.
 - The GCC runtime fixture expansion sweep is closed: the fresh gap report still has 18 runnable manifest candidates and no failures, while the compile-only `main` candidates are either already covered by direct runtime tests or remain documented non-runtime targets.
+- Runtime status/error stabilization now keeps the atexit cleanup-control bit internal: `_Exit` still skips cleanup handlers, but `Run` returns a public `ExitStatus` containing only the observable exit code.
 
 ## Residual Bounded Runtime Surface
 

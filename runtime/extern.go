@@ -1423,7 +1423,7 @@ func exitExtern(name string) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		return Value{}, &ExitStatus{Code: code, SkipAtexit: name == "_Exit"}, nil
+		return Value{}, &ExitStatus{Code: code, skipAtexit: name == "_Exit"}, nil
 	}
 }
 
