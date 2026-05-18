@@ -180,6 +180,25 @@ int main(void)
 	}
 }
 
+func TestStdioOpenStubsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  if (fopen("missing.tmp", "r") != 0)
+    return 1;
+  if (freopen("missing.tmp", "r", stdout) != 0)
+    return 2;
+  return tmpfile() == 0 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "stdio-open-stubs-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCExecutionFixtures(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("testdata", "gcc-exec", "manifest.tsv"))
 	if err != nil {

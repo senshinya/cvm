@@ -73,6 +73,9 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	registerVaListExterns(r)
 	r.Register("remove", removeExtern("remove"))
 	r.Register("rename", renameExtern("rename"))
+	r.Register("fopen", fopenExtern("fopen"))
+	r.Register("freopen", freopenExtern("freopen", r))
+	r.Register("tmpfile", tmpfileExtern("tmpfile"))
 	for _, name := range []string{"puts", "puts_unlocked"} {
 		r.Register(name, putsExtern(name, r))
 	}
@@ -232,6 +235,60 @@ func renameExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		return IntValue(bytecode.TypeI32, -1), nil, nil
+	}
+}
+
+func fopenExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects path and mode pointers", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := ec.Memory.ReadCString(args[1].Int); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(0), nil, nil
+	}
+}
+
+func freopenExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects path, mode, and stream pointers", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+			return Value{}, nil, err
+		}
+		if _, err := ec.Memory.ReadCString(args[1].Int); err != nil {
+			return Value{}, nil, err
+		}
+		if _, ok := r.lookupHostWriter(args[2].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[2].Int)
+		}
+		return PtrValue(0), nil, nil
+	}
+}
+
+func tmpfileExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 0 {
+			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
+		}
+		return PtrValue(0), nil, nil
 	}
 }
 
