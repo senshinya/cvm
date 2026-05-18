@@ -148,7 +148,7 @@ func TestBuiltinMathHeaderDeclaresRuntimeSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl"} {
+	for _, name := range []string{"fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("math identifier %q missing: %#v", name, res.Tokens)
 		}

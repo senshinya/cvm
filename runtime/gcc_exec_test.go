@@ -342,7 +342,13 @@ int main(void)
     return 4;
   if (sqrtf(4.0f) != 2.0f)
     return 5;
-  return sqrtl(16.0L) == 4.0L ? 0 : 6;
+  if (sqrtl(16.0L) != 4.0L)
+    return 6;
+  if (sin(0.0) != 0.0 || sinf(0.0f) != 0.0f || sinl(0.0L) != 0.0L)
+    return 7;
+  if (cos(0.0) != 1.0 || cosf(0.0f) != 1.0f || cosl(0.0L) != 1.0L)
+    return 8;
+  return tan(0.0) == 0.0 && tanf(0.0f) == 0.0f && tanl(0.0L) == 0.0L ? 0 : 9;
 }
 `
 	st := runGCCExecFixture(t, "math-plain-unary-runtime.c", source)

@@ -411,12 +411,23 @@ func mathHeader() string {
 #define FP_NORMAL 2
 #define FP_SUBNORMAL 3
 #define FP_ZERO 4
+#ifndef __CVM_TGMATH_INCLUDE
 float fabsf(float);
 double fabs(double);
 long double fabsl(long double);
 float sqrtf(float);
 double sqrt(double);
 long double sqrtl(long double);
+float sinf(float);
+double sin(double);
+long double sinl(long double);
+float cosf(float);
+double cos(double);
+long double cosl(long double);
+float tanf(float);
+double tan(double);
+long double tanl(long double);
+#endif
 int __cvm_fpclassifyf(float);
 int __cvm_fpclassify(double);
 int __cvm_fpclassifyl(long double);
@@ -456,7 +467,9 @@ int __cvm_isunordered(double, double);
 func tgmathHeader() string {
 	return `#ifndef __CVM_TGMATH_H
 #define __CVM_TGMATH_H
+#define __CVM_TGMATH_INCLUDE 1
 #include <math.h>
+#undef __CVM_TGMATH_INCLUDE
 #ifndef complex
 #define complex _Complex
 #endif
