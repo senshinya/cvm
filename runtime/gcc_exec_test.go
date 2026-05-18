@@ -354,7 +354,13 @@ int main(void)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
     return 11;
-  return hypot(3.0, 4.0) == 5.0 && hypotf(3.0f, 4.0f) == 5.0f && hypotl(3.0L, 4.0L) == 5.0L ? 0 : 12;
+  if (hypot(3.0, 4.0) != 5.0 || hypotf(3.0f, 4.0f) != 5.0f || hypotl(3.0L, 4.0L) != 5.0L)
+    return 12;
+  if (exp(0.0) != 1.0 || expf(0.0f) != 1.0f || expl(0.0L) != 1.0L)
+    return 13;
+  if (log(1.0) != 0.0 || logf(1.0f) != 0.0f || logl(1.0L) != 0.0L)
+    return 14;
+  return log10(100.0) == 2.0 && log10f(100.0f) == 2.0f && log10l(100.0L) == 2.0L ? 0 : 15;
 }
 `
 	st := runGCCExecFixture(t, "math-plain-unary-runtime.c", source)
