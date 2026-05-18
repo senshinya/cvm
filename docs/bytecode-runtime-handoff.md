@@ -1448,6 +1448,7 @@ Runtime support exists for real math externs and for the currently covered compl
 - `fclose` currently validates known host stream handles and returns zero, but does not model stream lifetime or prevent later use of that stream handle.
 - The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation, but runtime execution coverage is still much smaller.
 - Static-chain support is deliberately narrow and rejects escaping capturing nested functions instead of modeling trampolines.
+- Builtin headers share a guarded `size_t` typedef, so combinations such as `<stdio.h>` plus `<string.h>` analyze without relaxing ordinary C99 typedef redeclaration diagnostics.
 
 ## Suggested Next Work
 

@@ -1461,6 +1461,43 @@ The GNU89 inline coverage increment passed focused runtime tests plus full verif
 - Commit message:
   - `docs: record GCC GNU89 inline volatile runtime coverage`
 
+## Plan 141: Header Typedef Collision Triage - Completed
+
+The pre-plan adjustment revisited the duplicate `size_t` issue discovered while adding plain `sprintf` runtime coverage. A sema-level experiment that allowed compatible typedef redeclarations made the focused header test pass, but it incorrectly accepted GCC reject fixtures `c99-typedef-1.c` and `c90-typedef-1.c`. The root cause was therefore narrowed to builtin header expansion rather than ordinary C99 typedef rules.
+
+## Plan 142: Header Typedef Regression Coverage - Completed
+
+Added focused sema coverage proving both sides of the boundary:
+
+- ordinary same-scope typedef redeclarations are still rejected
+- `<stdio.h>` plus `<string.h>` can be preprocessed, parsed, and analyzed together
+
+## Plan 143: Shared `size_t` Header Guard - Completed
+
+Builtin headers that expose `size_t` now wrap the typedef in `__CVM_SIZE_T`, covering `<stddef.h>`, `<stdio.h>`, `<stdlib.h>`, `<string.h>`, `<strings.h>`, and the internal chk header. This fixes standard-header composition without weakening sema's ordinary typedef redeclaration diagnostics.
+
+- Files: `preprocessor/headers.go`, `sema/c99_compliance_test.go`
+- Focused tests:
+
+```bash
+go test ./sema -run 'TestC99(RejectsTypedefRedeclaration|BuiltinHeadersMayRedeclareSizeT)|TestGCCC99RejectSuite/c99-typedef-1.c|TestGCCC90AsC99ExplicitStdSuite/reject/c90-typedef-1.c' -count=1
+go test ./sema -count=1
+go test ./preprocessor -count=1
+```
+
+- Commit message:
+  - `fix(headers): guard shared size_t typedef`
+
+## Plan 144: Header Typedef Verification - Completed
+
+The header typedef guard increment passed full verification:
+
+```bash
+git diff --check
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./codegen -count=1
+env GOCACHE=/private/tmp/cvm-go-build-cache go test ./... -count=1
+```
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.
