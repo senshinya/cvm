@@ -419,6 +419,22 @@ go test ./runtime -run 'TestStdlibAtexitExtern|TestStdlibAtexitExecuteThroughRun
   - `feat(runtime): add stdlib atexit extern`
   - `docs: record stdlib atexit extern`
 
+## Plan 37: `stdio.h` `tmpnam` Stub - Completed
+
+Add `L_tmpnam`, `TMP_MAX`, `tmpnam` declaration, runtime registration, direct extern coverage, and GCC runtime execution coverage. Phase 1 behavior remains hermetic: `tmpnam(NULL)` returns null, and a non-null buffer is validated as writable and nul-terminated before returning null.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run 'TestBuiltinStdioHeaderDeclaresFormattingSurface|TestBuiltinStdioHeaderDefinesBufferingMacros' -count=1 -v
+go test ./runtime -run 'TestStdioTmpnamStub|TestStdioTmpnamExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdio tmpnam stub`
+  - `docs: record stdio tmpnam stub`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
