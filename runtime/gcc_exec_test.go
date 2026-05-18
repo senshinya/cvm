@@ -2609,6 +2609,29 @@ int main(void)
 	}
 }
 
+func TestGCCStdioScanfRadixSuppressionAndCountExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  unsigned x = 0;
+  unsigned o = 0;
+  int n = 0;
+  int r = sscanf("11 0x2a 10 rest", "%*d %x %o%n", &x, &o, &n);
+  if (r != 2)
+    return 1;
+  if (x != 42 || o != 8)
+    return 2;
+  return n == 10 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "stdio-scanf-radix-suppression-count-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioUngetcExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

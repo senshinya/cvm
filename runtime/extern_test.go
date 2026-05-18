@@ -3497,6 +3497,46 @@ func TestFscanfExternScansConfiguredFileAndPreservesUnreadInput(t *testing.T) {
 	}
 }
 
+func TestSscanfExternScansRadixSuppressionAndCount(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:radix-input", []byte("11 0x2a 10 rest\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:radix-fmt", []byte("%*d %x %o%n\x00"), true, blockString)
+	hexAddr := mustAlloc(t, mem, "sscanf:hex", 4, 4, false, blockLocal)
+	octalAddr := mustAlloc(t, mem, "sscanf:octal", 4, 4, false, blockLocal)
+	countAddr := mustAlloc(t, mem, "sscanf:count", 4, 4, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(hexAddr),
+		PtrValue(octalAddr),
+		PtrValue(countAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 2 {
+		t.Fatalf("sscanf ret=%#v, want i32 2", ret)
+	}
+	hex, err := mem.Load(hexAddr, bytecode.TypeU32, 4)
+	if err != nil || hex.Int != 42 {
+		t.Fatalf("hex=%#v err=%v, want 42", hex, err)
+	}
+	octal, err := mem.Load(octalAddr, bytecode.TypeU32, 4)
+	if err != nil || octal.Int != 8 {
+		t.Fatalf("octal=%#v err=%v, want 8", octal, err)
+	}
+	count, err := mem.Load(countAddr, bytecode.TypeI32, 4)
+	if err != nil || count.Int != 10 {
+		t.Fatalf("count=%#v err=%v, want 10", count, err)
+	}
+}
+
 func TestPrintfExternsWriteFormattedOutput(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

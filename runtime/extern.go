@@ -3840,10 +3840,14 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 			}
 		}
 		switch verb {
-		case 'd', 'i', 'u':
+		case 'd', 'i', 'u', 'x', 'X', 'o':
 			base := int64(10)
 			if verb == 'i' {
 				base = 0
+			} else if verb == 'x' || verb == 'X' {
+				base = 16
+			} else if verb == 'o' {
+				base = 8
 			}
 			inputIndex = scanSkipWhitespace(input, inputIndex)
 			token := scanLimit(input, inputIndex, width)
@@ -3855,13 +3859,25 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				return assigned, inputIndex, nil
 			}
 			if !suppress {
-				if err := scanStoreInteger(mem, args[argIndex].Int, lengthMod, verb == 'u', parsed); err != nil {
+				unsigned := verb == 'u' || verb == 'x' || verb == 'X' || verb == 'o'
+				if err := scanStoreInteger(mem, args[argIndex].Int, lengthMod, unsigned, parsed); err != nil {
 					return 0, inputIndex, err
 				}
 				argIndex++
 				assigned++
 			}
 			inputIndex += parsed.end
+		case 'n':
+			if width != 0 {
+				return 0, inputIndex, fmt.Errorf("%s %%n does not support width", name)
+			}
+			if !suppress {
+				countType, countAlign := scanIntegerType(lengthMod, false)
+				if err := mem.Store(args[argIndex].Int, countType, countAlign, normalizeInt(IntValue(countType, int64(inputIndex)))); err != nil {
+					return 0, inputIndex, err
+				}
+				argIndex++
+			}
 		case 's':
 			inputIndex = scanSkipWhitespace(input, inputIndex)
 			end := inputIndex

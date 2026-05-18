@@ -176,6 +176,20 @@ git commit -m "feat(runtime): add stream scanf externs"
 git push
 ```
 
+- [x] **Step 7: Calibrate and extend integer scan fidelity**
+
+After stream scanning landed, the next low-risk gap was common integer-format fidelity rather than scansets or floats. Added `%x`, `%X`, `%o`, assignment suppression coverage, and `%n` count writes.
+
+- [x] **Step 8: Verify, commit, and push integer scan fidelity**
+
+Run Common Verification, then:
+
+```bash
+git add runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(runtime): extend scanf integer formats"
+git push
+```
+
 ## Milestone 5: FILE State Model Completion
 
 **Calibration:** Pending after formatted input scan.
