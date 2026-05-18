@@ -579,6 +579,22 @@ go test ./runtime -run 'TestPlainAllocationExterns|TestStringBoundedDupExecuteTh
   - `feat(runtime): add string strndup extern`
   - `docs: record string strndup extern`
 
+## Plan 47: `stdio.h` File Position Stubs - Completed
+
+The pre-plan adjustment kept avoiding broad formatted input work and selected the narrower file-position surface. This plan adds `fpos_t`, `fgetpos`, and `fsetpos`; runtime validates known stream handles and readable/writable position objects, then conservatively reports failure just like the existing `fseek`/`ftell` stubs.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -count=1 -v
+go test ./runtime -run 'TestStdioPositionStubs|TestStdioPositionStubsExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add stdio fpos stubs`
+  - `docs: record stdio fpos stubs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
