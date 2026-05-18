@@ -30,6 +30,7 @@ type ExternRegistry struct {
 	hostFDs       map[uint64]int32
 	hostPushback  map[uint64][]byte
 	hostEOF       map[uint64]bool
+	hostError     map[uint64]bool
 	hostClosed    map[uint64]bool
 	hostFiles     map[uint64]*hostFile
 	files         map[string][]byte
@@ -73,6 +74,7 @@ func NewExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *ExternR
 		hostFDs:       make(map[uint64]int32),
 		hostPushback:  make(map[uint64][]byte),
 		hostEOF:       make(map[uint64]bool),
+		hostError:     make(map[uint64]bool),
 		hostClosed:    make(map[uint64]bool),
 		hostFiles:     make(map[uint64]*hostFile),
 		files:         make(map[string][]byte),
@@ -237,19 +239,24 @@ func (w hostFileWriter) Write(p []byte) (int, error) {
 	}
 	file := w.registry.hostFiles[w.addr]
 	if file == nil {
+		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("unknown file handle %#x", w.addr)
 	}
 	if !file.writable {
+		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q is not open for writing", file.path)
 	}
 	if file.pos < 0 {
+		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q has negative offset", file.path)
 	}
 	end := file.pos + int64(len(p))
 	if end < file.pos {
+		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q write offset overflows", file.path)
 	}
 	if end > int64(maxInt()) {
+		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q write offset exceeds host int range", file.path)
 	}
 	if end > int64(len(file.data)) {
@@ -383,6 +390,7 @@ func fopenExtern(name string, r *ExternRegistry) ExternFunc {
 			r.files[path] = append([]byte(nil), file.data...)
 		}
 		delete(r.hostEOF, addr)
+		delete(r.hostError, addr)
 		return PtrValue(addr), nil, nil
 	}
 }
@@ -514,7 +522,8 @@ func fputcExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		ch := byte(args[0].Int)
 		if _, err := w.Write([]byte{ch}); err != nil {
-			return Value{}, nil, err
+			r.hostError[args[1].Int] = true
+			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
 	}
@@ -621,7 +630,8 @@ func fputsExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
 		}
 		if _, err := fmt.Fprint(w, s); err != nil {
-			return Value{}, nil, err
+			r.hostError[args[1].Int] = true
+			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, int64(len(s))), nil, nil
 	}
@@ -690,6 +700,7 @@ func fcloseExtern(name string, r *ExternRegistry) ExternFunc {
 		delete(r.hostFDs, args[0].Int)
 		delete(r.hostPushback, args[0].Int)
 		delete(r.hostEOF, args[0].Int)
+		delete(r.hostError, args[0].Int)
 		if file := r.hostFiles[args[0].Int]; file != nil && file.writable && file.path != "" {
 			r.files[file.path] = append([]byte(nil), file.data...)
 		}
@@ -1596,7 +1607,8 @@ func fwriteExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, err
 		}
 		if _, err := w.Write(block.data[off : off+int(total)]); err != nil {
-			return Value{}, nil, err
+			r.hostError[args[3].Int] = true
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
 		}
 		return UIntValue(bytecode.TypeU64, uint64(count)), nil, nil
 	}
@@ -1665,6 +1677,9 @@ func streamStatusExtern(name string, r *ExternRegistry) ExternFunc {
 		if (name == "feof" || name == "feof_unlocked") && r.hostEOF[args[0].Int] {
 			return IntValue(bytecode.TypeI32, 1), nil, nil
 		}
+		if (name == "ferror" || name == "ferror_unlocked") && r.hostError[args[0].Int] {
+			return IntValue(bytecode.TypeI32, 1), nil, nil
+		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
@@ -1681,6 +1696,7 @@ func clearerrExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
 		r.hostEOF[args[0].Int] = false
+		r.hostError[args[0].Int] = false
 		return Value{}, nil, nil
 	}
 }
@@ -5011,5 +5027,6 @@ func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer, 
 	r.hostWriters[addr] = w
 	r.hostFDs[addr] = fd
 	delete(r.hostClosed, addr)
+	delete(r.hostError, addr)
 	return addr, nil
 }

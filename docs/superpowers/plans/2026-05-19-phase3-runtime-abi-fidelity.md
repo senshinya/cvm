@@ -196,7 +196,32 @@ Calibration found no GCC accept fixture pressure requiring scansets, floating in
 
 ## Milestone 5: FILE State Model Completion
 
-**Calibration:** Pending after formatted input scan.
+**Calibration:** In progress after formatted input. Existing coverage already exercises configured files, read/write/append modes, `fseek`, `ftell`, `rewind`, EOF status, close invalidation, and unlocked aliases. The most useful missing state bit is the error indicator: write failures on a read-only `FILE *` trapped the VM instead of returning C-level failure and making `ferror` observable.
+
+**Files:**
+- Modify: `runtime/extern.go`
+- Modify: `runtime/extern_test.go`
+- Modify: `runtime/gcc_exec_test.go`
+- Modify: `docs/phase3-runtime-gap-map.md`
+- Modify: `docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md`
+
+- [x] **Step 1: Add failing stream error indicator tests**
+
+Added direct and GCC-runtime coverage for writing to a read-only file, checking EOF/failure return, `ferror`, `clearerr`, and subsequent reads.
+
+- [x] **Step 2: Track host stream error indicators**
+
+Added runtime host error state and mapped write failures through `fputc`, `fputs`, and `fwrite` to C-level return values instead of VM traps.
+
+- [x] **Step 3: Verify, commit, and push FILE error state**
+
+Run Common Verification, then:
+
+```bash
+git add runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(runtime): track stream error indicator"
+git push
+```
 
 ## Milestone 6: Hermetic File Mode Expansion
 

@@ -10,7 +10,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 
 ## Current High-Value Gaps
 
-1. Hermetic `FILE *` handles have useful read/write/seek behavior, but Phase 3 should calibrate remaining mode and state transitions before expanding them.
+1. Hermetic `FILE *` handles have useful read/write/seek/error behavior, but Phase 3 should calibrate remaining mode and state transitions before expanding them.
 2. `getenv` currently returns null from a hermetic stub. Phase 3 can add configured environment variables without reading ambient host environment.
 3. `atexit` currently accepts callbacks without executing them. Phase 3 can add deterministic callback execution at normal program termination.
 4. Long double, complex, and aggregate ABI behavior has broad coverage, but Phase 3 should rescan for runtime gaps after varargs and formatted I/O improvements.
@@ -25,6 +25,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 - `sscanf` is declared by `<stdio.h>`, typed by sema, registered as a runtime extern, and handles bounded `%d`, `%i`, `%u`, `%s`, `%c`, and `%%` string input for the first formatted-input slice.
 - `scanf` and `fscanf` now reuse the same scanner over stdin and hermetic `FILE *` handles, preserving unread stream input via runtime pushback.
 - Formatted input now supports `%x`, `%X`, `%o`, assignment suppression, and `%n` count writes for integer scanning coverage.
+- `FILE *` write failures now set a stream error indicator instead of trapping; `ferror` observes it and `clearerr` clears it.
 
 ## Residual Bounded Runtime Surface
 
