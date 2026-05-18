@@ -30,6 +30,7 @@ type ExternRegistry struct {
 	hostFDs       map[uint64]int32
 	hostPushback  map[uint64][]byte
 	hostEOF       map[uint64]bool
+	hostClosed    map[uint64]bool
 	stdinHandle   uint64
 	staticStrings map[*Memory]map[string]uint64
 	staticVars    map[*Memory]map[string]uint64
@@ -57,6 +58,7 @@ func NewExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *ExternR
 		hostFDs:       make(map[uint64]int32),
 		hostPushback:  make(map[uint64][]byte),
 		hostEOF:       make(map[uint64]bool),
+		hostClosed:    make(map[uint64]bool),
 		staticStrings: make(map[*Memory]map[string]uint64),
 		staticVars:    make(map[*Memory]map[string]uint64),
 		strtokNext:    make(map[*Memory]uint64),
@@ -567,6 +569,11 @@ func fcloseExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		r.hostClosed[args[0].Int] = true
+		delete(r.hostWriters, args[0].Int)
+		delete(r.hostFDs, args[0].Int)
+		delete(r.hostPushback, args[0].Int)
+		delete(r.hostEOF, args[0].Int)
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
@@ -4403,6 +4410,9 @@ func (r *ExternRegistry) staticI32Variable(mem *Memory, name string, initial int
 }
 
 func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {
+	if r.hostClosed[addr] {
+		return nil, false
+	}
 	w, ok := r.hostWriters[addr]
 	return w, ok
 }
@@ -4449,5 +4459,6 @@ func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer, 
 	}
 	r.hostWriters[addr] = w
 	r.hostFDs[addr] = fd
+	delete(r.hostClosed, addr)
 	return addr, nil
 }

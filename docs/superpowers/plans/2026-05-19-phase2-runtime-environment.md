@@ -109,15 +109,15 @@ git push origin codex/bytecode-runtime-phase-1
 - Modify: `runtime/extern_test.go`
 - Modify: `runtime/gcc_exec_test.go`
 
-- [ ] **Step 1: Add failing closed-handle tests**
+- [x] **Step 1: Add failing closed-handle tests**
 
 Add direct extern coverage where `fclose(stdout)` succeeds and a later `fputc('x', stdout)` returns an unknown/closed handle error.
 
-- [ ] **Step 2: Implement closed host stream tracking**
+- [x] **Step 2: Implement closed host stream tracking**
 
 Add a closed-handle set to `ExternRegistry`. `fclose` marks the handle closed and removes or masks writer/reader/fd state. Shared lookup helpers must reject closed handles.
 
-- [ ] **Step 3: Run focused tests**
+- [x] **Step 3: Run focused tests**
 
 Run:
 
@@ -125,7 +125,7 @@ Run:
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestFcloseRejectsLaterStreamUse|TestStdioFcloseExecutesThroughRuntime' -count=1 -v
 ```
 
-- [ ] **Step 4: Full verification, commit, push**
+- [x] **Step 4: Full verification, commit, push**
 
 Run Common Verification, then commit:
 

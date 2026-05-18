@@ -1151,6 +1151,38 @@ func TestFcloseAcceptsHostHandle(t *testing.T) {
 	}
 }
 
+func TestFcloseRejectsLaterStreamUse(t *testing.T) {
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdout, ok := reg.LookupVariable("stdout", mem)
+	if !ok {
+		t.Fatal("missing stdout extern variable")
+	}
+	fcloseFn, ok := reg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+	fputcFn, ok := reg.Lookup("fputc")
+	if !ok {
+		t.Fatal("missing fputc extern")
+	}
+	ret, exit, err := fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fclose ret=%#v exit=%#v err=%v, want i32 0", ret, exit, err)
+	}
+	_, _, err = fputcFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		IntValue(bytecode.TypeI32, 'x'),
+		PtrValue(stdout),
+	})
+	if err == nil || !strings.Contains(err.Error(), "stream handle") {
+		t.Fatalf("fputc after fclose err = %v, want stream handle error", err)
+	}
+	if out.String() != "" {
+		t.Fatalf("stdout after closed fputc = %q, want empty", out.String())
+	}
+}
+
 func TestFilenoReturnsStandardStreamDescriptors(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
