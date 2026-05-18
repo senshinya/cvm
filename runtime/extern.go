@@ -31,6 +31,7 @@ type ExternRegistry struct {
 	hostEOF       map[uint64]bool
 	stdinHandle   uint64
 	staticStrings map[*Memory]map[string]uint64
+	staticVars    map[*Memory]map[string]uint64
 	strtokNext    map[*Memory]uint64
 	randSeed      uint32
 }
@@ -51,6 +52,7 @@ func NewExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		hostPushback:  make(map[uint64][]byte),
 		hostEOF:       make(map[uint64]bool),
 		staticStrings: make(map[*Memory]map[string]uint64),
+		staticVars:    make(map[*Memory]map[string]uint64),
 		strtokNext:    make(map[*Memory]uint64),
 		randSeed:      1,
 	}
@@ -3863,6 +3865,9 @@ func (r *ExternRegistry) LookupVariableAddr(name string, mem *Memory) (uint64, b
 	case "stderr":
 		addr, err := r.allocHostWriter(name, mem, r.stderr, 2)
 		return addr, true, err
+	case "errno":
+		addr, err := r.staticI32Variable(mem, name, 0)
+		return addr, true, err
 	default:
 		return 0, false, nil
 	}
@@ -3907,6 +3912,29 @@ func (r *ExternRegistry) staticCString(mem *Memory, name, value string) (uint64,
 		r.staticStrings[mem] = make(map[string]uint64)
 	}
 	r.staticStrings[mem][name] = addr
+	return addr, nil
+}
+
+func (r *ExternRegistry) staticI32Variable(mem *Memory, name string, initial int32) (uint64, error) {
+	if mem == nil {
+		return 0, fmt.Errorf("memory is nil")
+	}
+	if byName := r.staticVars[mem]; byName != nil {
+		if addr, ok := byName[name]; ok {
+			return addr, nil
+		}
+	}
+	addr, err := mem.TryAlloc("extern:"+name, 4, 4, false, blockGlobal)
+	if err != nil {
+		return 0, err
+	}
+	if err := mem.Store(addr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(initial))); err != nil {
+		return 0, err
+	}
+	if r.staticVars[mem] == nil {
+		r.staticVars[mem] = make(map[string]uint64)
+	}
+	r.staticVars[mem][name] = addr
 	return addr, nil
 }
 

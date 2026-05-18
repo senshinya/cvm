@@ -20,6 +20,8 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return mathHeader(), true
 	case "fenv.h":
 		return "#ifndef __CVM_FENV_H\n#define __CVM_FENV_H\n#define FE_ALL_EXCEPT 0\nint feclearexcept(int);\nint fetestexcept(int);\n#endif\n", true
+	case "errno.h":
+		return "#ifndef __CVM_ERRNO_H\n#define __CVM_ERRNO_H\n#define EDOM 33\n#define ERANGE 34\n#define EILSEQ 84\nextern int errno;\n#endif\n", true
 	case "tgmath.h":
 		return tgmathHeader(), true
 	case "chk.h":

@@ -1635,6 +1635,39 @@ func TestTimeExterns(t *testing.T) {
 	}
 }
 
+func TestErrnoExternVariable(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	addr, ok := reg.LookupVariable("errno", mem)
+	if !ok {
+		t.Fatal("missing errno extern variable")
+	}
+	again, ok := reg.LookupVariable("errno", mem)
+	if !ok {
+		t.Fatal("missing errno extern variable on second lookup")
+	}
+	if again != addr {
+		t.Fatalf("errno address changed: first=%#x second=%#x", addr, again)
+	}
+	ret, err := mem.Load(addr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno: %v", err)
+	}
+	if signedInt(ret) != 0 {
+		t.Fatalf("initial errno=%#v, want 0", ret)
+	}
+	if err := mem.Store(addr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 34)); err != nil {
+		t.Fatalf("store errno: %v", err)
+	}
+	ret, err = mem.Load(addr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("reload errno: %v", err)
+	}
+	if signedInt(ret) != 34 {
+		t.Fatalf("updated errno=%#v, want 34", ret)
+	}
+}
+
 func TestStdlibDivExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

@@ -1031,6 +1031,28 @@ int main(void)
 	}
 }
 
+func TestErrnoHeaderExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <errno.h>
+
+int main(void)
+{
+  if (errno != 0)
+    return 1;
+  errno = ERANGE;
+  if (errno != ERANGE)
+    return 2;
+  if (EDOM == ERANGE || EILSEQ == 0)
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "errno-header-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibDivExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>

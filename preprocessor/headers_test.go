@@ -141,6 +141,25 @@ long ticks = CLOCKS_PER_SEC;
 	}
 }
 
+func TestBuiltinErrnoHeaderDeclaresRuntimeSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <errno.h>
+int *p = &errno;
+int values[] = { EDOM, ERANGE, EILSEQ };
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	if !hasIdentifier(res.Tokens, "errno") {
+		t.Fatalf("errno identifier missing: %#v", res.Tokens)
+	}
+	for _, value := range []string{"33", "34", "84"} {
+		if !hasLexeme(res.Tokens, value) {
+			t.Fatalf("errno macro value %q missing: %#v", value, res.Tokens)
+		}
+	}
+}
+
 func TestBuiltinStringHeaderDeclaresReadOnlySurface(t *testing.T) {
 	res, err := PreprocessSource("main.c", `
 #include <string.h>
