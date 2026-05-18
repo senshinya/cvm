@@ -968,6 +968,22 @@ go test ./runtime -run 'TestTgmathRemquoExtern|TestMathPlainUnaryExecuteThroughR
   - `feat(runtime): add plain remquo math externs`
   - `docs: record plain remquo math externs`
 
+## Plan 71: Plain `<complex.h>` Projection Helpers - Completed
+
+The pre-plan adjustment found the plain real `<math.h>` surface mostly filled and selected the smallest complex-surface increment: builtin `<complex.h>` declarations plus runtime externs for projection helpers only. The GCC runtime fixture intentionally stores complex literals in matching complex variables before calling `carg*`, avoiding expansion into the separate complex conversion boundary.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinComplexHeaderDeclaresProjectionSurface -count=1 -v
+go test ./runtime -run 'TestComplexProjectionExterns|TestComplexProjectionExecutesThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add complex projection externs`
+  - `docs: record complex projection externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
