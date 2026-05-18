@@ -1221,6 +1221,61 @@ go test ./runtime -run 'TestPlainMathModfExterns|TestMathPlainUnaryExecuteThroug
 - Commit message:
   - `docs: record math modf externs`
 
+## Plan 90: GCC Runtime Manifest Gap Recheck - Completed
+
+The pre-plan adjustment returned to GCC runtime execution after the math surface closed. `TestGCCExecutionGapReportIsCurrent` still reports 18 runnable GCC accept fixtures, all represented in `runtime/testdata/gcc-exec/manifest.tsv`, with no failures by stage.
+
+- Focused test:
+
+```bash
+go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1 -v
+```
+
+## Plan 91: Compile-Only GCC Runtime Candidate Scan - Completed
+
+The pre-plan adjustment consumed Plan 90's result: since the directive-based runtime manifest was closed, the next useful direction was scanning compile-only GCC accept fixtures that still contain a `main` and can provide direct runtime coverage. The scan selected `sema/testdata/gcc-c90-as-c99/accept/Wdeclaration-after-statement-4.c` as the first low-risk candidate because it has self-contained `abort`/`exit` assertions and no unresolved helper functions.
+
+## Plan 92: C90-As-C99 Declaration-After-Statement Runtime Coverage - Completed
+
+The pre-plan adjustment added the selected compile-only fixture as a direct runtime test rather than changing the manifest rule that requires `{ dg-do run }` or `c99_runtime` directives.
+
+- Files: `runtime/gcc_exec_test.go`
+- Focused tests:
+
+```bash
+go test ./runtime -run TestGCCC90DeclarationAfterStatementExecutesThroughRuntime -count=1 -v
+go test ./runtime -run 'TestGCCC90DeclarationAfterStatementExecutesThroughRuntime|TestGCCExecutionGapReportIsCurrent' -count=1 -v
+```
+
+- Commit messages:
+  - `test(runtime): execute GCC declaration-after-statement fixture`
+  - `docs: record GCC declaration-after-statement runtime coverage`
+
+## Plan 93: Header/Extern Failure Triage - Completed
+
+The Plan 92 focused probe passed immediately, so there was no header or runtime extern failure to fix.
+
+## Plan 94: Codegen/Interpreter Failure Triage - Completed
+
+The Plan 92 focused probe passed immediately, so there was no codegen or interpreter opcode failure to fix.
+
+## Plan 95: Runtime Coverage Increment Recording - Completed
+
+The coverage-only increment added a reusable helper for running compile-only GCC accept fixtures through the runtime and recorded `Wdeclaration-after-statement-4.c` as direct C90-as-C99 runtime coverage.
+
+## Plan 96: GCC Runtime Gap Stability Check - Completed
+
+The pre-plan adjustment re-ran the directive-based GCC runtime gap report after the direct compile-only coverage test was added. The manifest remains stable and closed because the new test intentionally does not alter the directive-based manifest scope.
+
+- Focused test:
+
+```bash
+go test ./runtime -run 'TestGCCC90DeclarationAfterStatementExecutesThroughRuntime|TestGCCExecutionGapReportIsCurrent' -count=1 -v
+```
+
+- Commit message:
+  - `docs: record GCC declaration-after-statement runtime coverage`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.
