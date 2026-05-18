@@ -36,6 +36,8 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return ctypeHeader(), true
 	case "string.h":
 		return stringHeader(), true
+	case "strings.h":
+		return stringsHeader(), true
 	case "signal.h":
 		return "#ifndef __CVM_SIGNAL_H\n#define __CVM_SIGNAL_H\ntypedef int sig_atomic_t;\n#define SIG_ATOMIC_MIN (-2147483647-1)\n#define SIG_ATOMIC_MAX 2147483647\n#endif\n", true
 	case "limits.h":
@@ -188,6 +190,17 @@ char *strcat(char *, const char *);
 char *strncpy(char *, const char *, size_t);
 char *stpncpy(char *, const char *, size_t);
 char *strncat(char *, const char *, size_t);
+#endif
+`
+}
+
+func stringsHeader() string {
+	return `#ifndef __CVM_STRINGS_H
+#define __CVM_STRINGS_H
+typedef __SIZE_TYPE__ size_t;
+int bcmp(const void *, const void *, size_t);
+void bcopy(const void *, void *, size_t);
+void bzero(void *, size_t);
 #endif
 `
 }

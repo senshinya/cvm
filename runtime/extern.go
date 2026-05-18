@@ -142,32 +142,8 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 		}
 		return IntValue(bytecode.TypeI32, int64(strcmpResult(left, right))), nil, nil
 	})
-	r.Register("memcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
-		if len(args) != 3 {
-			return Value{}, nil, fmt.Errorf("memcmp expects 3 arguments")
-		}
-		if ec == nil || ec.Memory == nil {
-			return Value{}, nil, fmt.Errorf("memcmp requires memory")
-		}
-		n := unsignedInt(args[2])
-		if n == 0 {
-			return IntValue(bytecode.TypeI32, 0), nil, nil
-		}
-		if n > uint64(maxInt()) {
-			return Value{}, nil, fmt.Errorf("memcmp size %d exceeds int range", n)
-		}
-		leftBlock, leftOff, err := ec.Memory.rangeAccess(args[0].Int, int64(n), false)
-		if err != nil {
-			return Value{}, nil, err
-		}
-		rightBlock, rightOff, err := ec.Memory.rangeAccess(args[1].Int, int64(n), false)
-		if err != nil {
-			return Value{}, nil, err
-		}
-		left := leftBlock.data[leftOff : leftOff+int(n)]
-		right := rightBlock.data[rightOff : rightOff+int(n)]
-		return IntValue(bytecode.TypeI32, int64(memcmpResult(left, right))), nil, nil
-	})
+	r.Register("memcmp", memoryCompareExtern("memcmp"))
+	r.Register("bcmp", memoryCompareExtern("bcmp"))
 	registerAllocationExterns(r)
 	registerMemoryExterns(r)
 	registerOutputFormatExterns(r)
@@ -962,6 +938,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_mempcpy", "mempcpy"} {
 		r.Register(name, memoryCopyExtern(name, true))
 	}
+	r.Register("bcopy", memoryBcopyExtern("bcopy"))
 	for _, name := range []string{"__builtin_memset", "memset"} {
 		r.Register(name, memorySetExtern(name))
 	}
@@ -1298,6 +1275,38 @@ func objectSizeExtern(name string) ExternFunc {
 	}
 }
 
+func memoryCompareExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, pointer, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if size == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		leftBlock, leftOff, err := ec.Memory.rangeAccess(args[0].Int, size, false)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		rightBlock, rightOff, err := ec.Memory.rangeAccess(args[1].Int, size, false)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		left := leftBlock.data[leftOff : leftOff+int(size)]
+		right := rightBlock.data[rightOff : rightOff+int(size)]
+		return IntValue(bytecode.TypeI32, int64(memcmpResult(left, right))), nil, nil
+	}
+}
+
 func memoryCopyExtern(name string, returnEnd bool) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 3 {
@@ -1321,6 +1330,28 @@ func memoryCopyExtern(name string, returnEnd bool) ExternFunc {
 			addr += uint64(size)
 		}
 		return PtrValue(addr), nil, nil
+	}
+}
+
+func memoryBcopyExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects source, destination, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		size, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := ec.Memory.Copy(args[1].Int, args[0].Int, size); err != nil {
+			return Value{}, nil, err
+		}
+		return Value{}, nil, nil
 	}
 }
 

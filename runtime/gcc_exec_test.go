@@ -1372,6 +1372,30 @@ int main(void)
 	}
 }
 
+func TestStringsBSDMemoryExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <strings.h>
+
+int main(void)
+{
+  const char src[5] = "abcd";
+  char dst[5] = "xxxx";
+
+  if (bcmp(src, "abce", 4) >= 0)
+    return 1;
+  bcopy(src, dst, 4);
+  if (bcmp(dst, "abcd", 4) != 0)
+    return 2;
+  bzero(dst + 2, 2);
+  return dst[2] == 0 && dst[3] == 0 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "strings-bsd-memory-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestPlainStringWritesExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <string.h>
