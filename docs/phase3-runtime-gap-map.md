@@ -26,6 +26,7 @@ Phase 2 closed the runtime environment, memory-backed v-format `va_list`, hermet
 - `scanf` and `fscanf` now reuse the same scanner over stdin and hermetic `FILE *` handles, preserving unread stream input via runtime pushback.
 - Formatted input now supports `%x`, `%X`, `%o`, assignment suppression, and `%n` count writes for integer scanning coverage.
 - `FILE *` write failures now set a stream error indicator instead of trapping; `ferror` observes it and `clearerr` clears it.
+- `FILE *` read failures on write-only streams now set the same error indicator without falsely setting EOF.
 
 ## Residual Bounded Runtime Surface
 

@@ -223,6 +223,20 @@ git commit -m "feat(runtime): track stream error indicator"
 git push
 ```
 
+- [x] **Step 4: Calibrate and cover read-side stream errors**
+
+After write-side error indicators landed, read-side mode violations still looked like EOF. Added coverage for reading from a write-only stream and updated `fgetc`, `fgets`, `fread`, and formatted input to set the error indicator without marking EOF.
+
+- [x] **Step 5: Verify, commit, and push read-side FILE errors**
+
+Run Common Verification, then:
+
+```bash
+git add runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go docs/phase3-runtime-gap-map.md docs/superpowers/plans/2026-05-19-phase3-runtime-abi-fidelity.md
+git commit -m "feat(runtime): mark read-side stream errors"
+git push
+```
+
 ## Milestone 6: Hermetic File Mode Expansion
 
 **Calibration:** Pending after FILE state model.

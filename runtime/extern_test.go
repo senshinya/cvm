@@ -1583,6 +1583,50 @@ func TestStreamWriteErrorSetsErrorIndicator(t *testing.T) {
 	}
 }
 
+func TestStreamReadErrorSetsErrorIndicator(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:read-error-path", []byte("writeonly.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "stdio:read-error-mode", []byte("w\x00"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	fgetcFn, ok := reg.Lookup("fgetc")
+	if !ok {
+		t.Fatal("missing fgetc extern")
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil {
+		t.Fatalf("fgetc ret=%#v exit=%#v err=%v, want EOF without trap", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || int32(ret.Int) != -1 {
+		t.Fatalf("fgetc ret=%#v, want EOF", ret)
+	}
+	ferrorFn, ok := reg.Lookup("ferror")
+	if !ok {
+		t.Fatal("missing ferror extern")
+	}
+	ret, exit, err = ferrorFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("ferror ret=%#v exit=%#v err=%v, want 1", ret, exit, err)
+	}
+	feofFn, ok := reg.Lookup("feof")
+	if !ok {
+		t.Fatal("missing feof extern")
+	}
+	ret, exit, err = feofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("feof ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+}
+
 func TestFilenoReturnsStandardStreamDescriptors(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

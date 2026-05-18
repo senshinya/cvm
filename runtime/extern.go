@@ -540,6 +540,9 @@ func fgetcExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		if r.markHostReadErrorIfUnreadable(args[0].Int) {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
 		if ch, ok := r.readHostChar(args[0].Int); ok {
 			return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
 		}
@@ -583,6 +586,9 @@ func fgetsExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		if _, ok := r.lookupHostWriter(args[2].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[2].Int)
+		}
+		if r.markHostReadErrorIfUnreadable(args[2].Int) {
+			return PtrValue(0), nil, nil
 		}
 		n := int32(args[1].Int)
 		if n <= 1 {
@@ -1627,6 +1633,9 @@ func freadExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		if _, ok := r.lookupHostWriter(args[3].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[3].Int)
+		}
+		if r.markHostReadErrorIfUnreadable(args[3].Int) {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
 		}
 		size, err := memorySizeArg(name, args[1])
 		if err != nil {
@@ -3753,6 +3762,9 @@ func scanHostStream(name string, r *ExternRegistry, mem *Memory, stream, formatA
 	if err != nil {
 		return 0, err
 	}
+	if r.markHostReadErrorIfUnreadable(stream) {
+		return 0, nil
+	}
 	var input []byte
 	for {
 		ch, ok := r.readHostChar(stream)
@@ -3778,6 +3790,14 @@ func (r *ExternRegistry) pushBackHostBytes(addr uint64, data []byte) {
 	if len(data) > 0 {
 		r.hostEOF[addr] = false
 	}
+}
+
+func (r *ExternRegistry) markHostReadErrorIfUnreadable(addr uint64) bool {
+	if file := r.hostFiles[addr]; file != nil && !file.readable {
+		r.hostError[addr] = true
+		return true
+	}
+	return false
 }
 
 func scanString(name string, mem *Memory, input, format string, args []Value) (int, int, error) {

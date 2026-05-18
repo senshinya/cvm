@@ -1750,6 +1750,28 @@ int main(void)
 	}
 }
 
+func TestStdioStreamReadErrorIndicatorExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  FILE *f = fopen("writeonly.txt", "w");
+  if (!f)
+    return 1;
+  if (fgetc(f) != EOF)
+    return 2;
+  if (ferror(f) == 0)
+    return 3;
+  return feof(f) == 0 ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdio-stream-read-error-indicator-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioFilenoExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
