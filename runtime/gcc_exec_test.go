@@ -374,6 +374,10 @@ int main(void)
     return 30;
   if (erfc(0.0) != 1.0 || erfcf(0.0f) != 1.0f || erfcl(0.0L) != 1.0L)
     return 31;
+  if (tgamma(1.0) != 1.0 || tgammaf(1.0f) != 1.0f || tgammal(1.0L) != 1.0L)
+    return 48;
+  if (lgamma(1.0) != 0.0 || lgammaf(1.0f) != 0.0f || lgammal(1.0L) != 0.0L)
+    return 49;
   if (exp2(3.0) != 8.0 || exp2f(3.0f) != 8.0f || exp2l(3.0L) != 8.0L)
     return 32;
   if (expm1(0.0) != 0.0 || expm1f(0.0f) != 0.0f || expm1l(0.0L) != 0.0L)

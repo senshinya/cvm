@@ -1684,6 +1684,11 @@ func registerMathExterns(r *ExternRegistry) {
 	registerTgmathRealExterns(r, "cbrt", math.Cbrt)
 	registerTgmathRealExterns(r, "erf", math.Erf)
 	registerTgmathRealExterns(r, "erfc", math.Erfc)
+	registerTgmathRealExterns(r, "tgamma", math.Gamma)
+	registerTgmathRealExterns(r, "lgamma", func(v float64) float64 {
+		r, _ := math.Lgamma(v)
+		return r
+	})
 	registerTgmathRealExterns(r, "exp", math.Exp)
 	registerTgmathRealExterns(r, "exp2", math.Exp2)
 	registerTgmathRealExterns(r, "expm1", math.Expm1)
