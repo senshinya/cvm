@@ -1032,6 +1032,22 @@ go test ./runtime -run 'TestComplexTrigExterns|TestComplexTrigExecutesThroughRun
   - `feat(runtime): add complex trig externs`
   - `docs: record complex trig externs`
 
+## Plan 75: Plain `<complex.h>` Hyperbolic Helpers - Completed
+
+The pre-plan adjustment mirrored Plan 74 for the hyperbolic complex unary helpers and again used zero inputs for exact expected results.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinComplexHeaderDeclaresProjectionSurface -count=1 -v
+go test ./runtime -run 'TestComplexHyperbolicExterns|TestComplexHyperbolicExecutesThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add complex hyperbolic externs`
+  - `docs: record complex hyperbolic externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
