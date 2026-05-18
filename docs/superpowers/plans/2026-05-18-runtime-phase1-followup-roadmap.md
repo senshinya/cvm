@@ -339,7 +339,7 @@ go test ./preprocessor -run TestBuiltinStdlibHeaderDeclaresRuntimeSurface -count
   - `feat(runtime): add stdlib div externs`
   - `docs: record stdlib div externs`
 
-## Plan 32: `stdio.h` File-Operation Stubs
+## Plan 32: `stdio.h` File-Operation Stubs - Completed
 
 Add hermetic stubs for a small stdio file-operation set only if they unblock GCC accept fixtures without host filesystem effects. Candidate subset: `remove` and `rename` returning `-1` after pointer validation; defer `fopen`, `freopen`, `tmpfile`, and `tmpnam` unless the pre-plan adjustment finds a narrow fixture requiring them.
 
