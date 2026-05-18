@@ -250,6 +250,7 @@ size_t strcspn(const char *, const char *);
 void *memchr(const void *, int, size_t);
 char *strtok(char *, const char *);
 size_t strxfrm(char * restrict, const char * restrict, size_t);
+char *strndup(const char *, size_t);
 void *memcpy(void *, const void *, size_t);
 void *memmove(void *, const void *, size_t);
 void *mempcpy(void *, const void *, size_t);

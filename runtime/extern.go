@@ -1336,6 +1336,7 @@ func registerAllocationExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_strdup", "strdup"} {
 		r.Register(name, strdupExtern(name))
 	}
+	r.Register("strndup", stringNDupExtern("strndup"))
 	r.Register("free", freeExtern("free"))
 	r.Register("__builtin_object_size", objectSizeExtern("__builtin_object_size"))
 	r.Register("__builtin_dynamic_object_size", objectSizeExtern("__builtin_dynamic_object_size"))
@@ -1701,6 +1702,48 @@ func strdupExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		data := append([]byte(src), 0)
+		addr, err := ec.Memory.TryAlloc("extern:"+name, int64(len(data)), 1, false, blockGlobal)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := writeMemoryBytes(ec.Memory, addr, data); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
+func stringNDupExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		n, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		var data []byte
+		for i := int64(0); i < n; i++ {
+			addr, err := addSignedOffset(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			block, off, err := ec.Memory.rangeAccess(addr, 1, false)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if block.data[off] == 0 {
+				break
+			}
+			data = append(data, block.data[off])
+		}
+		data = append(data, 0)
 		addr, err := ec.Memory.TryAlloc("extern:"+name, int64(len(data)), 1, false, blockGlobal)
 		if err != nil {
 			return Value{}, nil, err

@@ -905,6 +905,28 @@ int main(void)
 	}
 }
 
+func TestStringBoundedDupExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  char *a = strndup("hello", 2);
+  char *b = strndup("hi", 8);
+
+  if (a == 0 || b == 0)
+    return 1;
+  if (strcmp(a, "he") != 0)
+    return 2;
+  return strcmp(b, "hi") == 0 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "string-strndup-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibReallocExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>
