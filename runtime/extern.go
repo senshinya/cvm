@@ -87,6 +87,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	for _, name := range []string{"fputs", "fputs_unlocked"} {
 		r.Register(name, fputsExtern(name, r))
 	}
+	r.Register("perror", perrorExtern("perror", r))
 	for _, name := range []string{"fflush", "fflush_unlocked"} {
 		r.Register(name, fflushExtern(name, r))
 	}
@@ -352,6 +353,36 @@ func fputsExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, err
 		}
 		return IntValue(bytecode.TypeI32, int64(len(s))), nil, nil
+	}
+}
+
+func perrorExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if args[0].Int != 0 && !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		prefix := ""
+		if args[0].Int != 0 {
+			s, err := ec.Memory.ReadCString(args[0].Int)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			prefix = s
+		}
+		msg := "error\n"
+		if prefix != "" {
+			msg = prefix + ": " + msg
+		}
+		if _, err := fmt.Fprint(r.externStderr(ec), msg); err != nil {
+			return Value{}, nil, err
+		}
+		return Value{}, nil, nil
 	}
 }
 
@@ -3254,6 +3285,13 @@ func (r *ExternRegistry) externStdout(ec *ExternContext) io.Writer {
 		return ec.Stdout
 	}
 	return r.stdout
+}
+
+func (r *ExternRegistry) externStderr(ec *ExternContext) io.Writer {
+	if ec != nil && ec.Stderr != nil {
+		return ec.Stderr
+	}
+	return r.stderr
 }
 
 func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {

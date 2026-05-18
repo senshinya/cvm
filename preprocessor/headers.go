@@ -84,6 +84,7 @@ int setvbuf(FILE * restrict, char * restrict, int, size_t);
 void flockfile(FILE *);
 int ftrylockfile(FILE *);
 void funlockfile(FILE *);
+void perror(const char *);
 int ferror(FILE *);
 int ferror_unlocked(FILE *);
 void clearerr(FILE *);
