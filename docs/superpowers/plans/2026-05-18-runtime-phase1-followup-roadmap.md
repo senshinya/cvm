@@ -67,7 +67,7 @@ go test ./preprocessor -run TestBuiltinCtypeHeaderDeclaresRuntimeSurface -count=
   - `feat(runtime): add extra ctype classification externs`
   - `docs: record extra ctype classification externs`
 
-## Plan 15: `string.h` Bounded Compare/Search Helpers
+## Plan 15: `string.h` Bounded Compare/Search Helpers - Completed
 
 Add `strncmp` and `memchr` declarations, sema signatures, runtime externs, direct coverage, and GCC runtime execution coverage.
 
