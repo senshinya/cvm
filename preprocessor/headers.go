@@ -157,6 +157,7 @@ int rand(void);
 void srand(unsigned int);
 char *getenv(const char *);
 int system(const char *);
+int atexit(void (*)(void));
 void exit(int);
 void abort(void);
 #endif

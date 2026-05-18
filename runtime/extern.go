@@ -144,6 +144,7 @@ func DefaultExternRegistry(stdout, stderr io.Writer) *ExternRegistry {
 	r.Register("srand", srandExtern("srand", r))
 	r.Register("getenv", getenvExtern("getenv"))
 	r.Register("system", systemExtern("system"))
+	r.Register("atexit", atexitExtern("atexit"))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
@@ -912,6 +913,18 @@ func systemExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		return IntValue(bytecode.TypeI32, -1), nil, nil
+	}
+}
+
+func atexitExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects function pointer", name)
+		}
+		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
 

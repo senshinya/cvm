@@ -950,6 +950,25 @@ int main(void)
 	}
 }
 
+func TestStdlibAtexitExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+static void cleanup(void)
+{
+}
+
+int main(void)
+{
+  return atexit(cleanup) == 0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-atexit-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibDivExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>
