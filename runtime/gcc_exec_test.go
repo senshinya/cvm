@@ -402,6 +402,12 @@ int main(void)
     return 53;
   if (llround(6.0) != 6LL || llroundf(6.0f) != 6LL || llroundl(6.0L) != 6LL)
     return 54;
+  if (scalbn(2.0, 3) != 16.0 || scalbnf(2.0f, 3) != 16.0f || scalbnl(2.0L, 3) != 16.0L)
+    return 55;
+  if (scalbln(3.0, 2L) != 12.0 || scalblnf(3.0f, 2L) != 12.0f || scalblnl(3.0L, 2L) != 12.0L)
+    return 56;
+  if (ldexp(2.0, 3) != 16.0 || ldexpf(2.0f, 3) != 16.0f || ldexpl(2.0L, 3) != 16.0L)
+    return 57;
   if (pow(2.0, 3.0) != 8.0 || powf(2.0f, 3.0f) != 8.0f || powl(2.0L, 3.0L) != 8.0L)
     return 10;
   if (atan2(0.0, 1.0) != 0.0 || atan2f(0.0f, 1.0f) != 0.0f || atan2l(0.0L, 1.0L) != 0.0L)
