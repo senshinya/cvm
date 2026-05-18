@@ -146,6 +146,10 @@ int islower(int);
 int isupper(int);
 int isxdigit(int);
 int isprint(int);
+int isblank(int);
+int iscntrl(int);
+int isgraph(int);
+int ispunct(int);
 int tolower(int);
 int toupper(int);
 #endif

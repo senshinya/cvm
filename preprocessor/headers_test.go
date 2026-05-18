@@ -96,7 +96,7 @@ func TestBuiltinCtypeHeaderDeclaresRuntimeSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "tolower", "toupper"} {
+	for _, name := range []string{"isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("ctype identifier %q missing: %#v", name, res.Tokens)
 		}

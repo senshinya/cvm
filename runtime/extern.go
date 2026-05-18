@@ -562,6 +562,18 @@ func registerCtypeClassificationExterns(r *ExternRegistry) {
 	r.Register("isprint", ctypeClassificationExtern("isprint", func(ch byte) bool {
 		return ch >= 0x20 && ch <= 0x7e
 	}))
+	r.Register("isblank", ctypeClassificationExtern("isblank", func(ch byte) bool {
+		return ch == ' ' || ch == '\t'
+	}))
+	r.Register("iscntrl", ctypeClassificationExtern("iscntrl", func(ch byte) bool {
+		return ch < 0x20 || ch == 0x7f
+	}))
+	r.Register("isgraph", ctypeClassificationExtern("isgraph", func(ch byte) bool {
+		return ch >= 0x21 && ch <= 0x7e
+	}))
+	r.Register("ispunct", ctypeClassificationExtern("ispunct", func(ch byte) bool {
+		return (ch >= 0x21 && ch <= 0x2f) || (ch >= 0x3a && ch <= 0x40) || (ch >= 0x5b && ch <= 0x60) || (ch >= 0x7b && ch <= 0x7e)
+	}))
 }
 
 func ctypeClassificationExtern(name string, pred func(byte) bool) ExternFunc {
