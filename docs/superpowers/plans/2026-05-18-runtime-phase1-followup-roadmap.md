@@ -1162,6 +1162,33 @@ go test ./codegen -run 'TestGCCBytecodeManifestCoversImportedAcceptFixtures|Test
 - Commit message:
   - `docs: record GCC bytecode manifest recheck`
 
+## Plan 85: Small GCC Accept Probe - Completed
+
+The pre-plan adjustment consumed Plan 82 and Plan 84's result: both runtime and bytecode GCC manifests were closed, so probing another small accept fixture would duplicate existing manifest coverage. This plan completed without code changes.
+
+## Plan 86: `<math.h>` Plain Surface Scan - Completed
+
+The pre-plan adjustment scanned the standard C99 plain `<math.h>` function set against builtin header declarations and runtime registry names. The scan found two remaining groups:
+
+- `nanf`, `nan`, and `nanl`: low-risk header/runtime gap.
+- `modff`, `modf`, and `modfl`: pointer-output helper gap, deferred to a later increment.
+
+## Plan 87: `<math.h>` `nan*` Variants - Completed
+
+The pre-plan adjustment selected the low-risk `nan*` group before `modf*` because it only needed return-type specialization of the existing `nan` helper.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./preprocessor -run TestBuiltinMathHeaderDeclaresRuntimeSurface -count=1 -v
+go test ./runtime -run 'TestPlainMathNanExterns|TestBuiltinFloatingConstantsExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add math nan variants`
+  - `docs: record math nan variants`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
