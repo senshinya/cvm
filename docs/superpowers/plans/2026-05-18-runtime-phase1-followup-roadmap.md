@@ -1434,6 +1434,33 @@ The inline/volatile coverage increment passed focused runtime tests plus full ve
 - Commit message:
   - `docs: record GCC inline volatile runtime coverage`
 
+## Plan 123: GNU89 Inline Volatile Runtime Coverage - Completed
+
+The pre-plan adjustment selected `sema/testdata/gcc-c99-extra/accept/pr71969-3.c`, the GNU89 inline variant of the prior fixture. It uses the same repeated volatile side-effect shape and also runs cleanly through runtime with the fixture-specific step-limit helper.
+
+- Files: `runtime/gcc_exec_test.go`
+- Focused tests:
+
+```bash
+go test ./runtime -run TestGCCGNU89InlineVolatileCallsExecuteThroughRuntime -count=1 -v
+go test ./runtime -run 'TestGCCGNU89InlineVolatileCallsExecuteThroughRuntime|TestGCCInlineVolatileCallsExecuteThroughRuntime' -count=1 -v
+```
+
+- Commit messages:
+  - `test(runtime): execute GCC GNU89 inline volatile calls`
+  - `docs: record GCC GNU89 inline volatile runtime coverage`
+
+## Plan 124: GNU89 Inline Candidate Triage - Completed
+
+The Plan 123 focused probe passed immediately, so no sema, codegen, or runtime fix was required.
+
+## Plan 125: GNU89 Inline Coverage Verification - Completed
+
+The GNU89 inline coverage increment passed focused runtime tests plus full verification.
+
+- Commit message:
+  - `docs: record GCC GNU89 inline volatile runtime coverage`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Keep at least twenty rolling followup plans visible, adjust the next plan against current repository state before executing it, and continue until a stop condition is reached.
