@@ -371,6 +371,22 @@ go test ./preprocessor -run TestBuiltinStdioHeaderDeclaresFormattingSurface -cou
   - `feat(runtime): add stdio open stubs`
   - `docs: record stdio open stubs`
 
+## Plan 34: `string.h` Collation Helpers - Completed
+
+Add deterministic C-locale `strcoll` and `strxfrm` support. `strcoll` reuses bytewise string comparison; `strxfrm` copies the source string into the destination buffer with normal C truncation/null-termination behavior and returns the full source length.
+
+- Files: `preprocessor/headers.go`, `preprocessor/headers_test.go`, `sema/builtin.go`, `runtime/extern.go`, `runtime/extern_test.go`, `runtime/gcc_exec_test.go`, `docs/bytecode-runtime-handoff.md`
+- Focused tests:
+
+```bash
+go test ./runtime -run 'TestStringCollateAndTransformExterns|TestStringCollateTransformExecuteThroughRuntime|TestDefaultExternRegistryHasExitAndAbort' -count=1 -v
+go test ./preprocessor -run TestBuiltinStringHeaderDeclaresReadOnlySurface -count=1 -v
+```
+
+- Commit messages:
+  - `feat(runtime): add string collation externs`
+  - `docs: record string collation externs`
+
 ## Continuous Execution Rule
 
 After each plan is committed and pushed, immediately start the Common Pre-Plan Adjustment for the next plan. Continue until a stop condition is reached or all ten followup plans are complete.
