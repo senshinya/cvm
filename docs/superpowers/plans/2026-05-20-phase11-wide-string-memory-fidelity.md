@@ -247,6 +247,6 @@ Calibration before execution: Confirm all implementation milestones are committe
 
 Calibration before execution: Confirm branch, remote, and final verification status.
 
-- [ ] Update `docs/bytecode-runtime-handoff.md`.
-- [ ] Mark this plan complete.
-- [ ] Verify, commit `docs: close phase 11 wide string work`, and push.
+- [x] Update `docs/bytecode-runtime-handoff.md`.
+- [x] Mark this plan complete.
+- [x] Verify, commit `docs: close phase 11 wide string work`, and push.

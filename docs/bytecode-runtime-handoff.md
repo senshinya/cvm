@@ -1,17 +1,17 @@
 # Bytecode Runtime Phase 1 Handoff
 
 Date: 2026-05-18
-Updated: 2026-05-19
+Updated: 2026-05-20
 
 This document records the current state of the bytecode/runtime work so the branch can be resumed from another device.
 
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-10`
-- Latest implementation/coverage commit before this handoff document update: `da55d45 docs: map phase 10 locale wide gaps`
+- Branch: `codex/bytecode-runtime-phase-11`
+- Latest implementation/coverage commit before this handoff document update: `ea8feb1 docs: map phase 11 wide string gaps`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: `origin/codex/bytecode-runtime-phase-9`
+- Upstream: `origin/codex/bytecode-runtime-phase-11`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-10 origin/codex/bytecode-runtime-phase-10
+git switch -c codex/bytecode-runtime-phase-11 origin/codex/bytecode-runtime-phase-11
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-10` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-11` instead.
 
 ## Verification Commands
 
@@ -239,6 +239,35 @@ Residual bounded surfaces after Phase 10:
 - `mbstate_t` is opaque and effectively stateless for the supported single-byte C-locale conversions.
 - Restartable multibyte conversion supports ASCII and NUL bytes only; stateful encodings and UTF-8 multibyte sequences remain out of scope.
 - Wide ctype classification is C-locale ASCII classification; non-ASCII wide values are unclassified and unchanged by case conversion.
+
+## Phase 11 Closure
+
+Phase 11 wide string and wide memory fidelity is closed on `codex/bytecode-runtime-phase-11`.
+
+Closed Phase 11 milestones:
+
+- Added builtin `<wchar.h>` declarations for deterministic wide memory and string helpers.
+- Implemented wide memory externs: `wmemchr`, `wmemcmp`, `wmemcpy`, `wmemmove`, and `wmemset`.
+- Implemented wide string length, comparison, search, set-search, and span externs: `wcslen`, `wcscmp`, `wcsncmp`, `wcschr`, `wcsrchr`, `wcsstr`, `wcspbrk`, `wcsspn`, and `wcscspn`.
+- Implemented wide string write and concatenation externs: `wcscpy`, `wcsncpy`, `wcscat`, and `wcsncat`.
+- Implemented deterministic C-locale `wcscoll` and `wcsxfrm`.
+- Implemented C99 three-argument `wcstok` with caller-owned save-pointer state.
+- Added direct extern tests for every Phase 11 helper and compact source-level runtime workflows for wide memory, search/span, copy/concat, collation/transform, and tokenization.
+- Rechecked GCC runtime gap report and imported accept roots for newly unblocked wide-string fixtures.
+- Added `docs/phase11-wide-string-memory-fidelity-gap-map.md`.
+
+Phase 11 recheck:
+
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed with no new low-risk wide-string fixture to add.
+- Header declarations and registry entries were rechecked for the Phase 11 wide memory and string surfaces.
+- Source-level runtime coverage now exercises the wide helper workflows without relying on broader local wide aggregate initializer fidelity.
+
+Residual bounded surfaces after Phase 11:
+
+- Wide collation and transformation intentionally remain deterministic C-locale behavior, not host locale table behavior.
+- `wchar_t` storage follows the existing target model: 32-bit elements addressed in 4-byte units.
+- Undefined C cases such as invalid pointers, insufficient destination storage, and overlapping `wmemcpy` or string-copy inputs remain governed by CVM memory access behavior rather than native-libc compatibility.
+- Stateful encodings, locale-specific multibyte behavior, and wide formatted I/O remain out of scope.
 
 ## Completed Work
 
