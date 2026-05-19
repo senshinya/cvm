@@ -36,10 +36,10 @@ Calibration adjustment: runtime loading requires every declared extern to have a
 
 Calibration before execution: Inspect current stream state for a minimal orientation field.
 
-- [ ] Add deterministic stream orientation tracking for unoriented, byte, and wide.
-- [ ] Implement `fwide` query/set semantics.
-- [ ] Cover direct extern behavior.
-- [ ] Verify, commit `feat(runtime): track stream orientation`, and push.
+- [x] Add deterministic stream orientation tracking for unoriented, byte, and wide.
+- [x] Implement `fwide` query/set semantics.
+- [x] Cover direct extern behavior.
+- [x] Verify, commit `feat(runtime): track stream orientation`, and push.
 
 ## Milestone 4: `fputwc`
 

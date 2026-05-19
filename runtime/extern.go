@@ -32,11 +32,14 @@ type ExternRegistry struct {
 	hostEOF        map[uint64]bool
 	hostError      map[uint64]bool
 	hostClosed     map[uint64]bool
+	hostOrient     map[uint64]streamOrientation
 	hostFiles      map[uint64]*hostFile
 	files          map[string][]byte
 	env            map[string]string
 	atexitHandlers []uint64
 	stdinHandle    uint64
+	stdoutHandle   uint64
+	stderrHandle   uint64
 	staticStrings  map[*Memory]map[string]uint64
 	staticVars     map[*Memory]map[string]uint64
 	staticBlocks   map[*Memory]map[string]uint64
@@ -62,6 +65,14 @@ const (
 	hostFileOpNone hostFileOp = iota
 	hostFileOpRead
 	hostFileOpWrite
+)
+
+type streamOrientation int
+
+const (
+	streamUnoriented streamOrientation = iota
+	streamByte
+	streamWide
 )
 
 type hostFileWriter struct {
@@ -91,6 +102,7 @@ func NewExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *ExternR
 		hostEOF:       make(map[uint64]bool),
 		hostError:     make(map[uint64]bool),
 		hostClosed:    make(map[uint64]bool),
+		hostOrient:    make(map[uint64]streamOrientation),
 		hostFiles:     make(map[uint64]*hostFile),
 		files:         make(map[string][]byte),
 		env:           make(map[string]string),
@@ -141,7 +153,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	for _, name := range []string{"fputs", "fputs_unlocked"} {
 		r.Register(name, fputsExtern(name, r))
 	}
-	r.Register("fwide", wideStdioIntStubExtern("fwide", 0))
+	r.Register("fwide", fwideExtern("fwide", r))
 	for _, name := range []string{"fputwc", "putwc", "putwchar", "fgetwc", "getwc", "getwchar", "ungetwc"} {
 		r.Register(name, wideStdioIntStubExtern(name, -1))
 	}
@@ -520,6 +532,7 @@ func freopenExtern(name string, r *ExternRegistry) ExternFunc {
 		delete(r.hostPushback, args[2].Int)
 		delete(r.hostEOF, args[2].Int)
 		delete(r.hostError, args[2].Int)
+		delete(r.hostOrient, args[2].Int)
 		return PtrValue(args[2].Int), nil, nil
 	}
 }
@@ -583,6 +596,7 @@ func putsExtern(name string, r *ExternRegistry) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
+		r.setHostOrientation(r.stdoutHandle, streamByte)
 		if _, err := fmt.Fprintln(r.externStdout(ec), s); err != nil {
 			return Value{}, nil, err
 		}
@@ -598,6 +612,7 @@ func putcharExtern(name string, r *ExternRegistry) ExternFunc {
 		if !isIntegerLike(args[0].Type) {
 			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
 		}
+		r.setHostOrientation(r.stdoutHandle, streamByte)
 		ch := byte(args[0].Int)
 		if _, err := r.externStdout(ec).Write([]byte{ch}); err != nil {
 			return Value{}, nil, err
@@ -611,6 +626,7 @@ func getcharExtern(name string, r *ExternRegistry) ExternFunc {
 		if len(args) != 0 {
 			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
 		}
+		r.setHostOrientation(r.stdinHandle, streamByte)
 		if ch, ok := r.readHostChar(r.stdinHandle); ok {
 			return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
 		}
@@ -633,6 +649,7 @@ func fputcExtern(name string, r *ExternRegistry) ExternFunc {
 		if !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
 		}
+		r.setHostOrientation(args[1].Int, streamByte)
 		ch := byte(args[0].Int)
 		if _, err := w.Write([]byte{ch}); err != nil {
 			r.hostError[args[1].Int] = true
@@ -653,6 +670,7 @@ func fgetcExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		r.setHostOrientation(args[0].Int, streamByte)
 		if r.markHostReadErrorIfUnreadable(args[0].Int) {
 			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
@@ -679,6 +697,7 @@ func ungetcExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[1].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
 		}
+		r.setHostOrientation(args[1].Int, streamByte)
 		b := byte(ch)
 		r.hostPushback[args[1].Int] = append(r.hostPushback[args[1].Int], b)
 		r.hostEOF[args[1].Int] = false
@@ -700,6 +719,7 @@ func fgetsExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[2].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[2].Int)
 		}
+		r.setHostOrientation(args[2].Int, streamByte)
 		if r.markHostReadErrorIfUnreadable(args[2].Int) {
 			return PtrValue(0), nil, nil
 		}
@@ -748,11 +768,36 @@ func fputsExtern(name string, r *ExternRegistry) ExternFunc {
 		if !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
 		}
+		r.setHostOrientation(args[1].Int, streamByte)
 		if _, err := fmt.Fprint(w, s); err != nil {
 			r.hostError[args[1].Int] = true
 			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, int64(len(s))), nil, nil
+	}
+}
+
+func fwideExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream pointer and mode", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		switch signedInt(args[1]) {
+		case 0:
+		default:
+			if signedInt(args[1]) > 0 {
+				r.setHostOrientation(args[0].Int, streamWide)
+			} else {
+				r.setHostOrientation(args[0].Int, streamByte)
+			}
+		}
+		return IntValue(bytecode.TypeI32, r.hostOrientationResult(args[0].Int)), nil, nil
 	}
 }
 
@@ -791,6 +836,7 @@ func perrorExtern(name string, r *ExternRegistry) ExternFunc {
 		if prefix != "" {
 			msg = prefix + ": " + msg
 		}
+		r.setHostOrientation(r.stderrHandle, streamByte)
 		if _, err := fmt.Fprint(r.externStderr(ec), msg); err != nil {
 			return Value{}, nil, err
 		}
@@ -835,6 +881,7 @@ func fcloseExtern(name string, r *ExternRegistry) ExternFunc {
 		delete(r.hostPushback, args[0].Int)
 		delete(r.hostEOF, args[0].Int)
 		delete(r.hostError, args[0].Int)
+		delete(r.hostOrient, args[0].Int)
 		if file := r.hostFiles[args[0].Int]; file != nil && file.writable && file.path != "" {
 			r.files[file.path] = append([]byte(nil), file.data...)
 		}
@@ -2402,6 +2449,7 @@ func fwriteExtern(name string, r *ExternRegistry) ExternFunc {
 		if !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[3].Int)
 		}
+		r.setHostOrientation(args[3].Int, streamByte)
 		size, err := memorySizeArg(name, args[1])
 		if err != nil {
 			return Value{}, nil, err
@@ -2443,6 +2491,7 @@ func freadExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[3].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[3].Int)
 		}
+		r.setHostOrientation(args[3].Int, streamByte)
 		if r.markHostReadErrorIfUnreadable(args[3].Int) {
 			return UIntValue(bytecode.TypeU64, 0), nil, nil
 		}
@@ -6720,9 +6769,15 @@ func (r *ExternRegistry) LookupVariableAddr(name string, mem *Memory) (uint64, b
 		return addr, true, err
 	case "stdout":
 		addr, err := r.allocHostWriter(name, mem, r.stdout, 1)
+		if err == nil {
+			r.stdoutHandle = addr
+		}
 		return addr, true, err
 	case "stderr":
 		addr, err := r.allocHostWriter(name, mem, r.stderr, 2)
+		if err == nil {
+			r.stderrHandle = addr
+		}
 		return addr, true, err
 	case "errno":
 		addr, err := r.staticI32Variable(mem, name, 0)
@@ -6872,6 +6927,28 @@ func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {
 	return w, ok
 }
 
+func (r *ExternRegistry) setHostOrientation(addr uint64, orient streamOrientation) streamOrientation {
+	if addr == 0 || orient == streamUnoriented {
+		return r.hostOrient[addr]
+	}
+	if cur := r.hostOrient[addr]; cur != streamUnoriented {
+		return cur
+	}
+	r.hostOrient[addr] = orient
+	return orient
+}
+
+func (r *ExternRegistry) hostOrientationResult(addr uint64) int64 {
+	switch r.hostOrient[addr] {
+	case streamByte:
+		return -1
+	case streamWide:
+		return 1
+	default:
+		return 0
+	}
+}
+
 func (r *ExternRegistry) readHostChar(addr uint64) (byte, bool) {
 	buf := r.hostPushback[addr]
 	if len(buf) == 0 {
@@ -6929,5 +7006,6 @@ func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer, 
 	r.hostFDs[addr] = fd
 	delete(r.hostClosed, addr)
 	delete(r.hostError, addr)
+	delete(r.hostOrient, addr)
 	return addr, nil
 }
