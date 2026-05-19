@@ -2885,6 +2885,22 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 		t.Fatalf("strtod decimal endptr=%#x, want %#x", loadedEnd.Int, decimalText+8)
 	}
 
+	positiveExponentText := mustAllocBytes(t, mem, "strtod:positive-exponent", []byte(" +6.25e-1;\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(positiveExponentText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod positive exponent ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0.625 {
+		t.Fatalf("strtod positive exponent ret=%#v, want f64 0.625", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod positive exponent endptr: %v", err)
+	}
+	if loadedEnd.Int != positiveExponentText+9 {
+		t.Fatalf("strtod positive exponent endptr=%#x, want %#x", loadedEnd.Int, positiveExponentText+9)
+	}
+
 	hexText := mustAllocBytes(t, mem, "strtod:hex", []byte("0x1.8p+2!\x00"), true, blockString)
 	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(hexText), PtrValue(endptr)})
 	if err != nil || exit != nil {

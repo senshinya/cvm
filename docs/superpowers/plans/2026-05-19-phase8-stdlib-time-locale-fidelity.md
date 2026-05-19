@@ -85,9 +85,15 @@ Findings:
 
 Calibration before execution: Re-read `strtoFloatExtern`.
 
-- [ ] Add tests for leading whitespace, plus sign, exponent, endptr, and no conversion.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden strtod decimals`.
+- [x] Add tests for leading whitespace, plus sign, exponent, endptr, and no conversion.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): harden strtod decimals`.
+
+Findings:
+
+- Existing coverage already included leading whitespace, negative decimal exponent input, end-pointer checks, and no-conversion behavior.
+- Added direct extern and source-level runtime coverage for plus-sign decimal exponent parsing with a negative exponent.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
 
 ## Milestone 7: `strtod` Hex Float Boundaries
 

@@ -2458,6 +2458,10 @@ int main(void)
     return 2;
   if (*end != 'x')
     return 3;
+  if (strtod(" +6.25e-1;", &end) != 0.625)
+    return 8;
+  if (*end != ';')
+    return 9;
   if (strtod("0x1.8p+2!", &end) != 6.0)
     return 4;
   if (*end != '!')
