@@ -326,6 +326,55 @@ func TestFreopenConfiguredAppendFile(t *testing.T) {
 	}
 }
 
+func TestFreopenFailurePreservesStream(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("ABC"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:freopen-fail-path", []byte("data.txt\x00"), true, blockString)
+	missingPath := mustAllocBytes(t, mem, "stdio:freopen-fail-missing-path", []byte("missing.txt\x00"), true, blockString)
+	readMode := mustAllocBytes(t, mem, "stdio:freopen-fail-read-mode", []byte("r\x00"), true, blockString)
+	invalidMode := mustAllocBytes(t, mem, "stdio:freopen-fail-invalid-mode", []byte("x+\x00"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	freopenFn, ok := reg.Lookup("freopen")
+	if !ok {
+		t.Fatal("missing freopen extern")
+	}
+	fgetcFn, ok := reg.Lookup("fgetc")
+	if !ok {
+		t.Fatal("missing fgetc extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(readMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'A' {
+		t.Fatalf("fgetc initial ret=%#v exit=%#v err=%v, want A", ret, exit, err)
+	}
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(missingPath), PtrValue(readMode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("freopen missing ret=%#v exit=%#v err=%v, want null", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'B' {
+		t.Fatalf("fgetc after missing ret=%#v exit=%#v err=%v, want B", ret, exit, err)
+	}
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(invalidMode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("freopen invalid ret=%#v exit=%#v err=%v, want null", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'C' {
+		t.Fatalf("fgetc after invalid ret=%#v exit=%#v err=%v, want C", ret, exit, err)
+	}
+}
+
 func TestTmpfileReadWrite(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

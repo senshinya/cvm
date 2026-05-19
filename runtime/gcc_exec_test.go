@@ -336,6 +336,34 @@ int main(void)
 	}
 }
 
+func TestGCCFreopenFailurePreservesStreamExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  FILE *f = fopen("data.txt", "r");
+  if (!f)
+    return 1;
+  if (fgetc(f) != 'A')
+    return 2;
+  if (freopen("missing.txt", "r", f) != 0)
+    return 3;
+  if (fgetc(f) != 'B')
+    return 4;
+  if (freopen("data.txt", "x+", f) != 0)
+    return 5;
+  return fgetc(f) == 'C' ? 0 : 6;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("ABC"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-freopen-failure-preserves-stream-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCTmpfileReadWriteExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

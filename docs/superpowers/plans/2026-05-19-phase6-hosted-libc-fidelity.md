@@ -81,9 +81,9 @@ Calibration before execution: Check append positioning and update-mode sequencin
 
 Calibration before execution: Check C failure expectations and current close behavior.
 
-- [ ] Add tests that failed `freopen` leaves the original stream usable.
-- [ ] Adjust implementation to build replacement state before mutating the old handle.
-- [ ] Verify, commit, and push `fix(runtime): preserve stream on freopen failure`.
+- [x] Add tests that failed `freopen` leaves the original stream usable.
+- [x] Adjust implementation to build replacement state before mutating the old handle.
+- [x] Verify, commit, and push `fix(runtime): preserve stream on freopen failure`.
 
 ## Milestone 9: Deterministic `tmpnam(NULL)`
 
