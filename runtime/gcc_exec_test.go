@@ -2239,6 +2239,8 @@ int main(void)
 {
   if (atoi(" \t-42tail") != -42)
     return 1;
+  if (atoi("+17") != 17)
+    return 5;
   if (atol("\n12345x") != 12345L)
     return 2;
   if (atoll("  -9876543210") != -9876543210LL)

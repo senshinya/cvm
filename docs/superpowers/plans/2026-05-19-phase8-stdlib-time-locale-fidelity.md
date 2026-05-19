@@ -71,9 +71,15 @@ Findings:
 
 Calibration before execution: Re-read `atoiExtern`.
 
-- [ ] Add tests for whitespace, plus sign, minus sign, and trailing text.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover atoi family parsing`.
+- [x] Add tests for whitespace, plus sign, minus sign, and trailing text.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover atoi family parsing`.
+
+Findings:
+
+- Direct extern coverage already included whitespace, plus sign, minus sign, trailing text, and no-digit input across `atoi`, `atol`, and `atoll`.
+- Added source-level runtime coverage for the `atoi` plus-sign path.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibAtoi' -count=1` passed.
 
 ## Milestone 6: `strtod` Decimal And Exponent Boundaries
 
