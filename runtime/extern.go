@@ -6673,7 +6673,15 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			if precision >= 0 {
 				return "", fmt.Errorf("%s %%c does not support precision", name)
 			}
-			piece = string([]byte{byte(unsignedInt(arg))})
+			ch := unsignedInt(arg)
+			if lengthMod == "l" {
+				if ch >= 0x80 {
+					return "", fmt.Errorf("%s %%lc contains unsupported character %#x", name, ch)
+				}
+				piece = string([]byte{byte(ch)})
+			} else {
+				piece = string([]byte{byte(ch)})
+			}
 		case 'n':
 			if !isPointerType(arg.Type) {
 				return "", fmt.Errorf("%s %%n expects pointer argument", name)

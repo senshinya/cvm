@@ -2428,6 +2428,7 @@ func TestPlainSprintfExecutesThroughRuntime(t *testing.T) {
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <wchar.h>
 
 int main(void)
 {
@@ -2466,11 +2467,17 @@ int main(void)
   if (c8 != 1 || c16 != 2 || c32 != 3 || cl != 4 || cll != 5 || cj != 6 || cz != 7 || ct != 8)
     return 9;
 
+  n = sprintf(buf, "%c %lc", 'A', L'Z');
+  if (n != 3)
+    return 10;
+  if (strcmp(buf, "A Z") != 0)
+    return 11;
+
   char small[5];
   n = snprintf(small, 5, "%s-%u", "abcdef", 3U);
   if (n != 8)
-    return 10;
-  return strcmp(small, "abcd") == 0 ? 0 : 11;
+    return 12;
+  return strcmp(small, "abcd") == 0 ? 0 : 13;
 }
 `
 	st := runGCCExecFixture(t, "plain-sprintf-runtime.c", source)

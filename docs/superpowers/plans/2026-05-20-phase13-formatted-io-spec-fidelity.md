@@ -68,9 +68,13 @@ Calibration result:
 
 Calibration before execution: Confirm current `%c` and wide bridge behavior.
 
-- [ ] Cover narrow `%c` and wide `%lc` for narrow and wide formatted output.
-- [ ] Fix deterministic C-locale wide-char output behavior if needed.
-- [ ] Verify, commit `feat(runtime): support printf wide chars`, and push.
+- [x] Cover narrow `%c` and wide `%lc` for narrow and wide formatted output.
+- [x] Fix deterministic C-locale wide-char output behavior if needed.
+- [x] Verify, commit `feat(runtime): support printf wide chars`, and push.
+
+Calibration result:
+- ASCII `%lc` already worked by falling through the narrow `%c` byte path, including through the wide formatted-output bridge.
+- The missing deterministic C-locale behavior was rejecting non-ASCII `%lc` for narrow formatting; that now errors instead of silently writing a high byte.
 
 ## Milestone 7: Printf String Length Modifiers
 
