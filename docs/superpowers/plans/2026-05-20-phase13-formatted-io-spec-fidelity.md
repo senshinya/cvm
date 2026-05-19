@@ -128,9 +128,13 @@ Calibration result:
 
 Calibration before execution: Re-read current `#` handling.
 
-- [ ] Cover `%#x`, `%#X`, `%#o`, `%#a`, `%#f`, `%#g`.
-- [ ] Fix deterministic alternate-form output where supported.
-- [ ] Verify, commit `feat(runtime): harden printf alternate forms`, and push.
+- [x] Cover `%#x`, `%#X`, `%#o`, `%#a`, `%#f`, `%#g`.
+- [x] Fix deterministic alternate-form output where supported.
+- [x] Verify, commit `feat(runtime): harden printf alternate forms`, and push.
+
+Calibration result:
+- Integer alternate forms were already stable for non-zero hex and octal values.
+- Floating alternate forms did not preserve the required decimal point for zero-precision `%f`, `%g`, and `%a`; the formatter now applies a deterministic post-pass for `#` float output, including basic `%g` trailing-zero preservation.
 
 ## Milestone 12: Printf Floating Width Precision
 

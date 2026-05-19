@@ -6721,6 +6721,9 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				floatPrecision = 6
 			}
 			piece = strconv.FormatFloat(cvmFloat(arg), verb, floatPrecision, floatFormatBits(arg.Type))
+			if alternate {
+				piece = applyFloatAlternateForm(piece, format[i], floatPrecision)
+			}
 			if format[i] == 'F' {
 				piece = strings.ToUpper(piece)
 			}
@@ -6778,6 +6781,65 @@ func applyIntegerPrecision(piece string, precision int) string {
 		digits = strings.Repeat("0", precision-len(digits)) + digits
 	}
 	return prefix + digits
+}
+
+func applyFloatAlternateForm(piece string, verb byte, precision int) string {
+	switch verb {
+	case 'a', 'A':
+		exp := strings.IndexAny(piece, "pP")
+		if exp >= 0 && !strings.Contains(piece[:exp], ".") {
+			return piece[:exp] + "." + piece[exp:]
+		}
+	case 'e', 'E':
+		exp := strings.IndexAny(piece, "eE")
+		if exp >= 0 && !strings.Contains(piece[:exp], ".") {
+			return piece[:exp] + "." + piece[exp:]
+		}
+	case 'f', 'F':
+		if !strings.Contains(piece, ".") {
+			return piece + "."
+		}
+	case 'g', 'G':
+		return applyGeneralFloatAlternateForm(piece, precision)
+	}
+	return piece
+}
+
+func applyGeneralFloatAlternateForm(piece string, precision int) string {
+	if precision <= 0 {
+		precision = 1
+	}
+	exp := strings.IndexAny(piece, "eE")
+	if exp >= 0 {
+		mantissa := piece[:exp]
+		digits := countFloatDigits(mantissa)
+		if !strings.Contains(mantissa, ".") {
+			mantissa += "."
+		}
+		if digits < precision {
+			mantissa += strings.Repeat("0", precision-digits)
+		}
+		return mantissa + piece[exp:]
+	}
+	out := piece
+	if !strings.Contains(out, ".") {
+		out += "."
+	}
+	digits := countFloatDigits(out)
+	if digits < precision {
+		out += strings.Repeat("0", precision-digits)
+	}
+	return out
+}
+
+func countFloatDigits(s string) int {
+	n := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] >= '0' && s[i] <= '9' {
+			n++
+		}
+	}
+	return n
 }
 
 func formatIntArg(name, what string, v Value) (int, error) {
