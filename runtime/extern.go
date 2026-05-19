@@ -165,7 +165,8 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("fgetws", fgetwsExtern("fgetws", r))
 	r.Register("swprintf", swprintfExtern("swprintf"))
 	r.Register("wprintf", wprintfExtern("wprintf", r))
-	for _, name := range []string{"fwprintf", "vwprintf", "vfwprintf", "vswprintf"} {
+	r.Register("fwprintf", fwprintfExtern("fwprintf", r))
+	for _, name := range []string{"vwprintf", "vfwprintf", "vswprintf"} {
 		r.Register(name, wideStdioIntStubExtern(name, -1))
 	}
 	r.Register("perror", perrorExtern("perror", r))
@@ -5285,6 +5286,34 @@ func wprintfExtern(name string, r *ExternRegistry) ExternFunc {
 		w := r.externStdout(ec)
 		for i := 0; i < len(out); i++ {
 			if ret := r.writeHostWideChar(r.stdoutHandle, w, int64(out[i])); signedInt(ret) == -1 {
+				return ret, nil, nil
+			}
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func fwprintfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 2 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream and wide format arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		w, ok := r.lookupHostWriter(args[0].Int)
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		out, err := formatWideCString(name, ec.Memory, args[1].Int, args[2:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		for i := 0; i < len(out); i++ {
+			if ret := r.writeHostWideChar(args[0].Int, w, int64(out[i])); signedInt(ret) == -1 {
 				return ret, nil, nil
 			}
 		}

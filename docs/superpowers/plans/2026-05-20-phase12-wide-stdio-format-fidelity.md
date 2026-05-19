@@ -134,9 +134,9 @@ Calibration before execution: Route formatted bytes to stdout through wide outpu
 
 Calibration before execution: Reuse `fprintf` stream routing and wide format bridge.
 
-- [ ] Register and implement `fwprintf`.
-- [ ] Cover configured output file/stdout, closed stream, and return count.
-- [ ] Verify, commit `feat(runtime): add fwprintf`, and push.
+- [x] Register and implement `fwprintf`.
+- [x] Cover configured output file/stdout, closed stream, and return count.
+- [x] Verify, commit `feat(runtime): add fwprintf`, and push.
 
 ## Milestone 16: Wide Variadic Output Aliases
 

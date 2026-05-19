@@ -2193,6 +2193,51 @@ func TestSwprintfTruncatesAndRejectsHighFormat(t *testing.T) {
 	}
 }
 
+func TestFwprintfWritesToStream(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	reg := DefaultExternRegistry(&out, &errOut)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stderr, ok := reg.LookupVariable("stderr", mem)
+	if !ok {
+		t.Fatal("missing stderr extern variable")
+	}
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	format := makeWide("fwprintf:fmt", 'e', '=', '%', 'd', 0)
+	fn, ok := reg.Lookup("fwprintf")
+	if !ok {
+		t.Fatal("missing fwprintf extern")
+	}
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stderr), PtrValue(format), IntValue(bytecode.TypeI32, 9)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 3 || errOut.String() != "e=9" || out.String() != "" {
+		t.Fatalf("fwprintf ret=%#v exit=%#v err=%v stdout=%q stderr=%q, want e=9", ret, exit, err, out.String(), errOut.String())
+	}
+	fcloseFn, ok := reg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+	ret, exit, err = fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stderr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fclose ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stderr), PtrValue(format), IntValue(bytecode.TypeI32, 1)})
+	if err == nil || exit != nil {
+		t.Fatalf("fwprintf closed ret=%#v exit=%#v err=%v, want error", ret, exit, err)
+	}
+}
+
 func TestOutputCharacterAliasesWriteBytes(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
