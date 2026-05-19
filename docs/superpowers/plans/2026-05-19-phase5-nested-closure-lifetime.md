@@ -99,12 +99,14 @@ If no code/test change is needed, commit this plan update as docs-only. Otherwis
 
 Calibration before execution: Re-run GCC runtime gap reporting and scan imported GCC accept fixtures for nested-function pointer cases that are newly better classified by the explicit expired-closure diagnostic.
 
+Result: `TestGCCExecutionGapReportIsCurrent` still reports 18 runnable manifest candidates with no failures. A scan across the imported GCC accept roots found no low-risk nested-function pointer fixture with stable runtime behavior to add for Phase 5.
+
 **Files:**
 - Modify: `runtime/testdata/gcc-exec/gap-report.md` if regenerated content changes
 - Modify: `runtime/gcc_exec_test.go` only if a low-risk fixture exists
 - Modify: this plan file
 
-- [ ] **Step 1: Re-run GCC runtime gap report**
+- [x] **Step 1: Re-run GCC runtime gap report**
 
 Run:
 
@@ -112,15 +114,15 @@ Run:
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1
 ```
 
-- [ ] **Step 2: Scan nested-function accept fixtures**
+- [x] **Step 2: Scan nested-function accept fixtures**
 
 Use `rg` over imported GCC accept roots for nested function pointer patterns.
 
-- [ ] **Step 3: Add fixture only if it is low-risk and has stable expected behavior**
+- [x] **Step 3: Add fixture only if it is low-risk and has stable expected behavior**
 
 If no candidate exists, record that explicitly.
 
-- [ ] **Step 4: Verify, commit, and push fixture recheck**
+- [x] **Step 4: Verify, commit, and push fixture recheck**
 
 Run the standard verification chain, then commit fixture coverage or docs-only recheck.
 
