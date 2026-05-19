@@ -4383,6 +4383,29 @@ int main(void)
 	}
 }
 
+func TestWidePrintfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  int n = wprintf(L"wide:%04d:%s:%%", 7, "ok");
+  if (n != 14)
+    return n;
+  return 0;
+}
+`
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "wide-printf-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+	if out.String() != "wide:0007:ok:%" {
+		t.Fatalf("stdout = %q, want wide:0007:ok:%%", out.String())
+	}
+}
+
 func TestWideStdioInputAliasesExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

@@ -126,9 +126,9 @@ Calibration before execution: Reuse buffer formatter output, then widen ASCII by
 
 Calibration before execution: Route formatted bytes to stdout through wide output semantics.
 
-- [ ] Register and implement `wprintf`.
-- [ ] Cover source-level stdout output and return count.
-- [ ] Verify, commit `feat(runtime): add wprintf`, and push.
+- [x] Register and implement `wprintf`.
+- [x] Cover source-level stdout output and return count.
+- [x] Verify, commit `feat(runtime): add wprintf`, and push.
 
 ## Milestone 15: `fwprintf`
 

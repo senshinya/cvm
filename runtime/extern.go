@@ -164,7 +164,8 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("fputws", fputwsExtern("fputws", r))
 	r.Register("fgetws", fgetwsExtern("fgetws", r))
 	r.Register("swprintf", swprintfExtern("swprintf"))
-	for _, name := range []string{"wprintf", "fwprintf", "vwprintf", "vfwprintf", "vswprintf"} {
+	r.Register("wprintf", wprintfExtern("wprintf", r))
+	for _, name := range []string{"fwprintf", "vwprintf", "vfwprintf", "vswprintf"} {
 		r.Register(name, wideStdioIntStubExtern(name, -1))
 	}
 	r.Register("perror", perrorExtern("perror", r))
@@ -5261,6 +5262,31 @@ func swprintfExtern(name string) ExternFunc {
 		}
 		if truncated {
 			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func wprintfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 1 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide format pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatWideCString(name, ec.Memory, args[0].Int, args[1:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		w := r.externStdout(ec)
+		for i := 0; i < len(out); i++ {
+			if ret := r.writeHostWideChar(r.stdoutHandle, w, int64(out[i])); signedInt(ret) == -1 {
+				return ret, nil, nil
+			}
 		}
 		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
 	}
