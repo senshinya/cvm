@@ -101,9 +101,9 @@ Calibration before execution: Mirror `fgets` line/width semantics in wide units.
 
 Calibration before execution: Re-read current printf/vprintf declaration pattern.
 
-- [ ] Declare `wprintf`, `fwprintf`, `swprintf`, `vwprintf`, `vfwprintf`, and `vswprintf`.
-- [ ] Add header smoke tests.
-- [ ] Verify, commit `feat(headers): declare wide printf functions`, and push.
+- [x] Declare `wprintf`, `fwprintf`, `swprintf`, `vwprintf`, `vfwprintf`, and `vswprintf`.
+- [x] Add header smoke tests.
+- [x] Verify, commit `feat(headers): declare wide printf functions`, and push.
 
 ## Milestone 12: Wide Format Parser Bridge
 
