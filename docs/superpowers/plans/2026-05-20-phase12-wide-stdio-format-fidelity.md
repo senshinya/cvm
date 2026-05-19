@@ -204,10 +204,12 @@ Calibration before execution: Confirm source-level wide printf/scanf subset rema
 
 Calibration before execution: Run GCC runtime gap report and scan imported accept roots for wide stdio candidates.
 
-- [ ] Run `TestGCCExecutionGapReportIsCurrent`.
-- [ ] Scan imported GCC accept fixtures for `wprintf`, `wscanf`, `fwide`, `fgetwc`, `fputwc`, `fgetws`, and `fputws`.
-- [ ] Add a low-risk fixture only if stable.
-- [ ] Verify, commit `docs: record phase 12 gcc fixture recheck`, and push.
+- [x] Run `TestGCCExecutionGapReportIsCurrent`.
+- [x] Scan imported GCC accept fixtures for `wprintf`, `wscanf`, `fwide`, `fgetwc`, `fputwc`, `fgetws`, and `fputws`.
+- [x] Add a low-risk fixture only if stable.
+- [x] Verify, commit `docs: record phase 12 gcc fixture recheck`, and push.
+
+Recheck result: `TestGCCExecutionGapReportIsCurrent` passed. The imported `gcc-c99-extra/accept` roots do not currently contain wide stdio candidates for the scanned functions, so no fixture was added in this increment.
 
 ## Milestone 25: Header And Registry Recheck
 
