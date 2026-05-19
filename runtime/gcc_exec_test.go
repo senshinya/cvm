@@ -2507,6 +2507,21 @@ int main(void)
     return 22;
   if (*end != '?')
     return 23;
+  double nan_plain = strtod("nan!", &end);
+  if (nan_plain == nan_plain)
+    return 24;
+  if (*end != '!')
+    return 25;
+  double nan_upper = strtod("NAN;", &end);
+  if (nan_upper == nan_upper)
+    return 26;
+  if (*end != ';')
+    return 27;
+  double nan_payload = strtod("nan(payload)?", &end);
+  if (nan_payload == nan_payload)
+    return 28;
+  if (*end != '?')
+    return 29;
   if (strtod("word", &end) != 0.0)
     return 6;
   if (errno != 77)

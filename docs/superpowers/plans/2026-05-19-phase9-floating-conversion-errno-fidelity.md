@@ -75,9 +75,16 @@ Findings:
 
 Calibration before execution: Check accepted NaN spellings and deterministic payload policy.
 
-- [ ] Add direct/source tests for `nan`, `NAN`, `nan(payload)`, trailing text, and endptr.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `feat(runtime): cover strtod nan parsing`.
+- [x] Add direct/source tests for `nan`, `NAN`, `nan(payload)`, trailing text, and endptr.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): cover strtod nan parsing`.
+
+Findings:
+
+- Tests exposed that `nan(payload)` previously parsed as `nan` but left the payload in `endptr`.
+- Added a deterministic NaN special-token parser that consumes a balanced parenthesized payload when present.
+- Added direct extern and source-level runtime coverage for `nan`, `NAN`, `nan(payload)`, trailing text, and end pointers.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed after the fix.
 
 ## Milestone 6: `nan` Family Payload Inputs
 

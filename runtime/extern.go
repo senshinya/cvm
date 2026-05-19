@@ -1645,6 +1645,9 @@ func parseStrtoFloatString(s string) parsedStrtoFloat {
 	for start < len(s) && isASCIIWhitespace(s[start]) {
 		start++
 	}
+	if v, end, ok := parseStrtoFloatSpecial(s, start); ok {
+		return parsedStrtoFloat{value: v, end: end, converted: true}
+	}
 	for end := len(s); end > start; end-- {
 		v, err := strconv.ParseFloat(s[start:end], 64)
 		if err == nil {
@@ -1652,6 +1655,26 @@ func parseStrtoFloatString(s string) parsedStrtoFloat {
 		}
 	}
 	return parsedStrtoFloat{}
+}
+
+func parseStrtoFloatSpecial(s string, start int) (float64, int, bool) {
+	i := start
+	if i < len(s) && (s[i] == '+' || s[i] == '-') {
+		i++
+	}
+	if i+3 > len(s) || !strings.EqualFold(s[i:i+3], "nan") {
+		return 0, 0, false
+	}
+	end := i + 3
+	if end < len(s) && s[end] == '(' {
+		for j := end + 1; j < len(s); j++ {
+			if s[j] == ')' {
+				end = j + 1
+				break
+			}
+		}
+	}
+	return math.NaN(), end, true
 }
 
 func isASCIIWhitespace(ch byte) bool {

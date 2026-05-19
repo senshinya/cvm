@@ -3029,6 +3029,54 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 		t.Fatalf("strtod negative inf endptr=%#x, want %#x", loadedEnd.Int, negativeInfText+4)
 	}
 
+	nanText := mustAllocBytes(t, mem, "strtod:nan", []byte("nan!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(nanText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod nan ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsNaN(ret.Float) {
+		t.Fatalf("strtod nan ret=%#v, want NaN", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod nan endptr: %v", err)
+	}
+	if loadedEnd.Int != nanText+3 {
+		t.Fatalf("strtod nan endptr=%#x, want %#x", loadedEnd.Int, nanText+3)
+	}
+
+	upperNanText := mustAllocBytes(t, mem, "strtod:upper-nan", []byte("NAN;\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(upperNanText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod upper nan ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsNaN(ret.Float) {
+		t.Fatalf("strtod upper nan ret=%#v, want NaN", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod upper nan endptr: %v", err)
+	}
+	if loadedEnd.Int != upperNanText+3 {
+		t.Fatalf("strtod upper nan endptr=%#x, want %#x", loadedEnd.Int, upperNanText+3)
+	}
+
+	nanPayloadText := mustAllocBytes(t, mem, "strtod:nan-payload", []byte("nan(payload)?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(nanPayloadText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod nan payload ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsNaN(ret.Float) {
+		t.Fatalf("strtod nan payload ret=%#v, want NaN", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod nan payload endptr: %v", err)
+	}
+	if loadedEnd.Int != nanPayloadText+12 {
+		t.Fatalf("strtod nan payload endptr=%#x, want %#x", loadedEnd.Int, nanPayloadText+12)
+	}
+
 	noneText := mustAllocBytes(t, mem, "strtod:none", []byte("word\x00"), true, blockString)
 	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(noneText), PtrValue(endptr)})
 	if err != nil || exit != nil {
