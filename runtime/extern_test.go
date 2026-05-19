@@ -3117,9 +3117,13 @@ func TestCtypeCaseConversionExterns(t *testing.T) {
 		{name: "tolower", ch: 'A', want: 'a'},
 		{name: "tolower", ch: 'z', want: 'z'},
 		{name: "tolower", ch: '!', want: '!'},
+		{name: "tolower", ch: -1, want: -1},
+		{name: "tolower", ch: 0x141, want: 'a'},
 		{name: "toupper", ch: 'q', want: 'Q'},
 		{name: "toupper", ch: 'Z', want: 'Z'},
+		{name: "toupper", ch: '!', want: '!'},
 		{name: "toupper", ch: -1, want: -1},
+		{name: "toupper", ch: 0x171, want: 'Q'},
 	}
 	for _, tt := range tests {
 		fn, ok := reg.Lookup(tt.name)

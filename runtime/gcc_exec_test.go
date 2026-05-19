@@ -2595,6 +2595,12 @@ int main(void)
     return 3;
   if (toupper('!') != '!')
     return 4;
+  if (tolower('A' + 256) != 'a')
+    return 5;
+  if (toupper('q' + 256) != 'Q')
+    return 6;
+  if (tolower(-1) != -1 || toupper(-1) != -1)
+    return 7;
   return 0;
 }
 `

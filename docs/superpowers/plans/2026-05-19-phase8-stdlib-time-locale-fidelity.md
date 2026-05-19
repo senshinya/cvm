@@ -272,9 +272,16 @@ Findings:
 
 Calibration before execution: Re-read `tolower`/`toupper` externs.
 
-- [ ] Add tests for EOF passthrough, lower-to-upper, upper-to-lower, punctuation, and high int masking.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden ctype case conversion`.
+- [x] Add tests for EOF passthrough, lower-to-upper, upper-to-lower, punctuation, and high int masking.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): harden ctype case conversion`.
+
+Findings:
+
+- Existing coverage checked ordinary lower/upper conversion, punctuation passthrough, and one EOF path.
+- Added direct/source coverage for EOF passthrough on both functions and high integer unsigned-byte conversion.
+- Updated case conversion externs so `-1` remains EOF and all other integers convert through their unsigned-byte value.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestCtypeCaseConversion' -count=1` passed after the fix.
 
 ## Milestone 20: Header/Registry Recheck
 

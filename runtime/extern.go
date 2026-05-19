@@ -1740,10 +1740,10 @@ func ctypeCaseExtern(name string, convert func(byte) byte) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
 		}
 		ch := signedInt(args[0])
-		if ch < 0 || ch > 255 {
-			return IntValue(bytecode.TypeI32, ch), nil, nil
+		if ch == -1 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
-		return IntValue(bytecode.TypeI32, int64(convert(byte(ch)))), nil, nil
+		return IntValue(bytecode.TypeI32, int64(convert(byte(unsignedInt(args[0]))))), nil, nil
 	}
 }
 
