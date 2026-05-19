@@ -22,6 +22,11 @@ func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 			t.Fatalf("missing extern %s", name)
 		}
 	}
+	for _, name := range []string{"wscanf", "fwscanf", "swscanf"} {
+		if _, ok := reg.Lookup(name); !ok {
+			t.Fatalf("missing extern %s", name)
+		}
+	}
 }
 
 func TestStdlibProcessTerminationExterns(t *testing.T) {

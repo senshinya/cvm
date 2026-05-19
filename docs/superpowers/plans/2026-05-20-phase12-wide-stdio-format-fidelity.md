@@ -150,9 +150,9 @@ Calibration before execution: Re-read memory-backed `va_list` support for v-form
 
 Calibration before execution: Re-read current scanf declaration pattern.
 
-- [ ] Declare `wscanf`, `fwscanf`, and `swscanf`.
-- [ ] Add header smoke tests.
-- [ ] Verify, commit `feat(headers): declare wide scanf functions`, and push.
+- [x] Declare `wscanf`, `fwscanf`, and `swscanf`.
+- [x] Add header smoke tests.
+- [x] Verify, commit `feat(headers): declare wide scanf functions`, and push.
 
 ## Milestone 18: Wide Scanner Bridge
 

@@ -169,6 +169,9 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("vwprintf", vwprintfExtern("vwprintf", r))
 	r.Register("vfwprintf", vfwprintfExtern("vfwprintf", r))
 	r.Register("vswprintf", vswprintfExtern("vswprintf"))
+	for _, name := range []string{"wscanf", "fwscanf", "swscanf"} {
+		r.Register(name, wideStdioIntStubExtern(name, -1))
+	}
 	r.Register("perror", perrorExtern("perror", r))
 	for _, name := range []string{"fflush", "fflush_unlocked"} {
 		r.Register(name, fflushExtern(name, r))
