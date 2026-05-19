@@ -97,9 +97,9 @@ Calibration before execution: Confirm C runtime uses 32-bit `wchar_t` in the tar
 
 Calibration before execution: Reuse wide compare primitives and keep result sign stable.
 
-- [ ] Register and implement `wcscmp`.
-- [ ] Cover equal, less, greater, prefix, empty, and high wide values.
-- [ ] Verify, commit `feat(runtime): add wcscmp`, and push.
+- [x] Register and implement `wcscmp`.
+- [x] Cover equal, less, greater, prefix, empty, and high wide values.
+- [x] Verify, commit `feat(runtime): add wcscmp`, and push.
 
 ## Milestone 11: `wcsncmp`
 
