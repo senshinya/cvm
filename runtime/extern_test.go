@@ -2285,6 +2285,52 @@ func TestSwscanfExternScansWideInput(t *testing.T) {
 	}
 }
 
+func TestWscanfExternScansStdinAndPreservesUnreadInput(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("41 tail"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("wscanf")
+	if !ok {
+		t.Fatal("missing wscanf extern")
+	}
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	format := makeWide("wscanf:format", '%', 'd', 0)
+	valueAddr := mustAlloc(t, mem, "wscanf:value", 4, 4, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(format),
+		PtrValue(valueAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("wscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("wscanf ret=%#v, want i32 1", ret)
+	}
+	value, err := mem.Load(valueAddr, bytecode.TypeI32, 4)
+	if err != nil || value.Int != 41 {
+		t.Fatalf("value=%#v err=%v, want 41", value, err)
+	}
+	if got := reg.hostOrientationResult(reg.stdinHandle); got <= 0 {
+		t.Fatalf("stdin orientation = %d, want wide", got)
+	}
+	ch, ok := reg.readHostChar(reg.stdinHandle)
+	if !ok || ch != ' ' {
+		t.Fatalf("next stdin char=%q ok=%v, want space", ch, ok)
+	}
+}
+
 func TestSwprintfWritesWideFormattedOutput(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

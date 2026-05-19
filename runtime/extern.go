@@ -169,9 +169,8 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("vwprintf", vwprintfExtern("vwprintf", r))
 	r.Register("vfwprintf", vfwprintfExtern("vfwprintf", r))
 	r.Register("vswprintf", vswprintfExtern("vswprintf"))
-	for _, name := range []string{"wscanf", "fwscanf"} {
-		r.Register(name, wideStdioIntStubExtern(name, -1))
-	}
+	r.Register("wscanf", wscanfExtern("wscanf", r))
+	r.Register("fwscanf", wideStdioIntStubExtern("fwscanf", -1))
 	r.Register("swscanf", swscanfExtern("swscanf"))
 	r.Register("perror", perrorExtern("perror", r))
 	for _, name := range []string{"fflush", "fflush_unlocked"} {
@@ -5784,6 +5783,30 @@ func scanfExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
+func wscanfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 1 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide format string argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if r.stdinHandle == 0 {
+			if _, ok := r.LookupVariable("stdin", ec.Memory); !ok {
+				return Value{}, nil, fmt.Errorf("%s could not initialize stdin", name)
+			}
+		}
+		n, err := scanWideHostStream(name, r, ec.Memory, r.stdinHandle, args[0].Int, args[1:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(n)), nil, nil
+	}
+}
+
 func fscanfExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) < 2 {
@@ -5888,6 +5911,43 @@ func scanHostStream(name string, r *ExternRegistry, mem *Memory, stream, formatA
 	for {
 		ch, ok := r.readHostChar(stream)
 		if !ok {
+			break
+		}
+		input = append(input, ch)
+	}
+	assigned, consumed, inputFailure, err := scanString(name, mem, string(input), format, args)
+	if consumed < len(input) {
+		r.pushBackHostBytes(stream, input[consumed:])
+	}
+	if consumed == len(input) && len(input) == 0 {
+		r.hostEOF[stream] = true
+	}
+	if inputFailure && assigned == 0 {
+		return -1, err
+	}
+	return assigned, err
+}
+
+func scanWideHostStream(name string, r *ExternRegistry, mem *Memory, stream, formatAddr uint64, args []Value) (int, error) {
+	format, err := wideASCIIString(name, mem, formatAddr, "format")
+	if err != nil {
+		return 0, err
+	}
+	if r.setHostOrientation(stream, streamWide) != streamWide {
+		r.hostError[stream] = true
+		return 0, nil
+	}
+	if r.markHostReadErrorIfUnreadable(stream) {
+		return 0, nil
+	}
+	var input []byte
+	for {
+		ch, ok := r.readHostChar(stream)
+		if !ok {
+			break
+		}
+		if ch >= 0x80 {
+			r.hostError[stream] = true
 			break
 		}
 		input = append(input, ch)

@@ -174,9 +174,9 @@ Calibration before execution: Use wide input and wide format buffers without str
 
 Calibration before execution: Reuse configured stdin scanner behavior and orientation rules.
 
-- [ ] Register and implement `wscanf`.
-- [ ] Cover configured stdin source-level input and unread preservation.
-- [ ] Verify, commit `feat(runtime): add wscanf`, and push.
+- [x] Register and implement `wscanf`.
+- [x] Cover configured stdin source-level input and unread preservation.
+- [x] Verify, commit `feat(runtime): add wscanf`, and push.
 
 ## Milestone 21: `fwscanf`
 

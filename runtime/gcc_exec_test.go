@@ -4437,6 +4437,28 @@ int main(void)
 	}
 }
 
+func TestWideWscanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <wchar.h>
+
+int main(void)
+{
+  int n = 0;
+  if (wscanf(L"%d", &n) != 1)
+    return 1;
+  if (n != 41)
+    return 2;
+  return getwc(stdin) == L' ' ? 0 : 3;
+}
+`
+	reg := DefaultExternRegistryWithIO(strings.NewReader("41 tail"), nil, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "wide-wscanf-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestWideStdioInputAliasesExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
