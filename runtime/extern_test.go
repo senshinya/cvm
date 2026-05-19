@@ -2651,6 +2651,38 @@ func TestStdlibStrtolExterns(t *testing.T) {
 		t.Fatalf("strtol endptr=%#x, want %#x", loadedEnd.Int, signedText+7)
 	}
 
+	decimalText := mustAllocBytes(t, mem, "strtol:decimal", []byte("  +123abc\x00"), true, blockString)
+	ret, exit, err = strtolFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(decimalText), PtrValue(endptr), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtol decimal ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI64 || signedInt(ret) != 123 {
+		t.Fatalf("strtol decimal ret=%#v, want i64 123", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtol decimal endptr: %v", err)
+	}
+	if loadedEnd.Int != decimalText+6 {
+		t.Fatalf("strtol decimal endptr=%#x, want %#x", loadedEnd.Int, decimalText+6)
+	}
+
+	octalSignedText := mustAllocBytes(t, mem, "strtol:octal", []byte("0755,tail\x00"), true, blockString)
+	ret, exit, err = strtolFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(octalSignedText), PtrValue(endptr), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtol octal ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI64 || signedInt(ret) != 493 {
+		t.Fatalf("strtol octal ret=%#v, want i64 493", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtol octal endptr: %v", err)
+	}
+	if loadedEnd.Int != octalSignedText+4 {
+		t.Fatalf("strtol octal endptr=%#x, want %#x", loadedEnd.Int, octalSignedText+4)
+	}
+
 	strtoulFn, ok := reg.Lookup("strtoul")
 	if !ok {
 		t.Fatal("missing strtoul extern")

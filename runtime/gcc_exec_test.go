@@ -2378,6 +2378,14 @@ int main(void)
     return 1;
   if (*end != ' ')
     return 2;
+  if (strtol("  +123abc", &end, 0) != 123L)
+    return 8;
+  if (*end != 'a')
+    return 9;
+  if (strtol("0755,tail", &end, 0) != 493L)
+    return 10;
+  if (*end != ',')
+    return 11;
   if (strtoul("077z", &end, 0) != 63UL)
     return 3;
   if (*end != 'z')

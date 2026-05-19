@@ -29,9 +29,15 @@ Baseline:
 
 Calibration before execution: Re-read `strtoIntegerExtern` and existing `strtol` tests.
 
-- [ ] Add direct/source tests for base 0 decimal, octal, hex, and sign handling.
-- [ ] Fix parsing if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden strtol base detection`.
+- [x] Add direct/source tests for base 0 decimal, octal, hex, and sign handling.
+- [x] Fix parsing if needed.
+- [x] Verify, commit, and push `feat(runtime): harden strtol base detection`.
+
+Findings:
+
+- Existing parsing already handled base 0 decimal, octal, hex, whitespace, and sign routing.
+- Added direct extern and source-level runtime coverage for signed decimal plus-sign input and signed octal auto-detection.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibStrtol' -count=1` passed.
 
 ## Milestone 3: `strtoul` Unsigned Boundaries
 
