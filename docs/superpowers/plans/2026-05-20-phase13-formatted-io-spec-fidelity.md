@@ -152,9 +152,13 @@ Calibration result:
 
 Calibration before execution: Confirm formatting for infinities, NaNs, signed zero, and case variants.
 
-- [ ] Cover `inf`, `nan`, signed zero, uppercase verbs, and signs.
-- [ ] Fix deterministic spelling/case behavior if needed.
-- [ ] Verify, commit `feat(runtime): harden printf special floats`, and push.
+- [x] Cover `inf`, `nan`, signed zero, uppercase verbs, and signs.
+- [x] Fix deterministic spelling/case behavior if needed.
+- [x] Verify, commit `feat(runtime): harden printf special floats`, and push.
+
+Calibration result:
+- `strconv.FormatFloat` emitted Go-style `+Inf`/`NaN`, and the existing sign logic could turn `%+f` infinity into `++Inf`.
+- Special floating values now use deterministic C-style spellings (`inf`/`INF`, `nan`/`NAN`) with sign and leading-space flags applied to positive infinity; signed zero remains on the normal finite formatting path.
 
 ## Milestone 14: Scanf Signed Integer Length Modifiers
 

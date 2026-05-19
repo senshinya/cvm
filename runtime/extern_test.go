@@ -9929,6 +9929,43 @@ func TestFormatExternsSupportFloatWidthAndPrecision(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportSpecialFloatValues(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-special-float", 64, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-special-float", []byte("%f|%F|%e|%E|%g|%G|%a|%A|%+f|% f|%f\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		FloatValue(bytecode.TypeF64, math.Inf(1)),
+		FloatValue(bytecode.TypeF64, math.Inf(1)),
+		FloatValue(bytecode.TypeF64, math.NaN()),
+		FloatValue(bytecode.TypeF64, math.NaN()),
+		FloatValue(bytecode.TypeF64, math.Copysign(0, -1)),
+		FloatValue(bytecode.TypeF64, math.Copysign(0, -1)),
+		FloatValue(bytecode.TypeF64, math.Inf(1)),
+		FloatValue(bytecode.TypeF64, math.Inf(1)),
+		FloatValue(bytecode.TypeF64, math.Inf(1)),
+		FloatValue(bytecode.TypeF64, math.Inf(1)),
+		FloatValue(bytecode.TypeF64, math.Inf(-1)),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	want := "inf|INF|nan|NAN|-0|-0|inf|INF|+inf| inf|-inf"
+	if ret.Type != bytecode.TypeI32 || ret.Int != uint64(len(want)) || got != want {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q, want i32 %d and special float output", ret, got, len(want))
+	}
+}
+
 func TestFormatExternsSupportDynamicWidthAndPrecision(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

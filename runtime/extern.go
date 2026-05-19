@@ -6707,27 +6707,32 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 				return "", fmt.Errorf("%s %%%c expects floating argument", name, format[i])
 			}
 			verb := format[i]
-			if verb == 'F' {
-				verb = 'f'
+			value := cvmFloat(arg)
+			if special, ok := formatSpecialFloat(value, verb, showSign, leadingSpace); ok {
+				piece = special
+			} else {
+				if verb == 'F' {
+					verb = 'f'
+				}
+				if verb == 'a' {
+					verb = 'x'
+				}
+				if verb == 'A' {
+					verb = 'X'
+				}
+				floatPrecision := precision
+				if floatPrecision < 0 {
+					floatPrecision = 6
+				}
+				piece = strconv.FormatFloat(value, verb, floatPrecision, floatFormatBits(arg.Type))
+				if alternate {
+					piece = applyFloatAlternateForm(piece, format[i], floatPrecision)
+				}
+				if format[i] == 'F' {
+					piece = strings.ToUpper(piece)
+				}
 			}
-			if verb == 'a' {
-				verb = 'x'
-			}
-			if verb == 'A' {
-				verb = 'X'
-			}
-			floatPrecision := precision
-			if floatPrecision < 0 {
-				floatPrecision = 6
-			}
-			piece = strconv.FormatFloat(cvmFloat(arg), verb, floatPrecision, floatFormatBits(arg.Type))
-			if alternate {
-				piece = applyFloatAlternateForm(piece, format[i], floatPrecision)
-			}
-			if format[i] == 'F' {
-				piece = strings.ToUpper(piece)
-			}
-			if !strings.HasPrefix(piece, "-") && !strings.HasPrefix(piece, "N") && !strings.HasPrefix(piece, "I") {
+			if !math.IsInf(value, 0) && !math.IsNaN(value) && !strings.HasPrefix(piece, "-") {
 				if showSign {
 					piece = "+" + piece
 				} else if leadingSpace {
@@ -6840,6 +6845,33 @@ func countFloatDigits(s string) int {
 		}
 	}
 	return n
+}
+
+func formatSpecialFloat(v float64, verb byte, showSign, leadingSpace bool) (string, bool) {
+	upper := verb == 'F' || verb == 'E' || verb == 'G' || verb == 'A'
+	if math.IsNaN(v) {
+		if upper {
+			return "NAN", true
+		}
+		return "nan", true
+	}
+	if math.IsInf(v, 0) {
+		word := "inf"
+		if upper {
+			word = "INF"
+		}
+		if math.Signbit(v) {
+			return "-" + word, true
+		}
+		if showSign {
+			return "+" + word, true
+		}
+		if leadingSpace {
+			return " " + word, true
+		}
+		return word, true
+	}
+	return "", false
 }
 
 func formatIntArg(name, what string, v Value) (int, error) {
