@@ -4487,6 +4487,42 @@ int main(void)
 	}
 }
 
+func TestWideFormatWorkflowExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <wchar.h>
+
+int main(void)
+{
+  wchar_t buf[16] = {0};
+  int n = 0;
+  int stdin_n = 0;
+  if (swprintf(buf, sizeof buf / sizeof buf[0], L"%04d:%s", 7, "ok") != 7)
+    return 1;
+  if (buf[0] != L'0' || buf[1] != L'0' || buf[2] != L'0' || buf[3] != L'7' || buf[4] != L':' || buf[5] != L'o' || buf[6] != L'k' || buf[7] != 0)
+    return 2;
+  if (swscanf(L"33", L"%d", &n) != 1)
+    return 3;
+  if (n != 33)
+    return 4;
+  if (wscanf(L"%d", &stdin_n) != 1)
+    return 5;
+  if (stdin_n != 44)
+    return 6;
+  return wprintf(L"fmt:%04d:%d:%d", 7, n, stdin_n) == 14 ? 0 : 7;
+}
+`
+	var out bytes.Buffer
+	reg := DefaultExternRegistryWithIO(strings.NewReader("44 rest"), &out, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "wide-format-workflow-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+	if out.String() != "fmt:0007:33:44" {
+		t.Fatalf("stdout = %q, want fmt:0007:33:44", out.String())
+	}
+}
+
 func TestWideStdioInputAliasesExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

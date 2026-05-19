@@ -197,8 +197,8 @@ Calibration before execution: Search for overlapping source runtime tests before
 
 Calibration before execution: Confirm source-level wide printf/scanf subset remains deterministic.
 
-- [ ] Add source-level workflow covering wide formatted output and input.
-- [ ] Verify, commit `test(runtime): cover wide format workflow`, and push.
+- [x] Add source-level workflow covering wide formatted output and input.
+- [x] Verify, commit `test(runtime): cover wide format workflow`, and push.
 
 ## Milestone 24: GCC Fixture Recheck
 
