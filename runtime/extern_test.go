@@ -3999,6 +3999,59 @@ func TestWideCtypeDescriptorExterns(t *testing.T) {
 	}
 }
 
+func TestWideCtypeTransDescriptorExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	wctransFn, ok := reg.Lookup("wctrans")
+	if !ok {
+		t.Fatal("missing wctrans extern")
+	}
+	towctransFn, ok := reg.Lookup("towctrans")
+	if !ok {
+		t.Fatal("missing towctrans extern")
+	}
+	lowerName := mustAllocBytes(t, mem, "wctrans:tolower", []byte("tolower\x00"), true, blockString)
+	upperName := mustAllocBytes(t, mem, "wctrans:toupper", []byte("toupper\x00"), true, blockString)
+	unknownName := mustAllocBytes(t, mem, "wctrans:unknown", []byte("swapcase\x00"), true, blockString)
+
+	lower, exit, err := wctransFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(lowerName)})
+	if err != nil || exit != nil || lower.Type != bytecode.TypeU64 || lower.Int == 0 {
+		t.Fatalf("wctrans lower ret=%#v exit=%#v err=%v, want nonzero descriptor", lower, exit, err)
+	}
+	upper, exit, err := wctransFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(upperName)})
+	if err != nil || exit != nil || upper.Type != bytecode.TypeU64 || upper.Int == 0 {
+		t.Fatalf("wctrans upper ret=%#v exit=%#v err=%v, want nonzero descriptor", upper, exit, err)
+	}
+	unknown, exit, err := wctransFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(unknownName)})
+	if err != nil || exit != nil || unknown.Type != bytecode.TypeU64 || unknown.Int != 0 {
+		t.Fatalf("wctrans unknown ret=%#v exit=%#v err=%v, want zero descriptor", unknown, exit, err)
+	}
+
+	tests := []struct {
+		ch   int64
+		desc Value
+		want int64
+	}{
+		{ch: 'A', desc: lower, want: 'a'},
+		{ch: 'z', desc: lower, want: 'z'},
+		{ch: 'q', desc: upper, want: 'Q'},
+		{ch: 'Z', desc: upper, want: 'Z'},
+		{ch: '!', desc: upper, want: '!'},
+		{ch: -1, desc: lower, want: -1},
+		{ch: 0x141, desc: lower, want: 0x141},
+		{ch: 'A', desc: unknown, want: 'A'},
+	}
+	for _, tt := range tests {
+		ret, exit, err := towctransFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, tt.ch), tt.desc})
+		if err != nil || exit != nil {
+			t.Fatalf("towctrans(%d, %#v) ret=%#v exit=%#v err=%v", tt.ch, tt.desc, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypeI32 || signedInt(ret) != tt.want {
+			t.Fatalf("towctrans(%d, %#v) ret=%#v, want %d", tt.ch, tt.desc, ret, tt.want)
+		}
+	}
+}
+
 func TestPlainMemoryOperationExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

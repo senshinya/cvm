@@ -180,10 +180,17 @@ Findings:
 
 Calibration before execution: Decide deterministic descriptor IDs for case mappings.
 
-- [ ] Implement `wctrans` for `tolower` and `toupper`.
-- [ ] Implement `towctrans`.
-- [ ] Add direct/source tests for valid and invalid mappings.
-- [ ] Verify, commit, and push `feat(runtime): add wctrans descriptors`.
+- [x] Implement `wctrans` for `tolower` and `toupper`.
+- [x] Implement `towctrans`.
+- [x] Add direct/source tests for valid and invalid mappings.
+- [x] Verify, commit, and push `feat(runtime): add wctrans descriptors`.
+
+Findings:
+
+- `wctrans` returns deterministic nonzero descriptor IDs for `tolower` and `toupper`, and zero for unknown mappings.
+- `towctrans` applies ASCII-only C-locale mappings, preserves `WEOF`, keeps high values unchanged, and leaves input unchanged for invalid descriptors.
+- Added direct extern and source-level runtime coverage for valid and invalid mappings.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestWideCtypeTransDescriptor' -count=1` passed.
 
 ## Milestone 13: Restartable State Type Baseline
 

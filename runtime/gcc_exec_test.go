@@ -1924,6 +1924,39 @@ int main(void)
 	}
 }
 
+func TestWideCtypeTransDescriptorExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wctype.h>
+
+int main(void)
+{
+  wctrans_t lower = wctrans("tolower");
+  wctrans_t upper = wctrans("toupper");
+  if (lower == 0 || upper == 0)
+    return 1;
+  if (wctrans("swapcase") != 0)
+    return 2;
+  if (towctrans(L'A', lower) != L'a' || towctrans(L'z', lower) != L'z')
+    return 3;
+  if (towctrans(L'q', upper) != L'Q' || towctrans(L'Z', upper) != L'Z')
+    return 4;
+  if (towctrans(L'!', upper) != L'!')
+    return 5;
+  if (towctrans(WEOF, lower) != WEOF)
+    return 6;
+  if (towctrans(0x141, lower) != 0x141)
+    return 7;
+  if (towctrans(L'A', 0) != L'A')
+    return 8;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-ctype-trans-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <time.h>
