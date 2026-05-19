@@ -107,9 +107,9 @@ Calibration before execution: Re-read `stringTokenExtern` and `strtokNext` memor
 
 Calibration before execution: Re-check exhausted state and restart with a new string.
 
-- [ ] Add tests for all-delimiter input, final null return, and restart with a new string.
-- [ ] Fix restart state if needed.
-- [ ] Verify, commit, and push `test(runtime): cover strtok restart`.
+- [x] Add tests for all-delimiter input, final null return, and restart with a new string.
+- [x] Fix restart state if needed.
+- [x] Verify, commit, and push `test(runtime): cover strtok restart`.
 
 ## Milestone 13: `strxfrm` Truncation And Length Query
 

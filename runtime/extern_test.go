@@ -4282,6 +4282,44 @@ func TestStringStrtokExtern(t *testing.T) {
 	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "gamma" {
 		t.Fatalf("strtok changing third token=%q err=%v, want gamma", tok, err)
 	}
+
+	allDelims := mustAllocBytes(t, mem, "strtok:all-delims", []byte(";;;\x00"), false, blockString)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(allDelims), PtrValue(semicolon)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok all-delims ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("strtok all-delims ret=%#v, want null pointer", ret)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(semicolon)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok exhausted ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("strtok exhausted ret=%#v, want null pointer", ret)
+	}
+
+	restart := mustAllocBytes(t, mem, "strtok:restart", []byte("one,two\x00"), false, blockString)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(restart), PtrValue(comma)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok restart first ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != restart {
+		t.Fatalf("strtok restart first ret=%#v, want pointer %#x", ret, restart)
+	}
+	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "one" {
+		t.Fatalf("strtok restart first token=%q err=%v, want one", tok, err)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(comma)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok restart second ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != restart+4 {
+		t.Fatalf("strtok restart second ret=%#v, want pointer %#x", ret, restart+4)
+	}
+	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "two" {
+		t.Fatalf("strtok restart second token=%q err=%v, want two", tok, err)
+	}
 }
 
 func TestStringCollateAndTransformExterns(t *testing.T) {

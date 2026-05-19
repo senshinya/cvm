@@ -2922,6 +2922,25 @@ int main(void)
   tok = strtok(0, ".");
   if (tok != text + 11 || strcmp(tok, "gamma") != 0)
     return 7;
+  tok = strtok(0, ".");
+  if (tok != text + 17 || strcmp(tok, "delta") != 0)
+    return 8;
+  if (strtok(0, ".") != 0)
+    return 9;
+
+  strcpy(text, ";;;");
+  if (strtok(text, ";") != 0)
+    return 10;
+  if (strtok(0, ";") != 0)
+    return 11;
+
+  strcpy(text, "one,two");
+  tok = strtok(text, ",");
+  if (tok != text || strcmp(tok, "one") != 0)
+    return 12;
+  tok = strtok(0, ",");
+  if (tok != text + 4 || strcmp(tok, "two") != 0)
+    return 13;
   return 0;
 }
 `
