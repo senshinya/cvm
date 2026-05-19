@@ -2302,6 +2302,11 @@ int main(void)
     return 8;
   if (wctomb(out, L'Z') != 1 || out[0] != 'Z')
     return 9;
+  if (wctomb(out, 0) != 1 || out[0] != 0)
+    return 18;
+  out[0] = 'X';
+  if (wctomb(out, 0x80) != -1 || out[0] != 'X')
+    return 19;
   return wctomb(0, 0) == 0 ? 0 : 10;
 }
 `

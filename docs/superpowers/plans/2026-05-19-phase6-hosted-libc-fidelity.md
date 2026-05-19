@@ -166,10 +166,10 @@ Calibration before execution: Check wchar storage width and null state behavior.
 
 Calibration before execution: Check existing `wctomb` range behavior.
 
-- [ ] Add tests for null destination state query, ASCII, NUL, and out-of-range wchar.
-- [ ] Tighten `wctomb` behavior.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden wctomb c locale`.
+- [x] Add tests for null destination state query, ASCII, NUL, and out-of-range wchar.
+- [x] Tighten `wctomb` behavior.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden wctomb c locale`.
 
 ## Milestone 19: `mbstowcs` Length And Null Destination
 

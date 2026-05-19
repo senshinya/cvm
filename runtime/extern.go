@@ -1373,7 +1373,7 @@ func wctombExtern(name string) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
 		wc := signedInt(args[1])
-		if wc < 0 || wc > 255 {
+		if wc < 0 || wc > 0x7f {
 			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
 		if err := writeMemoryByte(ec.Memory, args[0].Int, byte(wc)); err != nil {

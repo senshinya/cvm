@@ -2510,6 +2510,25 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	if err != nil || ch != 'Q' {
 		t.Fatalf("wctomb wrote %q err=%v, want Q", ch, err)
 	}
+	ret, exit, err = wctombFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("wctomb nul ret=%#v exit=%#v err=%v, want i32 1", ret, exit, err)
+	}
+	ch, err = readMemoryByte(mem, out)
+	if err != nil || ch != 0 {
+		t.Fatalf("wctomb nul wrote %#x err=%v, want 0", ch, err)
+	}
+	if err := writeMemoryByte(mem, out, 'X'); err != nil {
+		t.Fatalf("store wctomb sentinel: %v", err)
+	}
+	ret, exit, err = wctombFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), IntValue(bytecode.TypeI32, 0x80)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("wctomb high wchar ret=%#v exit=%#v err=%v, want i32 -1", ret, exit, err)
+	}
+	ch, err = readMemoryByte(mem, out)
+	if err != nil || ch != 'X' {
+		t.Fatalf("wctomb high wchar wrote %q err=%v, want sentinel", ch, err)
+	}
 	ret, exit, err = wctombFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), IntValue(bytecode.TypeI32, 0)})
 	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
 		t.Fatalf("wctomb reset ret=%#v exit=%#v err=%v, want i32 0", ret, exit, err)
