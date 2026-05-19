@@ -29,9 +29,15 @@ Baseline:
 
 Calibration before execution: Re-read `setlocaleExtern` and Phase 8 locale residuals.
 
-- [ ] Document category state policy for deterministic C locale.
-- [ ] Decide storage and per-memory string reuse behavior.
-- [ ] Verify, commit, and push `docs: define phase 10 locale model`.
+- [x] Document category state policy for deterministic C locale.
+- [x] Decide storage and per-memory string reuse behavior.
+- [x] Verify, commit, and push `docs: define phase 10 locale model`.
+
+Findings:
+
+- Current `setlocale` accepts supported categories, `NULL`, `"C"`, and `""`, returning deterministic `"C"` through per-memory static string storage.
+- Phase 10 keeps all categories effectively in the C locale; unsupported categories or locale strings return `NULL`.
+- Added `docs/phase10-locale-model.md` to anchor category behavior, per-memory storage, `localeconv`, wide ctype, and restartable multibyte follow-ons.
 
 ## Milestone 3: Category-Specific `setlocale` State
 
