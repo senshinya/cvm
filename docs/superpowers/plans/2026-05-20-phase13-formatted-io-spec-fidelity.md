@@ -285,9 +285,14 @@ Recheck result:
 
 Calibration before execution: Search declarations, sema/builtin typing where relevant, registry entries, direct tests, and source workflows.
 
-- [ ] Recheck all touched formatted I/O surfaces.
-- [ ] Add missing smoke coverage if found.
-- [ ] Verify, commit `docs: record phase 13 formatted io recheck`, and push.
+- [x] Recheck all touched formatted I/O surfaces.
+- [x] Add missing smoke coverage if found.
+- [x] Verify, commit `docs: record phase 13 formatted io recheck`, and push.
+
+Recheck result:
+- `<stdio.h>` declares the narrow formatted I/O family and checked builtin aliases; `<wchar.h>` declares the wide formatted output/input family added in Phase 12.
+- `DefaultExternRegistry` registers all touched narrow/wide formatted I/O externs, and focused registry presence tests passed.
+- Source workflows in `runtime/gcc_exec_test.go` now cover signed/unsigned/count/char/string/scanset/float/literal/stream formatted I/O paths touched by Phase 13, so no extra smoke test was needed.
 
 ## Milestone 25: Phase 13 Gap Map
 
