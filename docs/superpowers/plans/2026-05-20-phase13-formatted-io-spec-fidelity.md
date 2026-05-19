@@ -32,9 +32,13 @@ Baseline result:
 
 Calibration before execution: Compare current `%d`/`%i` handling for `h`, `hh`, `l`, `ll`, `j`, `z`, and `t`.
 
-- [ ] Add direct and source coverage for signed integer length modifiers.
-- [ ] Fix formatting where argument narrowing/sign extension is wrong.
+- [x] Add direct and source coverage for signed integer length modifiers.
+- [x] Fix formatting where argument narrowing/sign extension is wrong.
 - [ ] Verify, commit `feat(runtime): harden printf signed lengths`, and push.
+
+Calibration result:
+- Focused direct and source tests showed `%hhd` and `%hd` still printed the promoted `int` values rather than applying the signed-char and signed-short conversions required by the length modifiers.
+- `%d` now formats through the default `int` view, while `l`/`ll`/`j`/`z`/`t` keep the target 64-bit signed representation used by the current ABI model.
 
 ## Milestone 4: Printf Unsigned Integer Length Modifiers
 

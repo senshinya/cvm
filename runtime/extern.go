@@ -6616,7 +6616,7 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%%c expects integer argument", name, format[i])
 			}
-			piece = strconv.FormatInt(signedInt(arg), 10)
+			piece = strconv.FormatInt(formatSignedIntegerArg(arg, lengthMod), 10)
 			if !strings.HasPrefix(piece, "-") {
 				if showSign {
 					piece = "+" + piece
@@ -6766,6 +6766,22 @@ func formatIntArg(name, what string, v Value) (int, error) {
 		return 0, fmt.Errorf("%s %s %d exceeds int range", name, what, n)
 	}
 	return int(n), nil
+}
+
+func formatSignedIntegerArg(v Value, lengthMod string) int64 {
+	n := signedInt(v)
+	switch lengthMod {
+	case "hh":
+		return int64(int8(n))
+	case "h":
+		return int64(int16(n))
+	case "":
+		return int64(int32(n))
+	case "l", "ll", "j", "z", "t":
+		return n
+	default:
+		return n
+	}
 }
 
 func writeCountType(lengthMod string) (bytecode.ValueType, int64) {

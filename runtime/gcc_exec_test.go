@@ -2425,6 +2425,8 @@ int main(void)
 func TestPlainSprintfExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 int main(void)
@@ -2436,11 +2438,17 @@ int main(void)
   if (strcmp(buf, "x=-7 ok") != 0)
     return 2;
 
+  n = sprintf(buf, "%hhd %hd %d %ld %lld %jd %td", 255, 65534, -3, -4L, -5LL, (intmax_t)-6, (ptrdiff_t)-7);
+  if (n != 20)
+    return 3;
+  if (strcmp(buf, "-1 -2 -3 -4 -5 -6 -7") != 0)
+    return 4;
+
   char small[5];
   n = snprintf(small, 5, "%s-%u", "abcdef", 3U);
   if (n != 8)
-    return 3;
-  return strcmp(small, "abcd") == 0 ? 0 : 4;
+    return 5;
+  return strcmp(small, "abcd") == 0 ? 0 : 6;
 }
 `
 	st := runGCCExecFixture(t, "plain-sprintf-runtime.c", source)
