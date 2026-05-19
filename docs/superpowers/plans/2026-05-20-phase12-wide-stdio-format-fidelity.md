@@ -215,9 +215,11 @@ Recheck result: `TestGCCExecutionGapReportIsCurrent` passed. The imported `gcc-c
 
 Calibration before execution: Search all touched declarations, registrations, and tests.
 
-- [ ] Recheck declarations, registry entries, direct tests, and source tests.
-- [ ] Add missing smoke coverage if found.
-- [ ] Verify, commit `docs: record phase 12 header registry recheck`, and push.
+- [x] Recheck declarations, registry entries, direct tests, and source tests.
+- [x] Add missing smoke coverage if found.
+- [x] Verify, commit `docs: record phase 12 header registry recheck`, and push.
+
+Recheck result: header declarations, registry entries, and direct extern coverage are present for the Phase 12 surface. Source workflow coverage was tightened by adding `fwprintf` stderr output to the wide format workflow.
 
 ## Milestone 26: Phase 12 Gap Map
 

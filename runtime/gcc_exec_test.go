@@ -4509,17 +4509,23 @@ int main(void)
     return 5;
   if (stdin_n != 44)
     return 6;
-  return wprintf(L"fmt:%04d:%d:%d", 7, n, stdin_n) == 14 ? 0 : 7;
+  if (fwprintf(stderr, L"err:%d", 5) != 5)
+    return 7;
+  return wprintf(L"fmt:%04d:%d:%d", 7, n, stdin_n) == 14 ? 0 : 8;
 }
 `
 	var out bytes.Buffer
-	reg := DefaultExternRegistryWithIO(strings.NewReader("44 rest"), &out, nil)
+	var errOut bytes.Buffer
+	reg := DefaultExternRegistryWithIO(strings.NewReader("44 rest"), &out, &errOut)
 	st := runGCCExecFixtureWithLoadOptions(t, "wide-format-workflow-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
 	if out.String() != "fmt:0007:33:44" {
 		t.Fatalf("stdout = %q, want fmt:0007:33:44", out.String())
+	}
+	if errOut.String() != "err:5" {
+		t.Fatalf("stderr = %q, want err:5", errOut.String())
 	}
 }
 
