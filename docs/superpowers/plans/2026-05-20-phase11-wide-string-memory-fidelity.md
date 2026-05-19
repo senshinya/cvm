@@ -36,17 +36,22 @@ Findings:
 
 Calibration before execution: Re-read existing narrow string helper functions and memory load/store helpers.
 
-- [ ] Add private helpers for reading/writing 32-bit `wchar_t`, scanning NUL-terminated wide strings, comparing wide values, and copying bounded wide arrays.
-- [ ] Cover helpers indirectly through first extern tests.
-- [ ] Run focused runtime test, standard verification, commit `feat(runtime): add wide string primitives`, and push.
+- [x] Add private helpers for reading 32-bit `wchar_t` values and computing bounded wide-element addresses.
+- [x] Cover helpers indirectly through first extern tests.
+- [x] Run focused runtime test, standard verification, commit with first consumer, and push.
+
+Findings:
+
+- The first primitive slice is deliberately small: `wideElementAddr` and `loadWideChar` cover bounded wide-array reads for `wmemchr`.
+- Write, scan, compare, and copy helpers will be introduced with the first extern that needs each behavior, keeping declarations and implementations synchronized.
 
 ## Milestone 4: `wmemchr`
 
 Calibration before execution: Compare `memchr` byte masking with full wide-value matching.
 
-- [ ] Register and implement `wmemchr`.
-- [ ] Cover hit, miss, zero-count invalid pointer, NUL, and high wide value.
-- [ ] Verify, commit `feat(runtime): add wmemchr`, and push.
+- [x] Register and implement `wmemchr`.
+- [x] Cover hit, miss, zero-count invalid pointer, NUL, and high wide value.
+- [x] Verify, commit `feat(runtime): add wmemchr`, and push.
 
 ## Milestone 5: `wmemcmp`
 

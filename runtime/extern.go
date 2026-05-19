@@ -2558,6 +2558,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("strncmp", stringNCompareExtern("strncmp"))
 	r.Register("strcoll", stringCollateExtern("strcoll"))
 	r.Register("memchr", memoryCharSearchExtern("memchr"))
+	r.Register("wmemchr", wideMemoryCharSearchExtern("wmemchr"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
 		r.Register(name, stringCopyExtern(name, false))
 	}
@@ -3280,6 +3281,58 @@ func memoryCheckedSetExtern(name string) ExternFunc {
 		}
 		return PtrValue(args[0].Int), nil, nil
 	}
+}
+
+func wideMemoryCharSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, wchar, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		needle := uint32(args[1].Int)
+		for i := int64(0); i < count; i++ {
+			addr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == needle {
+				return PtrValue(addr), nil, nil
+			}
+		}
+		return PtrValue(0), nil, nil
+	}
+}
+
+func wideElementAddr(base uint64, index int64) (uint64, error) {
+	if index < 0 || uint64(index) > math.MaxUint64/4 {
+		return 0, fmt.Errorf("wide element index %d overflows address", index)
+	}
+	offset := uint64(index) * 4
+	if base > math.MaxUint64-offset {
+		return 0, fmt.Errorf("wide element address %#x + %d overflows", base, offset)
+	}
+	return base + offset, nil
+}
+
+func loadWideChar(mem *Memory, addr uint64) (uint32, error) {
+	v, err := mem.Load(addr, bytecode.TypeI32, 4)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(v.Int), nil
 }
 
 func memorySizeArg(name string, arg Value) (int64, error) {
