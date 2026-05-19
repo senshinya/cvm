@@ -2547,6 +2547,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("wcschr", wideStringCharSearchExtern("wcschr"))
 	r.Register("wcsrchr", wideStringReverseCharSearchExtern("wcsrchr"))
 	r.Register("wcsstr", wideStringSearchExtern("wcsstr"))
+	r.Register("wcspbrk", wideStringSetSearchExtern("wcspbrk"))
 	r.Register("strnlen", stringNLengthExtern("strnlen"))
 	r.Register("strerror", stringErrorExtern("strerror", r))
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
@@ -3609,6 +3610,59 @@ func wideStringSearchExtern(name string) ExternFunc {
 			if matched {
 				return PtrValue(hayAddr), nil, nil
 			}
+		}
+	}
+}
+
+func wideStringSetSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		for i := int64(0); ; i++ {
+			addr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				return PtrValue(0), nil, nil
+			}
+			contains, err := wideStringContainsChar(ec.Memory, args[1].Int, ch)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if contains {
+				return PtrValue(addr), nil, nil
+			}
+		}
+	}
+}
+
+func wideStringContainsChar(mem *Memory, setAddr uint64, needle uint32) (bool, error) {
+	for i := int64(0); ; i++ {
+		addr, err := wideElementAddr(setAddr, i)
+		if err != nil {
+			return false, err
+		}
+		ch, err := loadWideChar(mem, addr)
+		if err != nil {
+			return false, err
+		}
+		if ch == 0 {
+			return false, nil
+		}
+		if ch == needle {
+			return true, nil
 		}
 	}
 }

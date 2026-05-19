@@ -137,9 +137,9 @@ Calibration before execution: Re-read `strstr` empty needle behavior.
 
 Calibration before execution: Re-read `strpbrk` set-scan behavior and wide terminators.
 
-- [ ] Register and implement `wcspbrk`.
-- [ ] Cover hit, miss, empty accept set, NUL handling, and high wide values.
-- [ ] Verify, commit `feat(runtime): add wcspbrk`, and push.
+- [x] Register and implement `wcspbrk`.
+- [x] Cover hit, miss, empty accept set, NUL handling, and high wide values.
+- [x] Verify, commit `feat(runtime): add wcspbrk`, and push.
 
 ## Milestone 16: `wcsspn`
 
