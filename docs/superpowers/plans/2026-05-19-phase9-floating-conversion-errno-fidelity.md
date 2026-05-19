@@ -299,10 +299,17 @@ Findings:
 
 Calibration before execution: Run gap report and scan GCC accept roots for newly stable floating conversion candidates.
 
-- [ ] Run `TestGCCExecutionGapReportIsCurrent`.
-- [ ] Scan fixture roots for float conversion, errno, nan, inf, and range candidates.
-- [ ] Add a low-risk fixture only if stable.
-- [ ] Verify, commit, and push `docs: record phase 9 gcc fixture recheck`.
+- [x] Run `TestGCCExecutionGapReportIsCurrent`.
+- [x] Scan fixture roots for float conversion, errno, nan, inf, and range candidates.
+- [x] Add a low-risk fixture only if stable.
+- [x] Verify, commit, and push `docs: record phase 9 gcc fixture recheck`.
+
+Findings:
+
+- `TestGCCExecutionGapReportIsCurrent` passed.
+- Scanned GCC accept roots for `strtod`, `strtof`, `strtold`, `atof`, `errno`, `ERANGE`, NaN, infinity, and range candidates.
+- Relevant compile fixtures such as `float-range-3.c`, `float-range-4.c`, `float-range-5.c`, and `pr19984.c` are already present in `codegen/testdata/gcc-bytecode-compile.tsv`.
+- No new low-risk GCC fixture was added for this milestone; Phase 9 behavior is covered by targeted runtime source fixtures.
 
 ## Milestone 21: Phase 9 Residual Gap Map
 
