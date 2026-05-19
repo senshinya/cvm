@@ -8,10 +8,10 @@ This document records the current state of the bytecode/runtime work so the bran
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-4`
-- Latest implementation/coverage commit before this handoff document update: `26aa762 docs: record phase 4 gcc fixture recheck`
+- Branch: `codex/bytecode-runtime-phase-5`
+- Latest implementation/coverage commit before this handoff document update: `bc19fc2 docs: record phase 5 gcc fixture recheck`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: `origin/codex/bytecode-runtime-phase-4`
+- Upstream: `origin/codex/bytecode-runtime-phase-5`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-4 origin/codex/bytecode-runtime-phase-4
+git switch -c codex/bytecode-runtime-phase-5 origin/codex/bytecode-runtime-phase-5
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-4` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-5` instead.
 
 ## Verification Commands
 
@@ -87,6 +87,24 @@ Closed Phase 4 milestones:
 Residual bounded surfaces after Phase 4:
 
 - Capturing GNU nested-function closure pointers follow stack-trampoline lifetime rules; calling one after the enclosing frame returns remains invalid.
+- Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
+- Locale-specific formatted input, multibyte/wide-character formatted input, native file descriptors, and exact native libc compatibility remain outside the deterministic hosted-runtime model.
+
+## Phase 5 Closure
+
+Phase 5 nested closure lifetime safety is closed on `codex/bytecode-runtime-phase-5`.
+
+Closed Phase 5 milestones:
+
+- Baseline Phase 5 roadmap and nested closure lifetime design.
+- Expired GNU nested-function closure pointers are now tracked after the creating frame exits.
+- Indirect calls through expired closure pointers now trap with an explicit `expired closure pointer` lifecycle diagnostic instead of falling through to a generic invalid indirect-call target.
+- Valid live nested closure calls still pass through existing local, passed-to-callee, VLA capture, and transitive capture runtime coverage.
+- GCC runtime fixture recheck remains closed with 18 runnable manifest candidates and no failures; no newly suitable nested-function pointer fixture was found.
+
+Residual bounded surfaces after Phase 5:
+
+- Escaped GNU nested-function pointers remain invalid after the enclosing frame returns, matching stack-trampoline lifetime constraints. Phase 5 improves diagnostics but does not make those pointers callable.
 - Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
 - Locale-specific formatted input, multibyte/wide-character formatted input, native file descriptors, and exact native libc compatibility remain outside the deterministic hosted-runtime model.
 
