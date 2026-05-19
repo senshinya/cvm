@@ -1395,6 +1395,11 @@ func mbstowcsExtern(name string) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
+		for i := 0; i < len(src); i++ {
+			if src[i] >= 0x80 {
+				return UIntValue(bytecode.TypeU64, ^uint64(0)), nil, nil
+			}
+		}
 		if args[0].Int == 0 {
 			return UIntValue(bytecode.TypeU64, uint64(len(src))), nil, nil
 		}

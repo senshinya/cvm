@@ -2546,9 +2546,28 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	if err != nil || got.Int != 'z' {
 		t.Fatalf("mbstowcs second stored %#v err=%v, want 'z'", got, err)
 	}
+	got, err = mem.Load(wide+8, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 0 {
+		t.Fatalf("mbstowcs terminator stored %#v err=%v, want 0", got, err)
+	}
+	if err := mem.Store(wide+4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 'X')); err != nil {
+		t.Fatalf("store mbstowcs trunc sentinel: %v", err)
+	}
+	ret, exit, err = mbstowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(text), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("mbstowcs trunc ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	got, err = mem.Load(wide+4, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 'X' {
+		t.Fatalf("mbstowcs trunc sentinel %#v err=%v, want unchanged", got, err)
+	}
 	ret, exit, err = mbstowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(text), UIntValue(bytecode.TypeU64, 0)})
 	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
 		t.Fatalf("mbstowcs length ret=%#v exit=%#v err=%v, want u64 2", ret, exit, err)
+	}
+	ret, exit, err = mbstowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(high), UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || signedInt(ret) != -1 {
+		t.Fatalf("mbstowcs high-bit ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
 	}
 
 	if err := mem.Store(wide, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 'o')); err != nil {

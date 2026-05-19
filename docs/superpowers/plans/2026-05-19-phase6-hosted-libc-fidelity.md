@@ -175,10 +175,10 @@ Calibration before execution: Check existing `wctomb` range behavior.
 
 Calibration before execution: Re-read `mbstowcsExtern` and C-locale count semantics.
 
-- [ ] Add tests for null destination length query, truncation, NUL termination when space allows, and high-bit rejection.
-- [ ] Tighten `mbstowcs` behavior.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden mbstowcs c locale`.
+- [x] Add tests for null destination length query, truncation, NUL termination when space allows, and high-bit rejection.
+- [x] Tighten `mbstowcs` behavior.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden mbstowcs c locale`.
 
 ## Milestone 20: `wcstombs` Length And Null Destination
 

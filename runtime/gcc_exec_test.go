@@ -2300,6 +2300,11 @@ int main(void)
     return 7;
   if (wide[0] != L'x' || wide[1] != L'y' || wide[2] != 0)
     return 8;
+  wide[1] = L'X';
+  if (mbstowcs(wide, "xy", 1) != 1 || wide[0] != L'x' || wide[1] != L'X')
+    return 20;
+  if (mbstowcs(wide, bad, 4) != (size_t)-1)
+    return 21;
   if (wctomb(out, L'Z') != 1 || out[0] != 'Z')
     return 9;
   if (wctomb(out, 0) != 1 || out[0] != 0)
