@@ -2239,6 +2239,9 @@ func TestStdioBufferControls(t *testing.T) {
 	if ret, exit, err := setbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), PtrValue(0)}); err != nil || exit != nil || ret.Type != 0 {
 		t.Fatalf("setbuf ret=%#v exit=%#v err=%v", ret, exit, err)
 	}
+	if ret, exit, err := setbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), PtrValue(buf)}); err != nil || exit != nil || ret.Type != 0 {
+		t.Fatalf("setbuf buffer ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
 	setvbufFn, ok := reg.Lookup("setvbuf")
 	if !ok {
 		t.Fatal("missing setvbuf extern")

@@ -2155,6 +2155,7 @@ int main(void)
 {
   char buf[BUFSIZ];
   setbuf(stdout, buf);
+  setbuf(stdout, 0);
   if (setvbuf(stdout, 0, _IOFBF, 0) != 0)
     return 1;
   if (setvbuf(stdout, 0, _IOLBF, 0) != 0)

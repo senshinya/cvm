@@ -140,9 +140,9 @@ Calibration before execution: Check size argument handling and closed stream beh
 
 Calibration before execution: Confirm `setbuf` currently validates stream and returns void.
 
-- [ ] Add direct/source-level tests for `setbuf(stream, buf)` and `setbuf(stream, NULL)`.
-- [ ] Adjust implementation only if validation differs from `setvbuf`.
-- [ ] Verify, commit, and push `test(runtime): cover setbuf controls`.
+- [x] Add direct/source-level tests for `setbuf(stream, buf)` and `setbuf(stream, NULL)`.
+- [x] Adjust implementation only if validation differs from `setvbuf`.
+- [x] Verify, commit, and push `test(runtime): cover setbuf controls`.
 
 ## Milestone 16: `mblen` C-Locale Edge Cases
 
