@@ -148,10 +148,10 @@ Calibration before execution: Confirm `setbuf` currently validates stream and re
 
 Calibration before execution: Re-read `mblenExtern` and existing multibyte tests.
 
-- [ ] Add tests for null state query, zero `n`, NUL character, ASCII character, and high-bit byte rejection.
-- [ ] Tighten C-locale behavior.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden mblen c locale`.
+- [x] Add tests for null state query, zero `n`, NUL character, ASCII character, and high-bit byte rejection.
+- [x] Tighten C-locale behavior.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden mblen c locale`.
 
 ## Milestone 17: `mbtowc` C-Locale Edge Cases
 

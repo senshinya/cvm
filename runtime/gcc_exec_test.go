@@ -2262,6 +2262,9 @@ int main(void)
 {
   wchar_t wide[4];
   char out[4];
+  char bad[2];
+  bad[0] = (char)0x80;
+  bad[1] = 0;
 
   if (mblen("A", 2) != 1)
     return 1;
@@ -2269,6 +2272,10 @@ int main(void)
     return 2;
   if (mblen(0, 0) != 0)
     return 3;
+  if (mblen("A", 0) != -1)
+    return 11;
+  if (mblen(bad, 1) != -1)
+    return 12;
   if (mbtowc(&wide[0], "B", 2) != 1 || wide[0] != L'B')
     return 4;
   wide[0] = L'O';

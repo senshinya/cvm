@@ -1321,6 +1321,9 @@ func mblenExtern(name string) ExternFunc {
 		if ch == 0 {
 			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
+		if ch >= 0x80 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
 		return IntValue(bytecode.TypeI32, 1), nil, nil
 	}
 }

@@ -2419,6 +2419,7 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
 	text := mustAllocBytes(t, mem, "stdlib:mb:text", []byte("Az\x00"), true, blockString)
+	high := mustAllocBytes(t, mem, "stdlib:mb:high", []byte{0x80, 0}, true, blockString)
 	wide, err := mem.TryAlloc("stdlib:mb:wide", 16, 4, false, blockLocal)
 	if err != nil {
 		t.Fatalf("alloc wide: %v", err)
@@ -2443,6 +2444,14 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	ret, exit, err = mblenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), UIntValue(bytecode.TypeU64, 0)})
 	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
 		t.Fatalf("mblen reset ret=%#v exit=%#v err=%v, want i32 0", ret, exit, err)
+	}
+	ret, exit, err = mblenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("mblen zero n ret=%#v exit=%#v err=%v, want i32 -1", ret, exit, err)
+	}
+	ret, exit, err = mblenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(high), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("mblen high-bit ret=%#v exit=%#v err=%v, want i32 -1", ret, exit, err)
 	}
 
 	mbtowcFn, ok := reg.Lookup("mbtowc")
