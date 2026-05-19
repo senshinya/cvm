@@ -113,9 +113,9 @@ Calibration before execution: Re-read `strncmp` zero-count and terminator-before
 
 Calibration before execution: Keep `WEOF` and full wide values unmasked.
 
-- [ ] Register and implement `wcschr`.
-- [ ] Cover hit, miss, NUL terminator, and high wide value.
-- [ ] Verify, commit `feat(runtime): add wcschr`, and push.
+- [x] Register and implement `wcschr`.
+- [x] Cover hit, miss, NUL terminator, and high wide value.
+- [x] Verify, commit `feat(runtime): add wcschr`, and push.
 
 ## Milestone 13: `wcsrchr`
 
