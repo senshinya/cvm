@@ -309,10 +309,17 @@ Findings:
 
 Calibration before execution: Run gap report and scan imported GCC accept roots for wide/multibyte/locale candidates.
 
-- [ ] Run `TestGCCExecutionGapReportIsCurrent`.
-- [ ] Scan fixture roots for newly unblocked candidates.
-- [ ] Add a low-risk fixture only if stable.
-- [ ] Verify, commit, and push `docs: record phase 10 gcc fixture recheck`.
+- [x] Run `TestGCCExecutionGapReportIsCurrent`.
+- [x] Scan fixture roots for newly unblocked candidates.
+- [x] Add a low-risk fixture only if stable.
+- [x] Verify, commit, and push `docs: record phase 10 gcc fixture recheck`.
+
+Findings:
+
+- `TestGCCExecutionGapReportIsCurrent` is current with no GCC runtime blockers.
+- Locale/wide/multibyte scan only found `c99-init-1.c` wide-string initialization and `c99-tgmath-1.c` `nexttoward` macro coverage in the imported accept roots.
+- `c99-init-1.c` is already covered by both `runtime/testdata/gcc-exec/manifest.tsv` and `codegen/testdata/gcc-bytecode-compile.tsv`; `c99-tgmath-1.c` is already a bytecode compile fixture and is not a Phase 10 runtime fixture candidate.
+- No additional GCC runtime fixture is needed for Phase 10.
 
 ## Milestone 22: Phase 10 Residual Gap Map
 
