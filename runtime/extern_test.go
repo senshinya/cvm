@@ -3112,6 +3112,24 @@ func TestStringsBSDMemoryExterns(t *testing.T) {
 	if got != "abcd" {
 		t.Fatalf("bcopy dst=%q, want abcd", got)
 	}
+	overlapForward := mustAllocBytes(t, mem, "bcopy:overlap-forward", []byte("abcdef\x00"), false, blockGlobal)
+	ret, exit, err = bcopyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(overlapForward), PtrValue(overlapForward + 1), UIntValue(bytecode.TypeU64, 5)})
+	if err != nil || exit != nil {
+		t.Fatalf("bcopy overlap forward ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	got, err = mem.ReadCString(overlapForward)
+	if err != nil || got != "aabcde" {
+		t.Fatalf("bcopy overlap forward dst=%q err=%v, want aabcde", got, err)
+	}
+	overlapBackward := mustAllocBytes(t, mem, "bcopy:overlap-backward", []byte("abcdef\x00"), false, blockGlobal)
+	ret, exit, err = bcopyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(overlapBackward + 1), PtrValue(overlapBackward), UIntValue(bytecode.TypeU64, 5)})
+	if err != nil || exit != nil {
+		t.Fatalf("bcopy overlap backward ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	got, err = mem.ReadCString(overlapBackward)
+	if err != nil || got != "bcdeff" {
+		t.Fatalf("bcopy overlap backward dst=%q err=%v, want bcdeff", got, err)
+	}
 
 	bzeroFn, ok := reg.Lookup("bzero")
 	if !ok {

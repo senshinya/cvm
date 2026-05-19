@@ -2833,19 +2833,28 @@ int main(void)
 func TestStringsBSDMemoryExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <strings.h>
+#include <string.h>
 
 int main(void)
 {
   const char src[5] = "abcd";
   char dst[5] = "xxxx";
+  char overlap[7] = "abcdef";
 
   if (bcmp(src, "abce", 4) >= 0)
     return 1;
   bcopy(src, dst, 4);
   if (bcmp(dst, "abcd", 4) != 0)
     return 2;
+  bcopy(overlap, overlap + 1, 5);
+  if (strcmp(overlap, "aabcde") != 0)
+    return 3;
+  strcpy(overlap, "abcdef");
+  bcopy(overlap + 1, overlap, 5);
+  if (strcmp(overlap, "bcdeff") != 0)
+    return 4;
   bzero(dst + 2, 2);
-  return dst[2] == 0 && dst[3] == 0 ? 0 : 3;
+  return dst[2] == 0 && dst[3] == 0 ? 0 : 5;
 }
 `
 	st := runGCCExecFixture(t, "strings-bsd-memory-runtime.c", source)

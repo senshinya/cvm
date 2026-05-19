@@ -150,9 +150,9 @@ Calibration before execution: Re-read `memoryCharCopyExtern`.
 
 Calibration before execution: Re-read `memoryBcopyExtern`.
 
-- [ ] Add direct/source tests for forward and backward overlap.
-- [ ] Fix by using memmove-style temporary copy if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden bcopy overlap`.
+- [x] Add direct/source tests for forward and backward overlap.
+- [x] Fix by using memmove-style temporary copy if needed.
+- [x] Verify, commit, and push `feat(runtime): harden bcopy overlap`.
 
 ## Milestone 18: `memset` And `bzero` Boundaries
 
