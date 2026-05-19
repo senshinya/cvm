@@ -57,9 +57,9 @@ Calibration before execution: Re-read `stringNLengthExtern` and existing no-NUL 
 
 Calibration before execution: Re-read `stringCharSearchExtern`.
 
-- [ ] Add direct/source tests for searching `'\0'`, missing byte, and high `int` argument masking.
-- [ ] Fix `strchr` if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden strchr byte semantics`.
+- [x] Add direct/source tests for searching `'\0'`, missing byte, and high `int` argument masking.
+- [x] Fix `strchr` if needed.
+- [x] Verify, commit, and push `feat(runtime): harden strchr byte semantics`.
 
 ## Milestone 7: `strrchr` Last Match Semantics
 

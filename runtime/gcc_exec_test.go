@@ -2548,17 +2548,23 @@ func TestStringHeaderReadOnlyHelpersExecuteThroughRuntime(t *testing.T) {
 int main(void)
 {
   const char *text = "abcdef";
+  char high[4] = {'a', (char)0x82, 'c', 0};
+
   if (strlen(text) != 6)
     return 1;
   if (strchr(text, 'd') != text + 3)
     return 2;
   if (strchr(text, 'z') != 0)
     return 3;
-  if (strstr(text, "cd") != text + 2)
+  if (strchr(text, 0) != text + 6)
     return 4;
-  if (strcmp(text, "abcdef") != 0)
+  if (strchr(high, 0x182) != high + 1)
     return 5;
-  return memcmp(text, "abcxef", 4) < 0 ? 0 : 6;
+  if (strstr(text, "cd") != text + 2)
+    return 6;
+  if (strcmp(text, "abcdef") != 0)
+    return 7;
+  return memcmp(text, "abcxef", 4) < 0 ? 0 : 8;
 }
 `
 	st := runGCCExecFixture(t, "string-read-only-header-runtime.c", source)

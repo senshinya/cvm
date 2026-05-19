@@ -3894,6 +3894,46 @@ func TestStrcmpRequiresMemory(t *testing.T) {
 	}
 }
 
+func TestStringCharSearchExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	text := mustAllocBytes(t, mem, "strchr:text", []byte{'a', 0x82, 'c', 0}, true, blockString)
+	for _, name := range []string{"strchr", "__builtin_strchr"} {
+		fn, ok := reg.Lookup(name)
+		if !ok {
+			t.Fatalf("missing %s extern", name)
+		}
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, 'c')})
+		if err != nil || exit != nil {
+			t.Fatalf("%s hit ret=%#v exit=%#v err=%v", name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != text+2 {
+			t.Fatalf("%s hit ret=%#v, want pointer %#x", name, ret, text+2)
+		}
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, 0)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s nul ret=%#v exit=%#v err=%v", name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != text+3 {
+			t.Fatalf("%s nul ret=%#v, want pointer %#x", name, ret, text+3)
+		}
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, 0x182)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s masked ret=%#v exit=%#v err=%v", name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != text+1 {
+			t.Fatalf("%s masked ret=%#v, want pointer %#x", name, ret, text+1)
+		}
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, 'z')})
+		if err != nil || exit != nil {
+			t.Fatalf("%s miss ret=%#v exit=%#v err=%v", name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+			t.Fatalf("%s miss ret=%#v, want null pointer", name, ret)
+		}
+	}
+}
+
 func TestStringBoundedCompareSearchExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
