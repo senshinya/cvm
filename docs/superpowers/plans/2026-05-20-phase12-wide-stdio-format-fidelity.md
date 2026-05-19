@@ -14,9 +14,13 @@
 
 Calibration before execution: Start from merged Phase 11 and confirm wide string helpers are available.
 
-- [ ] Create or update this plan after Phase 11 closure.
-- [ ] Run baseline verification.
-- [ ] Commit and push `docs: start phase 12 wide stdio work`.
+- [x] Create or update this plan after Phase 11 closure.
+- [x] Run baseline verification.
+- [x] Commit and push `docs: start phase 12 wide stdio work`.
+
+Baseline notes:
+- Phase 12 starts from `main` after `merge: bytecode runtime phase 11`.
+- `git diff --check`, `go test ./codegen -count=1`, and `go test ./... -count=1` passed with `GOCACHE=/private/tmp/cvm-go-build-cache`.
 
 ## Milestone 2: Header Declarations For Wide Stdio
 
