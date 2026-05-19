@@ -37,10 +37,10 @@ Calibration before execution: Re-read `fgetposExtern`, `ftellExtern`, and tests 
 
 Calibration before execution: Re-read `fsetposExtern`, `fseekExtern`, and update-mode direction reset behavior.
 
-- [ ] Add failing direct extern test for restoring a configured-file position.
-- [ ] Implement `fsetpos` for `hostFile` by loading `TypeI64`, rejecting negative offsets, clearing pushback/EOF, and resetting update-mode direction.
-- [ ] Add source-level runtime test using `fgetpos` plus `fsetpos`.
-- [ ] Verify, commit, and push `feat(runtime): set configured file positions`.
+- [x] Add failing direct extern test for restoring a configured-file position.
+- [x] Implement `fsetpos` for `hostFile` by loading `TypeI64`, rejecting negative offsets, clearing pushback/EOF, and resetting update-mode direction.
+- [x] Add source-level runtime test using `fgetpos` plus `fsetpos`.
+- [x] Verify, commit, and push `feat(runtime): set configured file positions`.
 
 ## Milestone 4: `fgetpos`/`fsetpos` Error Edges
 

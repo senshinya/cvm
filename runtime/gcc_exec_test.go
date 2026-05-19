@@ -300,6 +300,10 @@ int main(void)
     return 9;
   if (fgetc(f) != 'C')
     return 4;
+  if (fsetpos(f, &pos) != 0)
+    return 10;
+  if (fgetc(f) != 'C')
+    return 11;
   if (fseek(f, -1, SEEK_END) != 0)
     return 5;
   if (fgetc(f) != 'E')

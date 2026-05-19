@@ -299,6 +299,10 @@ func TestConfiguredFilePositioning(t *testing.T) {
 	if !ok {
 		t.Fatal("missing fgetpos extern")
 	}
+	fsetposFn, ok := reg.Lookup("fsetpos")
+	if !ok {
+		t.Fatal("missing fsetpos extern")
+	}
 	rewindFn, ok := reg.Lookup("rewind")
 	if !ok {
 		t.Fatal("missing rewind extern")
@@ -338,6 +342,14 @@ func TestConfiguredFilePositioning(t *testing.T) {
 	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
 	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'C' {
 		t.Fatalf("fgetc ret=%#v exit=%#v err=%v, want C", ret, exit, err)
+	}
+	ret, exit, err = fsetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), PtrValue(posAddr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fsetpos ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'C' {
+		t.Fatalf("fgetc after fsetpos ret=%#v exit=%#v err=%v, want C", ret, exit, err)
 	}
 	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{
 		PtrValue(file),
