@@ -182,10 +182,17 @@ Findings:
 
 Calibration before execution: Confirm float32 underflow/subnormal behavior in runtime values.
 
-- [ ] Add direct/source tests for float32 underflow to zero.
-- [ ] Set `errno` to `ERANGE` on underflow-to-zero.
-- [ ] Preserve representable float32 subnormals where possible.
-- [ ] Verify, commit, and push `feat(runtime): mark strtof underflow`.
+- [x] Add direct/source tests for float32 underflow to zero.
+- [x] Set `errno` to `ERANGE` on underflow-to-zero.
+- [x] Preserve representable float32 subnormals where possible.
+- [x] Verify, commit, and push `feat(runtime): mark strtof underflow`.
+
+Findings:
+
+- The float32 normalization added for overflow also detects underflow when a nonzero parsed float64 narrows to signed float32 zero.
+- Added direct extern and source-level runtime coverage for positive and negative float32 underflow-to-zero.
+- Added subnormal coverage proving `1e-45` narrows to the smallest float32 subnormal without setting `errno`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibMoreFloatParser' -count=1` passed.
 
 ## Milestone 13: `strtold` Current Flong Overflow
 

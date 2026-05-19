@@ -2644,6 +2644,27 @@ int main(void)
     return 9;
   if (errno != ERANGE)
     return 10;
+  errno = 0;
+  if (strtof("1e-50!", &end) != 0.0f)
+    return 11;
+  if (*end != '!')
+    return 12;
+  if (errno != ERANGE)
+    return 13;
+  errno = 0;
+  if (strtof("-1e-50?", &end) != 0.0f)
+    return 14;
+  if (*end != '?')
+    return 15;
+  if (errno != ERANGE)
+    return 16;
+  errno = 0;
+  if (strtof("1e-45!", &end) != 0x1p-149f)
+    return 17;
+  if (*end != '!')
+    return 18;
+  if (errno != 0)
+    return 19;
   long double l = strtold("-0x1.4p+2z", &end);
   if (l != -5.0L)
     return 3;
