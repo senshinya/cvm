@@ -195,24 +195,26 @@ Run the standard verification chain, then commit `test(runtime): cover scanf sca
 
 Calibration before execution: Re-run the existing GCC runtime gap report and scan compile-only `main` candidates for newly unblocked stdio/input fixtures.
 
+Result: `TestGCCExecutionGapReportIsCurrent` still reports 18 runnable manifest candidates with no failures. A scan across `sema/testdata/gcc-c99/accept`, `sema/testdata/gcc-c99-extra/accept`, and `sema/testdata/gcc-c90-as-c99/accept` found no `scanf`, `fscanf`, `sscanf`, scanset, floating-scanf, or pointer-scanf accept fixture candidates to add.
+
 **Files:**
 - Modify: `runtime/testdata/gcc-exec/gap-report.md` if regenerated content changes
 - Modify: `runtime/gcc_exec_test.go` only if a low-risk newly unblocked fixture exists
 - Modify: this plan file
 
-- [ ] **Step 1: Re-run GCC runtime gap report**
+- [x] **Step 1: Re-run GCC runtime gap report**
 
 Run: `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1`
 
-- [ ] **Step 2: Scan for newly unblocked stdio fixtures**
+- [x] **Step 2: Scan for newly unblocked stdio fixtures**
 
 Use `rg` over imported GCC accept roots for `scanf`, `fscanf`, `sscanf`, `%[`, `%f`, and `%p`.
 
-- [ ] **Step 3: Add one fixture only if it is low-risk and exit-0**
+- [x] **Step 3: Add one fixture only if it is low-risk and exit-0**
 
 If no candidate exists, record that explicitly in this plan and docs.
 
-- [ ] **Step 4: Verify, commit, and push fixture recheck**
+- [x] **Step 4: Verify, commit, and push fixture recheck**
 
 Run the standard verification chain, then commit either fixture coverage or docs-only recheck.
 
