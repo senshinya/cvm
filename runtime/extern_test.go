@@ -3913,6 +3913,39 @@ func TestCtypeCaseConversionExterns(t *testing.T) {
 	}
 }
 
+func TestWideCtypeCaseConversionExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	tests := []struct {
+		name string
+		ch   int64
+		want int64
+	}{
+		{name: "towlower", ch: 'A', want: 'a'},
+		{name: "towlower", ch: 'z', want: 'z'},
+		{name: "towlower", ch: '!', want: '!'},
+		{name: "towlower", ch: -1, want: -1},
+		{name: "towlower", ch: 0x141, want: 0x141},
+		{name: "towupper", ch: 'q', want: 'Q'},
+		{name: "towupper", ch: 'Z', want: 'Z'},
+		{name: "towupper", ch: '!', want: '!'},
+		{name: "towupper", ch: -1, want: -1},
+		{name: "towupper", ch: 0x171, want: 0x171},
+	}
+	for _, tt := range tests {
+		fn, ok := reg.Lookup(tt.name)
+		if !ok {
+			t.Fatalf("missing %s extern", tt.name)
+		}
+		ret, exit, err := fn(context.Background(), nil, []Value{IntValue(bytecode.TypeI32, tt.ch)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s(%d) ret=%#v exit=%#v err=%v", tt.name, tt.ch, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypeI32 || signedInt(ret) != tt.want {
+			t.Fatalf("%s(%d) ret=%#v, want i32 %d", tt.name, tt.ch, ret, tt.want)
+		}
+	}
+}
+
 func TestPlainMemoryOperationExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

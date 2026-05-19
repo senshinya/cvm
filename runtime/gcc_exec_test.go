@@ -1860,6 +1860,41 @@ int main(void)
 	}
 }
 
+func TestWideCtypeCaseConversionExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wctype.h>
+
+int main(void)
+{
+  if (towlower(L'A') != L'a')
+    return 1;
+  if (towlower(L'z') != L'z')
+    return 2;
+  if (towlower(L'!') != L'!')
+    return 3;
+  if (towlower(WEOF) != WEOF)
+    return 4;
+  if (towlower(0x141) != 0x141)
+    return 5;
+  if (towupper(L'q') != L'Q')
+    return 6;
+  if (towupper(L'Z') != L'Z')
+    return 7;
+  if (towupper(L'!') != L'!')
+    return 8;
+  if (towupper(WEOF) != WEOF)
+    return 9;
+  if (towupper(0x171) != 0x171)
+    return 10;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-ctype-case-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <time.h>

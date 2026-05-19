@@ -148,10 +148,17 @@ Findings:
 
 Calibration before execution: Mirror `tolower`/`toupper` EOF and ASCII behavior for `wint_t`.
 
-- [ ] Implement `towlower` and `towupper`.
-- [ ] Add direct extern tests for EOF, ASCII, punctuation, and high values.
-- [ ] Add source-level tests.
-- [ ] Verify, commit, and push `feat(runtime): add wide case conversion`.
+- [x] Implement `towlower` and `towupper`.
+- [x] Add direct extern tests for EOF, ASCII, punctuation, and high values.
+- [x] Add source-level tests.
+- [x] Verify, commit, and push `feat(runtime): add wide case conversion`.
+
+Findings:
+
+- `towlower` and `towupper` use deterministic C-locale ASCII mappings over full `wint_t` values.
+- `WEOF` is preserved and high non-ASCII values are returned unchanged.
+- Added direct extern and source-level runtime coverage for ASCII conversion, punctuation, `WEOF`, and high values.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestWideCtypeCaseConversion' -count=1` passed.
 
 ## Milestone 11: `wctype` And `iswctype`
 
