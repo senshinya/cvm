@@ -286,6 +286,7 @@ func TestGCCFopenConfiguredFilePositioningExecutesThroughRuntime(t *testing.T) {
 
 int main(void)
 {
+  fpos_t pos = 0;
   FILE *f = fopen("data.txt", "r");
   if (!f)
     return 1;
@@ -293,6 +294,10 @@ int main(void)
     return 2;
   if (ftell(f) != 2L)
     return 3;
+  if (fgetpos(f, &pos) != 0)
+    return 8;
+  if (pos != 2)
+    return 9;
   if (fgetc(f) != 'C')
     return 4;
   if (fseek(f, -1, SEEK_END) != 0)

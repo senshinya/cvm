@@ -28,10 +28,10 @@ Run standard verification, then commit `docs: define phase 6 hosted libc roadmap
 
 Calibration before execution: Re-read `fgetposExtern`, `ftellExtern`, and tests around stdio position helpers; confirm configured files still return `-1` from `fgetpos`.
 
-- [ ] Add failing direct extern test for `fgetpos` storing the current configured-file offset.
-- [ ] Implement `fgetpos` for `hostFile` by storing `file.pos` as `TypeI64`.
-- [ ] Add source-level runtime test using `fgetpos`.
-- [ ] Verify, commit, and push `feat(runtime): get configured file positions`.
+- [x] Add failing direct extern test for `fgetpos` storing the current configured-file offset.
+- [x] Implement `fgetpos` for `hostFile` by storing `file.pos` as `TypeI64`.
+- [x] Add source-level runtime test using `fgetpos`.
+- [x] Verify, commit, and push `feat(runtime): get configured file positions`.
 
 ## Milestone 3: `fsetpos` For Configured Files
 

@@ -879,6 +879,12 @@ func fgetposExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, _, err := ec.Memory.rangeAccess(args[1].Int, int64(valueSize(ec.Memory.target, bytecode.TypeI64)), true); err != nil {
 			return Value{}, nil, err
 		}
+		if file := r.hostFiles[args[0].Int]; file != nil {
+			if err := ec.Memory.Store(args[1].Int, bytecode.TypeI64, 8, IntValue(bytecode.TypeI64, file.pos)); err != nil {
+				return Value{}, nil, err
+			}
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
 		return IntValue(bytecode.TypeI32, -1), nil, nil
 	}
 }
