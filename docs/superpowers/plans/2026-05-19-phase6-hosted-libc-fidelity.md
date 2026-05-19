@@ -54,10 +54,10 @@ Calibration before execution: Check standard-stream stub tests and invalid posit
 
 Calibration before execution: Re-read `freopenExtern` and `fopenExtern`; confirm `freopen` still returns null for configured existing files.
 
-- [ ] Add failing direct extern test reopening an existing stream as configured read file.
-- [ ] Implement `freopen` replacement state for `r` mode over configured files.
-- [ ] Add source-level runtime test for `freopen(..., "r", stdout_like_handle)` using a configured file handle.
-- [ ] Verify, commit, and push `feat(runtime): reopen configured read files`.
+- [x] Add failing direct extern test reopening an existing stream as configured read file.
+- [x] Implement `freopen` replacement state for `r` mode over configured files.
+- [x] Add source-level runtime test for `freopen(..., "r", stdout_like_handle)` using a configured file handle.
+- [x] Verify, commit, and push `feat(runtime): reopen configured read files`.
 
 ## Milestone 6: `freopen` Write And Truncate Modes
 

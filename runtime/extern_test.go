@@ -167,6 +167,47 @@ func TestStdioOpenMissingFileStubs(t *testing.T) {
 	}
 }
 
+func TestFreopenConfiguredReadFile(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("new.txt", []byte("NEW"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	oldPath := mustAllocBytes(t, mem, "stdio:freopen-old-path", []byte("old.txt\x00"), true, blockString)
+	newPath := mustAllocBytes(t, mem, "stdio:freopen-new-path", []byte("new.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "stdio:freopen-read-mode", []byte("r\x00"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	freopenFn, ok := reg.Lookup("freopen")
+	if !ok {
+		t.Fatal("missing freopen extern")
+	}
+	fgetcFn, ok := reg.Lookup("fgetc")
+	if !ok {
+		t.Fatal("missing fgetc extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(oldPath), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'O' {
+		t.Fatalf("fgetc old ret=%#v exit=%#v err=%v, want O", ret, exit, err)
+	}
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(newPath), PtrValue(mode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != file {
+		t.Fatalf("freopen ret=%#v exit=%#v err=%v, want same file handle", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'N' {
+		t.Fatalf("fgetc reopened ret=%#v exit=%#v err=%v, want N", ret, exit, err)
+	}
+}
+
 func TestTmpfileReadWrite(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

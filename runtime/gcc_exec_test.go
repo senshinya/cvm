@@ -231,6 +231,33 @@ int main(void)
 	}
 }
 
+func TestGCCFreopenConfiguredReadFileExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  FILE *f = fopen("old.txt", "r");
+  if (!f)
+    return 1;
+  if (fgetc(f) != 'O')
+    return 2;
+  if (freopen("new.txt", "r", f) != f)
+    return 3;
+  if (fgetc(f) != 'N')
+    return 4;
+  return 0;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("new.txt", []byte("NEW"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-freopen-configured-read-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCTmpfileReadWriteExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

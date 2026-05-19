@@ -453,16 +453,39 @@ func freopenExtern(name string, r *ExternRegistry) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+		path, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
 			return Value{}, nil, err
 		}
-		if _, err := ec.Memory.ReadCString(args[1].Int); err != nil {
+		mode, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
 			return Value{}, nil, err
 		}
 		if _, ok := r.lookupHostWriter(args[2].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[2].Int)
 		}
-		return PtrValue(0), nil, nil
+		data, ok := r.files[path]
+		if !strings.HasPrefix(mode, "r") || !ok {
+			return PtrValue(0), nil, nil
+		}
+		if old := r.hostFiles[args[2].Int]; old != nil && old.writable && old.path != "" {
+			r.files[old.path] = append([]byte(nil), old.data...)
+		}
+		file := &hostFile{
+			path:     path,
+			data:     append([]byte(nil), data...),
+			readable: true,
+		}
+		if strings.Contains(mode, "+") {
+			file.writable = true
+			file.updateMode = true
+		}
+		r.hostFiles[args[2].Int] = file
+		r.hostWriters[args[2].Int] = hostFileWriter{registry: r, addr: args[2].Int}
+		delete(r.hostPushback, args[2].Int)
+		delete(r.hostEOF, args[2].Int)
+		delete(r.hostError, args[2].Int)
+		return PtrValue(args[2].Int), nil, nil
 	}
 }
 
