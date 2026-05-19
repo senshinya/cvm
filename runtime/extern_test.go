@@ -3600,6 +3600,84 @@ func TestStdlibMoreFloatParserExterns(t *testing.T) {
 	if signedInt(errnoValue) != 34 {
 		t.Fatalf("errno after strtold negative overflow=%#v, want ERANGE", errnoValue)
 	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtold underflow: %v", err)
+	}
+	longUnderflowText := mustAllocBytes(t, mem, "strtold:underflow", []byte("1e-400!\x00"), true, blockString)
+	ret, exit, err = strtoldFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(longUnderflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtold underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeFLong || ret.Float != 0 || math.Signbit(ret.Float) {
+		t.Fatalf("strtold underflow ret=%#v, want flong +0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtold underflow endptr: %v", err)
+	}
+	if loadedEnd.Int != longUnderflowText+6 {
+		t.Fatalf("strtold underflow endptr=%#x, want %#x", loadedEnd.Int, longUnderflowText+6)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtold underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtold underflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtold negative underflow: %v", err)
+	}
+	negativeLongUnderflowText := mustAllocBytes(t, mem, "strtold:negative-underflow", []byte("-1e-400?\x00"), true, blockString)
+	ret, exit, err = strtoldFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeLongUnderflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtold negative underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeFLong || ret.Float != 0 || !math.Signbit(ret.Float) {
+		t.Fatalf("strtold negative underflow ret=%#v, want flong -0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtold negative underflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeLongUnderflowText+7 {
+		t.Fatalf("strtold negative underflow endptr=%#x, want %#x", loadedEnd.Int, negativeLongUnderflowText+7)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtold negative underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtold negative underflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtold subnormal: %v", err)
+	}
+	longSubnormalText := mustAllocBytes(t, mem, "strtold:subnormal", []byte("5e-324!\x00"), true, blockString)
+	ret, exit, err = strtoldFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(longSubnormalText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtold subnormal ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeFLong || ret.Float != 5e-324 {
+		t.Fatalf("strtold subnormal ret=%#v, want smallest binary64 subnormal", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtold subnormal endptr: %v", err)
+	}
+	if loadedEnd.Int != longSubnormalText+6 {
+		t.Fatalf("strtold subnormal endptr=%#x, want %#x", loadedEnd.Int, longSubnormalText+6)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtold subnormal: %v", err)
+	}
+	if signedInt(errnoValue) != 0 {
+		t.Fatalf("errno after strtold subnormal=%#v, want 0", errnoValue)
+	}
 }
 
 func TestCtypeClassificationExterns(t *testing.T) {

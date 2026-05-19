@@ -212,9 +212,16 @@ Findings:
 
 Calibration before execution: Reconfirm current flong underflow behavior.
 
-- [ ] Add direct/source tests documenting current flong underflow-to-zero behavior.
-- [ ] Set `errno` to `ERANGE` consistently with current representation.
-- [ ] Verify, commit, and push `feat(runtime): mark strtold underflow`.
+- [x] Add direct/source tests documenting current flong underflow-to-zero behavior.
+- [x] Set `errno` to `ERANGE` consistently with current representation.
+- [x] Verify, commit, and push `feat(runtime): mark strtold underflow`.
+
+Findings:
+
+- Current `TypeFLong` underflow follows the binary64-backed `strtod` path.
+- Added direct extern and source-level runtime coverage for positive and negative `strtold` underflow-to-zero.
+- Added subnormal coverage proving `5e-324` remains representable without setting `errno`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibMoreFloatParser' -count=1` passed.
 
 ## Milestone 15: `atof` Wrapper Range Behavior
 

@@ -2684,6 +2684,27 @@ int main(void)
     return 24;
   if (errno != ERANGE)
     return 25;
+  errno = 0;
+  if (strtold("1e-400!", &end) != 0.0L)
+    return 26;
+  if (*end != '!')
+    return 27;
+  if (errno != ERANGE)
+    return 28;
+  errno = 0;
+  if (strtold("-1e-400?", &end) != 0.0L)
+    return 29;
+  if (*end != '?')
+    return 30;
+  if (errno != ERANGE)
+    return 31;
+  errno = 0;
+  if (strtold("5e-324!", &end) != 5e-324L)
+    return 32;
+  if (*end != '!')
+    return 33;
+  if (errno != 0)
+    return 34;
   return 0;
 }
 `
