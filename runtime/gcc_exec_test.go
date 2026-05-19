@@ -2680,6 +2680,30 @@ int main(void)
 	}
 }
 
+func TestPlainSscanfScansetLengthsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <string.h>
+#include <wchar.h>
+
+int main(void)
+{
+  wchar_t wide[4] = { 0, 0, 0, 0 };
+  char narrow[4] = { 0, 0, 0, 0 };
+  int n = sscanf("abc123Z", "%3l[a-z]%3[^Z]", wide, narrow);
+  if (n != 2)
+    return 1;
+  if (!(wide[0] == L'a' && wide[1] == L'b' && wide[2] == L'c' && wide[3] == 0))
+    return 2;
+  return strcmp(narrow, "123") == 0 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "plain-sscanf-scanset-lengths-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinCheckedSprintfExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

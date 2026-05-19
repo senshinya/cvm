@@ -8875,6 +8875,44 @@ func TestSscanfExternScansStringLengthModifiers(t *testing.T) {
 	}
 }
 
+func TestSscanfExternScansScansetLengthModifiers(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+
+	inputAddr := mustAllocBytes(t, mem, "sscanf:scanset-length-input", []byte("abc123Z\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:scanset-length-fmt", []byte("%3l[a-z]%3[^Z]\x00"), true, blockString)
+	wideAddr := mustAlloc(t, mem, "sscanf:scanset-length-wide", 4*4, 4, false, blockLocal)
+	narrowAddr := mustAllocBytes(t, mem, "sscanf:scanset-length-narrow", []byte{0, 0, 0, 0}, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(wideAddr),
+		PtrValue(narrowAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 2 {
+		t.Fatalf("sscanf ret=%#v, want i32 2", ret)
+	}
+	chars, err := readWideCString(mem, wideAddr)
+	if err != nil {
+		t.Fatalf("read wide string: %v", err)
+	}
+	if len(chars) != 3 || chars[0] != 'a' || chars[1] != 'b' || chars[2] != 'c' {
+		t.Fatalf("wide chars=%#v, want abc", chars)
+	}
+	narrow, err := mem.ReadCString(narrowAddr)
+	if err != nil || narrow != "123" {
+		t.Fatalf("narrow=%q err=%v, want 123", narrow, err)
+	}
+}
+
 func TestScanfExternScansStdinAndPreservesUnreadInput(t *testing.T) {
 	reg := DefaultExternRegistryWithIO(strings.NewReader("17 tail"), nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

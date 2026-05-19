@@ -224,9 +224,13 @@ Calibration result:
 
 Calibration before execution: Re-read `parseScanSet` and wide scanner bridge behavior.
 
-- [ ] Cover `%[`, `%l[`, negated sets, ranges, and widths.
-- [ ] Fix wide scanset output behavior if needed.
-- [ ] Verify, commit `feat(runtime): harden scanf wide scansets`, and push.
+- [x] Cover `%[`, `%l[`, negated sets, ranges, and widths.
+- [x] Fix wide scanset output behavior if needed.
+- [x] Verify, commit `test(runtime): cover scanf scansets`, and push.
+
+Calibration result:
+- Scansets already use `parseScanSet` plus `scanStoreText`, so `%l[...]` stores wide text and appends a wide NUL for string-style conversions.
+- Direct and source coverage now lock width-limited wide scansets and negated narrow scansets; no runtime code change was needed.
 
 ## Milestone 20: Scanf Floating Length Modifiers
 
