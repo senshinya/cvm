@@ -258,6 +258,39 @@ int main(void)
 	}
 }
 
+func TestGCCFreopenConfiguredWriteFileExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[3] = { 0, 0, 0 };
+  FILE *f = fopen("old.txt", "r");
+  if (!f)
+    return 1;
+  if (freopen("out.txt", "w", f) != f)
+    return 2;
+  if (fputs("XY", f) < 0)
+    return 3;
+  if (fclose(f) != 0)
+    return 4;
+  f = fopen("out.txt", "r");
+  if (!f)
+    return 5;
+  if (fread(buf, 1, 2, f) != 2)
+    return 6;
+  return buf[0] == 'X' && buf[1] == 'Y' ? 0 : 7;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("out.txt", []byte("stale"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-freopen-configured-write-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCTmpfileReadWriteExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

@@ -63,10 +63,10 @@ Calibration before execution: Re-read `freopenExtern` and `fopenExtern`; confirm
 
 Calibration before execution: Check `w`/`w+` handling in `fopen` and file persistence on close.
 
-- [ ] Add direct tests for `freopen(path, "w", stream)` truncating and writing a configured file.
-- [ ] Implement write/truncate reopen state.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): reopen configured write files`.
+- [x] Add direct tests for `freopen(path, "w", stream)` truncating and writing a configured file.
+- [x] Implement write/truncate reopen state.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): reopen configured write files`.
 
 ## Milestone 7: `freopen` Append Modes
 

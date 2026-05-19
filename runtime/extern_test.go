@@ -208,6 +208,56 @@ func TestFreopenConfiguredReadFile(t *testing.T) {
 	}
 }
 
+func TestFreopenConfiguredWriteFile(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("out.txt", []byte("stale"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	oldPath := mustAllocBytes(t, mem, "stdio:freopen-write-old-path", []byte("old.txt\x00"), true, blockString)
+	outPath := mustAllocBytes(t, mem, "stdio:freopen-write-out-path", []byte("out.txt\x00"), true, blockString)
+	readMode := mustAllocBytes(t, mem, "stdio:freopen-write-read-mode", []byte("r\x00"), true, blockString)
+	writeMode := mustAllocBytes(t, mem, "stdio:freopen-write-mode", []byte("w\x00"), true, blockString)
+	data := mustAllocBytes(t, mem, "stdio:freopen-write-data", []byte("XY"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	freopenFn, ok := reg.Lookup("freopen")
+	if !ok {
+		t.Fatal("missing freopen extern")
+	}
+	fwriteFn, ok := reg.Lookup("fwrite")
+	if !ok {
+		t.Fatal("missing fwrite extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(oldPath), PtrValue(readMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(outPath), PtrValue(writeMode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != file {
+		t.Fatalf("freopen ret=%#v exit=%#v err=%v, want same file handle", ret, exit, err)
+	}
+	if got := string(reg.files["out.txt"]); got != "" {
+		t.Fatalf("freopen truncated out.txt to %q, want empty", got)
+	}
+	ret, exit, err = fwriteFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(data),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 2),
+		PtrValue(file),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("fwrite ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
+	}
+	if got := string(reg.files["out.txt"]); got != "XY" {
+		t.Fatalf("written out.txt = %q, want XY", got)
+	}
+}
+
 func TestTmpfileReadWrite(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

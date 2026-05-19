@@ -464,24 +464,33 @@ func freopenExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[2].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[2].Int)
 		}
+		readable := strings.HasPrefix(mode, "r") || strings.Contains(mode, "+")
+		writable := strings.HasPrefix(mode, "w") || strings.Contains(mode, "+")
+		if strings.HasPrefix(mode, "a") || (!readable && !writable) {
+			return PtrValue(0), nil, nil
+		}
 		data, ok := r.files[path]
-		if !strings.HasPrefix(mode, "r") || !ok {
+		if strings.HasPrefix(mode, "r") && !ok {
 			return PtrValue(0), nil, nil
 		}
 		if old := r.hostFiles[args[2].Int]; old != nil && old.writable && old.path != "" {
 			r.files[old.path] = append([]byte(nil), old.data...)
 		}
 		file := &hostFile{
-			path:     path,
-			data:     append([]byte(nil), data...),
-			readable: true,
+			path:       path,
+			data:       append([]byte(nil), data...),
+			readable:   readable,
+			writable:   writable,
+			updateMode: strings.Contains(mode, "+"),
 		}
-		if strings.Contains(mode, "+") {
-			file.writable = true
-			file.updateMode = true
+		if strings.HasPrefix(mode, "w") {
+			file.data = nil
 		}
 		r.hostFiles[args[2].Int] = file
 		r.hostWriters[args[2].Int] = hostFileWriter{registry: r, addr: args[2].Int}
+		if writable {
+			r.files[path] = append([]byte(nil), file.data...)
+		}
 		delete(r.hostPushback, args[2].Int)
 		delete(r.hostEOF, args[2].Int)
 		delete(r.hostError, args[2].Int)
