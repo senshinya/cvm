@@ -77,9 +77,9 @@ Calibration before execution: Confirm aliases should route through `fgetwc` and 
 
 Calibration before execution: Re-read narrow `ungetc` pushback storage.
 
-- [ ] Register and implement `ungetwc`.
-- [ ] Cover one wide pushback, EOF rejection, invalid high value rejection, and readback.
-- [ ] Verify, commit `feat(runtime): add ungetwc`, and push.
+- [x] Register and implement `ungetwc`.
+- [x] Cover one wide pushback, EOF rejection, invalid high value rejection, and readback.
+- [x] Verify, commit `feat(runtime): add ungetwc`, and push.
 
 ## Milestone 9: `fputws`
 

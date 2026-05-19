@@ -160,9 +160,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("fgetwc", fgetwcExtern("fgetwc", r))
 	r.Register("getwc", fgetwcExtern("getwc", r))
 	r.Register("getwchar", getwcharExtern("getwchar", r))
-	for _, name := range []string{"ungetwc"} {
-		r.Register(name, wideStdioIntStubExtern(name, -1))
-	}
+	r.Register("ungetwc", ungetwcExtern("ungetwc", r))
 	r.Register("fputws", wideStdioIntStubExtern("fputws", -1))
 	r.Register("fgetws", wideStdioPtrStubExtern("fgetws", 0))
 	r.Register("perror", perrorExtern("perror", r))
@@ -854,6 +852,35 @@ func getwcharExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
 		}
 		return r.readHostWideChar(r.stdinHandle), nil, nil
+	}
+}
+
+func ungetwcExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide character and stream arguments", name)
+		}
+		wc := signedInt(args[0])
+		if wc == -1 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		if _, ok := r.lookupHostWriter(args[1].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
+		}
+		if r.setHostOrientation(args[1].Int, streamWide) != streamWide {
+			r.hostError[args[1].Int] = true
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		if wc < 0 || wc > 0x7f {
+			r.hostError[args[1].Int] = true
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		r.hostPushback[args[1].Int] = append(r.hostPushback[args[1].Int], byte(wc))
+		r.hostEOF[args[1].Int] = false
+		return IntValue(bytecode.TypeI32, wc), nil, nil
 	}
 }
 

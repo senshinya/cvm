@@ -1816,6 +1816,90 @@ func TestWideInputAliasesReadConfiguredStdin(t *testing.T) {
 	}
 }
 
+func TestUngetwcPushesWideCharBack(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("A"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	fgetwcFn, ok := reg.Lookup("fgetwc")
+	if !ok {
+		t.Fatal("missing fgetwc extern")
+	}
+	ungetwcFn, ok := reg.Lookup("ungetwc")
+	if !ok {
+		t.Fatal("missing ungetwc extern")
+	}
+	feofFn, ok := reg.Lookup("feof")
+	if !ok {
+		t.Fatal("missing feof extern")
+	}
+
+	ret, exit, err := fgetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'A' {
+		t.Fatalf("fgetwc ret=%#v exit=%#v err=%v, want A", ret, exit, err)
+	}
+	ret, exit, err = fgetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || signedInt(ret) != -1 {
+		t.Fatalf("fgetwc eof ret=%#v exit=%#v err=%v, want WEOF", ret, exit, err)
+	}
+	ret, exit, err = feofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("feof before ungetwc ret=%#v exit=%#v err=%v, want 1", ret, exit, err)
+	}
+	ret, exit, err = ungetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'Z'), PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'Z' {
+		t.Fatalf("ungetwc ret=%#v exit=%#v err=%v, want Z", ret, exit, err)
+	}
+	ret, exit, err = feofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("feof after ungetwc ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fgetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'Z' {
+		t.Fatalf("fgetwc pushback ret=%#v exit=%#v err=%v, want Z", ret, exit, err)
+	}
+}
+
+func TestUngetwcRejectsEOFAndInvalidWideChars(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("B"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	ungetwcFn, ok := reg.Lookup("ungetwc")
+	if !ok {
+		t.Fatal("missing ungetwc extern")
+	}
+	fgetwcFn, ok := reg.Lookup("fgetwc")
+	if !ok {
+		t.Fatal("missing fgetwc extern")
+	}
+	ferrorFn, ok := reg.Lookup("ferror")
+	if !ok {
+		t.Fatal("missing ferror extern")
+	}
+
+	ret, exit, err := ungetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, -1), PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("ungetwc WEOF ret=%#v exit=%#v err=%v, want WEOF", ret, exit, err)
+	}
+	ret, exit, err = fgetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'B' {
+		t.Fatalf("fgetwc after WEOF ret=%#v exit=%#v err=%v, want original B", ret, exit, err)
+	}
+	ret, exit, err = ungetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 0x80), PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("ungetwc high ret=%#v exit=%#v err=%v, want WEOF", ret, exit, err)
+	}
+	ret, exit, err = ferrorFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("ferror ret=%#v exit=%#v err=%v, want 1 after high wide char", ret, exit, err)
+	}
+}
+
 func TestOutputCharacterAliasesWriteBytes(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
