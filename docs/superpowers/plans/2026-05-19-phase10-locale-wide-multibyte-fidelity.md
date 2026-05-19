@@ -325,9 +325,9 @@ Findings:
 
 Calibration before execution: Confirm all Phase 10 implementation milestones are committed and pushed.
 
-- [ ] Create `docs/phase10-locale-wide-multibyte-fidelity-gap-map.md`.
-- [ ] Record closed surfaces and residual deterministic limits.
-- [ ] Verify, commit, and push `docs: map phase 10 locale wide gaps`.
+- [x] Create `docs/phase10-locale-wide-multibyte-fidelity-gap-map.md`.
+- [x] Record closed surfaces and residual deterministic limits.
+- [x] Verify, commit, and push `docs: map phase 10 locale wide gaps`.
 
 ## Milestone 23: Phase 10 Closure Docs
 
