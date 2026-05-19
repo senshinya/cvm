@@ -129,9 +129,9 @@ Calibration before execution: Mirror `strrchr` but advance in 4-byte `wchar_t` u
 
 Calibration before execution: Re-read `strstr` empty needle behavior.
 
-- [ ] Register and implement `wcsstr`.
-- [ ] Cover empty needle, full match, suffix, middle, miss, and high wide value match.
-- [ ] Verify, commit `feat(runtime): add wcsstr`, and push.
+- [x] Register and implement `wcsstr`.
+- [x] Cover empty needle, full match, suffix, middle, miss, and high wide value match.
+- [x] Verify, commit `feat(runtime): add wcsstr`, and push.
 
 ## Milestone 15: `wcspbrk`
 
