@@ -554,6 +554,7 @@ int main(void)
 {
   char *p;
   char buf[L_tmpnam];
+  char buf2[L_tmpnam];
   if (L_tmpnam < 1 || TMP_MAX < 1)
     return 1;
   p = tmpnam(0);
@@ -564,7 +565,12 @@ int main(void)
   p = tmpnam(buf);
   if (p != buf)
     return 4;
-  return buf[0] == '/' && buf[1] == 't' && buf[2] == 'm' && buf[3] == 'p' ? 0 : 5;
+  if (buf[0] != '/' || buf[1] != 't' || buf[2] != 'm' || buf[3] != 'p')
+    return 5;
+  p = tmpnam(buf2);
+  if (p != buf2)
+    return 6;
+  return buf[13] != buf2[13] ? 0 : 7;
 }
 `
 	st := runGCCExecFixture(t, "stdio-tmpnam-runtime.c", source)

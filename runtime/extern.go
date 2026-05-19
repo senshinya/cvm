@@ -41,6 +41,7 @@ type ExternRegistry struct {
 	staticVars     map[*Memory]map[string]uint64
 	strtokNext     map[*Memory]uint64
 	randSeed       uint32
+	tmpnamCounter  uint64
 }
 
 type hostFile struct {
@@ -538,6 +539,8 @@ func tmpnamExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		tmpName := "/tmp/cvm-tmp-0"
 		if args[0].Int != 0 {
+			tmpName = fmt.Sprintf("/tmp/cvm-tmp-%d", r.tmpnamCounter)
+			r.tmpnamCounter++
 			if err := writeMemoryBytes(ec.Memory, args[0].Int, append([]byte(tmpName), 0)); err != nil {
 				return Value{}, nil, err
 			}

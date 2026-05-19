@@ -107,9 +107,9 @@ Calibration before execution: Check writable buffer helpers and `L_tmpnam`.
 
 Calibration before execution: Confirm registry state can hold a temporary-name counter without affecting existing tests.
 
-- [ ] Add tests for multiple distinct `tmpnam` calls.
-- [ ] Add counter state to `ExternRegistry`.
-- [ ] Verify, commit, and push `test(runtime): cover tmpnam sequence`.
+- [x] Add tests for multiple distinct `tmpnam` calls.
+- [x] Add counter state to `ExternRegistry`.
+- [x] Verify, commit, and push `test(runtime): cover tmpnam sequence`.
 
 ## Milestone 12: `tmpnam` With Hermetic File APIs
 

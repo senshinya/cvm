@@ -959,6 +959,37 @@ func TestTmpnamWritesCallerBuffer(t *testing.T) {
 	}
 }
 
+func TestTmpnamCallerBufferSequence(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	first := mustAlloc(t, mem, "stdio:tmpnam-sequence-first", 20, 1, false, blockLocal)
+	second := mustAlloc(t, mem, "stdio:tmpnam-sequence-second", 20, 1, false, blockLocal)
+	fn, ok := reg.Lookup("tmpnam")
+	if !ok {
+		t.Fatal("missing tmpnam extern")
+	}
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(first)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != first {
+		t.Fatalf("first tmpnam ret=%#v exit=%#v err=%v, want first buffer", ret, exit, err)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(second)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != second {
+		t.Fatalf("second tmpnam ret=%#v exit=%#v err=%v, want second buffer", ret, exit, err)
+	}
+	firstName, err := mem.ReadCString(first)
+	if err != nil {
+		t.Fatalf("first tmpnam string: %v", err)
+	}
+	secondName, err := mem.ReadCString(second)
+	if err != nil {
+		t.Fatalf("second tmpnam string: %v", err)
+	}
+	if firstName != "/tmp/cvm-tmp-0" || secondName != "/tmp/cvm-tmp-1" {
+		t.Fatalf("tmpnam names = %q, %q; want sequence 0, 1", firstName, secondName)
+	}
+}
+
 func TestStdioPositionStubs(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
