@@ -2515,6 +2515,58 @@ func TestSwprintfSupportsWideCharacterFormat(t *testing.T) {
 	}
 }
 
+func TestSwprintfSupportsWideStringFormat(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	buf := mustAllocBytes(t, mem, "swprintf:wide-string-buf", make([]byte, 64), false, blockLocal)
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	readWide := func(addr uint64) string {
+		t.Helper()
+		chars, err := readWideCString(mem, addr)
+		if err != nil {
+			t.Fatalf("read wide string: %v", err)
+		}
+		var b strings.Builder
+		for _, ch := range chars {
+			b.WriteByte(byte(ch))
+		}
+		return b.String()
+	}
+	format := makeWide("swprintf:wide-string-fmt", '%', 's', ' ', '%', '.', '3', 'l', 's', ' ', '%', 'l', 's', 0)
+	narrow := mustAllocBytes(t, mem, "swprintf:wide-string-narrow", []byte("ok\x00"), true, blockString)
+	wide := makeWide("swprintf:wide-string-wide", 'a', 'b', 'c', 'd', 'e', 'f', 0)
+	fn, ok := reg.Lookup("swprintf")
+	if !ok {
+		t.Fatal("missing swprintf extern")
+	}
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(buf),
+		UIntValue(bytecode.TypeU64, 16),
+		PtrValue(format),
+		PtrValue(narrow),
+		PtrValue(wide),
+		PtrValue(wide),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 13 {
+		t.Fatalf("swprintf ret=%#v exit=%#v err=%v, want 13", ret, exit, err)
+	}
+	if got := readWide(buf); got != "ok abc abcdef" {
+		t.Fatalf("swprintf output = %q, want ok abc abcdef", got)
+	}
+}
+
 func TestSwprintfTruncatesAndRejectsHighFormat(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
@@ -9512,6 +9564,72 @@ func TestFormatExternsRejectHighWideCharacter(t *testing.T) {
 	})
 	if callErr == nil || exit != nil {
 		t.Fatalf("__builtin_sprintf exit=%#v err=%v, want high wide character error", exit, callErr)
+	}
+}
+
+func TestFormatExternsSupportWideStringLengthModifier(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-wide-string", 32, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-wide-string", []byte("%s %.3ls %ls\x00"), true, blockString)
+	narrow := mustAllocBytes(t, mem, "str:format-wide-string-narrow", []byte("ok\x00"), true, blockString)
+	wide, err := mem.TryAlloc("str:format-wide-string-wide", 7*4, 4, false, blockString)
+	if err != nil {
+		t.Fatalf("alloc wide string: %v", err)
+	}
+	for i, ch := range []uint32{'a', 'b', 'c', 'd', 'e', 'f', 0} {
+		if err := storeWideChar(mem, wide+uint64(i*4), ch); err != nil {
+			t.Fatalf("store wide[%d]: %v", i, err)
+		}
+	}
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(narrow),
+		PtrValue(wide),
+		PtrValue(wide),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 13 || got != "ok abc abcdef" {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q, want i32 13 and ok abc abcdef", ret, got)
+	}
+}
+
+func TestFormatExternsRejectHighWideString(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-high-wide-string", 16, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-high-wide-string", []byte("%ls\x00"), true, blockString)
+	wide, err := mem.TryAlloc("str:format-high-wide-string", 2*4, 4, false, blockString)
+	if err != nil {
+		t.Fatalf("alloc wide string: %v", err)
+	}
+	for i, ch := range []uint32{0x80, 0} {
+		if err := storeWideChar(mem, wide+uint64(i*4), ch); err != nil {
+			t.Fatalf("store wide[%d]: %v", i, err)
+		}
+	}
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	_, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(wide),
+	})
+	if callErr == nil || exit != nil {
+		t.Fatalf("__builtin_sprintf exit=%#v err=%v, want high wide string error", exit, callErr)
 	}
 }
 

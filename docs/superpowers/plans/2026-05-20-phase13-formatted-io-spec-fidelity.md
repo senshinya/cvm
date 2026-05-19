@@ -80,9 +80,13 @@ Calibration result:
 
 Calibration before execution: Confirm current `%s` behavior and Phase 12 wide string storage.
 
-- [ ] Cover narrow `%s` and wide `%ls` for narrow and wide formatted output.
-- [ ] Add precision coverage for wide strings.
-- [ ] Verify, commit `feat(runtime): support printf wide strings`, and push.
+- [x] Cover narrow `%s` and wide `%ls` for narrow and wide formatted output.
+- [x] Add precision coverage for wide strings.
+- [x] Verify, commit `feat(runtime): support printf wide strings`, and push.
+
+Calibration result:
+- `%ls` was parsed but still read the argument as a narrow C string, so wide buffers formatted as only the first low byte and non-ASCII wide strings were not rejected.
+- `%ls` now reads a wide C string through the deterministic ASCII bridge shared with wide format strings; precision applies to the resulting C-locale byte output.
 
 ## Milestone 8: Printf Pointer Formatting Width
 

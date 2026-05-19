@@ -2473,11 +2473,25 @@ int main(void)
   if (strcmp(buf, "A Z") != 0)
     return 11;
 
+  wchar_t wide[7];
+  wide[0] = L'a';
+  wide[1] = L'b';
+  wide[2] = L'c';
+  wide[3] = L'd';
+  wide[4] = L'e';
+  wide[5] = L'f';
+  wide[6] = 0;
+  n = sprintf(buf, "%s %.3ls %ls", "ok", wide, wide);
+  if (n != 13)
+    return 12;
+  if (strcmp(buf, "ok abc abcdef") != 0)
+    return 13;
+
   char small[5];
   n = snprintf(small, 5, "%s-%u", "abcdef", 3U);
   if (n != 8)
-    return 12;
-  return strcmp(small, "abcd") == 0 ? 0 : 13;
+    return 14;
+  return strcmp(small, "abcd") == 0 ? 0 : 15;
 }
 `
 	st := runGCCExecFixture(t, "plain-sprintf-runtime.c", source)

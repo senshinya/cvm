@@ -6604,11 +6604,19 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			if !isPointerType(arg.Type) {
 				return "", fmt.Errorf("%s %%s expects pointer argument", name)
 			}
-			s, err := mem.ReadCString(arg.Int)
-			if err != nil {
-				return "", err
+			if lengthMod == "l" {
+				s, err := formatWideStringArg(name, mem, arg.Int)
+				if err != nil {
+					return "", err
+				}
+				piece = s
+			} else {
+				s, err := mem.ReadCString(arg.Int)
+				if err != nil {
+					return "", err
+				}
+				piece = s
 			}
-			piece = s
 			if precision >= 0 && len(piece) > precision {
 				piece = piece[:precision]
 			}
@@ -6752,6 +6760,10 @@ func wideASCIIString(name string, mem *Memory, addr uint64, what string) (string
 		out.WriteByte(byte(ch))
 	}
 	return out.String(), nil
+}
+
+func formatWideStringArg(name string, mem *Memory, addr uint64) (string, error) {
+	return wideASCIIString(name, mem, addr, "string")
 }
 
 func applyIntegerPrecision(piece string, precision int) string {
