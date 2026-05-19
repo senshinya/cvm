@@ -236,9 +236,13 @@ Calibration result:
 
 Calibration before execution: Recheck `%f`, `%lf`, and `%Lf` scanner behavior.
 
-- [ ] Cover float, double, and current long-double storage for decimal and hex input.
-- [ ] Fix deterministic float scanner gaps that do not require native extended precision.
-- [ ] Verify, commit `feat(runtime): harden scanf float lengths`, and push.
+- [x] Cover float, double, and current long-double storage for decimal and hex input.
+- [x] Fix deterministic float scanner gaps that do not require native extended precision.
+- [x] Verify, commit `test(runtime): cover scanf float lengths`, and push.
+
+Calibration result:
+- `scanFloatType` already maps default, `l`, and `L` to float, double, and the current long-double storage model.
+- Existing direct coverage plus new source coverage lock decimal and hex floating scans across those lengths; no runtime code change was needed.
 
 ## Milestone 21: Scanf Literal And Whitespace Edges
 

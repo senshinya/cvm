@@ -2704,6 +2704,31 @@ int main(void)
 	}
 }
 
+func TestPlainSscanfFloatLengthsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  float f = 0;
+  double d = 0;
+  long double ld = 0;
+  int n = sscanf("1.5 -2.25 0x1.8p+2", "%f %lf %La", &f, &d, &ld);
+  if (n != 3)
+    return 1;
+  if (!(f > 1.49f && f < 1.51f))
+    return 2;
+  if (!(d < -2.24 && d > -2.26))
+    return 3;
+  return ld > 5.99L && ld < 6.01L ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "plain-sscanf-float-lengths-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinCheckedSprintfExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
