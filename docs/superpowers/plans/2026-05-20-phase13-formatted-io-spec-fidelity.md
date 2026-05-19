@@ -104,9 +104,13 @@ Calibration result:
 
 Calibration before execution: Recheck `*` width/precision handling across integer, string, and float paths.
 
-- [ ] Add coverage for negative dynamic width, negative precision, and combined `*.*`.
-- [ ] Fix behavior where it diverges from deterministic C-locale expectations.
-- [ ] Verify, commit `feat(runtime): harden printf dynamic sizing`, and push.
+- [x] Add coverage for negative dynamic width, negative precision, and combined `*.*`.
+- [x] Fix behavior where it diverges from deterministic C-locale expectations.
+- [x] Verify, commit `test(runtime): cover printf dynamic sizing`, and push.
+
+Calibration result:
+- Existing dynamic width and precision logic already treats negative width as left alignment with positive width and negative precision as omitted precision.
+- The milestone added direct and source coverage for negative width, negative precision, and combined `*.*` across string, integer, and floating output; no runtime code change was needed.
 
 ## Milestone 10: Printf Zero Precision Edge Cases
 

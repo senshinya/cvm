@@ -2402,7 +2402,7 @@ int strcmp(const char *, const char *);
 
 int main(void)
 {
-  char buf[32];
+  char buf[96];
   int n = __builtin_sprintf(buf, "x=%d %s %c %%", -7, "ok", '!');
   if (n != 11)
     return 1;
@@ -2432,7 +2432,7 @@ func TestPlainSprintfExecutesThroughRuntime(t *testing.T) {
 
 int main(void)
 {
-  char buf[32];
+  char buf[96];
   int n = sprintf(buf, "x=%d %s", -7, "ok");
   if (n != 7)
     return 1;
@@ -2493,11 +2493,17 @@ int main(void)
   if (strcmp(buf, "   0x0|0x0   ") != 0)
     return 15;
 
+  n = sprintf(buf, "%*d|%*s|%.*s|%*.*d|%*.*f", -5, 7, -4, "xy", -1, "abcdef", 6, -1, 42, -8, 2, 1.5);
+  if (n != 33)
+    return 16;
+  if (strcmp(buf, "7    |xy  |abcdef|    42|1.50    ") != 0)
+    return 17;
+
   char small[5];
   n = snprintf(small, 5, "%s-%u", "abcdef", 3U);
   if (n != 8)
-    return 16;
-  return strcmp(small, "abcd") == 0 ? 0 : 17;
+    return 18;
+  return strcmp(small, "abcd") == 0 ? 0 : 19;
 }
 `
 	st := runGCCExecFixture(t, "plain-sprintf-runtime.c", source)

@@ -9863,6 +9863,46 @@ func TestFormatExternsSupportDynamicWidthAndPrecision(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportNegativeDynamicWidthAndPrecision(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-negative-dynamic", 48, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-negative-dynamic", []byte("%*d|%*s|%.*s|%*.*d|%*.*f\x00"), true, blockString)
+	strAddr := mustAllocBytes(t, mem, "str:format-negative-dynamic", []byte("abcdef\x00"), true, blockString)
+	shortAddr := mustAllocBytes(t, mem, "short:format-negative-dynamic", []byte("xy\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		IntValue(bytecode.TypeI32, -5),
+		IntValue(bytecode.TypeI32, 7),
+		IntValue(bytecode.TypeI32, -4),
+		ObjectAddrValue(shortAddr),
+		IntValue(bytecode.TypeI32, -1),
+		ObjectAddrValue(strAddr),
+		IntValue(bytecode.TypeI32, 6),
+		IntValue(bytecode.TypeI32, -1),
+		IntValue(bytecode.TypeI32, 42),
+		IntValue(bytecode.TypeI32, -8),
+		IntValue(bytecode.TypeI32, 2),
+		FloatValue(bytecode.TypeF64, 1.5),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	want := "7    |xy  |abcdef|    42|1.50    "
+	if ret.Type != bytecode.TypeI32 || ret.Int != uint64(len(want)) || got != want {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q, want i32 %d and negative dynamic output", ret, got, len(want))
+	}
+}
+
 func TestFormatExternsSupportWriteCount(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
