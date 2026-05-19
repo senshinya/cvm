@@ -270,9 +270,15 @@ Findings:
 
 Calibration before execution: Search `runtime/gcc_exec_test.go` for Phase 9 source-level surfaces.
 
-- [ ] Ensure source tests cover `errno`, `ERANGE`, `strtod`, `strtof`, `strtold`, `atof`, `nan`, and infinity paths.
-- [ ] Add one compact source fixture if missing.
-- [ ] Verify, commit, and push `test(runtime): sweep float errno source coverage`.
+- [x] Ensure source tests cover `errno`, `ERANGE`, `strtod`, `strtof`, `strtold`, `atof`, `nan`, and infinity paths.
+- [x] Add one compact source fixture if missing.
+- [x] Verify, commit, and push `test(runtime): sweep float errno source coverage`.
+
+Findings:
+
+- `TestStdlibFloatParserExecuteThroughRuntime` covers `atof`, `strtod`, success/no-conversion errno preservation, infinity, NaN spellings, decimal/hex overflow, decimal/hex underflow, and subnormal preservation.
+- `TestStdlibMoreFloatParserExecuteThroughRuntime` covers `strtof` and current binary64-backed `strtold` overflow, underflow, subnormal, `ERANGE`, and end pointers.
+- Existing source fixtures already covered all Phase 9 runtime surfaces; no additional source fixture was needed.
 
 ## Milestone 19: Header/Registry Recheck
 
