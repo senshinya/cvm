@@ -3290,6 +3290,50 @@ func TestPlainStringWriteExterns(t *testing.T) {
 	if got := []byte(block.data[off : off+3]); !bytes.Equal(got, []byte{'a', 0, 0}) {
 		t.Fatalf("stpncpy pad dst=%v, want [97 0 0]", got)
 	}
+
+	catBuf := mustAllocBytes(t, mem, "strcat:buf", []byte("ab\x00?????"), false, blockLocal)
+	catSrc := mustAllocBytes(t, mem, "strcat:src", []byte("cd\x00"), true, blockString)
+	strcatFn, _ := reg.Lookup("strcat")
+	ret, exit, err = strcatFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(catBuf), PtrValue(catSrc)})
+	if err != nil || exit != nil {
+		t.Fatalf("strcat ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != catBuf {
+		t.Fatalf("strcat ret=%#v, want pointer %#x", ret, catBuf)
+	}
+	got, err = mem.ReadCString(catBuf)
+	if err != nil || got != "abcd" {
+		t.Fatalf("strcat dst=%q err=%v, want abcd", got, err)
+	}
+	nul, err = mem.Load(catBuf+4, bytecode.TypeI8, 1)
+	if err != nil || nul.Int != 0 {
+		t.Fatalf("strcat terminator=%#v err=%v, want zero", nul, err)
+	}
+
+	strncatFn, _ := reg.Lookup("strncat")
+	longSrc := mustAllocBytes(t, mem, "strncat:src", []byte("efgh\x00"), true, blockString)
+	ret, exit, err = strncatFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(catBuf), PtrValue(longSrc), UIntValue(bytecode.TypeU64, 2)})
+	if err != nil || exit != nil {
+		t.Fatalf("strncat ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != catBuf {
+		t.Fatalf("strncat ret=%#v, want pointer %#x", ret, catBuf)
+	}
+	got, err = mem.ReadCString(catBuf)
+	if err != nil || got != "abcdef" {
+		t.Fatalf("strncat dst=%q err=%v, want abcdef", got, err)
+	}
+	ret, exit, err = strncatFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(catBuf), PtrValue(longSrc), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("strncat zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != catBuf {
+		t.Fatalf("strncat zero ret=%#v, want pointer %#x", ret, catBuf)
+	}
+	got, err = mem.ReadCString(catBuf)
+	if err != nil || got != "abcdef" {
+		t.Fatalf("strncat zero dst=%q err=%v, want abcdef", got, err)
+	}
 }
 
 func TestPlainAllocationExterns(t *testing.T) {

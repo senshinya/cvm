@@ -184,9 +184,9 @@ Calibration before execution: Re-read `stringNCopyExtern`.
 
 Calibration before execution: Re-read `stringConcatExtern` and `stringNConcatExtern`.
 
-- [ ] Add tests for return destination, appended NUL, zero count, and truncation count.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover strcat termination`.
+- [x] Add tests for return destination, appended NUL, zero count, and truncation count.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover strcat termination`.
 
 ## Milestone 22: Checked String And Memory Builtins
 

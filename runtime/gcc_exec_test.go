@@ -2911,9 +2911,13 @@ int main(void)
     return 12;
 
   buf[0] = 0;
-  if (strncat(buf, "uvwx", 2) != buf)
+  if (strncat(buf, "zz", 0) != buf)
     return 13;
-  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 14;
+  if (buf[0] != 0)
+    return 14;
+  if (strncat(buf, "uvwx", 2) != buf)
+    return 15;
+  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 16;
 }
 `
 	st := runGCCExecFixture(t, "plain-string-writes-runtime.c", source)
@@ -3774,9 +3778,13 @@ int main(void)
     return 12;
 
   buf[0] = 0;
-  if (__builtin_strncat(buf, "uvwx", 2) != buf)
+  if (__builtin_strncat(buf, "zz", 0) != buf)
     return 13;
-  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 14;
+  if (buf[0] != 0)
+    return 14;
+  if (__builtin_strncat(buf, "uvwx", 2) != buf)
+    return 15;
+  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 16;
 }
 `
 	st := runGCCExecFixture(t, "builtin-string-writes-runtime.c", source)
