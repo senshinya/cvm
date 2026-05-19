@@ -34,7 +34,7 @@ Calibration before execution: Compare current `%d`/`%i` handling for `h`, `hh`, 
 
 - [x] Add direct and source coverage for signed integer length modifiers.
 - [x] Fix formatting where argument narrowing/sign extension is wrong.
-- [ ] Verify, commit `feat(runtime): harden printf signed lengths`, and push.
+- [x] Verify, commit `feat(runtime): harden printf signed lengths`, and push.
 
 Calibration result:
 - Focused direct and source tests showed `%hhd` and `%hd` still printed the promoted `int` values rather than applying the signed-char and signed-short conversions required by the length modifiers.
@@ -44,9 +44,13 @@ Calibration result:
 
 Calibration before execution: Reuse signed-length findings for `%u`, `%x`, `%X`, and `%o`.
 
-- [ ] Add direct and source coverage for unsigned length modifiers.
-- [ ] Fix masking/narrowing behavior where needed.
-- [ ] Verify, commit `feat(runtime): harden printf unsigned lengths`, and push.
+- [x] Add direct and source coverage for unsigned length modifiers.
+- [x] Fix masking/narrowing behavior where needed.
+- [x] Verify, commit `feat(runtime): harden printf unsigned lengths`, and push.
+
+Calibration result:
+- Focused coverage showed `%hhu`, `%hu`, default `%u`, `%hhx`, `%hx`, default `%x`, `%hho`, `%ho`, and default `%o` were formatting the full incoming runtime value instead of the C length-selected unsigned view.
+- `%u`/`%x`/`%X`/`%o` now share an unsigned length helper: `hh` and `h` mask to 8 and 16 bits, the default masks to 32 bits, and `l`/`ll`/`j`/`z`/`t` use the current 64-bit ABI view.
 
 ## Milestone 5: Printf Count Length Modifiers
 

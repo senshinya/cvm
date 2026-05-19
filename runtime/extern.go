@@ -6629,13 +6629,13 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%u expects integer argument", name)
 			}
-			piece = strconv.FormatUint(unsignedInt(arg), 10)
+			piece = strconv.FormatUint(formatUnsignedIntegerArg(arg, lengthMod), 10)
 			integerFormat = true
 		case 'x':
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%x expects integer argument", name)
 			}
-			piece = strconv.FormatUint(unsignedInt(arg), 16)
+			piece = strconv.FormatUint(formatUnsignedIntegerArg(arg, lengthMod), 16)
 			if alternate && piece != "0" {
 				piece = "0x" + piece
 			}
@@ -6644,7 +6644,7 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%X expects integer argument", name)
 			}
-			piece = strings.ToUpper(strconv.FormatUint(unsignedInt(arg), 16))
+			piece = strings.ToUpper(strconv.FormatUint(formatUnsignedIntegerArg(arg, lengthMod), 16))
 			if alternate && piece != "0" {
 				piece = "0X" + piece
 			}
@@ -6653,7 +6653,7 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 			if !isIntegerLike(arg.Type) {
 				return "", fmt.Errorf("%s %%o expects integer argument", name)
 			}
-			piece = strconv.FormatUint(unsignedInt(arg), 8)
+			piece = strconv.FormatUint(formatUnsignedIntegerArg(arg, lengthMod), 8)
 			if alternate && !strings.HasPrefix(piece, "0") {
 				piece = "0" + piece
 			}
@@ -6777,6 +6777,22 @@ func formatSignedIntegerArg(v Value, lengthMod string) int64 {
 		return int64(int16(n))
 	case "":
 		return int64(int32(n))
+	case "l", "ll", "j", "z", "t":
+		return n
+	default:
+		return n
+	}
+}
+
+func formatUnsignedIntegerArg(v Value, lengthMod string) uint64 {
+	n := unsignedInt(v)
+	switch lengthMod {
+	case "hh":
+		return uint64(uint8(n))
+	case "h":
+		return uint64(uint16(n))
+	case "":
+		return uint64(uint32(n))
 	case "l", "ll", "j", "z", "t":
 		return n
 	default:

@@ -2444,11 +2444,17 @@ int main(void)
   if (strcmp(buf, "-1 -2 -3 -4 -5 -6 -7") != 0)
     return 4;
 
+  n = sprintf(buf, "%hhu %hu %u %llX %hho", 511, 65535, 4294967295U, 0x1234ULL, 511);
+  if (n != 29)
+    return 5;
+  if (strcmp(buf, "255 65535 4294967295 1234 377") != 0)
+    return 6;
+
   char small[5];
   n = snprintf(small, 5, "%s-%u", "abcdef", 3U);
   if (n != 8)
-    return 5;
-  return strcmp(small, "abcd") == 0 ? 0 : 6;
+    return 7;
+  return strcmp(small, "abcd") == 0 ? 0 : 8;
 }
 `
 	st := runGCCExecFixture(t, "plain-sprintf-runtime.c", source)

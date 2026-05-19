@@ -9379,6 +9379,47 @@ func TestFormatExternsSupportIntegerRadixFormats(t *testing.T) {
 	}
 }
 
+func TestFormatExternsHonorUnsignedIntegerLengthModifiers(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-unsigned-length", 160, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-unsigned-length", []byte("%hhu %hu %u %lu %llu %ju %zu %tu %hhx %hx %x %llX %hho %ho %o\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		IntValue(bytecode.TypeI32, -1),
+		IntValue(bytecode.TypeI32, -1),
+		IntValue(bytecode.TypeI64, -1),
+		UIntValue(bytecode.TypeU64, 4),
+		UIntValue(bytecode.TypeU64, 5),
+		UIntValue(bytecode.TypeU64, 6),
+		UIntValue(bytecode.TypeU64, 7),
+		UIntValue(bytecode.TypeU64, 8),
+		UIntValue(bytecode.TypeU32, 0x12ff),
+		UIntValue(bytecode.TypeU32, 0x12345),
+		UIntValue(bytecode.TypeU64, 0x100000001),
+		UIntValue(bytecode.TypeU64, 0x1234abcdef),
+		UIntValue(bytecode.TypeU32, 0777),
+		UIntValue(bytecode.TypeU32, 0x1ffff),
+		UIntValue(bytecode.TypeU64, 0x100000008),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	want := "255 65535 4294967295 4 5 6 7 8 ff 2345 1 1234ABCDEF 377 177777 10"
+	if ret.Type != bytecode.TypeI32 || ret.Int != uint64(len(want)) || got != want {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q, want i32 %d and unsigned length output", ret, got, len(want))
+	}
+}
+
 func TestFormatExternsSupportPointerFormat(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
