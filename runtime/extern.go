@@ -157,7 +157,8 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("fputwc", fputwcExtern("fputwc", r))
 	r.Register("putwc", fputwcExtern("putwc", r))
 	r.Register("putwchar", putwcharExtern("putwchar", r))
-	for _, name := range []string{"fgetwc", "getwc", "getwchar", "ungetwc"} {
+	r.Register("fgetwc", fgetwcExtern("fgetwc", r))
+	for _, name := range []string{"getwc", "getwchar", "ungetwc"} {
 		r.Register(name, wideStdioIntStubExtern(name, -1))
 	}
 	r.Register("fputws", wideStdioIntStubExtern("fputws", -1))
@@ -830,6 +831,21 @@ func putwcharExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
+func fgetwcExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream pointer", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		return r.readHostWideChar(args[0].Int), nil, nil
+	}
+}
+
 func (r *ExternRegistry) writeHostWideChar(stream uint64, w io.Writer, wc int64) Value {
 	if stream != 0 {
 		if r.setHostOrientation(stream, streamWide) != streamWide {
@@ -850,6 +866,26 @@ func (r *ExternRegistry) writeHostWideChar(stream uint64, w io.Writer, wc int64)
 		return IntValue(bytecode.TypeI32, -1)
 	}
 	return IntValue(bytecode.TypeI32, wc)
+}
+
+func (r *ExternRegistry) readHostWideChar(stream uint64) Value {
+	if r.setHostOrientation(stream, streamWide) != streamWide {
+		r.hostError[stream] = true
+		return IntValue(bytecode.TypeI32, -1)
+	}
+	if r.markHostReadErrorIfUnreadable(stream) {
+		return IntValue(bytecode.TypeI32, -1)
+	}
+	ch, ok := r.readHostChar(stream)
+	if !ok {
+		r.hostEOF[stream] = true
+		return IntValue(bytecode.TypeI32, -1)
+	}
+	if ch >= 0x80 {
+		r.hostError[stream] = true
+		return IntValue(bytecode.TypeI32, -1)
+	}
+	return IntValue(bytecode.TypeI32, int64(ch))
 }
 
 func wideStdioIntStubExtern(name string, value int64) ExternFunc {

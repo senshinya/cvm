@@ -61,9 +61,9 @@ Calibration before execution: Confirm aliases should route through `fputwc` and 
 
 Calibration before execution: Reuse configured stdin/file read path and C-locale byte-to-wide conversion.
 
-- [ ] Register and implement `fgetwc`.
-- [ ] Cover ASCII, EOF, invalid high byte, closed stream, and orientation.
-- [ ] Verify, commit `feat(runtime): add fgetwc`, and push.
+- [x] Register and implement `fgetwc`.
+- [x] Cover ASCII, EOF, invalid high byte, closed stream, and orientation.
+- [x] Verify, commit `feat(runtime): add fgetwc`, and push.
 
 ## Milestone 7: `getwc` And `getwchar`
 

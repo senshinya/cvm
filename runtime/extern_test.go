@@ -1686,6 +1686,102 @@ func TestWideOutputAliasesWriteWideChars(t *testing.T) {
 	}
 }
 
+func TestFgetwcReadsWideCharFromHostHandle(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("A\x00"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	fgetwcFn, ok := reg.Lookup("fgetwc")
+	if !ok {
+		t.Fatal("missing fgetwc extern")
+	}
+	fwideFn, ok := reg.Lookup("fwide")
+	if !ok {
+		t.Fatal("missing fwide extern")
+	}
+
+	ret, exit, err := fgetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'A' {
+		t.Fatalf("fgetwc ascii ret=%#v exit=%#v err=%v, want A", ret, exit, err)
+	}
+	ret, exit, err = fwideFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || signedInt(ret) <= 0 {
+		t.Fatalf("fwide after fgetwc ret=%#v exit=%#v err=%v, want positive", ret, exit, err)
+	}
+	ret, exit, err = fgetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fgetwc nul ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fgetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("fgetwc eof ret=%#v exit=%#v err=%v, want WEOF", ret, exit, err)
+	}
+}
+
+func TestFgetwcRejectsInvalidAndByteOrientedStreams(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(bytes.NewReader([]byte{0x80, 'B'}), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	fgetwcFn, ok := reg.Lookup("fgetwc")
+	if !ok {
+		t.Fatal("missing fgetwc extern")
+	}
+	ferrorFn, ok := reg.Lookup("ferror")
+	if !ok {
+		t.Fatal("missing ferror extern")
+	}
+
+	ret, exit, err := fgetwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("fgetwc high byte ret=%#v exit=%#v err=%v, want WEOF", ret, exit, err)
+	}
+	ret, exit, err = ferrorFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("ferror ret=%#v exit=%#v err=%v, want 1 after high byte", ret, exit, err)
+	}
+
+	byteReg := DefaultExternRegistryWithIO(strings.NewReader("C"), nil, nil)
+	byteMem := NewMemory(bytecode.DefaultTarget())
+	byteStdin, ok := byteReg.LookupVariable("stdin", byteMem)
+	if !ok {
+		t.Fatal("missing byte stdin extern variable")
+	}
+	byteFwideFn, ok := byteReg.Lookup("fwide")
+	if !ok {
+		t.Fatal("missing byte fwide extern")
+	}
+	byteFgetwcFn, ok := byteReg.Lookup("fgetwc")
+	if !ok {
+		t.Fatal("missing byte fgetwc extern")
+	}
+	ret, exit, err = byteFwideFn(context.Background(), &ExternContext{Memory: byteMem}, []Value{PtrValue(byteStdin), IntValue(bytecode.TypeI32, -1)})
+	if err != nil || exit != nil || signedInt(ret) >= 0 {
+		t.Fatalf("byte fwide ret=%#v exit=%#v err=%v, want negative", ret, exit, err)
+	}
+	ret, exit, err = byteFgetwcFn(context.Background(), &ExternContext{Memory: byteMem}, []Value{PtrValue(byteStdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("byte fgetwc ret=%#v exit=%#v err=%v, want WEOF", ret, exit, err)
+	}
+
+	closeFn, ok := byteReg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+	ret, exit, err = closeFn(context.Background(), &ExternContext{Memory: byteMem}, []Value{PtrValue(byteStdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fclose ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = byteFgetwcFn(context.Background(), &ExternContext{Memory: byteMem}, []Value{PtrValue(byteStdin)})
+	if err == nil || exit != nil {
+		t.Fatalf("closed fgetwc ret=%#v exit=%#v err=%v, want error", ret, exit, err)
+	}
+}
+
 func TestOutputCharacterAliasesWriteBytes(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
