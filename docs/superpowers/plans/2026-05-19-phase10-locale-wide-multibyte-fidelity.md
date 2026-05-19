@@ -240,9 +240,15 @@ Findings:
 
 Calibration before execution: Mirror `wctomb` while accepting `mbstate_t *`.
 
-- [ ] Implement/register `wcrtomb`.
-- [ ] Cover reset, ASCII, NUL, high wide char rejection, and invalid memory.
-- [ ] Verify, commit, and push `feat(runtime): add wcrtomb c locale`.
+- [x] Implement/register `wcrtomb`.
+- [x] Cover reset, ASCII, NUL, high wide char rejection, and invalid memory.
+- [x] Verify, commit, and push `feat(runtime): add wcrtomb c locale`.
+
+Findings:
+
+- Added `wcrtomb` declaration to builtin `<wchar.h>` and registered the extern.
+- C-locale `wcrtomb` returns `1` for reset, ASCII, and NUL output, writes one byte when a destination is present, and returns `(size_t)-1` for invalid high wide characters without modifying the destination.
+- Focused preprocessor and runtime tests passed.
 
 ## Milestone 17: `mbsrtowcs` C-Locale Behavior
 

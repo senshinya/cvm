@@ -195,6 +195,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("wcstombs", wcstombsExtern("wcstombs"))
 	r.Register("mbrlen", mbrlenExtern("mbrlen"))
 	r.Register("mbrtowc", mbrtowcExtern("mbrtowc"))
+	r.Register("wcrtomb", wcrtombExtern("wcrtomb"))
 	r.Register("rand", randExtern("rand", r))
 	r.Register("srand", srandExtern("srand", r))
 	r.Register("getenv", getenvExtern("getenv", r))
@@ -1464,6 +1465,31 @@ func mbrtowcExtern(name string) ExternFunc {
 		}
 		if ch == 0 {
 			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		return UIntValue(bytecode.TypeU64, 1), nil, nil
+	}
+}
+
+func wcrtombExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if args[0].Int == 0 {
+			return UIntValue(bytecode.TypeU64, 1), nil, nil
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || (args[2].Int != 0 && !isPointerType(args[2].Type)) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, wide char, and state pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		wc := signedInt(args[1])
+		if wc < 0 || wc > 0x7f {
+			return UIntValue(bytecode.TypeU64, math.MaxUint64), nil, nil
+		}
+		if err := writeMemoryByte(ec.Memory, args[0].Int, byte(wc)); err != nil {
+			return Value{}, nil, err
 		}
 		return UIntValue(bytecode.TypeU64, 1), nil, nil
 	}
