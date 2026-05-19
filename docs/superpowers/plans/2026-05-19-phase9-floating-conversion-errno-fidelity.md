@@ -106,9 +106,17 @@ Findings:
 
 Calibration before execution: Determine deterministic range policy for `strtod("1e309")` and errno.
 
-- [ ] Add direct/source tests for positive and negative decimal overflow returning infinities.
-- [ ] Set `errno` to `ERANGE` on overflow.
-- [ ] Verify, commit, and push `feat(runtime): mark strtod decimal overflow`.
+- [x] Add direct/source tests for positive and negative decimal overflow returning infinities.
+- [x] Set `errno` to `ERANGE` on overflow.
+- [x] Verify, commit, and push `feat(runtime): mark strtod decimal overflow`.
+
+Findings:
+
+- `strconv.ParseFloat` reports `ErrRange` for overflowing tokens while still returning the correctly signed infinity.
+- The previous backtracking parser could ignore `ErrRange` and accept a shorter prefix, so `1e309!` could lose the intended end pointer.
+- `ErrRange` is now treated as a successful conversion with range status, preserving the full token end pointer and setting `errno` to `ERANGE`.
+- Added direct extern and source-level runtime coverage for positive and negative decimal overflow.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
 
 ## Milestone 8: Decimal Underflow Range Trapdoor
 

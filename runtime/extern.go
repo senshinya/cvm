@@ -178,14 +178,14 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("atoi", atoiExtern("atoi", bytecode.TypeI32))
 	r.Register("atol", atoiExtern("atol", bytecode.TypeI64))
 	r.Register("atoll", atoiExtern("atoll", bytecode.TypeI64))
-	r.Register("atof", atofExtern("atof"))
+	r.Register("atof", atofExtern("atof", r))
 	r.Register("strtol", strtoIntegerExtern("strtol", bytecode.TypeI64, true))
 	r.Register("strtoul", strtoIntegerExtern("strtoul", bytecode.TypeU64, false))
 	r.Register("strtoll", strtoIntegerExtern("strtoll", bytecode.TypeI64, true))
 	r.Register("strtoull", strtoIntegerExtern("strtoull", bytecode.TypeU64, false))
-	r.Register("strtod", strtoFloatExtern("strtod", bytecode.TypeF64))
-	r.Register("strtof", strtoFloatExtern("strtof", bytecode.TypeF32))
-	r.Register("strtold", strtoFloatExtern("strtold", bytecode.TypeFLong))
+	r.Register("strtod", strtoFloatExtern("strtod", bytecode.TypeF64, r))
+	r.Register("strtof", strtoFloatExtern("strtof", bytecode.TypeF32, r))
+	r.Register("strtold", strtoFloatExtern("strtold", bytecode.TypeFLong, r))
 	r.Register("mblen", mblenExtern("mblen"))
 	r.Register("mbtowc", mbtowcExtern("mbtowc"))
 	r.Register("wctomb", wctombExtern("wctomb"))
@@ -1248,7 +1248,7 @@ func strtoDigit(ch byte) int {
 	}
 }
 
-func atofExtern(name string) ExternFunc {
+func atofExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
@@ -1264,11 +1264,16 @@ func atofExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		parsed := parseStrtoFloatString(s)
+		if parsed.rangeErr {
+			if err := r.setErrno(ec.Memory, 34); err != nil {
+				return Value{}, nil, err
+			}
+		}
 		return FloatValue(bytecode.TypeF64, parsed.value), nil, nil
 	}
 }
 
-func strtoFloatExtern(name string, ret bytecode.ValueType) ExternFunc {
+func strtoFloatExtern(name string, ret bytecode.ValueType, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
@@ -1293,6 +1298,11 @@ func strtoFloatExtern(name string, ret bytecode.ValueType) ExternFunc {
 		}
 		if args[1].Int != 0 {
 			if err := ec.Memory.WritePointer(args[1].Int, end); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		if parsed.rangeErr {
+			if err := r.setErrno(ec.Memory, 34); err != nil {
 				return Value{}, nil, err
 			}
 		}
@@ -1638,6 +1648,7 @@ type parsedStrtoFloat struct {
 	value     float64
 	end       int
 	converted bool
+	rangeErr  bool
 }
 
 func parseStrtoFloatString(s string) parsedStrtoFloat {
@@ -1652,6 +1663,9 @@ func parseStrtoFloatString(s string) parsedStrtoFloat {
 		v, err := strconv.ParseFloat(s[start:end], 64)
 		if err == nil {
 			return parsedStrtoFloat{value: v, end: end, converted: true}
+		}
+		if numErr, ok := err.(*strconv.NumError); ok && numErr.Err == strconv.ErrRange {
+			return parsedStrtoFloat{value: v, end: end, converted: true, rangeErr: true}
 		}
 	}
 	return parsedStrtoFloat{}
@@ -5360,6 +5374,17 @@ func (r *ExternRegistry) staticI32Variable(mem *Memory, name string, initial int
 	}
 	r.staticVars[mem][name] = addr
 	return addr, nil
+}
+
+func (r *ExternRegistry) setErrno(mem *Memory, value int32) error {
+	if r == nil {
+		return nil
+	}
+	addr, err := r.staticI32Variable(mem, "errno", 0)
+	if err != nil {
+		return err
+	}
+	return mem.Store(addr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(value)))
 }
 
 func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {

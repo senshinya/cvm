@@ -2535,7 +2535,23 @@ int main(void)
     return 6;
   if (errno != 77)
     return 17;
-  return *end == 'w' ? 0 : 7;
+  if (*end != 'w')
+    return 7;
+  errno = 0;
+  if (strtod("1e309!", &end) <= 1e300)
+    return 30;
+  if (*end != '!')
+    return 31;
+  if (errno != ERANGE)
+    return 32;
+  errno = 0;
+  if (strtod("-1e309?", &end) >= -1e300)
+    return 33;
+  if (*end != '?')
+    return 34;
+  if (errno != ERANGE)
+    return 35;
+  return 0;
 }
 `
 	st := runGCCExecFixture(t, "stdlib-float-parser-runtime.c", source)
