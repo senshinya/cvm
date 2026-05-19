@@ -2459,11 +2459,13 @@ int main(void)
 
 func TestStdlibFloatParserExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
+#include <errno.h>
 #include <stdlib.h>
 
 int main(void)
 {
   char *end = 0;
+  errno = 77;
 
   if (atof(" \t3.25tail") != 3.25)
     return 1;
@@ -2475,6 +2477,8 @@ int main(void)
     return 2;
   if (*end != 'x')
     return 3;
+  if (errno != 77)
+    return 16;
   if (strtod(" +6.25e-1;", &end) != 0.625)
     return 8;
   if (*end != ';')
@@ -2493,6 +2497,8 @@ int main(void)
     return 13;
   if (strtod("word", &end) != 0.0)
     return 6;
+  if (errno != 77)
+    return 17;
   return *end == 'w' ? 0 : 7;
 }
 `

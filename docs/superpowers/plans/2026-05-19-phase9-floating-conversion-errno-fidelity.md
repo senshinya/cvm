@@ -46,10 +46,16 @@ Findings:
 
 Calibration before execution: Re-read `strtoFloatExtern`, `atofExtern`, and current errno behavior.
 
-- [ ] Add tests proving successful `strtod` does not alter nonzero `errno`.
-- [ ] Add tests proving no-conversion `strtod` does not alter nonzero `errno`.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `feat(runtime): preserve errno in float parsing`.
+- [x] Add tests proving successful `strtod` does not alter nonzero `errno`.
+- [x] Add tests proving no-conversion `strtod` does not alter nonzero `errno`.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): preserve errno in float parsing`.
+
+Findings:
+
+- `strtoFloatExtern` did not write `errno`; the missing piece was regression coverage.
+- Added direct extern and source-level runtime tests proving successful `strtod` and no-conversion `strtod` preserve a nonzero `errno`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
 
 ## Milestone 4: `strtod` Infinity Spelling
 

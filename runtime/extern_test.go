@@ -2887,6 +2887,13 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 	if !ok {
 		t.Fatal("missing strtod extern")
 	}
+	errnoAddr, ok := reg.LookupVariable("errno", mem)
+	if !ok {
+		t.Fatal("missing errno extern variable")
+	}
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 77)); err != nil {
+		t.Fatalf("store errno before strtod: %v", err)
+	}
 	decimalText := mustAllocBytes(t, mem, "strtod:decimal", []byte(" -12.5e1x\x00"), true, blockString)
 	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(decimalText), PtrValue(endptr)})
 	if err != nil || exit != nil {
@@ -2901,6 +2908,13 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 	}
 	if loadedEnd.Int != decimalText+8 {
 		t.Fatalf("strtod decimal endptr=%#x, want %#x", loadedEnd.Int, decimalText+8)
+	}
+	errnoValue, err := mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod success: %v", err)
+	}
+	if signedInt(errnoValue) != 77 {
+		t.Fatalf("errno after strtod success=%#v, want 77", errnoValue)
 	}
 
 	positiveExponentText := mustAllocBytes(t, mem, "strtod:positive-exponent", []byte(" +6.25e-1;\x00"), true, blockString)
@@ -2981,6 +2995,13 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 	}
 	if loadedEnd.Int != noneText {
 		t.Fatalf("strtod none endptr=%#x, want %#x", loadedEnd.Int, noneText)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod none: %v", err)
+	}
+	if signedInt(errnoValue) != 77 {
+		t.Fatalf("errno after strtod none=%#v, want 77", errnoValue)
 	}
 }
 
