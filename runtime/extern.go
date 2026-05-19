@@ -2560,6 +2560,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("memchr", memoryCharSearchExtern("memchr"))
 	r.Register("wmemchr", wideMemoryCharSearchExtern("wmemchr"))
 	r.Register("wmemcmp", wideMemoryCompareExtern("wmemcmp"))
+	r.Register("wmemcpy", wideMemoryCopyExtern("wmemcpy"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
 		r.Register(name, stringCopyExtern(name, false))
 	}
@@ -3360,6 +3361,34 @@ func wideMemoryCompareExtern(name string) ExternFunc {
 	}
 }
 
+func wideMemoryCopyExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, pointer, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		size, err := wideByteSize(name, count)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if size > 0 {
+			if err := ec.Memory.Copy(args[0].Int, args[1].Int, size); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
 func wideElementAddr(base uint64, index int64) (uint64, error) {
 	if index < 0 || uint64(index) > math.MaxUint64/4 {
 		return 0, fmt.Errorf("wide element index %d overflows address", index)
@@ -3369,6 +3398,13 @@ func wideElementAddr(base uint64, index int64) (uint64, error) {
 		return 0, fmt.Errorf("wide element address %#x + %d overflows", base, offset)
 	}
 	return base + offset, nil
+}
+
+func wideByteSize(name string, count int64) (int64, error) {
+	if count < 0 || count > math.MaxInt64/4 {
+		return 0, fmt.Errorf("%s wide count %d overflows byte size", name, count)
+	}
+	return count * 4, nil
 }
 
 func loadWideChar(mem *Memory, addr uint64) (uint32, error) {

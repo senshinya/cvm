@@ -65,9 +65,9 @@ Calibration before execution: Confirm return sign conventions match existing `me
 
 Calibration before execution: Re-read `memcpy` behavior and pointer return typing.
 
-- [ ] Register and implement `wmemcpy`.
-- [ ] Cover copy, zero-count invalid pointers, and destination return value.
-- [ ] Verify, commit `feat(runtime): add wmemcpy`, and push.
+- [x] Register and implement `wmemcpy`.
+- [x] Cover copy, zero-count invalid pointers, and destination return value.
+- [x] Verify, commit `feat(runtime): add wmemcpy`, and push.
 
 ## Milestone 7: `wmemmove`
 
