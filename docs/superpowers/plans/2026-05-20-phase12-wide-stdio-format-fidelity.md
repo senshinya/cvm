@@ -190,8 +190,8 @@ Calibration before execution: Reuse hermetic file scanner behavior.
 
 Calibration before execution: Search for overlapping source runtime tests before adding workflows.
 
-- [ ] Add source-level workflow covering `fwide`, `fputwc`, `fgetwc`, `ungetwc`, `fputws`, and `fgetws`.
-- [ ] Verify, commit `test(runtime): cover wide stdio workflow`, and push.
+- [x] Add source-level workflow covering `fwide`, `fputwc`, `fgetwc`, `ungetwc`, `fputws`, and `fgetws`.
+- [x] Verify, commit `test(runtime): cover wide stdio workflow`, and push.
 
 ## Milestone 23: Wide Format Source Workflow
 

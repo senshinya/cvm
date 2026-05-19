@@ -4513,6 +4513,44 @@ int main(void)
 	}
 }
 
+func TestWideStdioWorkflowExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <wchar.h>
+
+int main(void)
+{
+  wchar_t buf[4] = {0};
+  if (fwide(stdin, 1) <= 0)
+    return 1;
+  if (fgetwc(stdin) != L'A')
+    return 2;
+  if (ungetwc(L'Z', stdin) != L'Z')
+    return 3;
+  if (fgetwc(stdin) != L'Z')
+    return 4;
+  if (fgetws(buf, sizeof buf / sizeof buf[0], stdin) != buf)
+    return 5;
+  if (buf[0] != L'B' || buf[1] != L'\n' || buf[2] != 0)
+    return 6;
+  if (fputwc(L'Q', stdout) != L'Q')
+    return 7;
+  if (fputws(L"RS", stdout) != 2)
+    return 8;
+  return fwide(stdout, 0) > 0 ? 0 : 9;
+}
+`
+	var out bytes.Buffer
+	reg := DefaultExternRegistryWithIO(strings.NewReader("AB\n"), &out, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "wide-stdio-workflow-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+	if out.String() != "QRS" {
+		t.Fatalf("stdout = %q, want QRS", out.String())
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
