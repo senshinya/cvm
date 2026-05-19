@@ -2909,7 +2909,20 @@ int main(void)
   tok = strtok(0, ",;");
   if (tok != text + 12 || strcmp(tok, "gamma") != 0)
     return 3;
-  return strtok(0, ",;") == 0 ? 0 : 4;
+  if (strtok(0, ",;") != 0)
+    return 4;
+
+  strcpy(text, "alpha,beta;gamma.delta");
+  tok = strtok(text, ",");
+  if (tok != text || strcmp(tok, "alpha") != 0)
+    return 5;
+  tok = strtok(0, ";");
+  if (tok != text + 6 || strcmp(tok, "beta") != 0)
+    return 6;
+  tok = strtok(0, ".");
+  if (tok != text + 11 || strcmp(tok, "gamma") != 0)
+    return 7;
+  return 0;
 }
 `
 	st := runGCCExecFixture(t, "string-strtok-runtime.c", source)

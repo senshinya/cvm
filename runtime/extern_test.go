@@ -4246,6 +4246,42 @@ func TestStringStrtokExtern(t *testing.T) {
 	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
 		t.Fatalf("strtok end ret=%#v, want null pointer", ret)
 	}
+
+	changing := mustAllocBytes(t, mem, "strtok:changing", []byte("alpha,beta;gamma.delta\x00"), false, blockString)
+	comma := mustAllocBytes(t, mem, "strtok:comma", []byte(",\x00"), true, blockString)
+	semicolon := mustAllocBytes(t, mem, "strtok:semicolon", []byte(";\x00"), true, blockString)
+	dot := mustAllocBytes(t, mem, "strtok:dot", []byte(".\x00"), true, blockString)
+
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(changing), PtrValue(comma)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok changing first ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != changing {
+		t.Fatalf("strtok changing first ret=%#v, want pointer %#x", ret, changing)
+	}
+	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "alpha" {
+		t.Fatalf("strtok changing first token=%q err=%v, want alpha", tok, err)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(semicolon)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok changing second ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != changing+6 {
+		t.Fatalf("strtok changing second ret=%#v, want pointer %#x", ret, changing+6)
+	}
+	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "beta" {
+		t.Fatalf("strtok changing second token=%q err=%v, want beta", tok, err)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(dot)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok changing third ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != changing+11 {
+		t.Fatalf("strtok changing third ret=%#v, want pointer %#x", ret, changing+11)
+	}
+	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "gamma" {
+		t.Fatalf("strtok changing third token=%q err=%v, want gamma", tok, err)
+	}
 }
 
 func TestStringCollateAndTransformExterns(t *testing.T) {

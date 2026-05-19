@@ -98,10 +98,10 @@ Calibration before execution: Re-read `stringSpanExtern`.
 
 Calibration before execution: Re-read `stringTokenExtern` and `strtokNext` memory-keyed state.
 
-- [ ] Add direct tests where delimiter set changes between calls.
-- [ ] Fix delimiter handling if it caches old delimiters.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `test(runtime): cover strtok delimiter changes`.
+- [x] Add direct tests where delimiter set changes between calls.
+- [x] Fix delimiter handling if it caches old delimiters.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `test(runtime): cover strtok delimiter changes`.
 
 ## Milestone 12: `strtok` Exhaustion And Restart
 
