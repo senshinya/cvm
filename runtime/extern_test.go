@@ -4172,8 +4172,19 @@ func TestStringNLengthExtern(t *testing.T) {
 		t.Fatal("missing strnlen extern")
 	}
 
-	noNull := mustAllocBytes(t, mem, "strnlen:no-null", []byte("abcdef"), true, blockString)
 	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(0xdeadbeef),
+		UIntValue(bytecode.TypeU64, 0),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("strnlen zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("strnlen zero ret=%#v, want u64 0", ret)
+	}
+
+	noNull := mustAllocBytes(t, mem, "strnlen:no-null", []byte("abcdef"), true, blockString)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
 		PtrValue(noNull),
 		UIntValue(bytecode.TypeU64, 3),
 	})
@@ -4182,6 +4193,16 @@ func TestStringNLengthExtern(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypeU64 || ret.Int != 3 {
 		t.Fatalf("strnlen no-null ret=%#v, want u64 3", ret)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(noNull),
+		UIntValue(bytecode.TypeU64, 6),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("strnlen exact no-null ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 6 {
+		t.Fatalf("strnlen exact no-null ret=%#v, want u64 6", ret)
 	}
 
 	withNull := mustAllocBytes(t, mem, "strnlen:with-null", []byte("ab\x00cd"), true, blockString)

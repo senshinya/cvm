@@ -2692,11 +2692,17 @@ func TestStringNLengthExecuteThroughRuntime(t *testing.T) {
 
 int main(void)
 {
-  if (strnlen("abc", 2) != 2)
+  char no_null[4] = {'a', 'b', 'c', 'd'};
+
+  if (strnlen(no_null, 0) != 0)
     return 1;
-  if (strnlen("hello", 10) != 5)
+  if (strnlen("abc", 2) != 2)
     return 2;
-  return strnlen("hello", 3) == 3 ? 0 : 3;
+  if (strnlen("hello", 10) != 5)
+    return 3;
+  if (strnlen(no_null, 4) != 4)
+    return 4;
+  return strnlen("hello", 3) == 3 ? 0 : 5;
 }
 `
 	st := runGCCExecFixture(t, "string-strnlen-runtime.c", source)

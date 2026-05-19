@@ -49,9 +49,9 @@ Calibration before execution: Re-read `stringNCompareExtern`.
 
 Calibration before execution: Re-read `stringNLengthExtern` and existing no-NUL coverage.
 
-- [ ] Add direct tests for zero maxlen, early NUL, exact maxlen, and no-NUL buffer.
-- [ ] Fix `strnlen` if it reads beyond `maxlen`.
-- [ ] Verify, commit, and push `test(runtime): cover strnlen boundaries`.
+- [x] Add direct tests for zero maxlen, early NUL, exact maxlen, and no-NUL buffer.
+- [x] Fix `strnlen` if it reads beyond `maxlen`.
+- [x] Verify, commit, and push `test(runtime): cover strnlen boundaries`.
 
 ## Milestone 6: `strchr` NUL And Byte Masking
 
