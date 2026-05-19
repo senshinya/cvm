@@ -239,9 +239,9 @@ Recheck notes:
 
 Calibration before execution: Confirm all implementation milestones are committed and pushed.
 
-- [ ] Create `docs/phase11-wide-string-memory-fidelity-gap-map.md`.
-- [ ] Record closed wide string/memory surfaces and residual deterministic limits.
-- [ ] Verify, commit `docs: map phase 11 wide string gaps`, and push.
+- [x] Create `docs/phase11-wide-string-memory-fidelity-gap-map.md`.
+- [x] Record closed wide string/memory surfaces and residual deterministic limits.
+- [x] Verify, commit `docs: map phase 11 wide string gaps`, and push.
 
 ## Milestone 28: Phase 11 Closure
 
