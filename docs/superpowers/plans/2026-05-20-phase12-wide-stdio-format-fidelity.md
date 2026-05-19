@@ -45,9 +45,9 @@ Calibration before execution: Inspect current stream state for a minimal orienta
 
 Calibration before execution: Reuse C-locale single-byte `wcrtomb` semantics.
 
-- [ ] Register and implement `fputwc`.
-- [ ] Cover ASCII, NUL, invalid high wide char, closed stream, and orientation.
-- [ ] Verify, commit `feat(runtime): add fputwc`, and push.
+- [x] Register and implement `fputwc`.
+- [x] Cover ASCII, NUL, invalid high wide char, closed stream, and orientation.
+- [x] Verify, commit `feat(runtime): add fputwc`, and push.
 
 ## Milestone 5: `putwc` And `putwchar`
 

@@ -1573,6 +1573,75 @@ func TestFwideTracksStreamOrientation(t *testing.T) {
 	}
 }
 
+func TestFputwcWritesWideCharToHostHandle(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	reg := DefaultExternRegistry(&out, &errOut)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdout, ok := reg.LookupVariable("stdout", mem)
+	if !ok {
+		t.Fatal("missing stdout extern variable")
+	}
+	stderr, ok := reg.LookupVariable("stderr", mem)
+	if !ok {
+		t.Fatal("missing stderr extern variable")
+	}
+	fputwcFn, ok := reg.Lookup("fputwc")
+	if !ok {
+		t.Fatal("missing fputwc extern")
+	}
+	fwideFn, ok := reg.Lookup("fwide")
+	if !ok {
+		t.Fatal("missing fwide extern")
+	}
+	ferrorFn, ok := reg.Lookup("ferror")
+	if !ok {
+		t.Fatal("missing ferror extern")
+	}
+	fcloseFn, ok := reg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+
+	ret, exit, err := fputwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'A'), PtrValue(stdout)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'A' || out.String() != "A" {
+		t.Fatalf("fputwc ascii ret=%#v exit=%#v err=%v output=%q, want A", ret, exit, err, out.String())
+	}
+	ret, exit, err = fwideFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || signedInt(ret) <= 0 {
+		t.Fatalf("fwide after fputwc ret=%#v exit=%#v err=%v, want positive", ret, exit, err)
+	}
+	ret, exit, err = fputwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 0), PtrValue(stdout)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 || !bytes.Equal(out.Bytes(), []byte{'A', 0}) {
+		t.Fatalf("fputwc nul ret=%#v exit=%#v err=%v output=%v, want A NUL", ret, exit, err, out.Bytes())
+	}
+	ret, exit, err = fputwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 0x80), PtrValue(stdout)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 || !bytes.Equal(out.Bytes(), []byte{'A', 0}) {
+		t.Fatalf("fputwc high ret=%#v exit=%#v err=%v output=%v, want WEOF and unchanged output", ret, exit, err, out.Bytes())
+	}
+	ret, exit, err = ferrorFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("ferror ret=%#v exit=%#v err=%v, want 1 after high wchar", ret, exit, err)
+	}
+
+	ret, exit, err = fwideFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stderr), IntValue(bytecode.TypeI32, -1)})
+	if err != nil || exit != nil || signedInt(ret) >= 0 {
+		t.Fatalf("fwide byte ret=%#v exit=%#v err=%v, want negative", ret, exit, err)
+	}
+	ret, exit, err = fputwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'B'), PtrValue(stderr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 || errOut.String() != "" {
+		t.Fatalf("fputwc byte-oriented ret=%#v exit=%#v err=%v stderr=%q, want WEOF and no write", ret, exit, err, errOut.String())
+	}
+	ret, exit, err = fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stderr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fclose ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fputwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'C'), PtrValue(stderr)})
+	if err == nil || exit != nil {
+		t.Fatalf("fputwc closed ret=%#v exit=%#v err=%v, want error", ret, exit, err)
+	}
+}
+
 func TestOutputCharacterAliasesWriteBytes(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
