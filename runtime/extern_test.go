@@ -4332,12 +4332,29 @@ func TestStringCollateAndTransformExterns(t *testing.T) {
 	if !ok {
 		t.Fatal("missing strcoll extern")
 	}
-	ret, exit, err := strcollFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(left), PtrValue(right)})
-	if err != nil || exit != nil {
-		t.Fatalf("strcoll ret=%#v exit=%#v err=%v", ret, exit, err)
+	strcollTests := []struct {
+		name string
+		a    uint64
+		b    uint64
+		sign int
+	}{
+		{name: "equal", a: left, b: left, sign: 0},
+		{name: "less", a: left, b: right, sign: -1},
+		{name: "greater", a: right, b: left, sign: 1},
+		{name: "prefix less", a: mustAllocBytes(t, mem, "strcoll:prefix-less", []byte("ab\x00"), true, blockString), b: left, sign: -1},
+		{name: "prefix greater", a: left, b: mustAllocBytes(t, mem, "strcoll:prefix-greater", []byte("ab\x00"), true, blockString), sign: 1},
 	}
-	if ret.Type != bytecode.TypeI32 || signedInt(ret) >= 0 {
-		t.Fatalf("strcoll ret=%#v, want negative i32", ret)
+	for _, tt := range strcollTests {
+		t.Run("strcoll "+tt.name, func(t *testing.T) {
+			ret, exit, err := strcollFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.a), PtrValue(tt.b)})
+			if err != nil || exit != nil {
+				t.Fatalf("strcoll ret=%#v exit=%#v err=%v", ret, exit, err)
+			}
+			got := signedInt(ret)
+			if ret.Type != bytecode.TypeI32 || (tt.sign == 0 && got != 0) || (tt.sign < 0 && got >= 0) || (tt.sign > 0 && got <= 0) {
+				t.Fatalf("strcoll ret=%#v, want sign %d", ret, tt.sign)
+			}
+		})
 	}
 
 	strxfrmFn, ok := reg.Lookup("strxfrm")
@@ -4346,7 +4363,7 @@ func TestStringCollateAndTransformExterns(t *testing.T) {
 	}
 	src := mustAllocBytes(t, mem, "strxfrm:src", []byte("abcdef\x00"), true, blockString)
 	dst := mustAllocBytes(t, mem, "strxfrm:dst", []byte("xxxx\x00"), false, blockString)
-	ret, exit, err = strxfrmFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 4)})
+	ret, exit, err := strxfrmFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 4)})
 	if err != nil || exit != nil {
 		t.Fatalf("strxfrm ret=%#v exit=%#v err=%v", ret, exit, err)
 	}

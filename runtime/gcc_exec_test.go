@@ -2961,15 +2961,21 @@ int main(void)
 
   if (strcoll("abc", "abd") >= 0)
     return 1;
-  if (strxfrm(buf, "abcdef", sizeof buf) != 6)
+  if (strcoll("abc", "abc") != 0)
     return 2;
-  if (strcmp(buf, "abc") != 0)
+  if (strcoll("abd", "abc") <= 0)
     return 3;
-  if (strxfrm(exact, "abcdef", sizeof exact) != 6)
+  if (strcoll("ab", "abc") >= 0)
     return 4;
-  if (strcmp(exact, "abcdef") != 0)
+  if (strxfrm(buf, "abcdef", sizeof buf) != 6)
     return 5;
-  return strxfrm(buf, "abcdef", 0) == 6 ? 0 : 6;
+  if (strcmp(buf, "abc") != 0)
+    return 6;
+  if (strxfrm(exact, "abcdef", sizeof exact) != 6)
+    return 7;
+  if (strcmp(exact, "abcdef") != 0)
+    return 8;
+  return strxfrm(buf, "abcdef", 0) == 6 ? 0 : 9;
 }
 `
 	st := runGCCExecFixture(t, "string-collate-transform-runtime.c", source)

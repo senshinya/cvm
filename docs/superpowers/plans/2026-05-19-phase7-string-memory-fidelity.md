@@ -124,9 +124,9 @@ Calibration before execution: Re-read `stringTransformExtern`.
 
 Calibration before execution: Re-read `stringCollateExtern`.
 
-- [ ] Add tests for equal strings, less-than, greater-than, and prefix ordering.
-- [ ] Fix `strcoll` if needed.
-- [ ] Verify, commit, and push `test(runtime): cover strcoll ordering`.
+- [x] Add tests for equal strings, less-than, greater-than, and prefix ordering.
+- [x] Fix `strcoll` if needed.
+- [x] Verify, commit, and push `test(runtime): cover strcoll ordering`.
 
 ## Milestone 15: `strerror` Stable Static Strings
 
