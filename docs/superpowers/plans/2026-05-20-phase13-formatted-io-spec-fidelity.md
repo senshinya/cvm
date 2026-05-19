@@ -272,10 +272,14 @@ Calibration result:
 
 Calibration before execution: Run GCC runtime gap report and scan imported accept roots for newly unblocked formatted I/O fixtures.
 
-- [ ] Run `TestGCCExecutionGapReportIsCurrent`.
-- [ ] Scan imported accept roots for printf/scanf candidates.
-- [ ] Add a low-risk fixture only if stable.
-- [ ] Verify, commit `docs: record phase 13 gcc fixture recheck`, and push.
+- [x] Run `TestGCCExecutionGapReportIsCurrent`.
+- [x] Scan imported accept roots for printf/scanf candidates.
+- [x] Add a low-risk fixture only if stable.
+- [x] Verify, commit `docs: record phase 13 gcc fixture recheck`, and push.
+
+Recheck result:
+- `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1` passed.
+- A formatted-I/O scan across imported GCC accept/reject roots found warning/diagnostic fixtures such as builtin nonnull/stringop cases, but no newly unblocked low-risk runtime fixture suited to add in this milestone.
 
 ## Milestone 24: Header Registry Source Recheck
 
