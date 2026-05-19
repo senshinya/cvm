@@ -3158,6 +3158,58 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 	}
 
 	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod hex overflow: %v", err)
+	}
+	hexOverflowText := mustAllocBytes(t, mem, "strtod:hex-overflow", []byte("0x1p+2048!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(hexOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod hex overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtod hex overflow ret=%#v, want +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod hex overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != hexOverflowText+9 {
+		t.Fatalf("strtod hex overflow endptr=%#x, want %#x", loadedEnd.Int, hexOverflowText+9)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod hex overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtod hex overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod negative hex overflow: %v", err)
+	}
+	negativeHexOverflowText := mustAllocBytes(t, mem, "strtod:negative-hex-overflow", []byte("-0x1p+2048?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeHexOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod negative hex overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, -1) {
+		t.Fatalf("strtod negative hex overflow ret=%#v, want -inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod negative hex overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeHexOverflowText+10 {
+		t.Fatalf("strtod negative hex overflow endptr=%#x, want %#x", loadedEnd.Int, negativeHexOverflowText+10)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod negative hex overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtod negative hex overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
 		t.Fatalf("store errno before strtod underflow: %v", err)
 	}
 	underflowText := mustAllocBytes(t, mem, "strtod:underflow", []byte("1e-400!\x00"), true, blockString)

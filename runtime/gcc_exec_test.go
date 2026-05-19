@@ -2552,6 +2552,20 @@ int main(void)
   if (errno != ERANGE)
     return 35;
   errno = 0;
+  if (strtod("0x1p+2048!", &end) <= 1e300)
+    return 45;
+  if (*end != '!')
+    return 46;
+  if (errno != ERANGE)
+    return 47;
+  errno = 0;
+  if (strtod("-0x1p+2048?", &end) >= -1e300)
+    return 48;
+  if (*end != '?')
+    return 49;
+  if (errno != ERANGE)
+    return 50;
+  errno = 0;
   if (strtod("1e-400!", &end) != 0.0)
     return 36;
   if (*end != '!')

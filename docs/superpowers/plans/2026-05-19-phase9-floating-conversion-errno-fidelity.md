@@ -138,9 +138,15 @@ Findings:
 
 Calibration before execution: Check `0x1p+2048` parsing behavior and endptr behavior.
 
-- [ ] Add direct/source tests for positive and negative hex overflow.
-- [ ] Set `errno` to `ERANGE` on overflow.
-- [ ] Verify, commit, and push `feat(runtime): mark strtod hex overflow`.
+- [x] Add direct/source tests for positive and negative hex overflow.
+- [x] Set `errno` to `ERANGE` on overflow.
+- [x] Verify, commit, and push `feat(runtime): mark strtod hex overflow`.
+
+Findings:
+
+- `strconv.ParseFloat` reports `ErrRange` for `0x1p+2048` and `-0x1p+2048`, so the range path added for decimal overflow also covers hex overflow.
+- Added direct extern and source-level runtime coverage for positive and negative hex overflow, including end pointer checks after the full hex token.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
 
 ## Milestone 10: Hex Float Underflow Range Trapdoor
 
