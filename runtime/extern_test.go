@@ -2790,6 +2790,22 @@ func TestStdlibStrtollExterns(t *testing.T) {
 		t.Fatalf("strtoll endptr=%#x, want %#x", loadedEnd.Int, signedText+11)
 	}
 
+	maxSignedText := mustAllocBytes(t, mem, "strtoll:max", []byte("9223372036854775807;\x00"), true, blockString)
+	ret, exit, err = strtollFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(maxSignedText), PtrValue(endptr), IntValue(bytecode.TypeI32, 10)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtoll max ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI64 || signedInt(ret) != 9223372036854775807 {
+		t.Fatalf("strtoll max ret=%#v, want i64 max", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtoll max endptr: %v", err)
+	}
+	if loadedEnd.Int != maxSignedText+19 {
+		t.Fatalf("strtoll max endptr=%#x, want %#x", loadedEnd.Int, maxSignedText+19)
+	}
+
 	strtoullFn, ok := reg.Lookup("strtoull")
 	if !ok {
 		t.Fatal("missing strtoull extern")
@@ -2808,6 +2824,22 @@ func TestStdlibStrtollExterns(t *testing.T) {
 	}
 	if loadedEnd.Int != unsignedText+11 {
 		t.Fatalf("strtoull endptr=%#x, want %#x", loadedEnd.Int, unsignedText+11)
+	}
+
+	maxUnsignedText := mustAllocBytes(t, mem, "strtoull:max", []byte("18446744073709551615!\x00"), true, blockString)
+	ret, exit, err = strtoullFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(maxUnsignedText), PtrValue(endptr), IntValue(bytecode.TypeI32, 10)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtoull max ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != ^uint64(0) {
+		t.Fatalf("strtoull max ret=%#v, want u64 max", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtoull max endptr: %v", err)
+	}
+	if loadedEnd.Int != maxUnsignedText+20 {
+		t.Fatalf("strtoull max endptr=%#x, want %#x", loadedEnd.Int, maxUnsignedText+20)
 	}
 }
 

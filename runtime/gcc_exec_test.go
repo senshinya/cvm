@@ -2423,9 +2423,17 @@ int main(void)
     return 1;
   if (*end != 'x')
     return 2;
+  if (strtoll("9223372036854775807;", &end, 10) != 9223372036854775807LL)
+    return 5;
+  if (*end != ';')
+    return 6;
   if (strtoull("0X100000000z", &end, 0) != 4294967296ULL)
     return 3;
-  return *end == 'z' ? 0 : 4;
+  if (*end != 'z')
+    return 4;
+  if (strtoull("18446744073709551615!", &end, 10) != 18446744073709551615ULL)
+    return 7;
+  return *end == '!' ? 0 : 8;
 }
 `
 	st := runGCCExecFixture(t, "stdlib-strtoll-runtime.c", source)

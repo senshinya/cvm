@@ -57,9 +57,15 @@ Findings:
 
 Calibration before execution: Check 64-bit signed/unsigned wrapping behavior.
 
-- [ ] Add direct/source tests for max signed, high unsigned, and endptr.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden strtoll variants`.
+- [x] Add direct/source tests for max signed, high unsigned, and endptr.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): harden strtoll variants`.
+
+Findings:
+
+- Existing coverage included negative signed 64-bit parsing and unsigned values above 32-bit range.
+- Added direct extern and source-level runtime coverage for `LLONG_MAX`-sized decimal input and `ULLONG_MAX`-sized decimal input with end-pointer checks.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibStrtoll' -count=1` passed.
 
 ## Milestone 5: `atoi` Family Whitespace And Sign
 
