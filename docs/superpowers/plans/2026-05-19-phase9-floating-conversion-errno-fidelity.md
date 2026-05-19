@@ -284,9 +284,16 @@ Findings:
 
 Calibration before execution: Search errno/math/stdlib headers and extern registry for touched Phase 9 surfaces.
 
-- [ ] Record declaration/registration/test surface status.
-- [ ] Add smoke coverage if missing.
-- [ ] Verify, commit, and push `docs: record phase 9 header registry recheck`.
+- [x] Record declaration/registration/test surface status.
+- [x] Add smoke coverage if missing.
+- [x] Verify, commit, and push `docs: record phase 9 header registry recheck`.
+
+Findings:
+
+- `<errno.h>` exposes `EDOM`, `ERANGE`, `EILSEQ`, and `extern int errno;`.
+- `<stdlib.h>` declares `atof`, `strtod`, `strtof`, and `strtold`; `<math.h>` declares `nan`, `nanf`, `nanl`, and infinity/HUGE macros.
+- `DefaultExternRegistry` registers `atof`, `strtod`, `strtof`, `strtold`, `nan`, `nanf`, and `nanl`; `LookupVariable("errno")` routes to the per-memory static variable.
+- Existing direct and source smoke coverage reaches those surfaces, so no missing declaration or registration was found.
 
 ## Milestone 20: GCC Runtime Fixture Recheck
 
