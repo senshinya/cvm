@@ -1803,6 +1803,10 @@ int main(void)
     return 3;
   if (difftime(7, 2) != 5.0)
     return 4;
+  if (difftime(7, 7) != 0.0)
+    return 6;
+  if (difftime(2, 7) != -5.0)
+    return 7;
   return clock() == 0 ? 0 : 5;
 }
 `

@@ -215,10 +215,16 @@ Findings:
 
 Calibration before execution: Re-read `difftimeExtern`.
 
-- [ ] Add tests for positive, zero, and negative differences.
-- [ ] Add source-level runtime coverage.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover difftime arithmetic`.
+- [x] Add tests for positive, zero, and negative differences.
+- [x] Add source-level runtime coverage.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover difftime arithmetic`.
+
+Findings:
+
+- Existing direct/source coverage checked positive differences.
+- Added direct extern and source-level runtime coverage for zero and negative differences.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestTimeExterns|TestTimeHeader' -count=1` passed.
 
 ## Milestone 16: `atexit` Ordering Recheck
 

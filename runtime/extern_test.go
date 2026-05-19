@@ -3944,6 +3944,20 @@ func TestTimeExterns(t *testing.T) {
 	if ret.Type != bytecode.TypeF64 || ret.Float != 5 {
 		t.Fatalf("difftime ret=%#v, want f64 5", ret)
 	}
+	ret, exit, err = diffFn(context.Background(), nil, []Value{IntValue(bytecode.TypeI64, 7), IntValue(bytecode.TypeI64, 7)})
+	if err != nil || exit != nil {
+		t.Fatalf("difftime zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 {
+		t.Fatalf("difftime zero ret=%#v, want f64 0", ret)
+	}
+	ret, exit, err = diffFn(context.Background(), nil, []Value{IntValue(bytecode.TypeI64, 2), IntValue(bytecode.TypeI64, 7)})
+	if err != nil || exit != nil {
+		t.Fatalf("difftime negative ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != -5 {
+		t.Fatalf("difftime negative ret=%#v, want f64 -5", ret)
+	}
 
 	clockFn, ok := reg.Lookup("clock")
 	if !ok {
