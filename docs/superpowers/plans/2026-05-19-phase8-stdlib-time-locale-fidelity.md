@@ -318,7 +318,12 @@ Findings:
 
 Calibration before execution: Confirm all prior Phase 8 milestones are committed and pushed.
 
-- [ ] Update `docs/bytecode-runtime-handoff.md`.
-- [ ] Create `docs/phase8-stdlib-time-locale-fidelity-gap-map.md`.
-- [ ] Mark this plan complete.
-- [ ] Run standard verification, commit `docs: close phase 8 stdlib time locale work`, and push.
+- [x] Update `docs/bytecode-runtime-handoff.md`.
+- [x] Create `docs/phase8-stdlib-time-locale-fidelity-gap-map.md`.
+- [x] Mark this plan complete.
+- [x] Run standard verification, commit `docs: close phase 8 stdlib time locale work`, and push.
+
+Closure summary:
+
+- All Phase 8 milestones 1-21 were committed and pushed to `origin/codex/bytecode-runtime-phase-8`.
+- The Phase 8 gap map records closed stdlib, time, locale, and ctype surfaces, recheck results, and residual deterministic-libc limits.

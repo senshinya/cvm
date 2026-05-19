@@ -8,10 +8,10 @@ This document records the current state of the bytecode/runtime work so the bran
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-7`
-- Latest implementation/coverage commit before this handoff document update: `7ab67dc docs: record phase 7 fixture recheck`
+- Branch: `codex/bytecode-runtime-phase-8`
+- Latest implementation/coverage commit before this handoff document update: `59cb5d2 docs: record phase 8 gcc fixture recheck`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: `origin/codex/bytecode-runtime-phase-7`
+- Upstream: `origin/codex/bytecode-runtime-phase-8`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-7 origin/codex/bytecode-runtime-phase-7
+git switch -c codex/bytecode-runtime-phase-8 origin/codex/bytecode-runtime-phase-8
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-7` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-8` instead.
 
 ## Verification Commands
 
@@ -154,6 +154,32 @@ Residual bounded surfaces after Phase 7:
 - `strerror` remains a deterministic hosted stub returning `"error"` rather than host-specific errno text.
 - Checked builtin overflow diagnostics remain split between compile-time GCC accept coverage and runtime direct trap coverage.
 - Broader stdlib, time, locale, and ctype edge fidelity is next-phase work.
+
+## Phase 8 Closure
+
+Phase 8 stdlib, time, locale, and ctype fidelity is closed on `codex/bytecode-runtime-phase-8`.
+
+Closed Phase 8 milestones:
+
+- Hardened integer conversion coverage for `strtol`, `strtoul`, `strtoll`, and `strtoull`, including base auto-detection, unsigned negative input, max signed, max unsigned, no-conversion, and `endptr` behavior.
+- Covered `atoi`, `atol`, `atoll`, `atof`, `strtod`, `strtof`, and `strtold` parsing, including decimal, exponent, hex float, no-conversion, and current `long double` storage behavior.
+- Covered deterministic `rand`/`srand`, `getenv`, and `system` hosted semantics.
+- Rechecked `atexit`, `exit`, and `_Exit` handler ordering and cleanup-control behavior.
+- Covered deterministic C-locale `setlocale`, deterministic `clock`/`time`, and `difftime` arithmetic.
+- Hardened ctype classification and case conversion bounds, preserving EOF while masking non-EOF inputs through unsigned-byte values.
+
+Phase 8 recheck:
+
+- Header declarations, sema builtin typing, extern registry entries, direct extern tests, and source-level runtime tests were rechecked for touched Phase 8 surfaces.
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed with 18 runnable manifest candidates and no failures.
+- Imported GCC accept scans did not identify a new stable low-risk runtime fixture for the Phase 8 surface.
+
+Residual bounded surfaces after Phase 8:
+
+- Floating conversion continues to use Go `strconv.ParseFloat` over the deterministic C-locale subset; host locale, errno/range diagnostics, and exact native libc overflow behavior remain out of scope.
+- `time` and `clock` intentionally return deterministic zero values rather than host time.
+- `system` intentionally never invokes a host shell; non-NULL commands fail deterministically.
+- Ctype behavior is deterministic byte-oriented C-locale behavior; broad locale-specific classification remains out of scope.
 
 ## Completed Work
 
@@ -1679,9 +1705,9 @@ Runtime support exists for real math externs and for the Phase 1 complex math ex
 
 ## Suggested Next Work
 
-The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, and Phases 2 through 7 are closed. Suggested next directions:
+The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, and Phases 2 through 8 are closed. Suggested next directions:
 
-- Continue with Phase 8 stdlib, time, locale, and ctype fidelity from `docs/superpowers/plans/2026-05-19-phase8-stdlib-time-locale-fidelity.md`.
+- Scope any further hosted runtime work as a new phase, starting from the residual limits recorded in the Phase 8 gap map.
 - Expand runtime execution coverage only when a fixture has stable deterministic semantics or when the required hosted-runtime semantics are explicitly brought into scope.
 
 Recommended workflow:
