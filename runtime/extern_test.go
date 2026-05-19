@@ -3199,6 +3199,43 @@ func TestPlainStringWriteExterns(t *testing.T) {
 			t.Fatalf("missing %s extern", name)
 		}
 	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	buf := mustAllocBytes(t, mem, "strcpy:buf", make([]byte, 8), false, blockLocal)
+	src := mustAllocBytes(t, mem, "strcpy:src", []byte("ab\x00"), true, blockString)
+	strcpyFn, _ := reg.Lookup("strcpy")
+	ret, exit, err := strcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf), PtrValue(src)})
+	if err != nil || exit != nil {
+		t.Fatalf("strcpy ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != buf {
+		t.Fatalf("strcpy ret=%#v, want pointer %#x", ret, buf)
+	}
+	got, err := mem.ReadCString(buf)
+	if err != nil || got != "ab" {
+		t.Fatalf("strcpy dst=%q err=%v, want ab", got, err)
+	}
+	nul, err := mem.Load(buf+2, bytecode.TypeI8, 1)
+	if err != nil || nul.Int != 0 {
+		t.Fatalf("strcpy terminator=%#v err=%v, want zero", nul, err)
+	}
+
+	stpcpyFn, _ := reg.Lookup("stpcpy")
+	src2 := mustAllocBytes(t, mem, "stpcpy:src", []byte("cd\x00"), true, blockString)
+	ret, exit, err = stpcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf + 2), PtrValue(src2)})
+	if err != nil || exit != nil {
+		t.Fatalf("stpcpy ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != buf+4 {
+		t.Fatalf("stpcpy ret=%#v, want pointer %#x", ret, buf+4)
+	}
+	got, err = mem.ReadCString(buf)
+	if err != nil || got != "abcd" {
+		t.Fatalf("stpcpy dst=%q err=%v, want abcd", got, err)
+	}
+	nul, err = mem.Load(buf+4, bytecode.TypeI8, 1)
+	if err != nil || nul.Int != 0 {
+		t.Fatalf("stpcpy terminator=%#v err=%v, want zero", nul, err)
+	}
 }
 
 func TestPlainAllocationExterns(t *testing.T) {

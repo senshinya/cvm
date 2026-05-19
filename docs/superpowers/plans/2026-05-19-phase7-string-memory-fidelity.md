@@ -166,10 +166,10 @@ Calibration before execution: Re-read `memorySetExtern`, checked memset, and `me
 
 Calibration before execution: Re-read `stringCopyExtern`.
 
-- [ ] Add tests for copied terminator and `stpcpy` returning the terminator pointer.
-- [ ] Add source-level runtime coverage.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover strcpy returns`.
+- [x] Add tests for copied terminator and `stpcpy` returning the terminator pointer.
+- [x] Add source-level runtime coverage.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover strcpy returns`.
 
 ## Milestone 20: `strncpy` And `stpncpy` Padding
 
