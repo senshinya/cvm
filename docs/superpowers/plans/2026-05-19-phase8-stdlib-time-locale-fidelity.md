@@ -230,9 +230,15 @@ Findings:
 
 Calibration before execution: Re-read atexit registration and runtime exit handling.
 
-- [ ] Add source-level test for multiple callbacks and reverse order.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): recheck atexit ordering`.
+- [x] Add source-level test for multiple callbacks and reverse order.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): recheck atexit ordering`.
+
+Findings:
+
+- Existing source-level runtime coverage registers two callbacks and asserts reverse-order stdout output `21`.
+- No runtime code changes were needed.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibAtexitRunsHandlersInReverseOrderThroughRuntime' -count=1` passed.
 
 ## Milestone 17: `exit` And `_Exit` Divergence
 
