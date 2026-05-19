@@ -157,10 +157,10 @@ Calibration before execution: Re-read `mblenExtern` and existing multibyte tests
 
 Calibration before execution: Check wchar storage width and null state behavior.
 
-- [ ] Add tests for null destination, null source, zero `n`, NUL, ASCII, and high-bit rejection.
-- [ ] Tighten `mbtowc` behavior.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden mbtowc c locale`.
+- [x] Add tests for null destination, null source, zero `n`, NUL, ASCII, and high-bit rejection.
+- [x] Tighten `mbtowc` behavior.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden mbtowc c locale`.
 
 ## Milestone 18: `wctomb` C-Locale Edge Cases
 

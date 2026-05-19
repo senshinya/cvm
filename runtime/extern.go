@@ -1346,6 +1346,9 @@ func mbtowcExtern(name string) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
+		if ch >= 0x80 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
 		if args[0].Int != 0 {
 			if err := ec.Memory.Store(args[0].Int, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(ch))); err != nil {
 				return Value{}, nil, err

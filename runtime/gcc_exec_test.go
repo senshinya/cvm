@@ -2278,6 +2278,17 @@ int main(void)
     return 12;
   if (mbtowc(&wide[0], "B", 2) != 1 || wide[0] != L'B')
     return 4;
+  if (mbtowc(0, "B", 2) != 1)
+    return 13;
+  if (mbtowc(0, 0, 0) != 0)
+    return 14;
+  if (mbtowc(&wide[1], "", 1) != 0 || wide[1] != 0)
+    return 15;
+  wide[1] = L'X';
+  if (mbtowc(&wide[1], "B", 0) != -1 || wide[1] != L'X')
+    return 16;
+  if (mbtowc(&wide[1], bad, 1) != -1 || wide[1] != L'X')
+    return 17;
   wide[0] = L'O';
   wide[1] = L'K';
   wide[2] = 0;

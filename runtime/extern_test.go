@@ -2466,6 +2466,37 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	if err != nil || got.Int != 'A' {
 		t.Fatalf("mbtowc stored %#v err=%v, want 'A'", got, err)
 	}
+	ret, exit, err = mbtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(text), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("mbtowc null dest ret=%#v exit=%#v err=%v, want i32 1", ret, exit, err)
+	}
+	ret, exit, err = mbtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(0), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("mbtowc null source ret=%#v exit=%#v err=%v, want i32 0", ret, exit, err)
+	}
+	ret, exit, err = mbtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(text), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("mbtowc zero n ret=%#v exit=%#v err=%v, want i32 -1", ret, exit, err)
+	}
+	ret, exit, err = mbtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(text + 2), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("mbtowc nul ret=%#v exit=%#v err=%v, want i32 0", ret, exit, err)
+	}
+	got, err = mem.Load(wide, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 0 {
+		t.Fatalf("mbtowc nul stored %#v err=%v, want 0", got, err)
+	}
+	if err := mem.Store(wide, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0x1234)); err != nil {
+		t.Fatalf("store wide sentinel: %v", err)
+	}
+	ret, exit, err = mbtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(high), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("mbtowc high-bit ret=%#v exit=%#v err=%v, want i32 -1", ret, exit, err)
+	}
+	got, err = mem.Load(wide, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 0x1234 {
+		t.Fatalf("mbtowc high-bit stored %#v err=%v, want sentinel", got, err)
+	}
 
 	wctombFn, ok := reg.Lookup("wctomb")
 	if !ok {
