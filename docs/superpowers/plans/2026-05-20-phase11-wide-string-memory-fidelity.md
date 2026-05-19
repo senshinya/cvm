@@ -209,9 +209,9 @@ Calibration before execution: Mirror C-locale `strxfrm` with wide-character dest
 
 Calibration before execution: Re-read `strtok` and C99 `wcstok` save-pointer semantics.
 
-- [ ] Register and implement `wcstok`.
-- [ ] Cover first token, repeated delimiters, delimiter changes, exhaustion, empty delimiter set, and save-pointer updates.
-- [ ] Verify, commit `feat(runtime): add wcstok`, and push.
+- [x] Register and implement `wcstok`.
+- [x] Cover first token, repeated delimiters, delimiter changes, exhaustion, empty delimiter set, and save-pointer updates.
+- [x] Verify, commit `feat(runtime): add wcstok`, and push.
 
 ## Milestone 25: Wide Source Runtime Sweep
 

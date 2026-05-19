@@ -12,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "_Exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fgetpos", "fsetpos", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "perror", "abs", "labs", "llabs", "div", "ldiv", "lldiv", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs", "wcsrtombs", "rand", "srand", "getenv", "system", "atexit", "setlocale", "localeconv", "clock", "difftime", "time", "nan", "nanf", "nanl", "fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl", "sinh", "sinhf", "sinhl", "cosh", "coshf", "coshl", "tanh", "tanhf", "tanhl", "asin", "asinf", "asinl", "acos", "acosf", "acosl", "atan", "atanf", "atanl", "asinh", "asinhf", "asinhl", "acosh", "acoshf", "acoshl", "atanh", "atanhf", "atanhl", "cbrt", "cbrtf", "cbrtl", "erf", "erff", "erfl", "erfc", "erfcf", "erfcl", "tgamma", "tgammaf", "tgammal", "lgamma", "lgammaf", "lgammal", "exp", "expf", "expl", "exp2", "exp2f", "exp2l", "expm1", "expm1f", "expm1l", "log", "logf", "logl", "log10", "log10f", "log10l", "log1p", "log1pf", "log1pl", "log2", "log2f", "log2l", "ceil", "ceilf", "ceill", "floor", "floorf", "floorl", "trunc", "truncf", "truncl", "round", "roundf", "roundl", "nearbyint", "nearbyintf", "nearbyintl", "rint", "rintf", "rintl", "logb", "logbf", "logbl", "ilogb", "ilogbf", "ilogbl", "lrint", "lrintf", "lrintl", "lround", "lroundf", "lroundl", "llrint", "llrintf", "llrintl", "llround", "llroundf", "llroundl", "scalbn", "scalbnf", "scalbnl", "scalbln", "scalblnf", "scalblnl", "ldexp", "ldexpf", "ldexpl", "frexp", "frexpf", "frexpl", "modf", "modff", "modfl", "remquo", "remquof", "remquol", "pow", "powf", "powl", "atan2", "atan2f", "atan2l", "hypot", "hypotf", "hypotl", "fdim", "fdimf", "fdiml", "fmax", "fmaxf", "fmaxl", "fmin", "fminf", "fminl", "fmod", "fmodf", "fmodl", "remainder", "remainderf", "remainderl", "copysign", "copysignf", "copysignl", "fma", "fmaf", "fmal", "nextafter", "nextafterf", "nextafterl", "nexttoward", "nexttowardf", "nexttowardl", "cabs", "cabsf", "cabsl", "creal", "crealf", "creall", "cimag", "cimagf", "cimagl", "carg", "cargf", "cargl", "conj", "conjf", "conjl", "cproj", "cprojf", "cprojl", "csin", "csinf", "csinl", "ccos", "ccosf", "ccosl", "ctan", "ctanf", "ctanl", "csinh", "csinhf", "csinhl", "ccosh", "ccoshf", "ccoshl", "ctanh", "ctanhf", "ctanhl", "casin", "casinf", "casinl", "cacos", "cacosf", "cacosl", "catan", "catanf", "catanl", "casinh", "casinhf", "casinhl", "cacosh", "cacoshf", "cacoshl", "catanh", "catanhf", "catanhl", "cexp", "cexpf", "cexpl", "clog", "clogf", "clogl", "csqrt", "csqrtf", "csqrtl", "cpow", "cpowf", "cpowl", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "iswdigit", "iswalpha", "iswalnum", "iswspace", "iswlower", "iswupper", "iswxdigit", "iswprint", "iswblank", "iswcntrl", "iswgraph", "iswpunct", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper", "strcmp", "memcmp", "bcmp", "strncmp", "strcoll", "memchr", "wcslen", "wcscmp", "wcsncmp", "wcscoll", "wcsxfrm", "wcschr", "wcsrchr", "wcsstr", "wcspbrk", "wcsspn", "wcscspn", "wcscpy", "wcsncpy", "wcscat", "wcsncat", "wmemchr", "wmemcmp", "wmemcpy", "wmemmove", "wmemset", "strrchr", "strpbrk", "strspn", "strcspn", "strtok", "strxfrm", "strnlen", "strerror", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "realloc", "__builtin_strdup", "strdup", "strndup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "memccpy", "bcopy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "sprintf", "snprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "scanf", "fscanf", "sscanf", "feclearexcept", "fetestexcept"} {
+	for _, name := range []string{"exit", "_Exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fgetpos", "fsetpos", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "perror", "abs", "labs", "llabs", "div", "ldiv", "lldiv", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs", "wcsrtombs", "rand", "srand", "getenv", "system", "atexit", "setlocale", "localeconv", "clock", "difftime", "time", "nan", "nanf", "nanl", "fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl", "sinh", "sinhf", "sinhl", "cosh", "coshf", "coshl", "tanh", "tanhf", "tanhl", "asin", "asinf", "asinl", "acos", "acosf", "acosl", "atan", "atanf", "atanl", "asinh", "asinhf", "asinhl", "acosh", "acoshf", "acoshl", "atanh", "atanhf", "atanhl", "cbrt", "cbrtf", "cbrtl", "erf", "erff", "erfl", "erfc", "erfcf", "erfcl", "tgamma", "tgammaf", "tgammal", "lgamma", "lgammaf", "lgammal", "exp", "expf", "expl", "exp2", "exp2f", "exp2l", "expm1", "expm1f", "expm1l", "log", "logf", "logl", "log10", "log10f", "log10l", "log1p", "log1pf", "log1pl", "log2", "log2f", "log2l", "ceil", "ceilf", "ceill", "floor", "floorf", "floorl", "trunc", "truncf", "truncl", "round", "roundf", "roundl", "nearbyint", "nearbyintf", "nearbyintl", "rint", "rintf", "rintl", "logb", "logbf", "logbl", "ilogb", "ilogbf", "ilogbl", "lrint", "lrintf", "lrintl", "lround", "lroundf", "lroundl", "llrint", "llrintf", "llrintl", "llround", "llroundf", "llroundl", "scalbn", "scalbnf", "scalbnl", "scalbln", "scalblnf", "scalblnl", "ldexp", "ldexpf", "ldexpl", "frexp", "frexpf", "frexpl", "modf", "modff", "modfl", "remquo", "remquof", "remquol", "pow", "powf", "powl", "atan2", "atan2f", "atan2l", "hypot", "hypotf", "hypotl", "fdim", "fdimf", "fdiml", "fmax", "fmaxf", "fmaxl", "fmin", "fminf", "fminl", "fmod", "fmodf", "fmodl", "remainder", "remainderf", "remainderl", "copysign", "copysignf", "copysignl", "fma", "fmaf", "fmal", "nextafter", "nextafterf", "nextafterl", "nexttoward", "nexttowardf", "nexttowardl", "cabs", "cabsf", "cabsl", "creal", "crealf", "creall", "cimag", "cimagf", "cimagl", "carg", "cargf", "cargl", "conj", "conjf", "conjl", "cproj", "cprojf", "cprojl", "csin", "csinf", "csinl", "ccos", "ccosf", "ccosl", "ctan", "ctanf", "ctanl", "csinh", "csinhf", "csinhl", "ccosh", "ccoshf", "ccoshl", "ctanh", "ctanhf", "ctanhl", "casin", "casinf", "casinl", "cacos", "cacosf", "cacosl", "catan", "catanf", "catanl", "casinh", "casinhf", "casinhl", "cacosh", "cacoshf", "cacoshl", "catanh", "catanhf", "catanhl", "cexp", "cexpf", "cexpl", "clog", "clogf", "clogl", "csqrt", "csqrtf", "csqrtl", "cpow", "cpowf", "cpowl", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "iswdigit", "iswalpha", "iswalnum", "iswspace", "iswlower", "iswupper", "iswxdigit", "iswprint", "iswblank", "iswcntrl", "iswgraph", "iswpunct", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper", "strcmp", "memcmp", "bcmp", "strncmp", "strcoll", "memchr", "wcslen", "wcscmp", "wcsncmp", "wcscoll", "wcsxfrm", "wcstok", "wcschr", "wcsrchr", "wcsstr", "wcspbrk", "wcsspn", "wcscspn", "wcscpy", "wcsncpy", "wcscat", "wcsncat", "wmemchr", "wmemcmp", "wmemcpy", "wmemmove", "wmemset", "strrchr", "strpbrk", "strspn", "strcspn", "strtok", "strxfrm", "strnlen", "strerror", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "realloc", "__builtin_strdup", "strdup", "strndup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "memccpy", "bcopy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "sprintf", "snprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "scanf", "fscanf", "sscanf", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -6707,6 +6707,117 @@ func TestWideStringTransformExtern(t *testing.T) {
 	if ret.Type != bytecode.TypeU64 || ret.Int != 3 {
 		t.Fatalf("zero ret=%#v, want size 3", ret)
 	}
+}
+
+func TestWideStringTokenExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcstok")
+	if !ok {
+		t.Fatal("missing wcstok extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	assertToken := func(name string, addr uint64, want ...uint32) {
+		t.Helper()
+		for i, ch := range append(want, 0) {
+			got, err := loadWideChar(mem, addr+uint64(i*4))
+			if err != nil {
+				t.Fatalf("%s load[%d]: %v", name, i, err)
+			}
+			if got != ch {
+				t.Fatalf("%s[%d]=%#x, want %#x", name, i, got, ch)
+			}
+		}
+	}
+	wideAt := func(base uint64, index int64) uint64 {
+		t.Helper()
+		addr, err := wideElementAddr(base, index)
+		if err != nil {
+			t.Fatalf("wide address %d: %v", index, err)
+		}
+		return addr
+	}
+	savePtr := func(name string) uint64 {
+		t.Helper()
+		return mustAlloc(t, mem, name, mem.target.PointerSize, mem.target.PointerAlign, false, blockLocal)
+	}
+	loadSave := func(name string, addr uint64) uint64 {
+		t.Helper()
+		got, err := mem.Load(addr, bytecode.TypePtr, mem.target.PointerAlign)
+		if err != nil {
+			t.Fatalf("%s load save: %v", name, err)
+		}
+		return got.Int
+	}
+	call := func(name string, s uint64, delim uint64, save uint64) uint64 {
+		t.Helper()
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(s), PtrValue(delim), PtrValue(save)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr {
+			t.Fatalf("%s ret=%#v, want pointer", name, ret)
+		}
+		return ret.Int
+	}
+
+	delims := makeWide("wcstok:delims", ',', ';', 0)
+	text := makeWide("wcstok:text", ',', ',', 'a', 'l', 'p', 'h', 'a', ',', 'b', 'e', 't', 'a', ';', 'g', 'a', 'm', 'm', 'a', 0)
+	save := savePtr("wcstok:save")
+	tok := call("first", text, delims, save)
+	if tok != wideAt(text, 2) || loadSave("first", save) != wideAt(text, 8) {
+		t.Fatalf("first tok=%#x save=%#x", tok, loadSave("first", save))
+	}
+	assertToken("first token", tok, 'a', 'l', 'p', 'h', 'a')
+	tok = call("second", 0, delims, save)
+	if tok != wideAt(text, 8) || loadSave("second", save) != wideAt(text, 13) {
+		t.Fatalf("second tok=%#x save=%#x", tok, loadSave("second", save))
+	}
+	assertToken("second token", tok, 'b', 'e', 't', 'a')
+	tok = call("third", 0, delims, save)
+	if tok != wideAt(text, 13) || loadSave("third", save) != 0 {
+		t.Fatalf("third tok=%#x save=%#x", tok, loadSave("third", save))
+	}
+	assertToken("third token", tok, 'g', 'a', 'm', 'm', 'a')
+	if tok = call("exhausted", 0, delims, save); tok != 0 {
+		t.Fatalf("exhausted tok=%#x, want null", tok)
+	}
+
+	text2 := makeWide("wcstok:changing", 'a', 'l', 'p', 'h', 'a', ',', 'b', 'e', 't', 'a', ';', 'g', 'a', 'm', 'm', 'a', '.', 'd', 'e', 'l', 't', 'a', 0)
+	comma := makeWide("wcstok:comma", ',', 0)
+	semicolon := makeWide("wcstok:semicolon", ';', 0)
+	dot := makeWide("wcstok:dot", '.', 0)
+	save2 := savePtr("wcstok:save-changing")
+	if tok = call("changing first", text2, comma, save2); tok != text2 {
+		t.Fatalf("changing first tok=%#x, want %#x", tok, text2)
+	}
+	if tok = call("changing second", 0, semicolon, save2); tok != wideAt(text2, 6) {
+		t.Fatalf("changing second tok=%#x", tok)
+	}
+	if tok = call("changing third", 0, dot, save2); tok != wideAt(text2, 11) {
+		t.Fatalf("changing third tok=%#x", tok)
+	}
+	if tok = call("changing fourth", 0, dot, save2); tok != wideAt(text2, 17) || loadSave("changing fourth", save2) != 0 {
+		t.Fatalf("changing fourth tok=%#x save=%#x", tok, loadSave("changing fourth", save2))
+	}
+
+	emptyDelims := makeWide("wcstok:empty-delims", 0)
+	whole := makeWide("wcstok:whole", 'w', 'i', 'd', 'e', 0)
+	save3 := savePtr("wcstok:save-empty")
+	tok = call("empty delims", whole, emptyDelims, save3)
+	if tok != whole || loadSave("empty delims", save3) != 0 {
+		t.Fatalf("empty delimiter tok=%#x save=%#x", tok, loadSave("empty delims", save3))
+	}
+	assertToken("empty delimiter token", tok, 'w', 'i', 'd', 'e')
 }
 
 func TestStringReverseAndSetSearchExterns(t *testing.T) {

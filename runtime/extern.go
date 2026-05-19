@@ -2546,6 +2546,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("wcsncmp", wideStringNCompareExtern("wcsncmp"))
 	r.Register("wcscoll", wideStringCompareExtern("wcscoll"))
 	r.Register("wcsxfrm", wideStringTransformExtern("wcsxfrm"))
+	r.Register("wcstok", wideStringTokenExtern("wcstok"))
 	r.Register("wcschr", wideStringCharSearchExtern("wcschr"))
 	r.Register("wcsrchr", wideStringReverseCharSearchExtern("wcsrchr"))
 	r.Register("wcsstr", wideStringSearchExtern("wcsstr"))
@@ -3915,6 +3916,91 @@ func wideStringTransformExtern(name string) ExternFunc {
 			}
 		}
 		return UIntValue(bytecode.TypeU64, uint64(length)), nil, nil
+	}
+}
+
+func wideStringTokenExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string, delimiter string, and save pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		start := args[0].Int
+		if start == 0 {
+			saved, err := ec.Memory.Load(args[2].Int, bytecode.TypePtr, ec.Memory.target.PointerAlign)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			start = saved.Int
+		}
+		if start == 0 {
+			return PtrValue(0), nil, nil
+		}
+
+		addr := start
+		for {
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				if err := ec.Memory.WritePointer(args[2].Int, 0); err != nil {
+					return Value{}, nil, err
+				}
+				return PtrValue(0), nil, nil
+			}
+			matches, err := wideStringContainsChar(ec.Memory, args[1].Int, ch)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if !matches {
+				break
+			}
+			addr, err = wideElementAddr(addr, 1)
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
+
+		tokenStart := addr
+		for {
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				if err := ec.Memory.WritePointer(args[2].Int, 0); err != nil {
+					return Value{}, nil, err
+				}
+				return PtrValue(tokenStart), nil, nil
+			}
+			matches, err := wideStringContainsChar(ec.Memory, args[1].Int, ch)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if matches {
+				if err := storeWideChar(ec.Memory, addr, 0); err != nil {
+					return Value{}, nil, err
+				}
+				next, err := wideElementAddr(addr, 1)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				if err := ec.Memory.WritePointer(args[2].Int, next); err != nil {
+					return Value{}, nil, err
+				}
+				return PtrValue(tokenStart), nil, nil
+			}
+			addr, err = wideElementAddr(addr, 1)
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
 	}
 }
 
