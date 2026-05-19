@@ -2591,9 +2591,34 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	if err != nil || gotString != "ok" {
 		t.Fatalf("wcstombs string %q err=%v, want ok", gotString, err)
 	}
+	if err := writeMemoryByte(mem, out+1, 'X'); err != nil {
+		t.Fatalf("store wcstombs trunc sentinel: %v", err)
+	}
+	ret, exit, err = wcstombsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), PtrValue(wide), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("wcstombs trunc ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	ch, err = readMemoryByte(mem, out+1)
+	if err != nil || ch != 'X' {
+		t.Fatalf("wcstombs trunc sentinel %q err=%v, want unchanged", ch, err)
+	}
 	ret, exit, err = wcstombsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(wide), UIntValue(bytecode.TypeU64, 0)})
 	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
 		t.Fatalf("wcstombs length ret=%#v exit=%#v err=%v, want u64 2", ret, exit, err)
+	}
+	if err := mem.Store(wide+4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0x80)); err != nil {
+		t.Fatalf("store high wide: %v", err)
+	}
+	if err := writeMemoryByte(mem, out, 'X'); err != nil {
+		t.Fatalf("store wcstombs high sentinel: %v", err)
+	}
+	ret, exit, err = wcstombsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), PtrValue(wide), UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || signedInt(ret) != -1 {
+		t.Fatalf("wcstombs high wchar ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
+	}
+	ch, err = readMemoryByte(mem, out)
+	if err != nil || ch != 'X' {
+		t.Fatalf("wcstombs high wchar wrote %q err=%v, want sentinel", ch, err)
 	}
 }
 

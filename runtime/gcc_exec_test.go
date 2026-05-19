@@ -2296,6 +2296,13 @@ int main(void)
     return 5;
   if (out[0] != 'O' || out[1] != 'K' || out[2] != 0)
     return 6;
+  out[1] = 'X';
+  if (wcstombs(out, wide, 1) != 1 || out[0] != 'O' || out[1] != 'X')
+    return 22;
+  wide[1] = 0x80;
+  out[0] = 'X';
+  if (wcstombs(out, wide, sizeof out) != (size_t)-1 || out[0] != 'X')
+    return 23;
   if (mbstowcs(wide, "xy", 4) != 2)
     return 7;
   if (wide[0] != L'x' || wide[1] != L'y' || wide[2] != 0)

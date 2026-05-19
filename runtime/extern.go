@@ -1432,6 +1432,11 @@ func wcstombsExtern(name string) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
+		for _, wc := range chars {
+			if wc > 0x7f {
+				return UIntValue(bytecode.TypeU64, ^uint64(0)), nil, nil
+			}
+		}
 		if args[0].Int == 0 {
 			return UIntValue(bytecode.TypeU64, uint64(len(chars))), nil, nil
 		}
@@ -1439,9 +1444,6 @@ func wcstombsExtern(name string) ExternFunc {
 		count := uint64(0)
 		for count < n && count < uint64(len(chars)) {
 			wc := chars[count]
-			if wc > 255 {
-				return UIntValue(bytecode.TypeU64, ^uint64(0)), nil, nil
-			}
 			if err := writeMemoryByte(ec.Memory, args[0].Int+count, byte(wc)); err != nil {
 				return Value{}, nil, err
 			}

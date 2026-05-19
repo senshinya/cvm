@@ -184,10 +184,10 @@ Calibration before execution: Re-read `mbstowcsExtern` and C-locale count semant
 
 Calibration before execution: Re-read `wcstombsExtern` and wide string helpers.
 
-- [ ] Add tests for null destination length query, truncation, NUL termination when space allows, and high wchar rejection.
-- [ ] Tighten `wcstombs` behavior.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden wcstombs c locale`.
+- [x] Add tests for null destination length query, truncation, NUL termination when space allows, and high wchar rejection.
+- [x] Tighten `wcstombs` behavior.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden wcstombs c locale`.
 
 ## Milestone 21: Multibyte Cross-Function Runtime Coverage
 
