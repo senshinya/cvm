@@ -145,9 +145,9 @@ Calibration before execution: Re-read `strpbrk` set-scan behavior and wide termi
 
 Calibration before execution: Re-read `strspn` accept-span semantics.
 
-- [ ] Register and implement `wcsspn`.
-- [ ] Cover full span, partial span, empty accept, empty string, and high wide values.
-- [ ] Verify, commit `feat(runtime): add wcsspn`, and push.
+- [x] Register and implement `wcsspn`.
+- [x] Cover full span, partial span, empty accept, empty string, and high wide values.
+- [x] Verify, commit `feat(runtime): add wcsspn`, and push.
 
 ## Milestone 17: `wcscspn`
 
