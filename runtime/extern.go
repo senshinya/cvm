@@ -3959,6 +3959,30 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				assigned++
 			}
 			inputIndex += parsed.end
+		case 'p':
+			if lengthMod != "" {
+				return 0, inputIndex, fmt.Errorf("%s %%p does not support length modifier %q", name, lengthMod)
+			}
+			inputIndex = scanSkipWhitespace(input, inputIndex)
+			token := scanLimit(input, inputIndex, width)
+			parsed, err := parseStrtoIntegerString(name, token, 16)
+			if err != nil {
+				return 0, inputIndex, err
+			}
+			if !parsed.converted {
+				return assigned, inputIndex, nil
+			}
+			if parsed.neg {
+				return 0, inputIndex, fmt.Errorf("%s %%p does not support negative pointer input", name)
+			}
+			if !suppress {
+				if err := mem.WritePointer(args[argIndex].Int, parsed.value); err != nil {
+					return 0, inputIndex, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex += parsed.end
 		case 'n':
 			if width != 0 {
 				return 0, inputIndex, fmt.Errorf("%s %%n does not support width", name)

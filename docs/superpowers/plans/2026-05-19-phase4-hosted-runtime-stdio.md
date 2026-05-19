@@ -102,19 +102,19 @@ Calibration before execution: Confirm pointer values are stored as runtime point
 - Modify: `runtime/gcc_exec_test.go`
 - Modify: this plan file
 
-- [ ] **Step 1: Add failing direct pointer scanf tests**
+- [x] **Step 1: Add failing direct pointer scanf tests**
 
 Cover `%p` with `0x...`, null-like zero input, width, and first-conversion failure.
 
-- [ ] **Step 2: Implement pointer scan storage**
+- [x] **Step 2: Implement pointer scan storage**
 
 Parse hexadecimal pointer input and store into `void **`/pointer-sized memory consistently with the runtime target.
 
-- [ ] **Step 3: Add source-level pointer scanf coverage**
+- [x] **Step 3: Add source-level pointer scanf coverage**
 
 Compile a C snippet that scans a pointer and compares the resulting integer representation.
 
-- [ ] **Step 4: Verify, commit, and push pointer scanning**
+- [x] **Step 4: Verify, commit, and push pointer scanning**
 
 Run the standard verification chain, then commit `feat(runtime): scan pointer input formats`.
 

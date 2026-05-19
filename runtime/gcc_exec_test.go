@@ -2896,6 +2896,28 @@ int main(void)
 	}
 }
 
+func TestGCCStdioPointerScanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  void *p = 0;
+  void *q = 0;
+  int r = sscanf("0x1234 0", "%p %p", &p, &q);
+  if (r != 2)
+    return 1;
+  if ((unsigned long)p != 0x1234UL)
+    return 2;
+  return q == 0 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "stdio-scanf-pointer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioUngetcExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

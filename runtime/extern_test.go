@@ -3811,6 +3811,41 @@ func TestSscanfExternScansFloatingValues(t *testing.T) {
 	}
 }
 
+func TestSscanfExternScansPointerValues(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	target := bytecode.DefaultTarget()
+	mem := NewMemory(target)
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:pointer-input", []byte("0x1234 0x5 tail\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:pointer-fmt", []byte("%p %3p\x00"), true, blockString)
+	ptrAddr := mustAlloc(t, mem, "sscanf:pointer", target.PointerSize, target.PointerAlign, false, blockLocal)
+	narrowAddr := mustAlloc(t, mem, "sscanf:pointer-narrow", target.PointerSize, target.PointerAlign, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(ptrAddr),
+		PtrValue(narrowAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 2 {
+		t.Fatalf("sscanf ret=%#v, want i32 2", ret)
+	}
+	ptr, err := mem.Load(ptrAddr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || ptr.Int != 0x1234 {
+		t.Fatalf("ptr=%#v err=%v, want 0x1234", ptr, err)
+	}
+	narrow, err := mem.Load(narrowAddr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || narrow.Int != 0x5 {
+		t.Fatalf("narrow ptr=%#v err=%v, want 0x5", narrow, err)
+	}
+}
+
 func TestPrintfExternsWriteFormattedOutput(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
