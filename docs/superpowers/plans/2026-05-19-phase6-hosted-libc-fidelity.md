@@ -210,10 +210,12 @@ Recheck notes: `rg "fgetpos|fsetpos|freopen|tmpnam|setbuf|setvbuf|mblen|mbtowc|w
 
 Calibration before execution: Re-run GCC runtime gap report and scan accept fixtures for fpos, freopen, tmpnam, setvbuf, and multibyte candidates.
 
-- [ ] Run `TestGCCExecutionGapReportIsCurrent`.
-- [ ] Scan imported GCC accept roots for newly unblocked candidates.
-- [ ] Add a fixture only if it is low-risk and stable; otherwise record no candidate.
-- [ ] Verify, commit, and push `docs: record phase 6 gcc fixture recheck`.
+- [x] Run `TestGCCExecutionGapReportIsCurrent`.
+- [x] Scan imported GCC accept roots for newly unblocked candidates.
+- [x] Add a fixture only if it is low-risk and stable; otherwise record no candidate.
+- [x] Verify, commit, and push `docs: record phase 6 gcc fixture recheck`.
+
+Recheck notes: `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1` passed. Searches for `fgetpos|fsetpos|freopen|tmpnam|setvbuf|setbuf|mblen|mbtowc|wctomb|mbstowcs|wcstombs` across imported GCC accept roots and GCC manifests did not reveal a newly unblocked low-risk fixture; coverage remains in direct runtime tests and focused source-level runtime fixtures.
 
 ## Milestone 24: Phase 6 Closure Docs
 
