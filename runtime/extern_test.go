@@ -4358,6 +4358,19 @@ func TestStringCollateAndTransformExterns(t *testing.T) {
 		t.Fatalf("strxfrm dst=%q err=%v, want abc", got, err)
 	}
 
+	exact := mustAllocBytes(t, mem, "strxfrm:exact", make([]byte, 7), false, blockString)
+	ret, exit, err = strxfrmFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(exact), PtrValue(src), UIntValue(bytecode.TypeU64, 7)})
+	if err != nil || exit != nil {
+		t.Fatalf("strxfrm exact ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 6 {
+		t.Fatalf("strxfrm exact ret=%#v, want size 6", ret)
+	}
+	got, err = mem.ReadCString(exact)
+	if err != nil || got != "abcdef" {
+		t.Fatalf("strxfrm exact dst=%q err=%v, want abcdef", got, err)
+	}
+
 	ret, exit, err = strxfrmFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(src), UIntValue(bytecode.TypeU64, 0)})
 	if err != nil || exit != nil {
 		t.Fatalf("strxfrm zero ret=%#v exit=%#v err=%v", ret, exit, err)

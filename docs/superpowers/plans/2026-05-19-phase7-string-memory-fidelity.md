@@ -115,10 +115,10 @@ Calibration before execution: Re-check exhausted state and restart with a new st
 
 Calibration before execution: Re-read `stringTransformExtern`.
 
-- [ ] Add tests for `n == 0`, exact fit, truncation with terminator, and return length.
-- [ ] Fix C-locale transform behavior if needed.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden strxfrm c locale`.
+- [x] Add tests for `n == 0`, exact fit, truncation with terminator, and return length.
+- [x] Fix C-locale transform behavior if needed.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden strxfrm c locale`.
 
 ## Milestone 14: `strcoll` C-Locale Ordering
 
