@@ -225,9 +225,9 @@ Recheck result: header declarations, registry entries, and direct extern coverag
 
 Calibration before execution: Confirm all Phase 12 implementation increments are committed and pushed.
 
-- [ ] Create `docs/phase12-wide-stdio-format-fidelity-gap-map.md`.
-- [ ] Record closed surfaces and residual deterministic limits.
-- [ ] Verify, commit `docs: map phase 12 wide stdio gaps`, and push.
+- [x] Create `docs/phase12-wide-stdio-format-fidelity-gap-map.md`.
+- [x] Record closed surfaces and residual deterministic limits.
+- [x] Verify, commit `docs: map phase 12 wide stdio gaps`, and push.
 
 ## Milestone 27: Phase 12 Closure
 
