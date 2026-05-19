@@ -1782,6 +1782,40 @@ func TestFgetwcRejectsInvalidAndByteOrientedStreams(t *testing.T) {
 	}
 }
 
+func TestWideInputAliasesReadConfiguredStdin(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("XY"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	getwcFn, ok := reg.Lookup("getwc")
+	if !ok {
+		t.Fatal("missing getwc extern")
+	}
+	getwcharFn, ok := reg.Lookup("getwchar")
+	if !ok {
+		t.Fatal("missing getwchar extern")
+	}
+	fwideFn, ok := reg.Lookup("fwide")
+	if !ok {
+		t.Fatal("missing fwide extern")
+	}
+
+	ret, exit, err := getwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'X' {
+		t.Fatalf("getwc ret=%#v exit=%#v err=%v, want X", ret, exit, err)
+	}
+	ret, exit, err = getwcharFn(context.Background(), &ExternContext{Memory: mem}, nil)
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'Y' {
+		t.Fatalf("getwchar ret=%#v exit=%#v err=%v, want Y", ret, exit, err)
+	}
+	ret, exit, err = fwideFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || signedInt(ret) <= 0 {
+		t.Fatalf("fwide stdin ret=%#v exit=%#v err=%v, want positive", ret, exit, err)
+	}
+}
+
 func TestOutputCharacterAliasesWriteBytes(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

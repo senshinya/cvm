@@ -158,7 +158,9 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("putwc", fputwcExtern("putwc", r))
 	r.Register("putwchar", putwcharExtern("putwchar", r))
 	r.Register("fgetwc", fgetwcExtern("fgetwc", r))
-	for _, name := range []string{"getwc", "getwchar", "ungetwc"} {
+	r.Register("getwc", fgetwcExtern("getwc", r))
+	r.Register("getwchar", getwcharExtern("getwchar", r))
+	for _, name := range []string{"ungetwc"} {
 		r.Register(name, wideStdioIntStubExtern(name, -1))
 	}
 	r.Register("fputws", wideStdioIntStubExtern("fputws", -1))
@@ -846,6 +848,15 @@ func fgetwcExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
+func getwcharExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 0 {
+			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
+		}
+		return r.readHostWideChar(r.stdinHandle), nil, nil
+	}
+}
+
 func (r *ExternRegistry) writeHostWideChar(stream uint64, w io.Writer, wc int64) Value {
 	if stream != 0 {
 		if r.setHostOrientation(stream, streamWide) != streamWide {
@@ -869,6 +880,9 @@ func (r *ExternRegistry) writeHostWideChar(stream uint64, w io.Writer, wc int64)
 }
 
 func (r *ExternRegistry) readHostWideChar(stream uint64) Value {
+	if stream == 0 {
+		return IntValue(bytecode.TypeI32, -1)
+	}
 	if r.setHostOrientation(stream, streamWide) != streamWide {
 		r.hostError[stream] = true
 		return IntValue(bytecode.TypeI32, -1)

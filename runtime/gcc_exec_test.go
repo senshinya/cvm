@@ -4383,6 +4383,32 @@ int main(void)
 	}
 }
 
+func TestWideStdioInputAliasesExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <wchar.h>
+
+int main(void)
+{
+  FILE *in = stdin;
+  if (!in)
+    return 1;
+  if (getwc(in) != L'I')
+    return 2;
+  if (getwchar() != L'J')
+    return 3;
+  if (fwide(in, 0) <= 0)
+    return 4;
+  return 0;
+}
+`
+	reg := DefaultExternRegistryWithIO(strings.NewReader("IJ"), nil, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "wide-stdio-input-aliases-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

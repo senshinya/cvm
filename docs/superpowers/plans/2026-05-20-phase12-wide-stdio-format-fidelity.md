@@ -69,9 +69,9 @@ Calibration before execution: Reuse configured stdin/file read path and C-locale
 
 Calibration before execution: Confirm aliases should route through `fgetwc` and stdin.
 
-- [ ] Register and implement `getwc` and `getwchar`.
-- [ ] Cover direct extern and source-level configured stdin behavior.
-- [ ] Verify, commit `feat(runtime): add getwc aliases`, and push.
+- [x] Register and implement `getwc` and `getwchar`.
+- [x] Cover direct extern and source-level configured stdin behavior.
+- [x] Verify, commit `feat(runtime): add getwc aliases`, and push.
 
 ## Milestone 8: `ungetwc`
 
