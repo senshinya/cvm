@@ -92,9 +92,13 @@ Calibration result:
 
 Calibration before execution: Re-read current `%p` formatting and source expectations.
 
-- [ ] Cover `%p` null/non-null with width and left alignment.
-- [ ] Fix deterministic pointer string formatting if needed.
-- [ ] Verify, commit `feat(runtime): harden printf pointer formatting`, and push.
+- [x] Cover `%p` null/non-null with width and left alignment.
+- [x] Fix deterministic pointer string formatting if needed.
+- [x] Verify, commit `test(runtime): cover printf pointer width`, and push.
+
+Calibration result:
+- `%p` already formats as deterministic `0x` plus lowercase hex and participates in the common width/left-align writer.
+- The milestone added direct null/non-null width coverage and source coverage for null pointer right/left alignment; no runtime code change was needed.
 
 ## Milestone 9: Printf Dynamic Width And Precision
 

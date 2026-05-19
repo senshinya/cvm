@@ -9659,6 +9659,35 @@ func TestFormatExternsSupportPointerFormat(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportPointerWidth(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-pointer-width", 48, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-pointer-width", []byte("%8p|%-8p|%6p\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(0x1234),
+		PtrValue(0x1234),
+		PtrValue(0),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	want := "  0x1234|0x1234  |   0x0"
+	if ret.Type != bytecode.TypeI32 || ret.Int != uint64(len(want)) || got != want {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q, want i32 %d and pointer width output", ret, got, len(want))
+	}
+}
+
 func TestFormatExternsSupportBasicWidthFlags(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

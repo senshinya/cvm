@@ -2487,11 +2487,17 @@ int main(void)
   if (strcmp(buf, "ok abc abcdef") != 0)
     return 13;
 
+  n = sprintf(buf, "%6p|%-6p", (void *)0, (void *)0);
+  if (n != 13)
+    return 14;
+  if (strcmp(buf, "   0x0|0x0   ") != 0)
+    return 15;
+
   char small[5];
   n = snprintf(small, 5, "%s-%u", "abcdef", 3U);
   if (n != 8)
-    return 14;
-  return strcmp(small, "abcd") == 0 ? 0 : 15;
+    return 16;
+  return strcmp(small, "abcd") == 0 ? 0 : 17;
 }
 `
 	st := runGCCExecFixture(t, "plain-sprintf-runtime.c", source)
