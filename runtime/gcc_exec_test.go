@@ -2106,6 +2106,153 @@ int main(void)
 	}
 }
 
+func TestWideMemoryOperationsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  wchar_t src[4];
+  wchar_t dst[4];
+  wchar_t move[5];
+
+  src[0] = L'a';
+  src[1] = 0x1234;
+  src[2] = L'z';
+  src[3] = 0;
+  if (wmemcpy(dst, src, 4) != dst)
+    return 1;
+  if (wmemcmp(dst, src, 4) != 0)
+    return 2;
+  if (wmemchr(dst, 0x1234, 4) != dst + 1)
+    return 3;
+  if (wmemchr(dst, L'x', 4) != 0)
+    return 4;
+  if (wmemset(dst, L'q', 2) != dst)
+    return 5;
+  if (dst[0] != L'q' || dst[1] != L'q' || dst[2] != L'z')
+    return 6;
+
+  move[0] = L'a';
+  move[1] = L'b';
+  move[2] = L'c';
+  move[3] = 0;
+  move[4] = L'!';
+  if (wmemmove(move + 1, move, 4) != move + 1)
+    return 7;
+  return move[0] == L'a' && move[1] == L'a' && move[2] == L'b' && move[3] == L'c' && move[4] == 0 ? 0 : 8;
+}
+`
+	st := runGCCExecFixture(t, "wide-memory-operations-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestWideStringSearchSpanExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  const wchar_t *text = L"abacad";
+
+  if (wcschr(text, L'a') != text)
+    return 1;
+  if (wcsrchr(text, L'a') != text + 4)
+    return 2;
+  if (wcsstr(text, L"aca") != text + 2)
+    return 3;
+  if (wcspbrk(text, L"xyc") != text + 3)
+    return 4;
+  if (wcsspn(text, L"ab") != 3)
+    return 5;
+  if (wcscspn(text, L"cd") != 3)
+    return 6;
+  if (wcschr(text, 0) != text + 6)
+    return 7;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-string-search-span-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestWideStringCopyConcatExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  wchar_t buf[16];
+
+  if (wcscpy(buf, L"ab") != buf)
+    return 1;
+  if (wcscmp(buf, L"ab") != 0)
+    return 2;
+  if (wcscat(buf, L"cd") != buf)
+    return 3;
+  if (wcscmp(buf, L"abcd") != 0)
+    return 4;
+  if (wcsncpy(buf, L"xy", 4) != buf)
+    return 5;
+  if (buf[0] != L'x' || buf[1] != L'y' || buf[2] != 0 || buf[3] != 0)
+    return 6;
+  buf[0] = 0;
+  if (wcsncat(buf, L"uvwx", 2) != buf)
+    return 7;
+  if (wcscmp(buf, L"uv") != 0)
+    return 8;
+  if (wcsncat(buf, L"zz", 0) != buf)
+    return 9;
+  return wcscmp(buf, L"uv") == 0 ? 0 : 10;
+}
+`
+	st := runGCCExecFixture(t, "wide-string-copy-concat-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestWideStringTokenizerExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  wchar_t text[32];
+  wchar_t *save = 0;
+  wchar_t *tok;
+
+  wcscpy(text, L",alpha,beta;gamma");
+  tok = wcstok(text, L",;", &save);
+  if (tok != text + 1 || wcscmp(tok, L"alpha") != 0)
+    return 1;
+  tok = wcstok(0, L",;", &save);
+  if (tok != text + 7 || wcscmp(tok, L"beta") != 0)
+    return 2;
+  tok = wcstok(0, L";", &save);
+  if (tok != text + 12 || wcscmp(tok, L"gamma") != 0)
+    return 3;
+  if (wcstok(0, L";", &save) != 0)
+    return 4;
+
+  wcscpy(text, L"wide");
+  save = 0;
+  tok = wcstok(text, L"", &save);
+  if (tok != text || wcscmp(tok, L"wide") != 0)
+    return 5;
+  return save == 0 ? 0 : 6;
+}
+`
+	st := runGCCExecFixture(t, "wide-string-tokenizer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <time.h>

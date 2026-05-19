@@ -217,9 +217,9 @@ Calibration before execution: Re-read `strtok` and C99 `wcstok` save-pointer sem
 
 Calibration before execution: Search existing source runtime tests for `<wchar.h>` workflows before adding more.
 
-- [ ] Add compact source-level workflows covering wide memory, search/span, copy/concat, collation/transform, and tokenizer behavior.
-- [ ] Run focused runtime source tests.
-- [ ] Verify, commit `test(runtime): cover wide string workflows`, and push.
+- [x] Add compact source-level workflows covering wide memory, search/span, copy/concat, collation/transform, and tokenizer behavior.
+- [x] Run focused runtime source tests.
+- [x] Verify, commit `test(runtime): cover wide string workflows`, and push.
 
 ## Milestone 26: GCC Fixture Recheck
 
