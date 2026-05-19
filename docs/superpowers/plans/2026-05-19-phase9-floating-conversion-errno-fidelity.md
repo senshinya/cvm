@@ -122,10 +122,17 @@ Findings:
 
 Calibration before execution: Check small decimal parsing and deterministic underflow threshold.
 
-- [ ] Add direct/source tests for decimal underflow to zero.
-- [ ] Set `errno` to `ERANGE` on underflow-to-zero.
-- [ ] Preserve successful subnormal parsing behavior.
-- [ ] Verify, commit, and push `feat(runtime): mark strtod decimal underflow`.
+- [x] Add direct/source tests for decimal underflow to zero.
+- [x] Set `errno` to `ERANGE` on underflow-to-zero.
+- [x] Preserve successful subnormal parsing behavior.
+- [x] Verify, commit, and push `feat(runtime): mark strtod decimal underflow`.
+
+Findings:
+
+- Go's `strconv.ParseFloat` returns nil error for `1e-400`/`-1e-400`, so underflow-to-zero needed an explicit significand check.
+- Added detection for parsed zero values whose significand contains a nonzero digit, while preserving exact zero inputs and representable subnormal values.
+- Added direct extern and source-level runtime coverage for positive underflow, negative underflow, and the smallest positive subnormal `5e-324`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed after the fix.
 
 ## Milestone 9: Hex Float Overflow Range Trapdoor
 

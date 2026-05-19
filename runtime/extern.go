@@ -1660,15 +1660,49 @@ func parseStrtoFloatString(s string) parsedStrtoFloat {
 		return parsedStrtoFloat{value: v, end: end, converted: true}
 	}
 	for end := len(s); end > start; end-- {
-		v, err := strconv.ParseFloat(s[start:end], 64)
+		token := s[start:end]
+		v, err := strconv.ParseFloat(token, 64)
 		if err == nil {
-			return parsedStrtoFloat{value: v, end: end, converted: true}
+			return parsedStrtoFloat{
+				value:     v,
+				end:       end,
+				converted: true,
+				rangeErr:  v == 0 && floatTokenHasNonZeroSignificand(token),
+			}
 		}
 		if numErr, ok := err.(*strconv.NumError); ok && numErr.Err == strconv.ErrRange {
 			return parsedStrtoFloat{value: v, end: end, converted: true, rangeErr: true}
 		}
 	}
 	return parsedStrtoFloat{}
+}
+
+func floatTokenHasNonZeroSignificand(token string) bool {
+	i := 0
+	if i < len(token) && (token[i] == '+' || token[i] == '-') {
+		i++
+	}
+	hex := i+2 <= len(token) && token[i] == '0' && (token[i+1] == 'x' || token[i+1] == 'X')
+	if hex {
+		i += 2
+	}
+	for ; i < len(token); i++ {
+		ch := token[i]
+		if hex {
+			if ch == 'p' || ch == 'P' {
+				break
+			}
+		} else if ch == 'e' || ch == 'E' {
+			break
+		}
+		if ch == '.' {
+			continue
+		}
+		if digit := strtoDigit(ch); digit > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func parseStrtoFloatSpecial(s string, start int) (float64, int, bool) {
