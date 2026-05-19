@@ -153,9 +153,9 @@ Calibration before execution: Re-read `strspn` accept-span semantics.
 
 Calibration before execution: Re-read `strcspn` reject-span semantics.
 
-- [ ] Register and implement `wcscspn`.
-- [ ] Cover full span, early reject, empty reject, empty string, and high wide values.
-- [ ] Verify, commit `feat(runtime): add wcscspn`, and push.
+- [x] Register and implement `wcscspn`.
+- [x] Cover full span, early reject, empty reject, empty string, and high wide values.
+- [x] Verify, commit `feat(runtime): add wcscspn`, and push.
 
 ## Milestone 18: `wcscpy`
 

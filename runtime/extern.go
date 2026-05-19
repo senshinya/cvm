@@ -2549,6 +2549,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("wcsstr", wideStringSearchExtern("wcsstr"))
 	r.Register("wcspbrk", wideStringSetSearchExtern("wcspbrk"))
 	r.Register("wcsspn", wideStringSpanExtern("wcsspn", true))
+	r.Register("wcscspn", wideStringSpanExtern("wcscspn", false))
 	r.Register("strnlen", stringNLengthExtern("strnlen"))
 	r.Register("strerror", stringErrorExtern("strerror", r))
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
