@@ -30,10 +30,17 @@ Baseline:
 
 Calibration before execution: Re-read `LookupVariable("errno")`, static var storage, and existing errno tests.
 
-- [ ] Add direct tests proving `errno` is per-memory stable and initially zero.
-- [ ] Add source-level smoke for reading/writing `errno`.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): recheck errno storage`.
+- [x] Add direct tests proving `errno` is per-memory stable and initially zero.
+- [x] Add source-level smoke for reading/writing `errno`.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): recheck errno storage`.
+
+Findings:
+
+- Existing direct coverage already checked one-memory stable `errno` address and read/write behavior.
+- Existing source-level runtime coverage already checked `<errno.h>` constants and source read/write.
+- Added direct coverage proving a second `Memory` gets its own stable, initially zero `errno` under the same registry.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestErrno' -count=1` passed.
 
 ## Milestone 3: Floating Conversion Errno Preservation
 

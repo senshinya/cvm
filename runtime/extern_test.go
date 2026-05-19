@@ -4009,6 +4009,26 @@ func TestErrnoExternVariable(t *testing.T) {
 	if signedInt(ret) != 34 {
 		t.Fatalf("updated errno=%#v, want 34", ret)
 	}
+
+	other := NewMemory(bytecode.DefaultTarget())
+	otherAddr, ok := reg.LookupVariable("errno", other)
+	if !ok {
+		t.Fatal("missing errno extern variable for second memory")
+	}
+	otherAgain, ok := reg.LookupVariable("errno", other)
+	if !ok {
+		t.Fatal("missing errno extern variable for second memory on second lookup")
+	}
+	if otherAgain != otherAddr {
+		t.Fatalf("second memory errno address changed: first=%#x second=%#x", otherAddr, otherAgain)
+	}
+	otherRet, err := other.Load(otherAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load second memory errno: %v", err)
+	}
+	if signedInt(otherRet) != 0 {
+		t.Fatalf("second memory initial errno=%#v, want 0", otherRet)
+	}
 }
 
 func TestStdlibDivExterns(t *testing.T) {
