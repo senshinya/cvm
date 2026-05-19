@@ -287,9 +287,16 @@ Findings:
 
 Calibration before execution: Search stdlib/time/locale/ctype touched surfaces across headers, registry, and tests.
 
-- [ ] Record declaration/registration/test surface status.
-- [ ] Add smoke coverage if missing.
-- [ ] Verify, commit, and push `docs: record phase 8 header registry recheck`.
+- [x] Record declaration/registration/test surface status.
+- [x] Add smoke coverage if missing.
+- [x] Verify, commit, and push `docs: record phase 8 header registry recheck`.
+
+Findings:
+
+- `preprocessor/headers.go` declares the Phase 8 stdlib conversion, random/env/process, locale, time, and ctype surfaces.
+- `sema/builtin.go` preserves builtin signatures for conversion/random/env/process helpers that need special typing, and `runtime/extern.go` registers all touched runtime externs.
+- Direct extern and source-level runtime tests cover the touched Phase 8 surfaces; no extra smoke test was needed.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestDefaultExternRegistryHasExitAndAbort|TestStdlib(Strtol|Strtoll|Atoi|FloatParser|MoreFloatParser|Rand|Getenv|System|Atexit|Exit|UnderscoreExit)|TestLocaleSetlocale|TestTimeExterns|TestCtype' -count=1` passed.
 
 ## Milestone 21: GCC Runtime Fixture Recheck
 
