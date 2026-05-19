@@ -176,9 +176,13 @@ Calibration result:
 
 Calibration before execution: Extend signed-length findings to unsigned conversions.
 
-- [ ] Cover `%hhu`, `%hu`, `%u`, `%lu`, `%llu`, `%x`, and `%o`.
-- [ ] Fix unsigned storage and negative input behavior if needed.
-- [ ] Verify, commit `feat(runtime): harden scanf unsigned lengths`, and push.
+- [x] Cover `%hhu`, `%hu`, `%u`, `%lu`, `%llu`, `%x`, and `%o`.
+- [x] Fix unsigned storage and negative input behavior if needed.
+- [x] Verify, commit `test(runtime): cover scanf unsigned lengths`, and push.
+
+Calibration result:
+- The unsigned side of `scanIntegerType` already maps `hh`, `h`, default, `l`, `ll`, `j`, `z`, and `t` to the expected runtime unsigned storage widths.
+- Direct and source coverage now lock decimal, hexadecimal, and octal unsigned length behavior; no runtime code change was needed.
 
 ## Milestone 16: Scanf Count Length Modifiers
 

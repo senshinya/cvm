@@ -2568,6 +2568,44 @@ int main(void)
 	}
 }
 
+func TestPlainSscanfUnsignedLengthsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <stdint.h>
+
+int main(void)
+{
+  unsigned char u8 = 0;
+  unsigned short u16 = 0;
+  unsigned int u32 = 0;
+  unsigned long ul = 0;
+  unsigned long long ull = 0;
+  uintmax_t uj = 0;
+  unsigned long uz = 0;
+  unsigned long ut = 0;
+  unsigned char hx8 = 0;
+  unsigned short hx16 = 0;
+  unsigned int hx32 = 0;
+  unsigned long long hx64 = 0;
+  unsigned char oc8 = 0;
+  unsigned short oc16 = 0;
+  unsigned int oc32 = 0;
+  int n = sscanf("255 65535 4294967295 4 5 6 7 8 ff 2345 1 1234ABCDEF 377 177777 10",
+                 "%hhu %hu %u %lu %llu %ju %zu %tu %hhx %hx %x %llX %hho %ho %o",
+                 &u8, &u16, &u32, &ul, &ull, &uj, &uz, &ut, &hx8, &hx16, &hx32, &hx64, &oc8, &oc16, &oc32);
+  if (n != 15)
+    return 1;
+  return u8 == 255 && u16 == 65535 && u32 == 4294967295U && ul == 4 && ull == 5 && uj == 6 && uz == 7 && ut == 8
+      && hx8 == 0xff && hx16 == 0x2345 && hx32 == 1 && hx64 == 0x1234ABCDEFULL
+      && oc8 == 0377 && oc16 == 0177777 && oc32 == 010 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "plain-sscanf-unsigned-lengths-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinCheckedSprintfExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

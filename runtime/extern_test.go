@@ -8665,6 +8665,82 @@ func TestSscanfExternScansSignedIntegerLengthModifiers(t *testing.T) {
 	check("t", countT, bytecode.TypeI64, 8, -8)
 }
 
+func TestSscanfExternScansUnsignedIntegerLengthModifiers(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+
+	input := "255 65535 4294967295 4 5 6 7 8 ff 2345 1 1234ABCDEF 377 177777 10"
+	inputAddr := mustAllocBytes(t, mem, "sscanf:unsigned-length-input", append([]byte(input), 0), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:unsigned-length-fmt", []byte("%hhu %hu %u %lu %llu %ju %zu %tu %hhx %hx %x %llX %hho %ho %o\x00"), true, blockString)
+	u8 := mustAlloc(t, mem, "sscanf:unsigned-length-u8", 1, 1, false, blockLocal)
+	u16 := mustAlloc(t, mem, "sscanf:unsigned-length-u16", 2, 2, false, blockLocal)
+	u32 := mustAlloc(t, mem, "sscanf:unsigned-length-u32", 4, 4, false, blockLocal)
+	ul := mustAlloc(t, mem, "sscanf:unsigned-length-ul", 8, 8, false, blockLocal)
+	ull := mustAlloc(t, mem, "sscanf:unsigned-length-ull", 8, 8, false, blockLocal)
+	uj := mustAlloc(t, mem, "sscanf:unsigned-length-j", 8, 8, false, blockLocal)
+	uz := mustAlloc(t, mem, "sscanf:unsigned-length-z", 8, 8, false, blockLocal)
+	ut := mustAlloc(t, mem, "sscanf:unsigned-length-t", 8, 8, false, blockLocal)
+	hhX := mustAlloc(t, mem, "sscanf:unsigned-length-hhx", 1, 1, false, blockLocal)
+	hX := mustAlloc(t, mem, "sscanf:unsigned-length-hx", 2, 2, false, blockLocal)
+	x := mustAlloc(t, mem, "sscanf:unsigned-length-x", 4, 4, false, blockLocal)
+	llX := mustAlloc(t, mem, "sscanf:unsigned-length-llx", 8, 8, false, blockLocal)
+	hhO := mustAlloc(t, mem, "sscanf:unsigned-length-hho", 1, 1, false, blockLocal)
+	hO := mustAlloc(t, mem, "sscanf:unsigned-length-ho", 2, 2, false, blockLocal)
+	o := mustAlloc(t, mem, "sscanf:unsigned-length-o", 4, 4, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(u8),
+		PtrValue(u16),
+		PtrValue(u32),
+		PtrValue(ul),
+		PtrValue(ull),
+		PtrValue(uj),
+		PtrValue(uz),
+		PtrValue(ut),
+		PtrValue(hhX),
+		PtrValue(hX),
+		PtrValue(x),
+		PtrValue(llX),
+		PtrValue(hhO),
+		PtrValue(hO),
+		PtrValue(o),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 15 {
+		t.Fatalf("sscanf ret=%#v, want i32 15", ret)
+	}
+	check := func(name string, addr uint64, typ bytecode.ValueType, align int64, want uint64) {
+		t.Helper()
+		got, err := mem.Load(addr, typ, align)
+		if err != nil || unsignedInt(got) != want {
+			t.Fatalf("%s=%#v err=%v, want %d", name, got, err, want)
+		}
+	}
+	check("u8", u8, bytecode.TypeU8, 1, 255)
+	check("u16", u16, bytecode.TypeU16, 2, 65535)
+	check("u32", u32, bytecode.TypeU32, 4, 4294967295)
+	check("ul", ul, bytecode.TypeU64, 8, 4)
+	check("ull", ull, bytecode.TypeU64, 8, 5)
+	check("uj", uj, bytecode.TypeU64, 8, 6)
+	check("uz", uz, bytecode.TypeU64, 8, 7)
+	check("ut", ut, bytecode.TypeU64, 8, 8)
+	check("hhx", hhX, bytecode.TypeU8, 1, 0xff)
+	check("hx", hX, bytecode.TypeU16, 2, 0x2345)
+	check("x", x, bytecode.TypeU32, 4, 1)
+	check("llx", llX, bytecode.TypeU64, 8, 0x1234abcdef)
+	check("hho", hhO, bytecode.TypeU8, 1, 0377)
+	check("ho", hO, bytecode.TypeU16, 2, 0177777)
+	check("o", o, bytecode.TypeU32, 4, 010)
+}
+
 func TestScanfExternScansStdinAndPreservesUnreadInput(t *testing.T) {
 	reg := DefaultExternRegistryWithIO(strings.NewReader("17 tail"), nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
