@@ -72,10 +72,10 @@ Calibration before execution: Check `w`/`w+` handling in `fopen` and file persis
 
 Calibration before execution: Check append positioning and update-mode sequencing after reopen.
 
-- [ ] Add direct tests for `a` and `a+` reopen append positioning.
-- [ ] Implement append reopen state.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): reopen configured append files`.
+- [x] Add direct tests for `a` and `a+` reopen append positioning.
+- [x] Implement append reopen state.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): reopen configured append files`.
 
 ## Milestone 8: `freopen` Failure Semantics
 

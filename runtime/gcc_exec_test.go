@@ -291,6 +291,51 @@ int main(void)
 	}
 }
 
+func TestGCCFreopenConfiguredAppendFileExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[4] = { 0, 0, 0, 0 };
+  FILE *f = fopen("old.txt", "r");
+  if (!f)
+    return 1;
+  if (freopen("log.txt", "a", f) != f)
+    return 2;
+  if (fseek(f, 0, SEEK_SET) != 0)
+    return 3;
+  if (fputc('C', f) != 'C')
+    return 4;
+  if (freopen("log.txt", "r", f) != f)
+    return 5;
+  if (fread(buf, 1, 3, f) != 3)
+    return 6;
+  if (buf[0] != 'A' || buf[1] != 'B' || buf[2] != 'C')
+    return 7;
+  if (freopen("plus.txt", "a+", f) != f)
+    return 8;
+  if (fseek(f, 0, SEEK_SET) != 0)
+    return 9;
+  if (fputc('Z', f) != 'Z')
+    return 10;
+  if (freopen("plus.txt", "r", f) != f)
+    return 11;
+  if (fread(buf, 1, 3, f) != 3)
+    return 12;
+  return buf[0] == 'A' && buf[1] == 'B' && buf[2] == 'Z' ? 0 : 13;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("log.txt", []byte("AB"))
+	reg.AddFile("plus.txt", []byte("AB"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-freopen-configured-append-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCTmpfileReadWriteExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

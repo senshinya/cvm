@@ -258,6 +258,74 @@ func TestFreopenConfiguredWriteFile(t *testing.T) {
 	}
 }
 
+func TestFreopenConfiguredAppendFile(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("log.txt", []byte("AB"))
+	reg.AddFile("plus.txt", []byte("AB"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	oldPath := mustAllocBytes(t, mem, "stdio:freopen-append-old-path", []byte("old.txt\x00"), true, blockString)
+	logPath := mustAllocBytes(t, mem, "stdio:freopen-append-log-path", []byte("log.txt\x00"), true, blockString)
+	plusPath := mustAllocBytes(t, mem, "stdio:freopen-append-plus-path", []byte("plus.txt\x00"), true, blockString)
+	readMode := mustAllocBytes(t, mem, "stdio:freopen-append-read-mode", []byte("r\x00"), true, blockString)
+	appendMode := mustAllocBytes(t, mem, "stdio:freopen-append-mode", []byte("a\x00"), true, blockString)
+	appendPlusMode := mustAllocBytes(t, mem, "stdio:freopen-append-plus-mode", []byte("a+\x00"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	freopenFn, ok := reg.Lookup("freopen")
+	if !ok {
+		t.Fatal("missing freopen extern")
+	}
+	fseekFn, ok := reg.Lookup("fseek")
+	if !ok {
+		t.Fatal("missing fseek extern")
+	}
+	fputcFn, ok := reg.Lookup("fputc")
+	if !ok {
+		t.Fatal("missing fputc extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(oldPath), PtrValue(readMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(logPath), PtrValue(appendMode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != file {
+		t.Fatalf("freopen append ret=%#v exit=%#v err=%v, want same file handle", ret, exit, err)
+	}
+	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), IntValue(bytecode.TypeI64, 0), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fseek append ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fputcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'C'), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'C' {
+		t.Fatalf("fputc append ret=%#v exit=%#v err=%v, want C", ret, exit, err)
+	}
+	if got := string(reg.files["log.txt"]); got != "ABC" {
+		t.Fatalf("append log.txt = %q, want ABC", got)
+	}
+
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(plusPath), PtrValue(appendPlusMode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != file {
+		t.Fatalf("freopen append plus ret=%#v exit=%#v err=%v, want same file handle", ret, exit, err)
+	}
+	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), IntValue(bytecode.TypeI64, 0), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fseek append plus ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fputcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'Z'), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'Z' {
+		t.Fatalf("fputc append plus ret=%#v exit=%#v err=%v, want Z", ret, exit, err)
+	}
+	if got := string(reg.files["plus.txt"]); got != "ABZ" {
+		t.Fatalf("append plus.txt = %q, want ABZ", got)
+	}
+}
+
 func TestTmpfileReadWrite(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

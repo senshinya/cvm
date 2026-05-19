@@ -465,8 +465,8 @@ func freopenExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[2].Int)
 		}
 		readable := strings.HasPrefix(mode, "r") || strings.Contains(mode, "+")
-		writable := strings.HasPrefix(mode, "w") || strings.Contains(mode, "+")
-		if strings.HasPrefix(mode, "a") || (!readable && !writable) {
+		writable := strings.HasPrefix(mode, "w") || strings.HasPrefix(mode, "a") || strings.Contains(mode, "+")
+		if !readable && !writable {
 			return PtrValue(0), nil, nil
 		}
 		data, ok := r.files[path]
@@ -481,10 +481,14 @@ func freopenExtern(name string, r *ExternRegistry) ExternFunc {
 			data:       append([]byte(nil), data...),
 			readable:   readable,
 			writable:   writable,
+			appendMode: strings.HasPrefix(mode, "a"),
 			updateMode: strings.Contains(mode, "+"),
 		}
 		if strings.HasPrefix(mode, "w") {
 			file.data = nil
+		}
+		if strings.HasPrefix(mode, "a") {
+			file.pos = int64(len(file.data))
 		}
 		r.hostFiles[args[2].Int] = file
 		r.hostWriters[args[2].Int] = hostFileWriter{registry: r, addr: args[2].Int}
