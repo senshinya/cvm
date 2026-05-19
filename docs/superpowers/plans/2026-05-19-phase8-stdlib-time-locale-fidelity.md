@@ -244,9 +244,15 @@ Findings:
 
 Calibration before execution: Confirm `_Exit` skips handlers while `exit` runs them.
 
-- [ ] Add source-level coverage for `_Exit` skip and `exit` run behavior.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover exit handler split`.
+- [x] Add source-level coverage for `_Exit` skip and `exit` run behavior.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover exit handler split`.
+
+Findings:
+
+- Existing source-level runtime coverage verifies `exit` runs a registered handler, `_Exit` skips it, and internal cleanup control is not exposed in public `ExitStatus`.
+- No runtime code changes were needed.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlib(ExitRunsAtexitHandlers|UnderscoreExitSkipsAtexitHandlers|UnderscoreExitDoesNotExposeCleanupControl)' -count=1` passed.
 
 ## Milestone 18: Ctype Classification Bounds
 
