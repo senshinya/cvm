@@ -103,9 +103,16 @@ Findings:
 
 Calibration before execution: Check existing `<wctype.h>` and `<wchar.h>` declarations.
 
-- [ ] Add deterministic declarations for `wint_t`, `wctrans_t`, `wctype_t`, `isw*`, `towlower`, `towupper`, `wctype`, `iswctype`, `wctrans`, and `towctrans`.
-- [ ] Add header parse tests.
-- [ ] Verify, commit, and push `feat(headers): add wide ctype declarations`.
+- [x] Add deterministic declarations for `wint_t`, `wctrans_t`, `wctype_t`, `isw*`, `towlower`, `towupper`, `wctype`, `iswctype`, `wctrans`, and `towctrans`.
+- [x] Add header parse tests.
+- [x] Verify, commit, and push `feat(headers): add wide ctype declarations`.
+
+Findings:
+
+- Added builtin `<wchar.h>` with guarded `wchar_t`, `wint_t`, and `WEOF`.
+- Added builtin `<wctype.h>` with deterministic descriptor typedefs and wide classification/conversion declarations.
+- Added header parse coverage for the full Phase 10 wide ctype declaration surface.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./preprocessor -run TestBuiltinWideHeadersDeclareRuntimeSurface -count=1` passed.
 
 ## Milestone 8: Wide Classification Core
 

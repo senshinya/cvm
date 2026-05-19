@@ -124,6 +124,35 @@ struct lconv *lc = localeconv();
 	}
 }
 
+func TestBuiltinWideHeadersDeclareRuntimeSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <wchar.h>
+#include <wctype.h>
+wint_t wc = WEOF;
+wctype_t cls = 0;
+wctrans_t trans = 0;
+int checks[] = {
+  iswalnum(L'A'), iswalpha(L'A'), iswblank(L' '), iswcntrl(L'\n'),
+  iswdigit(L'7'), iswgraph(L'!'), iswlower(L'a'), iswprint(L' '),
+  iswpunct(L'!'), iswspace(L'\t'), iswupper(L'Z'), iswxdigit(L'f'),
+  towlower(L'A'), towupper(L'a'), iswctype(L'A', cls), towctrans(L'A', trans)
+};
+wctype_t named_cls = wctype("alpha");
+wctrans_t named_trans = wctrans("tolower");
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	for _, name := range []string{"wchar_t", "wint_t", "wctype_t", "wctrans_t", "iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans"} {
+		if !hasIdentifier(res.Tokens, name) {
+			t.Fatalf("wide header identifier %q missing: %#v", name, res.Tokens)
+		}
+	}
+	if !hasLexeme(res.Tokens, "-") || !hasLexeme(res.Tokens, "1") {
+		t.Fatalf("WEOF did not expand to -1: %#v", res.Tokens)
+	}
+}
+
 func TestBuiltinTimeHeaderDeclaresRuntimeSurface(t *testing.T) {
 	res, err := PreprocessSource("main.c", `
 #include <time.h>

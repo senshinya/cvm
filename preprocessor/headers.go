@@ -42,6 +42,10 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return ctypeHeader(), true
 	case "locale.h":
 		return localeHeader(), true
+	case "wchar.h":
+		return wcharHeader(), true
+	case "wctype.h":
+		return wctypeHeader(), true
 	case "time.h":
 		return timeHeader(), true
 	case "string.h":
@@ -234,7 +238,10 @@ func stdlibHeader() string {
 #define __CVM_SIZE_T
 typedef __SIZE_TYPE__ size_t;
 #endif
+#ifndef __CVM_WCHAR_T
+#define __CVM_WCHAR_T
 typedef __WCHAR_TYPE__ wchar_t;
+#endif
 typedef struct { int quot; int rem; } div_t;
 typedef struct { long quot; long rem; } ldiv_t;
 typedef struct { long long quot; long long rem; } lldiv_t;
@@ -336,6 +343,57 @@ struct lconv {
 };
 char *setlocale(int, const char *);
 struct lconv *localeconv(void);
+#endif
+`
+}
+
+func wcharHeader() string {
+	return `#ifndef __CVM_WCHAR_H
+#define __CVM_WCHAR_H
+#include <stddef.h>
+#ifndef __CVM_WCHAR_T
+#define __CVM_WCHAR_T
+typedef __WCHAR_TYPE__ wchar_t;
+#endif
+#ifndef __CVM_WINT_T
+#define __CVM_WINT_T
+typedef int wint_t;
+#endif
+#define WEOF (-1)
+#endif
+`
+}
+
+func wctypeHeader() string {
+	return `#ifndef __CVM_WCTYPE_H
+#define __CVM_WCTYPE_H
+#include <wchar.h>
+#ifndef __CVM_WCTYPE_T
+#define __CVM_WCTYPE_T
+typedef unsigned long wctype_t;
+#endif
+#ifndef __CVM_WCTRANS_T
+#define __CVM_WCTRANS_T
+typedef unsigned long wctrans_t;
+#endif
+int iswalnum(wint_t);
+int iswalpha(wint_t);
+int iswblank(wint_t);
+int iswcntrl(wint_t);
+int iswdigit(wint_t);
+int iswgraph(wint_t);
+int iswlower(wint_t);
+int iswprint(wint_t);
+int iswpunct(wint_t);
+int iswspace(wint_t);
+int iswupper(wint_t);
+int iswxdigit(wint_t);
+wint_t towlower(wint_t);
+wint_t towupper(wint_t);
+wctype_t wctype(const char *);
+int iswctype(wint_t, wctype_t);
+wctrans_t wctrans(const char *);
+wint_t towctrans(wint_t, wctrans_t);
 #endif
 `
 }
