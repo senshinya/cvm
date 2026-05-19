@@ -107,12 +107,15 @@ func TestBuiltinLocaleHeaderDeclaresRuntimeSurface(t *testing.T) {
 	res, err := PreprocessSource("main.c", `
 #include <locale.h>
 int categories[] = { LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY, LC_NUMERIC, LC_TIME };
+struct lconv *lc = localeconv();
 `, Options{})
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	if !hasIdentifier(res.Tokens, "setlocale") {
-		t.Fatalf("locale identifier %q missing: %#v", "setlocale", res.Tokens)
+	for _, name := range []string{"lconv", "decimal_point", "thousands_sep", "grouping", "setlocale", "localeconv"} {
+		if !hasIdentifier(res.Tokens, name) {
+			t.Fatalf("locale identifier %q missing: %#v", name, res.Tokens)
+		}
 	}
 	for _, value := range []string{"0", "1", "2", "3", "4", "5"} {
 		if !hasLexeme(res.Tokens, value) {

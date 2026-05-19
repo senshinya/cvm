@@ -58,10 +58,17 @@ Findings:
 
 Calibration before execution: Check whether `struct lconv` and `localeconv` are declared.
 
-- [ ] Add deterministic C-locale `struct lconv` declaration.
-- [ ] Register `localeconv` runtime extern.
-- [ ] Add registry smoke.
-- [ ] Verify, commit, and push `feat(runtime): declare localeconv`.
+- [x] Add deterministic C-locale `struct lconv` declaration.
+- [x] Register `localeconv` runtime extern.
+- [x] Add registry smoke.
+- [x] Verify, commit, and push `feat(runtime): declare localeconv`.
+
+Findings:
+
+- Added a C99-style `struct lconv` declaration and `struct lconv *localeconv(void)` to the builtin `<locale.h>`.
+- Registered `localeconv` in the default extern registry and added registry smoke coverage.
+- Added locale header coverage for `struct lconv`, core string fields, `setlocale`, and `localeconv`.
+- Focused preprocessor and registry tests passed.
 
 ## Milestone 5: `localeconv` Static Storage
 

@@ -197,6 +197,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("system", systemExtern("system"))
 	r.Register("atexit", atexitExtern("atexit", r))
 	r.Register("setlocale", setlocaleExtern("setlocale", r))
+	r.Register("localeconv", localeconvExtern("localeconv", r))
 	r.Register("clock", clockExtern("clock"))
 	r.Register("difftime", difftimeExtern("difftime"))
 	r.Register("time", timeExtern("time"))
@@ -1600,6 +1601,15 @@ func setlocaleExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, err
 		}
 		return PtrValue(addr), nil, nil
+	}
+}
+
+func localeconvExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 0 {
+			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
+		}
+		return PtrValue(0), nil, nil
 	}
 }
 
