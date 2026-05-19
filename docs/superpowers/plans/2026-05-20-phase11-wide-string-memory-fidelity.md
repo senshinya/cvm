@@ -81,9 +81,9 @@ Calibration before execution: Re-read overlap handling in `memmove`.
 
 Calibration before execution: Confirm high wide values should be stored unmasked as `wchar_t`.
 
-- [ ] Register and implement `wmemset`.
-- [ ] Cover fill, zero count, high wide value, and return value.
-- [ ] Verify, commit `feat(runtime): add wmemset`, and push.
+- [x] Register and implement `wmemset`.
+- [x] Cover fill, zero count, high wide value, and return value.
+- [x] Verify, commit `feat(runtime): add wmemset`, and push.
 
 ## Milestone 9: `wcslen`
 

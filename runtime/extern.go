@@ -2562,6 +2562,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("wmemcmp", wideMemoryCompareExtern("wmemcmp"))
 	r.Register("wmemcpy", wideMemoryCopyExtern("wmemcpy"))
 	r.Register("wmemmove", wideMemoryCopyExtern("wmemmove"))
+	r.Register("wmemset", wideMemorySetExtern("wmemset"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
 		r.Register(name, stringCopyExtern(name, false))
 	}
@@ -3390,6 +3391,35 @@ func wideMemoryCopyExtern(name string) ExternFunc {
 	}
 }
 
+func wideMemorySetExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, wchar, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		ch := uint32(args[1].Int)
+		for i := int64(0); i < count; i++ {
+			addr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if err := storeWideChar(ec.Memory, addr, ch); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
 func wideElementAddr(base uint64, index int64) (uint64, error) {
 	if index < 0 || uint64(index) > math.MaxUint64/4 {
 		return 0, fmt.Errorf("wide element index %d overflows address", index)
@@ -3414,6 +3444,10 @@ func loadWideChar(mem *Memory, addr uint64) (uint32, error) {
 		return 0, err
 	}
 	return uint32(v.Int), nil
+}
+
+func storeWideChar(mem *Memory, addr uint64, ch uint32) error {
+	return mem.Store(addr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(int32(ch))))
 }
 
 func memorySizeArg(name string, arg Value) (int64, error) {

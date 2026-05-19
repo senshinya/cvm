@@ -368,6 +368,7 @@ wchar_t *wmemchr(const wchar_t *, wchar_t, size_t);
 int wmemcmp(const wchar_t *, const wchar_t *, size_t);
 wchar_t *wmemcpy(wchar_t * restrict, const wchar_t * restrict, size_t);
 wchar_t *wmemmove(wchar_t *, const wchar_t *, size_t);
+wchar_t *wmemset(wchar_t *, wchar_t, size_t);
 size_t mbrlen(const char *, size_t, mbstate_t *);
 size_t mbrtowc(wchar_t *, const char *, size_t, mbstate_t *);
 size_t wcrtomb(char *, wchar_t, mbstate_t *);
