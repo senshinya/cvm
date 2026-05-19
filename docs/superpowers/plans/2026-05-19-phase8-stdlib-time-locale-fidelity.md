@@ -141,10 +141,16 @@ Findings:
 
 Calibration before execution: Re-read `randExtern` and `srandExtern`.
 
-- [ ] Add tests for default seed, reseed repeatability, and value range.
-- [ ] Add source-level runtime coverage.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover rand determinism`.
+- [x] Add tests for default seed, reseed repeatability, and value range.
+- [x] Add source-level runtime coverage.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover rand determinism`.
+
+Findings:
+
+- Existing direct/source coverage already checked reseed repeatability, non-repeating sequential values, and `RAND_MAX` range.
+- Added direct extern and source-level runtime coverage proving default state matches `srand(1)`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibRand' -count=1` passed.
 
 ## Milestone 11: `getenv` Static Storage
 

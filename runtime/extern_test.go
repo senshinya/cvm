@@ -3710,6 +3710,21 @@ func TestStdlibRandExterns(t *testing.T) {
 		t.Fatal("missing rand extern")
 	}
 
+	defaultFirst, exit, err := randFn(context.Background(), nil, nil)
+	if err != nil || exit != nil {
+		t.Fatalf("rand default ret=%#v exit=%#v err=%v", defaultFirst, exit, err)
+	}
+	if _, exit, err := srandFn(context.Background(), nil, []Value{UIntValue(bytecode.TypeU32, 1)}); err != nil || exit != nil {
+		t.Fatalf("srand default seed repeat exit=%#v err=%v", exit, err)
+	}
+	defaultAgain, exit, err := randFn(context.Background(), nil, nil)
+	if err != nil || exit != nil {
+		t.Fatalf("rand default repeat ret=%#v exit=%#v err=%v", defaultAgain, exit, err)
+	}
+	if defaultFirst.Type != bytecode.TypeI32 || defaultAgain.Int != defaultFirst.Int {
+		t.Fatalf("rand default=%#v after srand(1)=%#v, want repeat", defaultFirst, defaultAgain)
+	}
+
 	if ret, exit, err := srandFn(context.Background(), nil, []Value{UIntValue(bytecode.TypeU32, 123)}); err != nil || exit != nil || ret.Type != bytecode.TypeVoid {
 		t.Fatalf("srand ret=%#v exit=%#v err=%v", ret, exit, err)
 	}

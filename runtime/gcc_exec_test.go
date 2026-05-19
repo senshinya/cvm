@@ -1552,9 +1552,14 @@ int main(void)
   int a;
   int b;
   int c;
+  int d;
 
   if (RAND_MAX < 32767)
     return 1;
+  d = rand();
+  srand(1);
+  if (rand() != d)
+    return 5;
   srand(123);
   a = rand();
   b = rand();
