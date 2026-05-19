@@ -3900,6 +3900,12 @@ func TestStringBoundedCompareSearchExterns(t *testing.T) {
 	left := mustAllocBytes(t, mem, "strncmp:left", []byte("abcdef\x00"), true, blockString)
 	samePrefix := mustAllocBytes(t, mem, "strncmp:same", []byte("abcxyz\x00"), true, blockString)
 	less := mustAllocBytes(t, mem, "strncmp:less", []byte("abbzzz\x00"), true, blockString)
+	leftTerminated := mustAllocBytes(t, mem, "strncmp:left-terminated", []byte{'a', 0, 'z'}, true, blockString)
+	rightTerminated := mustAllocBytes(t, mem, "strncmp:right-terminated", []byte{'a', 0, 'y'}, true, blockString)
+	leftUnterminated := mustAllocBytes(t, mem, "strncmp:left-unterminated", []byte{'a', 'b', 'c'}, true, blockString)
+	rightUnterminated := mustAllocBytes(t, mem, "strncmp:right-unterminated", []byte{'a', 'b', 'd'}, true, blockString)
+	high := mustAllocBytes(t, mem, "strncmp:high", []byte{0xff, 0}, true, blockString)
+	low := mustAllocBytes(t, mem, "strncmp:low", []byte{0x7f, 0}, true, blockString)
 	strncmpFn, ok := reg.Lookup("strncmp")
 	if !ok {
 		t.Fatal("missing strncmp extern")
@@ -3912,8 +3918,13 @@ func TestStringBoundedCompareSearchExterns(t *testing.T) {
 		want int64
 	}{
 		{name: "zero", a: left, b: less, n: 0, want: 0},
+		{name: "zero invalid pointers", a: 0xdeadbeef, b: 0xcafebabe, n: 0, want: 0},
 		{name: "prefix", a: left, b: samePrefix, n: 3, want: 0},
 		{name: "greater", a: left, b: less, n: 3, want: 1},
+		{name: "terminator before count", a: leftTerminated, b: rightTerminated, n: 3, want: 0},
+		{name: "unterminated equal prefix", a: leftUnterminated, b: rightUnterminated, n: 2, want: 0},
+		{name: "unterminated less", a: leftUnterminated, b: rightUnterminated, n: 3, want: -1},
+		{name: "unsigned byte greater", a: high, b: low, n: 1, want: 1},
 	}
 	for _, tt := range tests {
 		ret, exit, err := strncmpFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.a), PtrValue(tt.b), UIntValue(bytecode.TypeU64, tt.n)})

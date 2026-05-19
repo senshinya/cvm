@@ -40,10 +40,10 @@ Calibration before execution: Re-read `memoryCompareExtern` and `TestMemoryCompa
 
 Calibration before execution: Re-read `stringNCompareExtern`.
 
-- [ ] Add direct tests for count zero, terminator-before-count, and unsigned-byte ordering.
-- [ ] Fix `strncmp` if it reads past terminators or mishandles zero count.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden strncmp c locale`.
+- [x] Add direct tests for count zero, terminator-before-count, and unsigned-byte ordering.
+- [x] Fix `strncmp` if it reads past terminators or mishandles zero count.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden strncmp c locale`.
 
 ## Milestone 5: `strnlen` Boundary Semantics
 

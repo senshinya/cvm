@@ -2600,6 +2600,12 @@ int main(void)
   const char *left = "abcdef";
   const char *right = "abcxyz";
   char data[5] = {1, 2, 3, 2, 0};
+  char left_terminated[3] = {'a', 0, 'z'};
+  char right_terminated[3] = {'a', 0, 'y'};
+  char left_unterminated[3] = {'a', 'b', 'c'};
+  char right_unterminated[3] = {'a', 'b', 'd'};
+  unsigned char high[2] = {0xff, 0};
+  unsigned char low[2] = {0x7f, 0};
 
   if (strncmp(left, right, 3) != 0)
     return 1;
@@ -2607,13 +2613,23 @@ int main(void)
     return 2;
   if (strncmp(left, "abbzzz", 3) <= 0)
     return 3;
-  if (memchr(data, 2, 4) != data + 1)
+  if (strncmp((char *)high, (char *)low, 0) != 0)
     return 4;
-  if (memchr(data, 2, 0) != 0)
+  if (strncmp(left_terminated, right_terminated, 3) != 0)
     return 5;
-  if ((char *)memchr(data, 0x102, 4) != data + 1)
+  if (strncmp(left_unterminated, right_unterminated, 2) != 0)
     return 6;
-  return memchr(data, 9, 4) == 0 ? 0 : 7;
+  if (strncmp(left_unterminated, right_unterminated, 3) >= 0)
+    return 7;
+  if (strncmp((char *)high, (char *)low, 1) <= 0)
+    return 8;
+  if (memchr(data, 2, 4) != data + 1)
+    return 9;
+  if (memchr(data, 2, 0) != 0)
+    return 10;
+  if ((char *)memchr(data, 0x102, 4) != data + 1)
+    return 11;
+  return memchr(data, 9, 4) == 0 ? 0 : 12;
 }
 `
 	st := runGCCExecFixture(t, "string-bounded-compare-search-runtime.c", source)

@@ -3020,15 +3020,37 @@ func stringNCompareExtern(name string) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		left, err := ec.Memory.ReadCString(args[0].Int)
-		if err != nil {
-			return Value{}, nil, err
+		if n == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
-		right, err := ec.Memory.ReadCString(args[1].Int)
-		if err != nil {
-			return Value{}, nil, err
+		for i := int64(0); i < n; i++ {
+			leftAddr, err := addSignedOffset(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			rightAddr, err := addSignedOffset(args[1].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			left, err := readMemoryByte(ec.Memory, leftAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			right, err := readMemoryByte(ec.Memory, rightAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if left < right {
+				return IntValue(bytecode.TypeI32, -1), nil, nil
+			}
+			if left > right {
+				return IntValue(bytecode.TypeI32, 1), nil, nil
+			}
+			if left == 0 {
+				return IntValue(bytecode.TypeI32, 0), nil, nil
+			}
 		}
-		return IntValue(bytecode.TypeI32, int64(strncmpResult(left, right, n))), nil, nil
+		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
 
