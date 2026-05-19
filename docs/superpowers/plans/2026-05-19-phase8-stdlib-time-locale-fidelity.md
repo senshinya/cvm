@@ -43,9 +43,15 @@ Findings:
 
 Calibration before execution: Check unsigned parsing and end-pointer behavior.
 
-- [ ] Add tests for hex, octal, no conversion, and negative input conversion.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden strtoul semantics`.
+- [x] Add tests for hex, octal, no conversion, and negative input conversion.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): harden strtoul semantics`.
+
+Findings:
+
+- Existing `strtoul` coverage already included octal auto-detection and explicit-base hex conversion.
+- Added direct extern and source-level runtime coverage for negative unsigned conversion and no-conversion `endptr` behavior.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibStrtol' -count=1` passed.
 
 ## Milestone 4: `strtoll` And `strtoull` 64-Bit Edges
 

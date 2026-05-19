@@ -2392,6 +2392,14 @@ int main(void)
     return 4;
   if (strtoul("7f!", 0, 16) != 127UL)
     return 5;
+  if (strtoul("-42xyz", &end, 10) != (unsigned long)-42)
+    return 12;
+  if (*end != 'x')
+    return 13;
+  if (strtoul("nope", &end, 10) != 0UL)
+    return 14;
+  if (*end != 'n')
+    return 15;
   if (strtol("xyz", &end, 10) != 0L)
     return 6;
   return *end == 'x' ? 0 : 7;

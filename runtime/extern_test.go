@@ -2712,6 +2712,38 @@ func TestStdlibStrtolExterns(t *testing.T) {
 		t.Fatalf("strtoul hex ret=%#v, want u64 127", ret)
 	}
 
+	negativeUnsignedText := mustAllocBytes(t, mem, "strtoul:negative", []byte("-42xyz\x00"), true, blockString)
+	ret, exit, err = strtoulFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeUnsignedText), PtrValue(endptr), IntValue(bytecode.TypeI32, 10)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtoul negative ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != ^uint64(41) {
+		t.Fatalf("strtoul negative ret=%#v, want u64 -42", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtoul negative endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeUnsignedText+3 {
+		t.Fatalf("strtoul negative endptr=%#x, want %#x", loadedEnd.Int, negativeUnsignedText+3)
+	}
+
+	unsignedNoneText := mustAllocBytes(t, mem, "strtoul:none", []byte("nope\x00"), true, blockString)
+	ret, exit, err = strtoulFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(unsignedNoneText), PtrValue(endptr), IntValue(bytecode.TypeI32, 10)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtoul none ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("strtoul none ret=%#v, want u64 0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtoul none endptr: %v", err)
+	}
+	if loadedEnd.Int != unsignedNoneText {
+		t.Fatalf("strtoul none endptr=%#x, want %#x", loadedEnd.Int, unsignedNoneText)
+	}
+
 	noneText := mustAllocBytes(t, mem, "strtol:none", []byte("xyz\x00"), true, blockString)
 	ret, exit, err = strtolFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(noneText), PtrValue(endptr), IntValue(bytecode.TypeI32, 10)})
 	if err != nil || exit != nil {
