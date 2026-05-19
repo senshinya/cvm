@@ -8611,6 +8611,60 @@ func TestSscanfExternScansBasicIntegerStringAndChar(t *testing.T) {
 	}
 }
 
+func TestSscanfExternScansSignedIntegerLengthModifiers(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+
+	inputAddr := mustAllocBytes(t, mem, "sscanf:signed-length-input", []byte("-1 -2 -3 -4 -5 -6 -7 -8\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:signed-length-fmt", []byte("%hhd %hd %d %ld %lld %jd %zd %td\x00"), true, blockString)
+	count8 := mustAlloc(t, mem, "sscanf:signed-length-i8", 1, 1, false, blockLocal)
+	count16 := mustAlloc(t, mem, "sscanf:signed-length-i16", 2, 2, false, blockLocal)
+	count32 := mustAlloc(t, mem, "sscanf:signed-length-i32", 4, 4, false, blockLocal)
+	countLong := mustAlloc(t, mem, "sscanf:signed-length-long", 8, 8, false, blockLocal)
+	countLL := mustAlloc(t, mem, "sscanf:signed-length-ll", 8, 8, false, blockLocal)
+	countJ := mustAlloc(t, mem, "sscanf:signed-length-j", 8, 8, false, blockLocal)
+	countZ := mustAlloc(t, mem, "sscanf:signed-length-z", 8, 8, false, blockLocal)
+	countT := mustAlloc(t, mem, "sscanf:signed-length-t", 8, 8, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(count8),
+		PtrValue(count16),
+		PtrValue(count32),
+		PtrValue(countLong),
+		PtrValue(countLL),
+		PtrValue(countJ),
+		PtrValue(countZ),
+		PtrValue(countT),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 8 {
+		t.Fatalf("sscanf ret=%#v, want i32 8", ret)
+	}
+	check := func(name string, addr uint64, typ bytecode.ValueType, align int64, want int64) {
+		t.Helper()
+		got, err := mem.Load(addr, typ, align)
+		if err != nil || signedInt(got) != want {
+			t.Fatalf("%s=%#v err=%v, want %d", name, got, err, want)
+		}
+	}
+	check("i8", count8, bytecode.TypeI8, 1, -1)
+	check("i16", count16, bytecode.TypeI16, 2, -2)
+	check("i32", count32, bytecode.TypeI32, 4, -3)
+	check("long", countLong, bytecode.TypeI64, 8, -4)
+	check("ll", countLL, bytecode.TypeI64, 8, -5)
+	check("j", countJ, bytecode.TypeI64, 8, -6)
+	check("z", countZ, bytecode.TypeI64, 8, -7)
+	check("t", countT, bytecode.TypeI64, 8, -8)
+}
+
 func TestScanfExternScansStdinAndPreservesUnreadInput(t *testing.T) {
 	reg := DefaultExternRegistryWithIO(strings.NewReader("17 tail"), nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

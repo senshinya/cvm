@@ -164,9 +164,13 @@ Calibration result:
 
 Calibration before execution: Re-read `scanStoreInteger` and current source tests.
 
-- [ ] Cover `%hhd`, `%hd`, `%d`, `%ld`, `%lld`, `%jd`, `%zd`, and `%td`.
-- [ ] Fix storage widths, signedness, and alignment behavior if needed.
-- [ ] Verify, commit `feat(runtime): harden scanf signed lengths`, and push.
+- [x] Cover `%hhd`, `%hd`, `%d`, `%ld`, `%lld`, `%jd`, `%zd`, and `%td`.
+- [x] Fix storage widths, signedness, and alignment behavior if needed.
+- [x] Verify, commit `test(runtime): cover scanf signed lengths`, and push.
+
+Calibration result:
+- `scanIntegerType` already maps signed `hh`, `h`, default, `l`, `ll`, `j`, `z`, and `t` to the expected runtime storage widths.
+- Direct and source coverage now lock the signed length set for `sscanf`; no runtime code change was needed.
 
 ## Milestone 15: Scanf Unsigned Integer Length Modifiers
 

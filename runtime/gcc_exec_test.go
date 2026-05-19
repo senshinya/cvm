@@ -2540,6 +2540,34 @@ int main(void)
 	}
 }
 
+func TestPlainSscanfSignedLengthsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
+
+int main(void)
+{
+  signed char c8 = 0;
+  short c16 = 0;
+  int c32 = 0;
+  long cl = 0;
+  long long cll = 0;
+  intmax_t cj = 0;
+  long cz = 0;
+  ptrdiff_t ct = 0;
+  int n = sscanf("-1 -2 -3 -4 -5 -6 -7 -8", "%hhd %hd %d %ld %lld %jd %zd %td", &c8, &c16, &c32, &cl, &cll, &cj, &cz, &ct);
+  if (n != 8)
+    return 1;
+  return c8 == -1 && c16 == -2 && c32 == -3 && cl == -4 && cll == -5 && cj == -6 && cz == -7 && ct == -8 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "plain-sscanf-signed-lengths-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinCheckedSprintfExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 
