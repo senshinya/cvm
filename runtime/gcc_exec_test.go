@@ -2454,6 +2454,10 @@ int main(void)
 
   if (atof(" \t3.25tail") != 3.25)
     return 1;
+  if (atof("-1.25e2x") != -125.0)
+    return 14;
+  if (atof("word") != 0.0)
+    return 15;
   if (strtod(" -12.5e1x", &end) != -125.0)
     return 2;
   if (*end != 'x')

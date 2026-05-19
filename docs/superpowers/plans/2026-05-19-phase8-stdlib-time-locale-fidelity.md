@@ -127,9 +127,15 @@ Findings:
 
 Calibration before execution: Re-read `atofExtern`.
 
-- [ ] Add tests for decimal, exponent, and no-conversion behavior.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover atof parsing`.
+- [x] Add tests for decimal, exponent, and no-conversion behavior.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover atof parsing`.
+
+Findings:
+
+- Existing `atof` wrapper coverage included decimal parsing.
+- Added direct extern and source-level runtime coverage for exponent parsing and no-conversion fallback to `0.0`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
 
 ## Milestone 10: `rand` Sequence Determinism
 

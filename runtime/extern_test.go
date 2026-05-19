@@ -2865,6 +2865,24 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 		t.Fatalf("atof ret=%#v, want f64 3.25", ret)
 	}
 
+	atofExponentText := mustAllocBytes(t, mem, "atof:exponent", []byte("-1.25e2x\x00"), true, blockString)
+	ret, exit, err = atofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(atofExponentText)})
+	if err != nil || exit != nil {
+		t.Fatalf("atof exponent ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != -125 {
+		t.Fatalf("atof exponent ret=%#v, want f64 -125", ret)
+	}
+
+	atofNoneText := mustAllocBytes(t, mem, "atof:none", []byte("word\x00"), true, blockString)
+	ret, exit, err = atofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(atofNoneText)})
+	if err != nil || exit != nil {
+		t.Fatalf("atof none ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 {
+		t.Fatalf("atof none ret=%#v, want f64 0", ret)
+	}
+
 	strtodFn, ok := reg.Lookup("strtod")
 	if !ok {
 		t.Fatal("missing strtod extern")
