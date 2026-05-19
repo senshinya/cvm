@@ -256,9 +256,15 @@ Findings:
 
 Calibration before execution: Search direct extern tests for all floating conversion errno cases.
 
-- [ ] Add helper coverage if duplicated errno setup/assertions are brittle.
-- [ ] Ensure no-conversion, success, overflow, and underflow are all represented.
-- [ ] Verify, commit, and push `test(runtime): sweep float errno externs`.
+- [x] Add helper coverage if duplicated errno setup/assertions are brittle.
+- [x] Ensure no-conversion, success, overflow, and underflow are all represented.
+- [x] Verify, commit, and push `test(runtime): sweep float errno externs`.
+
+Findings:
+
+- Direct extern coverage now includes success errno preservation, no-conversion errno preservation, overflow `ERANGE`, and underflow `ERANGE`.
+- Coverage spans `atof`, `strtod`, `strtof`, and current binary64-backed `strtold`.
+- Existing direct checks also assert signed infinity/zero behavior and end pointers where applicable, so no extra helper was needed.
 
 ## Milestone 18: Source Runtime Sweep
 
