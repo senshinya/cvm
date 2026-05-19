@@ -2511,11 +2511,17 @@ int main(void)
   if (strcmp(buf, "0xbeef|0XBEEF|0777|1.|1.|0x1.p+00") != 0)
     return 21;
 
+  n = sprintf(buf, "%8.2f|%-8.1e|%8.1E|%.3g|%.3G|%12.2a|%-12.2A", 1.5, 12.0, 12.0, 12345.0, 12345.0, 1.5, 1.5);
+  if (n != 70)
+    return 22;
+  if (strcmp(buf, "    1.50|1.2e+01 | 1.2E+01|1.23e+04|1.23E+04|  0x1.80p+00|0X1.80P+00  ") != 0)
+    return 23;
+
   char small[5];
   n = snprintf(small, 5, "%s-%u", "abcdef", 3U);
   if (n != 8)
-    return 22;
-  return strcmp(small, "abcd") == 0 ? 0 : 23;
+    return 24;
+  return strcmp(small, "abcd") == 0 ? 0 : 25;
 }
 `
 	st := runGCCExecFixture(t, "plain-sprintf-runtime.c", source)

@@ -140,9 +140,13 @@ Calibration result:
 
 Calibration before execution: Recheck current float formatting and binary64-backed long double limits.
 
-- [ ] Cover `%f`, `%e`, `%E`, `%g`, `%G`, `%a`, and `%A` width/precision.
-- [ ] Fix stable C-locale float formatting gaps that do not require host-locale behavior.
-- [ ] Verify, commit `feat(runtime): harden printf float sizing`, and push.
+- [x] Cover `%f`, `%e`, `%E`, `%g`, `%G`, `%a`, and `%A` width/precision.
+- [x] Fix stable C-locale float formatting gaps that do not require host-locale behavior.
+- [x] Verify, commit `test(runtime): cover printf float sizing`, and push.
+
+Calibration result:
+- Current float formatting delegates deterministic numeric spelling to `strconv.FormatFloat` and uses the common width writer afterward.
+- Direct and source coverage now lock width/precision behavior for fixed, exponent, general, and hex-float verbs; no runtime code change was needed.
 
 ## Milestone 13: Printf Special Floating Values
 

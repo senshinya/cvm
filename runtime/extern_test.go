@@ -9896,6 +9896,39 @@ func TestFormatExternsSupportHexFloatFormats(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportFloatWidthAndPrecision(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-float-width", 96, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-float-width", []byte("%8.2f|%-8.1e|%8.1E|%.3g|%.3G|%12.2a|%-12.2A\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		FloatValue(bytecode.TypeF64, 1.5),
+		FloatValue(bytecode.TypeF64, 12),
+		FloatValue(bytecode.TypeF64, 12),
+		FloatValue(bytecode.TypeF64, 12345),
+		FloatValue(bytecode.TypeF64, 12345),
+		FloatValue(bytecode.TypeF64, 1.5),
+		FloatValue(bytecode.TypeF64, 1.5),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	want := "    1.50|1.2e+01 | 1.2E+01|1.23e+04|1.23E+04|  0x1.80p+00|0X1.80P+00  "
+	if ret.Type != bytecode.TypeI32 || ret.Int != uint64(len(want)) || got != want {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q, want i32 %d and float width output", ret, got, len(want))
+	}
+}
+
 func TestFormatExternsSupportDynamicWidthAndPrecision(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
