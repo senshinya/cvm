@@ -2917,6 +2917,38 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 		t.Fatalf("strtod hex endptr=%#x, want %#x", loadedEnd.Int, hexText+8)
 	}
 
+	hexOneText := mustAllocBytes(t, mem, "strtod:hex-one", []byte("0x1p0:\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(hexOneText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod hex one ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 1 {
+		t.Fatalf("strtod hex one ret=%#v, want f64 1", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod hex one endptr: %v", err)
+	}
+	if loadedEnd.Int != hexOneText+5 {
+		t.Fatalf("strtod hex one endptr=%#x, want %#x", loadedEnd.Int, hexOneText+5)
+	}
+
+	hexFractionText := mustAllocBytes(t, mem, "strtod:hex-fraction", []byte("0x1.fp-1?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(hexFractionText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod hex fraction ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0.96875 {
+		t.Fatalf("strtod hex fraction ret=%#v, want f64 0.96875", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod hex fraction endptr: %v", err)
+	}
+	if loadedEnd.Int != hexFractionText+8 {
+		t.Fatalf("strtod hex fraction endptr=%#x, want %#x", loadedEnd.Int, hexFractionText+8)
+	}
+
 	noneText := mustAllocBytes(t, mem, "strtod:none", []byte("word\x00"), true, blockString)
 	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(noneText), PtrValue(endptr)})
 	if err != nil || exit != nil {

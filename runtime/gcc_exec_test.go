@@ -2466,6 +2466,14 @@ int main(void)
     return 4;
   if (*end != '!')
     return 5;
+  if (strtod("0x1p0:", &end) != 1.0)
+    return 10;
+  if (*end != ':')
+    return 11;
+  if (strtod("0x1.fp-1?", &end) != 0.96875)
+    return 12;
+  if (*end != '?')
+    return 13;
   if (strtod("word", &end) != 0.0)
     return 6;
   return *end == 'w' ? 0 : 7;

@@ -99,9 +99,15 @@ Findings:
 
 Calibration before execution: Check hex-float parsing through Go parser.
 
-- [ ] Add tests for `0x1p0`, fractional hex, exponent sign, and endptr.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden strtod hex floats`.
+- [x] Add tests for `0x1p0`, fractional hex, exponent sign, and endptr.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): harden strtod hex floats`.
+
+Findings:
+
+- Existing coverage already included a positive-exponent hex float.
+- Added direct extern and source-level runtime coverage for `0x1p0` and fractional hex with a negative exponent sign.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
 
 ## Milestone 8: `strtof` And `strtold` Storage
 
