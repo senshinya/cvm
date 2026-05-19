@@ -128,19 +128,19 @@ Calibration before execution: Compare current scanner returns with C expectation
 - Modify: `runtime/gcc_exec_test.go`
 - Modify: this plan file
 
-- [ ] **Step 1: Add focused failure-return tests**
+- [x] **Step 1: Add focused failure-return tests**
 
 Cover empty input returning EOF when no conversion occurs, first matching failure returning `0`, and later matching failure returning the number of completed assignments.
 
-- [ ] **Step 2: Adjust scanner result model**
+- [x] **Step 2: Adjust scanner result model**
 
 Return assignment count, consumed bytes, and an EOF/input-failure classification instead of flattening all no-match cases.
 
-- [ ] **Step 3: Add source-level failure coverage**
+- [x] **Step 3: Add source-level failure coverage**
 
 Compile C snippets for empty `scanf` stdin and failed `sscanf` conversions.
 
-- [ ] **Step 4: Verify, commit, and push failure semantics**
+- [x] **Step 4: Verify, commit, and push failure semantics**
 
 Run the standard verification chain, then commit `fix(runtime): distinguish scanf input failures`.
 

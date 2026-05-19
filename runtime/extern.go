@@ -3794,7 +3794,10 @@ func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []
 	if err != nil {
 		return 0, err
 	}
-	assigned, _, err := scanString(name, mem, input, format, args)
+	assigned, _, inputFailure, err := scanString(name, mem, input, format, args)
+	if inputFailure && assigned == 0 {
+		return -1, err
+	}
 	return assigned, err
 }
 
@@ -3814,12 +3817,15 @@ func scanHostStream(name string, r *ExternRegistry, mem *Memory, stream, formatA
 		}
 		input = append(input, ch)
 	}
-	assigned, consumed, err := scanString(name, mem, string(input), format, args)
+	assigned, consumed, inputFailure, err := scanString(name, mem, string(input), format, args)
 	if consumed < len(input) {
 		r.pushBackHostBytes(stream, input[consumed:])
 	}
 	if consumed == len(input) && len(input) == 0 {
 		r.hostEOF[stream] = true
+	}
+	if inputFailure && assigned == 0 {
+		return -1, err
 	}
 	return assigned, err
 }
@@ -3841,7 +3847,7 @@ func (r *ExternRegistry) markHostReadErrorIfUnreadable(addr uint64) bool {
 	return false
 }
 
-func scanString(name string, mem *Memory, input, format string, args []Value) (int, int, error) {
+func scanString(name string, mem *Memory, input, format string, args []Value) (int, int, bool, error) {
 	inputIndex := 0
 	argIndex := 0
 	assigned := 0
@@ -3856,18 +3862,18 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 		}
 		if ch != '%' {
 			if inputIndex >= len(input) || input[inputIndex] != ch {
-				return assigned, inputIndex, nil
+				return assigned, inputIndex, inputIndex >= len(input), nil
 			}
 			inputIndex++
 			continue
 		}
 		formatIndex++
 		if formatIndex >= len(format) {
-			return 0, inputIndex, fmt.Errorf("%s has trailing %% in format", name)
+			return 0, inputIndex, false, fmt.Errorf("%s has trailing %% in format", name)
 		}
 		if format[formatIndex] == '%' {
 			if inputIndex >= len(input) || input[inputIndex] != '%' {
-				return assigned, inputIndex, nil
+				return assigned, inputIndex, inputIndex >= len(input), nil
 			}
 			inputIndex++
 			continue
@@ -3877,7 +3883,7 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 			suppress = true
 			formatIndex++
 			if formatIndex >= len(format) {
-				return 0, inputIndex, fmt.Errorf("%s has trailing %% in format", name)
+				return 0, inputIndex, false, fmt.Errorf("%s has trailing %% in format", name)
 			}
 		}
 		width := 0
@@ -3905,15 +3911,15 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 		}
 	verb:
 		if formatIndex >= len(format) {
-			return 0, inputIndex, fmt.Errorf("%s has trailing %% in format", name)
+			return 0, inputIndex, false, fmt.Errorf("%s has trailing %% in format", name)
 		}
 		verb := format[formatIndex]
 		if !suppress {
 			if argIndex >= len(args) {
-				return 0, inputIndex, fmt.Errorf("%s format needs more arguments", name)
+				return 0, inputIndex, false, fmt.Errorf("%s format needs more arguments", name)
 			}
 			if !isPointerType(args[argIndex].Type) {
-				return 0, inputIndex, fmt.Errorf("%s %%%c expects pointer argument", name, verb)
+				return 0, inputIndex, false, fmt.Errorf("%s %%%c expects pointer argument", name, verb)
 			}
 		}
 		switch verb {
@@ -3927,18 +3933,21 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				base = 8
 			}
 			inputIndex = scanSkipWhitespace(input, inputIndex)
+			if inputIndex >= len(input) {
+				return assigned, inputIndex, true, nil
+			}
 			token := scanLimit(input, inputIndex, width)
 			parsed, err := parseStrtoIntegerString(name, token, base)
 			if err != nil {
-				return 0, inputIndex, err
+				return 0, inputIndex, false, err
 			}
 			if !parsed.converted {
-				return assigned, inputIndex, nil
+				return assigned, inputIndex, false, nil
 			}
 			if !suppress {
 				unsigned := verb == 'u' || verb == 'x' || verb == 'X' || verb == 'o'
 				if err := scanStoreInteger(mem, args[argIndex].Int, lengthMod, unsigned, parsed); err != nil {
-					return 0, inputIndex, err
+					return 0, inputIndex, false, err
 				}
 				argIndex++
 				assigned++
@@ -3946,14 +3955,17 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 			inputIndex += parsed.end
 		case 'f', 'F', 'e', 'E', 'g', 'G', 'a', 'A':
 			inputIndex = scanSkipWhitespace(input, inputIndex)
+			if inputIndex >= len(input) {
+				return assigned, inputIndex, true, nil
+			}
 			token := scanLimit(input, inputIndex, width)
 			parsed := parseStrtoFloatString(token)
 			if !parsed.converted {
-				return assigned, inputIndex, nil
+				return assigned, inputIndex, false, nil
 			}
 			if !suppress {
 				if err := scanStoreFloat(mem, args[argIndex].Int, lengthMod, parsed.value); err != nil {
-					return 0, inputIndex, err
+					return 0, inputIndex, false, err
 				}
 				argIndex++
 				assigned++
@@ -3961,23 +3973,26 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 			inputIndex += parsed.end
 		case 'p':
 			if lengthMod != "" {
-				return 0, inputIndex, fmt.Errorf("%s %%p does not support length modifier %q", name, lengthMod)
+				return 0, inputIndex, false, fmt.Errorf("%s %%p does not support length modifier %q", name, lengthMod)
 			}
 			inputIndex = scanSkipWhitespace(input, inputIndex)
+			if inputIndex >= len(input) {
+				return assigned, inputIndex, true, nil
+			}
 			token := scanLimit(input, inputIndex, width)
 			parsed, err := parseStrtoIntegerString(name, token, 16)
 			if err != nil {
-				return 0, inputIndex, err
+				return 0, inputIndex, false, err
 			}
 			if !parsed.converted {
-				return assigned, inputIndex, nil
+				return assigned, inputIndex, false, nil
 			}
 			if parsed.neg {
-				return 0, inputIndex, fmt.Errorf("%s %%p does not support negative pointer input", name)
+				return 0, inputIndex, false, fmt.Errorf("%s %%p does not support negative pointer input", name)
 			}
 			if !suppress {
 				if err := mem.WritePointer(args[argIndex].Int, parsed.value); err != nil {
-					return 0, inputIndex, err
+					return 0, inputIndex, false, err
 				}
 				argIndex++
 				assigned++
@@ -3985,17 +4000,20 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 			inputIndex += parsed.end
 		case 'n':
 			if width != 0 {
-				return 0, inputIndex, fmt.Errorf("%s %%n does not support width", name)
+				return 0, inputIndex, false, fmt.Errorf("%s %%n does not support width", name)
 			}
 			if !suppress {
 				countType, countAlign := scanIntegerType(lengthMod, false)
 				if err := mem.Store(args[argIndex].Int, countType, countAlign, normalizeInt(IntValue(countType, int64(inputIndex)))); err != nil {
-					return 0, inputIndex, err
+					return 0, inputIndex, false, err
 				}
 				argIndex++
 			}
 		case 's':
 			inputIndex = scanSkipWhitespace(input, inputIndex)
+			if inputIndex >= len(input) {
+				return assigned, inputIndex, true, nil
+			}
 			end := inputIndex
 			limit := len(input)
 			if width > 0 && inputIndex+width < limit {
@@ -4005,12 +4023,12 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				end++
 			}
 			if end == inputIndex {
-				return assigned, inputIndex, nil
+				return assigned, inputIndex, false, nil
 			}
 			if !suppress {
 				data := append([]byte(input[inputIndex:end]), 0)
 				if err := writeMemoryBytes(mem, args[argIndex].Int, data); err != nil {
-					return 0, inputIndex, err
+					return 0, inputIndex, false, err
 				}
 				argIndex++
 				assigned++
@@ -4022,11 +4040,11 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				count = 1
 			}
 			if inputIndex+count > len(input) {
-				return assigned, inputIndex, nil
+				return assigned, inputIndex, true, nil
 			}
 			if !suppress {
 				if err := writeMemoryBytes(mem, args[argIndex].Int, []byte(input[inputIndex:inputIndex+count])); err != nil {
-					return 0, inputIndex, err
+					return 0, inputIndex, false, err
 				}
 				argIndex++
 				assigned++
@@ -4035,7 +4053,7 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 		case '[':
 			matches, nextFormatIndex, err := parseScanSet(name, format, formatIndex)
 			if err != nil {
-				return 0, inputIndex, err
+				return 0, inputIndex, false, err
 			}
 			formatIndex = nextFormatIndex
 			end := inputIndex
@@ -4047,22 +4065,22 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				end++
 			}
 			if end == inputIndex {
-				return assigned, inputIndex, nil
+				return assigned, inputIndex, inputIndex >= len(input), nil
 			}
 			if !suppress {
 				data := append([]byte(input[inputIndex:end]), 0)
 				if err := writeMemoryBytes(mem, args[argIndex].Int, data); err != nil {
-					return 0, inputIndex, err
+					return 0, inputIndex, false, err
 				}
 				argIndex++
 				assigned++
 			}
 			inputIndex = end
 		default:
-			return 0, inputIndex, fmt.Errorf("%s unsupported scan format %%%c", name, verb)
+			return 0, inputIndex, false, fmt.Errorf("%s unsupported scan format %%%c", name, verb)
 		}
 	}
-	return assigned, inputIndex, nil
+	return assigned, inputIndex, false, nil
 }
 
 func parseScanSet(name, format string, open int) (func(byte) bool, int, error) {

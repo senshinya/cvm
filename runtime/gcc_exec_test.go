@@ -2918,6 +2918,31 @@ int main(void)
 	}
 }
 
+func TestGCCStdioScanfFailureReturnsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  int n = 99;
+  if (sscanf("", "%d", &n) != EOF)
+    return 1;
+  if (sscanf("word", "%d", &n) != 0)
+    return 2;
+  if (sscanf("12 word", "%d %d", &n, &n) != 1)
+    return 3;
+  if (scanf("%d", &n) != EOF)
+    return 4;
+  return n == 12 ? 0 : 5;
+}
+`
+	reg := DefaultExternRegistryWithIO(strings.NewReader(""), nil, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-scanf-failure-returns-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioUngetcExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

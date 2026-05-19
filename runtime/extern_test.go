@@ -3846,6 +3846,71 @@ func TestSscanfExternScansPointerValues(t *testing.T) {
 	}
 }
 
+func TestSscanfExternDistinguishesInputFailure(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:failure-fmt", []byte("%d\x00"), true, blockString)
+	valueAddr := mustAlloc(t, mem, "sscanf:failure-value", 4, 4, false, blockLocal)
+	tests := []struct {
+		name  string
+		input string
+		want  int64
+	}{
+		{name: "empty input", input: "", want: -1},
+		{name: "whitespace only", input: " \t\n", want: -1},
+		{name: "matching failure", input: "word", want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputAddr := mustAllocBytes(t, mem, "sscanf:failure-input:"+tt.name, append([]byte(tt.input), 0), true, blockString)
+			ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+				ObjectAddrValue(inputAddr),
+				ObjectAddrValue(fmtAddr),
+				PtrValue(valueAddr),
+			})
+			if err != nil || exit != nil {
+				t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+			}
+			if ret.Type != bytecode.TypeI32 || int64(int32(ret.Int)) != tt.want {
+				t.Fatalf("sscanf ret=%#v, want i32 %d", ret, tt.want)
+			}
+		})
+	}
+}
+
+func TestSscanfExternReturnsAssignmentsBeforeLaterFailure(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:later-failure-input", []byte("12 word\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:later-failure-fmt", []byte("%d %d\x00"), true, blockString)
+	firstAddr := mustAlloc(t, mem, "sscanf:later-failure-first", 4, 4, false, blockLocal)
+	secondAddr := mustAlloc(t, mem, "sscanf:later-failure-second", 4, 4, false, blockLocal)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(firstAddr),
+		PtrValue(secondAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("sscanf ret=%#v, want i32 1", ret)
+	}
+	first, err := mem.Load(firstAddr, bytecode.TypeI32, 4)
+	if err != nil || first.Int != 12 {
+		t.Fatalf("first=%#v err=%v, want 12", first, err)
+	}
+}
+
 func TestPrintfExternsWriteFormattedOutput(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
