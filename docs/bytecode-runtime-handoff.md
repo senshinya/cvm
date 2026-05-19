@@ -8,10 +8,10 @@ This document records the current state of the bytecode/runtime work so the bran
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-3`
-- Latest implementation/coverage commit before this handoff document update: `d236c59 feat(runtime): configure cvm run stdin and env`
+- Branch: `codex/bytecode-runtime-phase-4`
+- Latest implementation/coverage commit before this handoff document update: `26aa762 docs: record phase 4 gcc fixture recheck`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: `origin/codex/bytecode-runtime-phase-3`
+- Upstream: `origin/codex/bytecode-runtime-phase-4`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-3 origin/codex/bytecode-runtime-phase-3
+git switch -c codex/bytecode-runtime-phase-4 origin/codex/bytecode-runtime-phase-4
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-3` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-4` instead.
 
 ## Verification Commands
 
@@ -68,6 +68,27 @@ Residual bounded surfaces after Phase 3:
 - Update-mode streams do not enforce the C sequencing rule requiring a flush or positioning operation between certain read/write direction changes.
 - Capturing GNU nested-function closure pointers follow stack-trampoline lifetime rules; calling one after the enclosing frame returns remains invalid.
 - Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
+
+## Phase 4 Closure
+
+Phase 4 hosted runtime stdio/input fidelity is closed on `codex/bytecode-runtime-phase-4`.
+
+Closed Phase 4 milestones:
+
+- Baseline Phase 4 roadmap and hosted stdio/input design.
+- Formatted input scansets: `%[...]`, `%[^...]`, ranges, width, assignment suppression, and source-level `sscanf` execution coverage.
+- Floating formatted input: `%f`, `%e`, `%g`, and `%a` families with `float *`, `double *`, and current runtime `long double *` storage.
+- Pointer formatted input: `%p` parses deterministic hexadecimal pointer input and writes pointer-sized runtime values.
+- Formatted-input failure returns: empty input or whitespace-only first-conversion input failure returns `EOF`, while matching failures return `0` or the number of prior assignments.
+- Hermetic update-mode stream sequencing: invalid read-after-write and write-after-read transitions set the stream error indicator; `fflush`, `fseek`, `rewind`, and read EOF allow the documented transitions.
+- Cross-extern scanner coverage: new scanner formats are covered through `scanf`, `fscanf`, and `sscanf`, including unread-byte preservation for stdin and configured files.
+- GCC runtime fixture recheck: the directive-based runtime gap report remains closed with 18 runnable manifest candidates and no failures; no newly unblocked imported scanf fixtures were found.
+
+Residual bounded surfaces after Phase 4:
+
+- Capturing GNU nested-function closure pointers follow stack-trampoline lifetime rules; calling one after the enclosing frame returns remains invalid.
+- Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
+- Locale-specific formatted input, multibyte/wide-character formatted input, native file descriptors, and exact native libc compatibility remain outside the deterministic hosted-runtime model.
 
 ## Completed Work
 

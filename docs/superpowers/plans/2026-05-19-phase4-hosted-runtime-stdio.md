@@ -227,14 +227,14 @@ Calibration before execution: Confirm all prior Phase 4 milestones are committed
 - Create or modify: `docs/phase4-hosted-runtime-stdio-gap-map.md`
 - Modify: this plan file
 
-- [ ] **Step 1: Update handoff**
+- [x] **Step 1: Update handoff**
 
 Record branch, latest commit, closed Phase 4 milestones, verification commands, and residual non-Phase-4 limits.
 
-- [ ] **Step 2: Add Phase 4 gap map**
+- [x] **Step 2: Add Phase 4 gap map**
 
 Record calibration, closed items, and any deferred Phase 5 candidates.
 
-- [ ] **Step 3: Final verify, commit, and push closure docs**
+- [x] **Step 3: Final verify, commit, and push closure docs**
 
 Run the standard verification chain, then commit `docs: close phase 4 hosted stdio work`.
