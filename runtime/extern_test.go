@@ -3934,6 +3934,41 @@ func TestStringCharSearchExterns(t *testing.T) {
 	}
 }
 
+func TestStringSubstringSearchExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	haystack := mustAllocBytes(t, mem, "strstr:haystack", []byte("abcdef\x00"), true, blockString)
+	tests := []struct {
+		name   string
+		needle string
+		want   uint64
+	}{
+		{name: "empty", needle: "", want: haystack},
+		{name: "full", needle: "abcdef", want: haystack},
+		{name: "suffix", needle: "ef", want: haystack + 4},
+		{name: "middle", needle: "cd", want: haystack + 2},
+		{name: "miss", needle: "gh", want: 0},
+	}
+	for _, fnName := range []string{"strstr", "__builtin_strstr"} {
+		fn, ok := reg.Lookup(fnName)
+		if !ok {
+			t.Fatalf("missing %s extern", fnName)
+		}
+		for _, tt := range tests {
+			t.Run(fnName+"/"+tt.name, func(t *testing.T) {
+				needle := mustAllocBytes(t, mem, "strstr:needle:"+tt.name, []byte(tt.needle+"\x00"), true, blockString)
+				ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(haystack), PtrValue(needle)})
+				if err != nil || exit != nil {
+					t.Fatalf("%s %s ret=%#v exit=%#v err=%v", fnName, tt.name, ret, exit, err)
+				}
+				if ret.Type != bytecode.TypePtr || ret.Int != tt.want {
+					t.Fatalf("%s %s ret=%#v, want pointer %#x", fnName, tt.name, ret, tt.want)
+				}
+			})
+		}
+	}
+}
+
 func TestStringBoundedCompareSearchExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

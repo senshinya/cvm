@@ -73,10 +73,10 @@ Calibration before execution: Re-read `stringReverseCharSearchExtern`.
 
 Calibration before execution: Re-read `stringSearchExtern`.
 
-- [ ] Add tests for empty needle returning haystack, full match, suffix match, and miss.
-- [ ] Fix `strstr` if needed.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `test(runtime): cover strstr boundaries`.
+- [x] Add tests for empty needle returning haystack, full match, suffix match, and miss.
+- [x] Fix `strstr` if needed.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `test(runtime): cover strstr boundaries`.
 
 ## Milestone 9: `strpbrk` Empty Accept Set
 

@@ -2560,11 +2560,19 @@ int main(void)
     return 4;
   if (strchr(high, 0x182) != high + 1)
     return 5;
-  if (strstr(text, "cd") != text + 2)
+  if (strstr(text, "") != text)
     return 6;
-  if (strcmp(text, "abcdef") != 0)
+  if (strstr(text, "abcdef") != text)
     return 7;
-  return memcmp(text, "abcxef", 4) < 0 ? 0 : 8;
+  if (strstr(text, "ef") != text + 4)
+    return 8;
+  if (strstr(text, "cd") != text + 2)
+    return 9;
+  if (strstr(text, "gh") != 0)
+    return 10;
+  if (strcmp(text, "abcdef") != 0)
+    return 11;
+  return memcmp(text, "abcxef", 4) < 0 ? 0 : 12;
 }
 `
 	st := runGCCExecFixture(t, "string-read-only-header-runtime.c", source)
@@ -3624,9 +3632,15 @@ int main(void)
     return 3;
   if (__builtin_strchr(text, 0) != text + 6)
     return 4;
-  if (__builtin_strstr(text, "cd") != text + 2)
+  if (__builtin_strstr(text, "") != text)
     return 5;
-  return __builtin_strstr(text, "gh") == 0 ? 0 : 6;
+  if (__builtin_strstr(text, "abcdef") != text)
+    return 6;
+  if (__builtin_strstr(text, "cd") != text + 2)
+    return 7;
+  if (__builtin_strstr(text, "ef") != text + 4)
+    return 8;
+  return __builtin_strstr(text, "gh") == 0 ? 0 : 9;
 }
 `
 	st := runGCCExecFixture(t, "builtin-string-search-runtime.c", source)
