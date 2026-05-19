@@ -200,11 +200,17 @@ Calibration before execution: Re-read `*_chk` externs for copy, move, set, conca
 
 Calibration before execution: Search touched `string.h`/memory surfaces across headers, registry, direct tests, and source tests.
 
-- [ ] Run header/registry search for all Phase 7 surfaces.
-- [ ] Run GCC runtime gap report.
-- [ ] Scan imported GCC accept roots for newly unblocked string/memory candidates.
-- [ ] Record findings.
-- [ ] Verify, commit, and push `docs: record phase 7 fixture recheck`.
+- [x] Run header/registry search for all Phase 7 surfaces.
+- [x] Run GCC runtime gap report.
+- [x] Scan imported GCC accept roots for newly unblocked string/memory candidates.
+- [x] Record findings.
+- [x] Verify, commit, and push `docs: record phase 7 fixture recheck`.
+
+Findings:
+
+- `preprocessor/headers.go`, `sema/builtin.go`, `runtime/extern.go`, direct extern tests, and GCC runtime source tests all contain the Phase 7 string/memory surfaces.
+- `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1` passed; `runtime/testdata/gcc-exec/gap-report.md` remains closed with 18 runnable manifest candidates and no failures.
+- Imported GCC accept scans surfaced checked string/memory warning fixtures already represented in `codegen/testdata/gcc-bytecode-compile.tsv` (`builtin-stringop-chk-1.c`, `builtin-strncat-chk-1.c`) plus warning-only/non-runtime candidates such as `builtins-nonnull.c`, `pr79223-*`, and `pr19967.c`; no new low-risk runtime manifest fixture was identified.
 
 ## Milestone 24: Phase 7 Closure Docs
 
