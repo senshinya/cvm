@@ -2331,6 +2331,90 @@ func TestWscanfExternScansStdinAndPreservesUnreadInput(t *testing.T) {
 	}
 }
 
+func TestFwscanfExternScansConfiguredFileAndTracksStreamState(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("wide.txt", []byte("52 tail"))
+	reg.AddFile("word.txt", []byte("word"))
+	reg.AddFile("empty.txt", nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	openFile := func(name string) uint64 {
+		t.Helper()
+		path := mustAllocBytes(t, mem, "fwscanf:path:"+name, append([]byte(name), 0), true, blockString)
+		mode := mustAllocBytes(t, mem, "fwscanf:mode:"+name, []byte("r\x00"), true, blockString)
+		fopenFn, ok := reg.Lookup("fopen")
+		if !ok {
+			t.Fatal("missing fopen extern")
+		}
+		ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+		if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+			t.Fatalf("fopen %s ret=%#v exit=%#v err=%v, want file handle", name, ret, exit, err)
+		}
+		return ret.Int
+	}
+	format := makeWide("fwscanf:format", '%', 'd', 0)
+	valueAddr := mustAlloc(t, mem, "fwscanf:value", 4, 4, false, blockLocal)
+	fn, ok := reg.Lookup("fwscanf")
+	if !ok {
+		t.Fatal("missing fwscanf extern")
+	}
+
+	file := openFile("wide.txt")
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(file),
+		ObjectAddrValue(format),
+		PtrValue(valueAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("fwscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("fwscanf ret=%#v, want i32 1", ret)
+	}
+	value, err := mem.Load(valueAddr, bytecode.TypeI32, 4)
+	if err != nil || value.Int != 52 {
+		t.Fatalf("value=%#v err=%v, want 52", value, err)
+	}
+	if got := reg.hostOrientationResult(file); got <= 0 {
+		t.Fatalf("file orientation = %d, want wide", got)
+	}
+	ch, ok := reg.readHostChar(file)
+	if !ok || ch != ' ' {
+		t.Fatalf("next file char=%q ok=%v, want space", ch, ok)
+	}
+
+	wordFile := openFile("word.txt")
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wordFile), ObjectAddrValue(format), PtrValue(valueAddr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fwscanf mismatch ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ch, ok = reg.readHostChar(wordFile)
+	if !ok || ch != 'w' {
+		t.Fatalf("mismatch next file char=%q ok=%v, want w", ch, ok)
+	}
+
+	emptyFile := openFile("empty.txt")
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(emptyFile), ObjectAddrValue(format), PtrValue(valueAddr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || int64(int32(ret.Int)) != -1 {
+		t.Fatalf("fwscanf empty ret=%#v exit=%#v err=%v, want -1", ret, exit, err)
+	}
+	if !reg.hostEOF[emptyFile] {
+		t.Fatalf("empty file EOF flag not set")
+	}
+}
+
 func TestSwprintfWritesWideFormattedOutput(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

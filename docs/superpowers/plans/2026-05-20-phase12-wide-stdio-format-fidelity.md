@@ -182,9 +182,9 @@ Calibration before execution: Reuse configured stdin scanner behavior and orient
 
 Calibration before execution: Reuse hermetic file scanner behavior.
 
-- [ ] Register and implement `fwscanf`.
-- [ ] Cover configured file input, matching failure, EOF, and stream state.
-- [ ] Verify, commit `feat(runtime): add fwscanf`, and push.
+- [x] Register and implement `fwscanf`.
+- [x] Cover configured file input, matching failure, EOF, and stream state.
+- [x] Verify, commit `feat(runtime): add fwscanf`, and push.
 
 ## Milestone 22: Wide Stdio Source Workflow
 

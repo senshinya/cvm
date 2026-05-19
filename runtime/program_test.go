@@ -44,6 +44,31 @@ func TestLoadAppliesGlobalRelocation(t *testing.T) {
 	}
 }
 
+func TestLoadAlignsStringConstantsForWideAccess(t *testing.T) {
+	mod := testMainModule(bytecode.I32Const(0), bytecode.Return(bytecode.TypeI32))
+	mod.Strings = []bytecode.StringConst{
+		{ID: 0, Value: "x", Bytes: []byte{'x', 0}},
+		{ID: 1, Value: "%d", Bytes: []byte{'%', 0, 0, 0, 'd', 0, 0, 0, 0, 0, 0, 0}},
+	}
+	var buf bytes.Buffer
+	if err := bytecode.EncodeModule(&buf, mod); err != nil {
+		t.Fatalf("EncodeModule: %v", err)
+	}
+	p, err := Load(bytes.NewReader(buf.Bytes()), LoadOptions{})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	for _, s := range mod.Strings {
+		addr := p.stringAddr[s.ID]
+		if addr%4 != 0 {
+			t.Fatalf("string %d address %#x is not 4-byte aligned", s.ID, addr)
+		}
+	}
+	if got, err := p.Memory().Load(p.stringAddr[1], bytecode.TypeI32, 4); err != nil || got.Int != '%' {
+		t.Fatalf("wide string first element = %#v err=%v, want %%", got, err)
+	}
+}
+
 func TestLoadReturnsErrorForStdoutExternVariableWithUnsupportedPointerSize(t *testing.T) {
 	mod := testMainModule(bytecode.I32Const(0), bytecode.Return(bytecode.TypeI32))
 	mod.Target.PointerSize = 3

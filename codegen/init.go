@@ -1245,8 +1245,14 @@ func (fg *funcGen) fieldAddress(base address, container sema.Type, field *sema.F
 		return address{emit: base.emit, bit: true, layout: layout.ID, field: fieldID, valueType: vt, volatile: layout.Bit[fieldID].Volatile || isVolatile(field.T)}, nil
 	}
 	addr := fg.offsetAddress(base, field.Offset)
-	if align := fg.g.alignof(field.T); align > 1 && field.Offset%align != 0 {
-		addr.align = 1
+	if align := fg.g.alignof(field.T); align > 1 {
+		baseAlign := base.accessAlign(fg.g.alignof(container))
+		if baseAlign > 0 && baseAlign < align {
+			addr.align = baseAlign
+		}
+		if field.Offset%align != 0 {
+			addr.align = 1
+		}
 	}
 	return addr, nil
 }

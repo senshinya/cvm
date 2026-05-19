@@ -206,7 +206,7 @@ func (p *Program) allocateGlobals(reg *ExternRegistry) error {
 	}
 
 	for _, s := range p.module.Strings {
-		addr, err := p.memory.TryAlloc(fmt.Sprintf("string:%d", s.ID), int64(len(s.Bytes)), 1, false, blockString)
+		addr, err := p.memory.TryAlloc(fmt.Sprintf("string:%d", s.ID), int64(len(s.Bytes)), 4, false, blockString)
 		if err != nil {
 			return &LoadError{Reason: fmt.Sprintf("allocate string %d", s.ID), Cause: err}
 		}

@@ -4459,6 +4459,34 @@ int main(void)
 	}
 }
 
+func TestWideFwscanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <wchar.h>
+
+int main(void)
+{
+  int n = 0;
+  FILE *f = fopen("wide-input.txt", "r");
+  if (!f)
+    return 1;
+  if (fwscanf(f, L"%d", &n) != 1)
+    return 2;
+  if (n != 52)
+    return 3;
+  if (fwide(f, 0) <= 0)
+    return 4;
+  return getwc(f) == L' ' ? 0 : 5;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("wide-input.txt", []byte("52 tail"))
+	st := runGCCExecFixtureWithLoadOptions(t, "wide-fwscanf-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestWideStdioInputAliasesExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
