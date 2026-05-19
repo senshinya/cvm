@@ -2553,6 +2553,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("wcscpy", wideStringCopyExtern("wcscpy"))
 	r.Register("wcsncpy", wideStringNCopyExtern("wcsncpy"))
 	r.Register("wcscat", wideStringConcatExtern("wcscat"))
+	r.Register("wcsncat", wideStringNConcatExtern("wcsncat"))
 	r.Register("strnlen", stringNLengthExtern("strnlen"))
 	r.Register("strerror", stringErrorExtern("strerror", r))
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
@@ -3803,6 +3804,62 @@ func wideStringConcatExtern(name string) ExternFunc {
 				return PtrValue(args[0].Int), nil, nil
 			}
 		}
+	}
+}
+
+func wideStringNConcatExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, source, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		length, err := wideStringLength(ec.Memory, args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		start, err := wideElementAddr(args[0].Int, length)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		var copied int64
+		for copied < count {
+			srcAddr, err := wideElementAddr(args[1].Int, copied)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, srcAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				break
+			}
+			dstAddr, err := wideElementAddr(start, copied)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if err := storeWideChar(ec.Memory, dstAddr, ch); err != nil {
+				return Value{}, nil, err
+			}
+			copied++
+		}
+		nulAddr, err := wideElementAddr(start, copied)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := storeWideChar(ec.Memory, nulAddr, 0); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(args[0].Int), nil, nil
 	}
 }
 

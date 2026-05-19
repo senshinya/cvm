@@ -185,9 +185,9 @@ Calibration before execution: Mirror `strcat` destination scan and terminator wr
 
 Calibration before execution: Re-read `strncat` terminator and zero-count behavior.
 
-- [ ] Register and implement `wcsncat`.
-- [ ] Cover bounded append, zero count, truncation terminator, high wide value, and return pointer.
-- [ ] Verify, commit `feat(runtime): add wcsncat`, and push.
+- [x] Register and implement `wcsncat`.
+- [x] Cover bounded append, zero count, truncation terminator, high wide value, and return pointer.
+- [x] Verify, commit `feat(runtime): add wcsncat`, and push.
 
 ## Milestone 22: `wcscoll`
 
