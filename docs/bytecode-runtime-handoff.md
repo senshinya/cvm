@@ -8,10 +8,10 @@ This document records the current state of the bytecode/runtime work so the bran
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-5`
-- Latest implementation/coverage commit before this handoff document update: `bc19fc2 docs: record phase 5 gcc fixture recheck`
+- Branch: `codex/bytecode-runtime-phase-6`
+- Latest implementation/coverage commit before this handoff document update: `23680ba docs: record phase 6 gcc fixture recheck`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: `origin/codex/bytecode-runtime-phase-5`
+- Upstream: `origin/codex/bytecode-runtime-phase-6`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-5 origin/codex/bytecode-runtime-phase-5
+git switch -c codex/bytecode-runtime-phase-6 origin/codex/bytecode-runtime-phase-6
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-5` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-6` instead.
 
 ## Verification Commands
 
@@ -107,6 +107,28 @@ Residual bounded surfaces after Phase 5:
 - Escaped GNU nested-function pointers remain invalid after the enclosing frame returns, matching stack-trampoline lifetime constraints. Phase 5 improves diagnostics but does not make those pointers callable.
 - Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
 - Locale-specific formatted input, multibyte/wide-character formatted input, native file descriptors, and exact native libc compatibility remain outside the deterministic hosted-runtime model.
+
+## Phase 6 Closure
+
+Phase 6 hosted libc fidelity is closed on `codex/bytecode-runtime-phase-6`.
+
+Closed Phase 6 milestones:
+
+- Configured-file `fgetpos`/`fsetpos` support, including negative position, invalid memory, and standard-stream failure edges.
+- `freopen` over hermetic configured files for read, write/truncate, append, update-mode append, and failure-preservation semantics.
+- Deterministic `tmpnam` behavior for `tmpnam(NULL)`, caller-provided buffers, sequence uniqueness, and integration with hermetic `fopen` read/write flows.
+- `setvbuf` mode validation for `_IOFBF`, `_IOLBF`, `_IONBF`, invalid modes, buffer range checks, NULL buffers, and closed-stream validation.
+- `setbuf` source/direct coverage for explicit buffer and NULL buffer usage.
+- C-locale multibyte helper hardening for `mblen`, `mbtowc`, `wctomb`, `mbstowcs`, and `wcstombs`, including null/reset paths, truncation, terminators, and high-bit rejection.
+- Header/registry recheck for touched stdio/stdlib surfaces.
+- GCC runtime gap report recheck; no new low-risk imported GCC fixture was found.
+
+Residual bounded surfaces after Phase 6:
+
+- Multibyte handling intentionally models the C locale only. Stateful encodings, locale-specific behavior, and wide-character classification remain out of scope.
+- `tmpnam` uses deterministic hermetic names and does not model native filesystem races or host temporary directories.
+- File streams remain hermetic registry-backed streams, not native file descriptors.
+- Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
 
 ## Completed Work
 

@@ -221,7 +221,9 @@ Recheck notes: `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -r
 
 Calibration before execution: Confirm all prior Phase 6 milestones are committed and pushed.
 
-- [ ] Update `docs/bytecode-runtime-handoff.md`.
-- [ ] Create `docs/phase6-hosted-libc-fidelity-gap-map.md`.
-- [ ] Mark this plan complete.
-- [ ] Run standard verification, commit `docs: close phase 6 hosted libc work`, and push.
+- [x] Update `docs/bytecode-runtime-handoff.md`.
+- [x] Create `docs/phase6-hosted-libc-fidelity-gap-map.md`.
+- [x] Mark this plan complete.
+- [x] Run standard verification, commit `docs: close phase 6 hosted libc work`, and push.
+
+Phase 6 status: complete. All 24 milestones have been committed and pushed on `codex/bytecode-runtime-phase-6`.
