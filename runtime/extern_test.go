@@ -2981,6 +2981,54 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 		t.Fatalf("strtod hex fraction endptr=%#x, want %#x", loadedEnd.Int, hexFractionText+8)
 	}
 
+	infText := mustAllocBytes(t, mem, "strtod:inf", []byte("inf!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(infText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod inf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtod inf ret=%#v, want +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod inf endptr: %v", err)
+	}
+	if loadedEnd.Int != infText+3 {
+		t.Fatalf("strtod inf endptr=%#x, want %#x", loadedEnd.Int, infText+3)
+	}
+
+	positiveInfinityText := mustAllocBytes(t, mem, "strtod:positive-infinity", []byte("+infinity;\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(positiveInfinityText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod positive infinity ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtod positive infinity ret=%#v, want +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod positive infinity endptr: %v", err)
+	}
+	if loadedEnd.Int != positiveInfinityText+9 {
+		t.Fatalf("strtod positive infinity endptr=%#x, want %#x", loadedEnd.Int, positiveInfinityText+9)
+	}
+
+	negativeInfText := mustAllocBytes(t, mem, "strtod:negative-inf", []byte("-INF?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeInfText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod negative inf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, -1) {
+		t.Fatalf("strtod negative inf ret=%#v, want -inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod negative inf endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeInfText+4 {
+		t.Fatalf("strtod negative inf endptr=%#x, want %#x", loadedEnd.Int, negativeInfText+4)
+	}
+
 	noneText := mustAllocBytes(t, mem, "strtod:none", []byte("word\x00"), true, blockString)
 	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(noneText), PtrValue(endptr)})
 	if err != nil || exit != nil {

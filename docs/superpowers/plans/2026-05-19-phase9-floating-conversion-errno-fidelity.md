@@ -61,9 +61,15 @@ Findings:
 
 Calibration before execution: Check `strconv.ParseFloat` behavior for `inf`, `infinity`, sign, and end index.
 
-- [ ] Add direct/source tests for `inf`, `+infinity`, `-INF`, trailing text, and endptr.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `feat(runtime): cover strtod infinity parsing`.
+- [x] Add direct/source tests for `inf`, `+infinity`, `-INF`, trailing text, and endptr.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): cover strtod infinity parsing`.
+
+Findings:
+
+- Existing parser behavior already accepted infinity spellings through `strconv.ParseFloat`.
+- Added direct extern and source-level runtime coverage for `inf`, `+infinity`, `-INF`, trailing text, and end pointers.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
 
 ## Milestone 5: `strtod` NaN Spelling
 

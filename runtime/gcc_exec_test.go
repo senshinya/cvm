@@ -2495,6 +2495,18 @@ int main(void)
     return 12;
   if (*end != '?')
     return 13;
+  if (strtod("inf!", &end) <= 1e300)
+    return 18;
+  if (*end != '!')
+    return 19;
+  if (strtod("+infinity;", &end) <= 1e300)
+    return 20;
+  if (*end != ';')
+    return 21;
+  if (strtod("-INF?", &end) >= -1e300)
+    return 22;
+  if (*end != '?')
+    return 23;
   if (strtod("word", &end) != 0.0)
     return 6;
   if (errno != 77)
