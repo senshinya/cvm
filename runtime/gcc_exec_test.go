@@ -2822,6 +2822,70 @@ int main(void)
 	}
 }
 
+func TestGCCStdioUpdateModeSequencingExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char ch = 0;
+  char buf[2] = {0, 0};
+  FILE *f = fopen("data.txt", "r+");
+  if (!f)
+    return 1;
+  if (fread(&ch, 1, 1, f) != 1)
+    return 2;
+  if (fwrite("Z", 1, 1, f) != 0)
+    return 3;
+  if (!ferror(f))
+    return 4;
+  fclose(f);
+
+  f = fopen("seek.txt", "r+");
+  if (!f)
+    return 5;
+  if (fread(&ch, 1, 1, f) != 1)
+    return 6;
+  if (fseek(f, 1, SEEK_SET) != 0)
+    return 7;
+  if (fwrite("Z", 1, 1, f) != 1)
+    return 8;
+  fclose(f);
+  f = fopen("seek.txt", "r");
+  if (!f)
+    return 9;
+  if (fread(buf, 1, 2, f) != 2)
+    return 10;
+  fclose(f);
+  if (buf[0] != 'A' || buf[1] != 'Z')
+    return 11;
+
+  f = fopen("eof.txt", "r+");
+  if (!f)
+    return 12;
+  if (fread(buf, 1, 2, f) != 1)
+    return 13;
+  if (fwrite("Z", 1, 1, f) != 1)
+    return 14;
+  fclose(f);
+  f = fopen("eof.txt", "r");
+  if (!f)
+    return 15;
+  if (fread(buf, 1, 2, f) != 2)
+    return 16;
+  return buf[0] == 'A' && buf[1] == 'Z' ? 0 : 17;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("AB"))
+	reg.AddFile("seek.txt", []byte("AB"))
+	reg.AddFile("eof.txt", []byte("A"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-update-mode-sequencing-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCStdioScanfRadixSuppressionAndCountExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

@@ -154,19 +154,19 @@ Calibration before execution: Re-read hermetic stream mode parsing, `fread`, `fw
 - Modify: `runtime/gcc_exec_test.go`
 - Modify: this plan file
 
-- [ ] **Step 1: Add failing update-mode direct tests**
+- [x] **Step 1: Add failing update-mode direct tests**
 
 Cover read-after-write without `fflush`/`fseek`, write-after-read before EOF without positioning, and allowed transitions after `fflush`, `fseek`, `rewind`, or read EOF.
 
-- [ ] **Step 2: Add stream direction bookkeeping**
+- [x] **Step 2: Add stream direction bookkeeping**
 
 Track last operation on hermetic update streams and gate invalid transitions through the existing error indicator path.
 
-- [ ] **Step 3: Add source-level update-mode coverage**
+- [x] **Step 3: Add source-level update-mode coverage**
 
 Compile a C snippet using `fopen("r+")` or `fopen("w+")` over configured files and validate allowed transition cases.
 
-- [ ] **Step 4: Verify, commit, and push update-mode sequencing**
+- [x] **Step 4: Verify, commit, and push update-mode sequencing**
 
 Run the standard verification chain, then commit `feat(runtime): enforce update stream sequencing`.
 

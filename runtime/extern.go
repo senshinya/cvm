@@ -50,7 +50,17 @@ type hostFile struct {
 	readable   bool
 	writable   bool
 	appendMode bool
+	updateMode bool
+	lastOp     hostFileOp
 }
+
+type hostFileOp int
+
+const (
+	hostFileOpNone hostFileOp = iota
+	hostFileOpRead
+	hostFileOpWrite
+)
 
 type hostFileWriter struct {
 	registry *ExternRegistry
@@ -273,6 +283,10 @@ func (w hostFileWriter) Write(p []byte) (int, error) {
 		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q is not open for writing", file.path)
 	}
+	if file.updateMode && file.lastOp == hostFileOpRead && !w.registry.hostEOF[w.addr] {
+		w.registry.hostError[w.addr] = true
+		return 0, fmt.Errorf("file %q needs positioning before writing after reading", file.path)
+	}
 	if file.appendMode {
 		file.pos = int64(len(file.data))
 	}
@@ -299,6 +313,7 @@ func (w hostFileWriter) Write(p []byte) (int, error) {
 	if file.path != "" {
 		w.registry.files[file.path] = append([]byte(nil), file.data...)
 	}
+	file.lastOp = hostFileOpWrite
 	delete(w.registry.hostEOF, w.addr)
 	return len(p), nil
 }
@@ -404,6 +419,7 @@ func fopenExtern(name string, r *ExternRegistry) ExternFunc {
 			readable:   readable,
 			writable:   writable,
 			appendMode: strings.HasPrefix(mode, "a"),
+			updateMode: strings.Contains(mode, "+"),
 		}
 		if strings.HasPrefix(mode, "w") {
 			file.data = nil
@@ -458,7 +474,7 @@ func tmpfileExtern(name string, r *ExternRegistry) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		file := &hostFile{readable: true, writable: true}
+		file := &hostFile{readable: true, writable: true, updateMode: true}
 		addr, err := r.allocHostWriter("tmpfile", ec.Memory, hostFileWriter{registry: r}, -1)
 		if err != nil {
 			return Value{}, nil, err
@@ -716,6 +732,9 @@ func fflushExtern(name string, r *ExternRegistry) ExternFunc {
 			if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 				return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 			}
+			if file := r.hostFiles[args[0].Int]; file != nil && file.updateMode {
+				file.lastOp = hostFileOpNone
+			}
 		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
@@ -791,6 +810,9 @@ func fseekExtern(name string, r *ExternRegistry) ExternFunc {
 				return IntValue(bytecode.TypeI32, -1), nil, nil
 			}
 			file.pos = next
+			if file.updateMode {
+				file.lastOp = hostFileOpNone
+			}
 			delete(r.hostPushback, args[0].Int)
 			delete(r.hostEOF, args[0].Int)
 			return IntValue(bytecode.TypeI32, 0), nil, nil
@@ -830,6 +852,9 @@ func rewindExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		if file := r.hostFiles[args[0].Int]; file != nil {
 			file.pos = 0
+			if file.updateMode {
+				file.lastOp = hostFileOpNone
+			}
 		}
 		delete(r.hostPushback, args[0].Int)
 		delete(r.hostEOF, args[0].Int)
@@ -3840,9 +3865,15 @@ func (r *ExternRegistry) pushBackHostBytes(addr uint64, data []byte) {
 }
 
 func (r *ExternRegistry) markHostReadErrorIfUnreadable(addr uint64) bool {
-	if file := r.hostFiles[addr]; file != nil && !file.readable {
-		r.hostError[addr] = true
-		return true
+	if file := r.hostFiles[addr]; file != nil {
+		if !file.readable {
+			r.hostError[addr] = true
+			return true
+		}
+		if file.updateMode && file.lastOp == hostFileOpWrite {
+			r.hostError[addr] = true
+			return true
+		}
 	}
 	return false
 }
@@ -5203,6 +5234,9 @@ func (r *ExternRegistry) readHostChar(addr uint64) (byte, bool) {
 			}
 			ch := file.data[file.pos]
 			file.pos++
+			if file.updateMode {
+				file.lastOp = hostFileOpRead
+			}
 			return ch, true
 		}
 		if addr == r.stdinHandle && r.stdin != nil {
