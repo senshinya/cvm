@@ -1957,6 +1957,22 @@ int main(void)
 	}
 }
 
+func TestMbstateHeaderExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  mbstate_t st = {0};
+  return sizeof(st) > 0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "mbstate-header-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <time.h>

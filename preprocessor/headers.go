@@ -359,6 +359,10 @@ typedef __WCHAR_TYPE__ wchar_t;
 #define __CVM_WINT_T
 typedef int wint_t;
 #endif
+#ifndef __CVM_MBSTATE_T
+#define __CVM_MBSTATE_T
+typedef struct { unsigned int __count; unsigned int __value; } mbstate_t;
+#endif
 #define WEOF (-1)
 #endif
 `

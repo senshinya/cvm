@@ -129,6 +129,7 @@ func TestBuiltinWideHeadersDeclareRuntimeSurface(t *testing.T) {
 #include <wchar.h>
 #include <wctype.h>
 wint_t wc = WEOF;
+mbstate_t state = {0};
 wctype_t cls = 0;
 wctrans_t trans = 0;
 int checks[] = {
@@ -143,7 +144,7 @@ wctrans_t named_trans = wctrans("tolower");
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"wchar_t", "wint_t", "wctype_t", "wctrans_t", "iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans"} {
+	for _, name := range []string{"wchar_t", "wint_t", "mbstate_t", "wctype_t", "wctrans_t", "iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("wide header identifier %q missing: %#v", name, res.Tokens)
 		}

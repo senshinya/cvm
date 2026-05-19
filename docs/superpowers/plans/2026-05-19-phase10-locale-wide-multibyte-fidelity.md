@@ -196,9 +196,16 @@ Findings:
 
 Calibration before execution: Check whether `mbstate_t` exists in headers.
 
-- [ ] Add deterministic `mbstate_t` declaration if missing.
-- [ ] Add source compile/runtime smoke using zeroed state.
-- [ ] Verify, commit, and push `feat(headers): add mbstate_t baseline`.
+- [x] Add deterministic `mbstate_t` declaration if missing.
+- [x] Add source compile/runtime smoke using zeroed state.
+- [x] Verify, commit, and push `feat(headers): add mbstate_t baseline`.
+
+Findings:
+
+- Added guarded `mbstate_t` to builtin `<wchar.h>` as a deterministic opaque-compatible state struct.
+- Extended wide header parse coverage to include `mbstate_t`.
+- Added source-level runtime smoke coverage for a zero-initialized `mbstate_t`.
+- Focused preprocessor and runtime tests passed.
 
 ## Milestone 14: `mbrlen` C-Locale Behavior
 
