@@ -73,15 +73,17 @@ Run the standard verification chain, then commit `fix(runtime): trap expired nes
 
 Calibration before execution: Re-scan existing nested-function pointer tests and source-level closure coverage. Add coverage only where the expired closure map could accidentally affect valid live closure calls.
 
+Result: Existing coverage is sufficient. `runtime/integration_test.go` covers direct nested calls, VLA capture, outer-capture forwarding, and the new escaped closure trap. `runtime/gcc_exec_test.go` covers local closure pointer calls, passing closure pointers to another callee, VLA capture through closure pointers, and transitive capture through closure pointers. The focused nested closure suite passed after the expired-closure map change.
+
 **Files:**
 - Modify: `runtime/gcc_exec_test.go`
 - Modify: this plan file
 
-- [ ] **Step 1: Add source-level nonescaping closure regression if needed**
+- [x] **Step 1: Add source-level nonescaping closure regression if needed**
 
 If current coverage already exercises local, passed, VLA, and transitive live closure calls, record that no new test is needed. Otherwise add one focused GCC-style runtime test.
 
-- [ ] **Step 2: Run nested closure focused suite**
+- [x] **Step 2: Run nested closure focused suite**
 
 Run:
 
@@ -89,7 +91,7 @@ Run:
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'NestedFunctionPointer|NestedFunctionDirectCall|NestedFunctionVLA|NestedFunctionForwardsOuterCapture' -count=1
 ```
 
-- [ ] **Step 3: Verify, commit, and push regression sweep**
+- [x] **Step 3: Verify, commit, and push regression sweep**
 
 If no code/test change is needed, commit this plan update as docs-only. Otherwise run the standard verification chain and commit the coverage increment.
 
