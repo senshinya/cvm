@@ -2618,6 +2618,7 @@ int main(void)
 
 func TestStdlibMoreFloatParserExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
+#include <errno.h>
 #include <stdlib.h>
 
 int main(void)
@@ -2629,6 +2630,20 @@ int main(void)
     return 1;
   if (*end != '!')
     return 2;
+  errno = 0;
+  if (strtof("1e39!", &end) <= 1e30f)
+    return 5;
+  if (*end != '!')
+    return 6;
+  if (errno != ERANGE)
+    return 7;
+  errno = 0;
+  if (strtof("-1e39?", &end) >= -1e30f)
+    return 8;
+  if (*end != '?')
+    return 9;
+  if (errno != ERANGE)
+    return 10;
   long double l = strtold("-0x1.4p+2z", &end);
   if (l != -5.0L)
     return 3;

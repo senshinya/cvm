@@ -1301,12 +1301,13 @@ func strtoFloatExtern(name string, ret bytecode.ValueType, r *ExternRegistry) Ex
 				return Value{}, nil, err
 			}
 		}
-		if parsed.rangeErr {
+		value, rangeErr := normalizeStrtoFloatResult(ret, parsed.value, parsed.rangeErr)
+		if rangeErr {
 			if err := r.setErrno(ec.Memory, 34); err != nil {
 				return Value{}, nil, err
 			}
 		}
-		return FloatValue(ret, parsed.value), nil, nil
+		return FloatValue(ret, value), nil, nil
 	}
 }
 
@@ -1703,6 +1704,20 @@ func floatTokenHasNonZeroSignificand(token string) bool {
 		}
 	}
 	return false
+}
+
+func normalizeStrtoFloatResult(ret bytecode.ValueType, value float64, rangeErr bool) (float64, bool) {
+	if ret != bytecode.TypeF32 {
+		return value, rangeErr
+	}
+	narrowed := float64(float32(value))
+	if math.IsInf(narrowed, 0) && !math.IsInf(value, 0) {
+		rangeErr = true
+	}
+	if narrowed == 0 && value != 0 {
+		rangeErr = true
+	}
+	return narrowed, rangeErr
 }
 
 func parseStrtoFloatSpecial(s string, start int) (float64, int, bool) {

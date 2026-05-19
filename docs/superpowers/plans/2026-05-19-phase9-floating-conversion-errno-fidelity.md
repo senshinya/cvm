@@ -167,9 +167,16 @@ Findings:
 
 Calibration before execution: Confirm `strtof` currently parses at float64 precision before returning TypeF32.
 
-- [ ] Add direct/source tests for float32 overflow.
-- [ ] Return signed float32 infinities and set `errno` to `ERANGE`.
-- [ ] Verify, commit, and push `feat(runtime): mark strtof overflow`.
+- [x] Add direct/source tests for float32 overflow.
+- [x] Return signed float32 infinities and set `errno` to `ERANGE`.
+- [x] Verify, commit, and push `feat(runtime): mark strtof overflow`.
+
+Findings:
+
+- `FloatValue(TypeF32, ...)` records the float64 payload as-is, so `strtof` needed target-type normalization before returning.
+- Added `strtof` result normalization that narrows to float32 and marks `ERANGE` when the narrowed value becomes a signed infinity.
+- Added direct extern and source-level runtime coverage for positive and negative float32 overflow, including end pointers and `errno`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibMoreFloatParser' -count=1` passed after the fix.
 
 ## Milestone 12: `strtof` Float32 Underflow
 

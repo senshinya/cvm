@@ -3395,6 +3395,62 @@ func TestStdlibMoreFloatParserExterns(t *testing.T) {
 		t.Fatalf("strtof endptr=%#x, want %#x", loadedEnd.Int, floatText+4)
 	}
 
+	errnoAddr, ok := reg.LookupVariable("errno", mem)
+	if !ok {
+		t.Fatal("missing errno extern variable")
+	}
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtof overflow: %v", err)
+	}
+	floatOverflowText := mustAllocBytes(t, mem, "strtof:overflow", []byte("1e39!\x00"), true, blockString)
+	ret, exit, err = strtofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(floatOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtof overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF32 || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtof overflow ret=%#v, want f32 +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtof overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != floatOverflowText+4 {
+		t.Fatalf("strtof overflow endptr=%#x, want %#x", loadedEnd.Int, floatOverflowText+4)
+	}
+	errnoValue, err := mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtof overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtof overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtof negative overflow: %v", err)
+	}
+	negativeFloatOverflowText := mustAllocBytes(t, mem, "strtof:negative-overflow", []byte("-1e39?\x00"), true, blockString)
+	ret, exit, err = strtofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeFloatOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtof negative overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF32 || !math.IsInf(ret.Float, -1) {
+		t.Fatalf("strtof negative overflow ret=%#v, want f32 -inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtof negative overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeFloatOverflowText+5 {
+		t.Fatalf("strtof negative overflow endptr=%#x, want %#x", loadedEnd.Int, negativeFloatOverflowText+5)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtof negative overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtof negative overflow=%#v, want ERANGE", errnoValue)
+	}
+
 	strtoldFn, ok := reg.Lookup("strtold")
 	if !ok {
 		t.Fatal("missing strtold extern")
