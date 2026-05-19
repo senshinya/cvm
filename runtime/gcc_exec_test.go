@@ -1835,6 +1835,31 @@ int main(void)
 	}
 }
 
+func TestWideCtypeClassificationExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wctype.h>
+
+int main(void)
+{
+  if (!iswblank(L' ') || !iswblank(L'\t') || iswblank(L'\n'))
+    return 1;
+  if (!iswcntrl(L'\n') || !iswcntrl(0x7f) || iswcntrl(L'A'))
+    return 2;
+  if (!iswgraph(L'!') || iswgraph(L' '))
+    return 3;
+  if (!iswpunct(L'!') || iswpunct(L'A') || iswpunct(0x121))
+    return 4;
+  if (!iswalpha(L'Z') || iswalpha(0x141))
+    return 5;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-ctype-classification-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <time.h>

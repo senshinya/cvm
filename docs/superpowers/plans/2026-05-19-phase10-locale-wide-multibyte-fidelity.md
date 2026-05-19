@@ -133,9 +133,16 @@ Findings:
 
 Calibration before execution: Continue wide classification surface.
 
-- [ ] Register and implement `iswblank`, `iswcntrl`, `iswgraph`, and `iswpunct`.
-- [ ] Add direct extern and source-level tests.
-- [ ] Verify, commit, and push `feat(runtime): add extra wide ctype classification`.
+- [x] Register and implement `iswblank`, `iswcntrl`, `iswgraph`, and `iswpunct`.
+- [x] Add direct extern and source-level tests.
+- [x] Verify, commit, and push `feat(runtime): add extra wide ctype classification`.
+
+Findings:
+
+- Added wide extra classification externs for blank, control, graph, and punctuation classes.
+- Added direct extern and source-level runtime coverage for those classes, including high-value non-ASCII rejection.
+- Source coverage exposed that including `<wctype.h>` requires all declared externs to be registered at load time, so wide case and descriptor externs were registered with deterministic implementations ahead of their dedicated test milestones.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestWideCtype.*Classification|TestDefaultExternRegistryHasExitAndAbort' -count=1` passed.
 
 ## Milestone 10: Wide Case Conversion
 

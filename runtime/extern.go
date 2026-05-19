@@ -206,6 +206,8 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
 	registerWideCtypeClassificationExterns(r)
+	registerWideCtypeCaseExterns(r)
+	registerWideCtypeDescriptorExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("strcmp expects 2 arguments")
@@ -1880,6 +1882,18 @@ func registerWideCtypeClassificationExterns(r *ExternRegistry) {
 	r.Register("iswprint", wideCtypeClassificationExtern("iswprint", func(ch int64) bool {
 		return ch >= 0x20 && ch <= 0x7e
 	}))
+	r.Register("iswblank", wideCtypeClassificationExtern("iswblank", func(ch int64) bool {
+		return ch == ' ' || ch == '\t'
+	}))
+	r.Register("iswcntrl", wideCtypeClassificationExtern("iswcntrl", func(ch int64) bool {
+		return (ch >= 0 && ch < 0x20) || ch == 0x7f
+	}))
+	r.Register("iswgraph", wideCtypeClassificationExtern("iswgraph", func(ch int64) bool {
+		return ch >= 0x21 && ch <= 0x7e
+	}))
+	r.Register("iswpunct", wideCtypeClassificationExtern("iswpunct", func(ch int64) bool {
+		return (ch >= 0x21 && ch <= 0x2f) || (ch >= 0x3a && ch <= 0x40) || (ch >= 0x5b && ch <= 0x60) || (ch >= 0x7b && ch <= 0x7e)
+	}))
 }
 
 func wideCtypeClassificationExtern(name string, pred func(int64) bool) ExternFunc {
@@ -1895,6 +1909,191 @@ func wideCtypeClassificationExtern(name string, pred func(int64) bool) ExternFun
 			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func registerWideCtypeCaseExterns(r *ExternRegistry) {
+	r.Register("towlower", wideCtypeCaseExtern("towlower", wideToLower))
+	r.Register("towupper", wideCtypeCaseExtern("towupper", wideToUpper))
+}
+
+func wideCtypeCaseExtern(name string, convert func(int64) int64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
+		}
+		ch := signedInt(args[0])
+		if ch == -1 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, convert(ch)), nil, nil
+	}
+}
+
+func wideToLower(ch int64) int64 {
+	if ch >= 'A' && ch <= 'Z' {
+		return ch + ('a' - 'A')
+	}
+	return ch
+}
+
+func wideToUpper(ch int64) int64 {
+	if ch >= 'a' && ch <= 'z' {
+		return ch - ('a' - 'A')
+	}
+	return ch
+}
+
+const (
+	wideClassAlnum uint64 = iota + 1
+	wideClassAlpha
+	wideClassBlank
+	wideClassCntrl
+	wideClassDigit
+	wideClassGraph
+	wideClassLower
+	wideClassPrint
+	wideClassPunct
+	wideClassSpace
+	wideClassUpper
+	wideClassXDigit
+)
+
+const (
+	wideTransToLower uint64 = iota + 1
+	wideTransToUpper
+)
+
+func registerWideCtypeDescriptorExterns(r *ExternRegistry) {
+	r.Register("wctype", wideCtypeDescriptorExtern("wctype"))
+	r.Register("iswctype", wideIswctypeExtern("iswctype"))
+	r.Register("wctrans", wideTransDescriptorExtern("wctrans"))
+	r.Register("towctrans", wideTowctransExtern("towctrans"))
+}
+
+func wideCtypeDescriptorExtern(name string) ExternFunc {
+	classes := map[string]uint64{
+		"alnum":  wideClassAlnum,
+		"alpha":  wideClassAlpha,
+		"blank":  wideClassBlank,
+		"cntrl":  wideClassCntrl,
+		"digit":  wideClassDigit,
+		"graph":  wideClassGraph,
+		"lower":  wideClassLower,
+		"print":  wideClassPrint,
+		"punct":  wideClassPunct,
+		"space":  wideClassSpace,
+		"upper":  wideClassUpper,
+		"xdigit": wideClassXDigit,
+	}
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, classes[s]), nil, nil
+	}
+}
+
+func wideIswctypeExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer arguments", name)
+		}
+		ch := signedInt(args[0])
+		desc := unsignedInt(args[1])
+		var ok bool
+		switch desc {
+		case wideClassAlnum:
+			ok = (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+		case wideClassAlpha:
+			ok = (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+		case wideClassBlank:
+			ok = ch == ' ' || ch == '\t'
+		case wideClassCntrl:
+			ok = (ch >= 0 && ch < 0x20) || ch == 0x7f
+		case wideClassDigit:
+			ok = ch >= '0' && ch <= '9'
+		case wideClassGraph:
+			ok = ch >= 0x21 && ch <= 0x7e
+		case wideClassLower:
+			ok = ch >= 'a' && ch <= 'z'
+		case wideClassPrint:
+			ok = ch >= 0x20 && ch <= 0x7e
+		case wideClassPunct:
+			ok = (ch >= 0x21 && ch <= 0x2f) || (ch >= 0x3a && ch <= 0x40) || (ch >= 0x5b && ch <= 0x60) || (ch >= 0x7b && ch <= 0x7e)
+		case wideClassSpace:
+			ok = ch >= 0 && ch <= 0x7f && isASCIIWhitespace(byte(ch))
+		case wideClassUpper:
+			ok = ch >= 'A' && ch <= 'Z'
+		case wideClassXDigit:
+			ok = (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f')
+		}
+		if ch == -1 || !ok {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func wideTransDescriptorExtern(name string) ExternFunc {
+	transforms := map[string]uint64{
+		"tolower": wideTransToLower,
+		"toupper": wideTransToUpper,
+	}
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, transforms[s]), nil, nil
+	}
+}
+
+func wideTowctransExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer arguments", name)
+		}
+		ch := signedInt(args[0])
+		if ch == -1 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		switch unsignedInt(args[1]) {
+		case wideTransToLower:
+			return IntValue(bytecode.TypeI32, wideToLower(ch)), nil, nil
+		case wideTransToUpper:
+			return IntValue(bytecode.TypeI32, wideToUpper(ch)), nil, nil
+		default:
+			return IntValue(bytecode.TypeI32, ch), nil, nil
+		}
 	}
 }
 
