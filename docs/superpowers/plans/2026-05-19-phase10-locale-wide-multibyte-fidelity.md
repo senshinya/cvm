@@ -254,9 +254,15 @@ Findings:
 
 Calibration before execution: Re-read `mbstowcs` and pointer-to-source update semantics.
 
-- [ ] Implement/register `mbsrtowcs`.
-- [ ] Cover length query, conversion, truncation, source pointer update, NUL completion, and high-bit rejection.
-- [ ] Verify, commit, and push `feat(runtime): add mbsrtowcs c locale`.
+- [x] Implement/register `mbsrtowcs`.
+- [x] Cover length query, conversion, truncation, source pointer update, NUL completion, and high-bit rejection.
+- [x] Verify, commit, and push `feat(runtime): add mbsrtowcs c locale`.
+
+Findings:
+
+- Added `mbsrtowcs` declaration to builtin `<wchar.h>` and registered the extern.
+- C-locale implementation converts ASCII bytes to 32-bit wide chars, sets `*src = NULL` on NUL completion, updates `*src` after truncation, leaves `*src` unchanged for length queries, and returns `(size_t)-1` for high-bit input.
+- Focused preprocessor and runtime tests passed.
 
 ## Milestone 18: `wcsrtombs` C-Locale Behavior
 

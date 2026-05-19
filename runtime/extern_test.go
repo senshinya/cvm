@@ -12,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "_Exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fgetpos", "fsetpos", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "perror", "abs", "labs", "llabs", "div", "ldiv", "lldiv", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "mbrlen", "mbrtowc", "wcrtomb", "rand", "srand", "getenv", "system", "atexit", "setlocale", "localeconv", "clock", "difftime", "time", "nan", "nanf", "nanl", "fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl", "sinh", "sinhf", "sinhl", "cosh", "coshf", "coshl", "tanh", "tanhf", "tanhl", "asin", "asinf", "asinl", "acos", "acosf", "acosl", "atan", "atanf", "atanl", "asinh", "asinhf", "asinhl", "acosh", "acoshf", "acoshl", "atanh", "atanhf", "atanhl", "cbrt", "cbrtf", "cbrtl", "erf", "erff", "erfl", "erfc", "erfcf", "erfcl", "tgamma", "tgammaf", "tgammal", "lgamma", "lgammaf", "lgammal", "exp", "expf", "expl", "exp2", "exp2f", "exp2l", "expm1", "expm1f", "expm1l", "log", "logf", "logl", "log10", "log10f", "log10l", "log1p", "log1pf", "log1pl", "log2", "log2f", "log2l", "ceil", "ceilf", "ceill", "floor", "floorf", "floorl", "trunc", "truncf", "truncl", "round", "roundf", "roundl", "nearbyint", "nearbyintf", "nearbyintl", "rint", "rintf", "rintl", "logb", "logbf", "logbl", "ilogb", "ilogbf", "ilogbl", "lrint", "lrintf", "lrintl", "lround", "lroundf", "lroundl", "llrint", "llrintf", "llrintl", "llround", "llroundf", "llroundl", "scalbn", "scalbnf", "scalbnl", "scalbln", "scalblnf", "scalblnl", "ldexp", "ldexpf", "ldexpl", "frexp", "frexpf", "frexpl", "modf", "modff", "modfl", "remquo", "remquof", "remquol", "pow", "powf", "powl", "atan2", "atan2f", "atan2l", "hypot", "hypotf", "hypotl", "fdim", "fdimf", "fdiml", "fmax", "fmaxf", "fmaxl", "fmin", "fminf", "fminl", "fmod", "fmodf", "fmodl", "remainder", "remainderf", "remainderl", "copysign", "copysignf", "copysignl", "fma", "fmaf", "fmal", "nextafter", "nextafterf", "nextafterl", "nexttoward", "nexttowardf", "nexttowardl", "cabs", "cabsf", "cabsl", "creal", "crealf", "creall", "cimag", "cimagf", "cimagl", "carg", "cargf", "cargl", "conj", "conjf", "conjl", "cproj", "cprojf", "cprojl", "csin", "csinf", "csinl", "ccos", "ccosf", "ccosl", "ctan", "ctanf", "ctanl", "csinh", "csinhf", "csinhl", "ccosh", "ccoshf", "ccoshl", "ctanh", "ctanhf", "ctanhl", "casin", "casinf", "casinl", "cacos", "cacosf", "cacosl", "catan", "catanf", "catanl", "casinh", "casinhf", "casinhl", "cacosh", "cacoshf", "cacoshl", "catanh", "catanhf", "catanhl", "cexp", "cexpf", "cexpl", "clog", "clogf", "clogl", "csqrt", "csqrtf", "csqrtl", "cpow", "cpowf", "cpowl", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "iswdigit", "iswalpha", "iswalnum", "iswspace", "iswlower", "iswupper", "iswxdigit", "iswprint", "iswblank", "iswcntrl", "iswgraph", "iswpunct", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper", "strcmp", "memcmp", "bcmp", "strncmp", "strcoll", "memchr", "strrchr", "strpbrk", "strspn", "strcspn", "strtok", "strxfrm", "strnlen", "strerror", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "realloc", "__builtin_strdup", "strdup", "strndup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "memccpy", "bcopy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "sprintf", "snprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "scanf", "fscanf", "sscanf", "feclearexcept", "fetestexcept"} {
+	for _, name := range []string{"exit", "_Exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fgetpos", "fsetpos", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "perror", "abs", "labs", "llabs", "div", "ldiv", "lldiv", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs", "rand", "srand", "getenv", "system", "atexit", "setlocale", "localeconv", "clock", "difftime", "time", "nan", "nanf", "nanl", "fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl", "sinh", "sinhf", "sinhl", "cosh", "coshf", "coshl", "tanh", "tanhf", "tanhl", "asin", "asinf", "asinl", "acos", "acosf", "acosl", "atan", "atanf", "atanl", "asinh", "asinhf", "asinhl", "acosh", "acoshf", "acoshl", "atanh", "atanhf", "atanhl", "cbrt", "cbrtf", "cbrtl", "erf", "erff", "erfl", "erfc", "erfcf", "erfcl", "tgamma", "tgammaf", "tgammal", "lgamma", "lgammaf", "lgammal", "exp", "expf", "expl", "exp2", "exp2f", "exp2l", "expm1", "expm1f", "expm1l", "log", "logf", "logl", "log10", "log10f", "log10l", "log1p", "log1pf", "log1pl", "log2", "log2f", "log2l", "ceil", "ceilf", "ceill", "floor", "floorf", "floorl", "trunc", "truncf", "truncl", "round", "roundf", "roundl", "nearbyint", "nearbyintf", "nearbyintl", "rint", "rintf", "rintl", "logb", "logbf", "logbl", "ilogb", "ilogbf", "ilogbl", "lrint", "lrintf", "lrintl", "lround", "lroundf", "lroundl", "llrint", "llrintf", "llrintl", "llround", "llroundf", "llroundl", "scalbn", "scalbnf", "scalbnl", "scalbln", "scalblnf", "scalblnl", "ldexp", "ldexpf", "ldexpl", "frexp", "frexpf", "frexpl", "modf", "modff", "modfl", "remquo", "remquof", "remquol", "pow", "powf", "powl", "atan2", "atan2f", "atan2l", "hypot", "hypotf", "hypotl", "fdim", "fdimf", "fdiml", "fmax", "fmaxf", "fmaxl", "fmin", "fminf", "fminl", "fmod", "fmodf", "fmodl", "remainder", "remainderf", "remainderl", "copysign", "copysignf", "copysignl", "fma", "fmaf", "fmal", "nextafter", "nextafterf", "nextafterl", "nexttoward", "nexttowardf", "nexttowardl", "cabs", "cabsf", "cabsl", "creal", "crealf", "creall", "cimag", "cimagf", "cimagl", "carg", "cargf", "cargl", "conj", "conjf", "conjl", "cproj", "cprojf", "cprojl", "csin", "csinf", "csinl", "ccos", "ccosf", "ccosl", "ctan", "ctanf", "ctanl", "csinh", "csinhf", "csinhl", "ccosh", "ccoshf", "ccoshl", "ctanh", "ctanhf", "ctanhl", "casin", "casinf", "casinl", "cacos", "cacosf", "cacosl", "catan", "catanf", "catanl", "casinh", "casinhf", "casinhl", "cacosh", "cacoshf", "cacoshl", "catanh", "catanhf", "catanhl", "cexp", "cexpf", "cexpl", "clog", "clogf", "clogl", "csqrt", "csqrtf", "csqrtl", "cpow", "cpowf", "cpowl", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "iswdigit", "iswalpha", "iswalnum", "iswspace", "iswlower", "iswupper", "iswxdigit", "iswprint", "iswblank", "iswcntrl", "iswgraph", "iswpunct", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper", "strcmp", "memcmp", "bcmp", "strncmp", "strcoll", "memchr", "strrchr", "strpbrk", "strspn", "strcspn", "strtok", "strxfrm", "strnlen", "strerror", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "realloc", "__builtin_strdup", "strdup", "strndup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "memccpy", "bcopy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "sprintf", "snprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "scanf", "fscanf", "sscanf", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -2422,7 +2422,8 @@ func TestStdlibAtoiExterns(t *testing.T) {
 
 func TestStdlibMultibyteExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	mem := NewMemory(bytecode.DefaultTarget())
+	target := bytecode.DefaultTarget()
+	mem := NewMemory(target)
 	text := mustAllocBytes(t, mem, "stdlib:mb:text", []byte("Az\x00"), true, blockString)
 	high := mustAllocBytes(t, mem, "stdlib:mb:high", []byte{0x80, 0}, true, blockString)
 	wide, err := mem.TryAlloc("stdlib:mb:wide", 16, 4, false, blockLocal)
@@ -2678,6 +2679,66 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	ret, exit, err = mbstowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(high), UIntValue(bytecode.TypeU64, 4)})
 	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || signedInt(ret) != -1 {
 		t.Fatalf("mbstowcs high-bit ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
+	}
+
+	srcSlot, err := mem.TryAlloc("stdlib:mb:srcslot", target.PointerSize, target.PointerAlign, false, blockLocal)
+	if err != nil {
+		t.Fatalf("alloc source slot: %v", err)
+	}
+	mbsrtowcsFn, ok := reg.Lookup("mbsrtowcs")
+	if !ok {
+		t.Fatal("missing mbsrtowcs extern")
+	}
+	if err := mem.WritePointer(srcSlot, text); err != nil {
+		t.Fatalf("store mbsrtowcs source: %v", err)
+	}
+	ret, exit, err = mbsrtowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 4), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("mbsrtowcs ret=%#v exit=%#v err=%v, want u64 2", ret, exit, err)
+	}
+	got, err = mem.Load(wide+4, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 'z' {
+		t.Fatalf("mbsrtowcs second stored %#v err=%v, want 'z'", got, err)
+	}
+	loadedPtr, err := mem.Load(srcSlot, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || loadedPtr.Int != 0 {
+		t.Fatalf("mbsrtowcs source after complete=%#v err=%v, want null", loadedPtr, err)
+	}
+	if err := mem.WritePointer(srcSlot, text); err != nil {
+		t.Fatalf("store mbsrtowcs trunc source: %v", err)
+	}
+	if err := mem.Store(wide+4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 'X')); err != nil {
+		t.Fatalf("store mbsrtowcs trunc sentinel: %v", err)
+	}
+	ret, exit, err = mbsrtowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 1), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("mbsrtowcs trunc ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	loadedPtr, err = mem.Load(srcSlot, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || loadedPtr.Int != text+1 {
+		t.Fatalf("mbsrtowcs source after trunc=%#v err=%v, want %#x", loadedPtr, err, text+1)
+	}
+	got, err = mem.Load(wide+4, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 'X' {
+		t.Fatalf("mbsrtowcs trunc sentinel %#v err=%v, want unchanged", got, err)
+	}
+	if err := mem.WritePointer(srcSlot, text); err != nil {
+		t.Fatalf("store mbsrtowcs length source: %v", err)
+	}
+	ret, exit, err = mbsrtowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 0), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("mbsrtowcs length ret=%#v exit=%#v err=%v, want u64 2", ret, exit, err)
+	}
+	loadedPtr, err = mem.Load(srcSlot, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || loadedPtr.Int != text {
+		t.Fatalf("mbsrtowcs source after length=%#v err=%v, want unchanged", loadedPtr, err)
+	}
+	if err := mem.WritePointer(srcSlot, high); err != nil {
+		t.Fatalf("store mbsrtowcs high source: %v", err)
+	}
+	ret, exit, err = mbsrtowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 4), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != math.MaxUint64 {
+		t.Fatalf("mbsrtowcs high-bit ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
 	}
 
 	if err := mem.Store(wide, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 'o')); err != nil {

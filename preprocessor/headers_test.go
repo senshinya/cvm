@@ -141,13 +141,15 @@ int checks[] = {
 size_t len = mbrlen("A", 1, &state);
 size_t converted = mbrtowc(0, "A", 1, &state);
 size_t emitted = wcrtomb(0, L'A', &state);
+const char *srcp = "A";
+size_t wide_count = mbsrtowcs(0, &srcp, 0, &state);
 wctype_t named_cls = wctype("alpha");
 wctrans_t named_trans = wctrans("tolower");
 `, Options{})
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"wchar_t", "wint_t", "mbstate_t", "wctype_t", "wctrans_t", "mbrlen", "mbrtowc", "wcrtomb", "iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans"} {
+	for _, name := range []string{"wchar_t", "wint_t", "mbstate_t", "wctype_t", "wctrans_t", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs", "iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("wide header identifier %q missing: %#v", name, res.Tokens)
 		}
