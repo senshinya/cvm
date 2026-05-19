@@ -200,9 +200,11 @@ Calibration before execution: Re-scan direct tests and source-level tests from m
 
 Calibration before execution: Compare builtin stdio/stdlib/locale declarations against runtime registry and direct smoke tests.
 
-- [ ] Run/search header-vs-registry checks for touched surfaces.
-- [ ] Add missing smoke coverage if found.
-- [ ] Verify, commit, and push `docs: record phase 6 header registry recheck`.
+- [x] Run/search header-vs-registry checks for touched surfaces.
+- [x] Add missing smoke coverage if found.
+- [x] Verify, commit, and push `docs: record phase 6 header registry recheck`.
+
+Recheck notes: `rg "fgetpos|fsetpos|freopen|tmpnam|setbuf|setvbuf|mblen|mbtowc|wctomb|mbstowcs|wcstombs" preprocessor/headers.go preprocessor/headers_test.go runtime/extern.go runtime/extern_test.go runtime/gcc_exec_test.go` shows each touched surface has a builtin declaration, header smoke entry where applicable, runtime registration, direct registry smoke coverage, and source-level runtime coverage. No additional smoke test was needed.
 
 ## Milestone 23: GCC Runtime Fixture Recheck
 
