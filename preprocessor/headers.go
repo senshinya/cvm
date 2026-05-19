@@ -368,6 +368,7 @@ size_t mbrlen(const char *, size_t, mbstate_t *);
 size_t mbrtowc(wchar_t *, const char *, size_t, mbstate_t *);
 size_t wcrtomb(char *, wchar_t, mbstate_t *);
 size_t mbsrtowcs(wchar_t *, const char **, size_t, mbstate_t *);
+size_t wcsrtombs(char *, const wchar_t **, size_t, mbstate_t *);
 #endif
 `
 }

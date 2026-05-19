@@ -197,6 +197,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("mbrtowc", mbrtowcExtern("mbrtowc"))
 	r.Register("wcrtomb", wcrtombExtern("wcrtomb"))
 	r.Register("mbsrtowcs", mbsrtowcsExtern("mbsrtowcs"))
+	r.Register("wcsrtombs", wcsrtombsExtern("wcsrtombs"))
 	r.Register("rand", randExtern("rand", r))
 	r.Register("srand", srandExtern("srand", r))
 	r.Register("getenv", getenvExtern("getenv", r))
@@ -1558,6 +1559,79 @@ func cLocaleStringLength(mem *Memory, src uint64) (uint64, error) {
 			return 0, err
 		}
 		if ch >= 0x80 {
+			return math.MaxUint64, nil
+		}
+		if ch == 0 {
+			return count, nil
+		}
+		count++
+	}
+}
+
+func wcsrtombsExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if (args[0].Int != 0 && !isPointerType(args[0].Type)) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) || (args[3].Int != 0 && !isPointerType(args[3].Type)) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, source pointer, length, and state pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		srcValue, err := ec.Memory.Load(args[1].Int, bytecode.TypePtr, ec.Memory.target.PointerAlign)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		src := srcValue.Int
+		if src == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		if args[0].Int == 0 {
+			count, err := cLocaleWideStringLength(ec.Memory, src)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			return UIntValue(bytecode.TypeU64, count), nil, nil
+		}
+		limit := unsignedInt(args[2])
+		var count uint64
+		for count < limit {
+			wc, err := ec.Memory.Load(src+count*4, bytecode.TypeI32, 4)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch := signedInt(wc)
+			if ch < 0 || ch > 0x7f {
+				return UIntValue(bytecode.TypeU64, math.MaxUint64), nil, nil
+			}
+			if err := writeMemoryByte(ec.Memory, args[0].Int+count, byte(ch)); err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				if err := ec.Memory.WritePointer(args[1].Int, 0); err != nil {
+					return Value{}, nil, err
+				}
+				return UIntValue(bytecode.TypeU64, count), nil, nil
+			}
+			count++
+		}
+		if err := ec.Memory.WritePointer(args[1].Int, src+count*4); err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, count), nil, nil
+	}
+}
+
+func cLocaleWideStringLength(mem *Memory, src uint64) (uint64, error) {
+	var count uint64
+	for {
+		wc, err := mem.Load(src+count*4, bytecode.TypeI32, 4)
+		if err != nil {
+			return 0, err
+		}
+		ch := signedInt(wc)
+		if ch < 0 || ch > 0x7f {
 			return math.MaxUint64, nil
 		}
 		if ch == 0 {

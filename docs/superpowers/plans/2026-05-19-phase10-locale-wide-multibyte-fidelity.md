@@ -268,9 +268,15 @@ Findings:
 
 Calibration before execution: Re-read `wcstombs` and pointer-to-source update semantics.
 
-- [ ] Implement/register `wcsrtombs`.
-- [ ] Cover length query, conversion, truncation, source pointer update, NUL completion, and high wide char rejection.
-- [ ] Verify, commit, and push `feat(runtime): add wcsrtombs c locale`.
+- [x] Implement/register `wcsrtombs`.
+- [x] Cover length query, conversion, truncation, source pointer update, NUL completion, and high wide char rejection.
+- [x] Verify, commit, and push `feat(runtime): add wcsrtombs c locale`.
+
+Findings:
+
+- Added `wcsrtombs` declaration to builtin `<wchar.h>` and registered the extern.
+- C-locale implementation converts 32-bit ASCII wide chars to bytes, sets `*src = NULL` on NUL completion, updates `*src` after truncation, leaves `*src` unchanged for length queries, and returns `(size_t)-1` for high wide chars.
+- Focused preprocessor and runtime tests passed.
 
 ## Milestone 19: Restartable Source Runtime Sweep
 
