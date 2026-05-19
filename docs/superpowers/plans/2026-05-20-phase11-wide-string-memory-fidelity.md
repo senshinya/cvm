@@ -161,9 +161,9 @@ Calibration before execution: Re-read `strcspn` reject-span semantics.
 
 Calibration before execution: Mirror `strcpy` including terminator copy and destination return.
 
-- [ ] Register and implement `wcscpy`.
-- [ ] Cover copy, empty string, high wide value, terminator, and return pointer.
-- [ ] Verify, commit `feat(runtime): add wcscpy`, and push.
+- [x] Register and implement `wcscpy`.
+- [x] Cover copy, empty string, high wide value, terminator, and return pointer.
+- [x] Verify, commit `feat(runtime): add wcscpy`, and push.
 
 ## Milestone 19: `wcsncpy`
 
