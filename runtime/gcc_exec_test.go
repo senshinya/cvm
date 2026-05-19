@@ -2635,6 +2635,27 @@ int main(void)
 	}
 }
 
+func TestPlainSscanfCharacterLengthsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <wchar.h>
+
+int main(void)
+{
+  char c = 0;
+  wchar_t w[2] = { 0, 0 };
+  int n = sscanf("ABC", "%c%2lc", &c, w);
+  if (n != 2)
+    return 1;
+  return c == 'A' && w[0] == L'B' && w[1] == L'C' ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "plain-sscanf-character-lengths-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinCheckedSprintfExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

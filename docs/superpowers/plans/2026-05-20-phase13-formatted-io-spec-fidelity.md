@@ -200,9 +200,13 @@ Calibration result:
 
 Calibration before execution: Recheck `%c` and `%lc` direct and source coverage.
 
-- [ ] Cover narrow and wide char scanning with widths.
-- [ ] Fix deterministic C-locale wide-char storage behavior if needed.
-- [ ] Verify, commit `feat(runtime): harden scanf wide chars`, and push.
+- [x] Cover narrow and wide char scanning with widths.
+- [x] Fix deterministic C-locale wide-char storage behavior if needed.
+- [x] Verify, commit `test(runtime): cover scanf wide chars`, and push.
+
+Calibration result:
+- `%c` already stores raw bytes and `%lc` uses `scanStoreText` to write wide characters without adding a terminator, including width-qualified reads.
+- Direct and source coverage now lock narrow and wide character scans; no runtime code change was needed.
 
 ## Milestone 18: Scanf String Length Modifiers
 
