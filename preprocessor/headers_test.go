@@ -139,13 +139,14 @@ int checks[] = {
   towlower(L'A'), towupper(L'a'), iswctype(L'A', cls), towctrans(L'A', trans)
 };
 size_t len = mbrlen("A", 1, &state);
+size_t converted = mbrtowc(0, "A", 1, &state);
 wctype_t named_cls = wctype("alpha");
 wctrans_t named_trans = wctrans("tolower");
 `, Options{})
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"wchar_t", "wint_t", "mbstate_t", "wctype_t", "wctrans_t", "mbrlen", "iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans"} {
+	for _, name := range []string{"wchar_t", "wint_t", "mbstate_t", "wctype_t", "wctrans_t", "mbrlen", "mbrtowc", "iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("wide header identifier %q missing: %#v", name, res.Tokens)
 		}

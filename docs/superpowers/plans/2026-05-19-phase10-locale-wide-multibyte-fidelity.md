@@ -226,9 +226,15 @@ Findings:
 
 Calibration before execution: Mirror `mbtowc` while accepting `mbstate_t *`.
 
-- [ ] Implement/register `mbrtowc`.
-- [ ] Cover NULL/reset, destination NULL, NUL, ASCII, high-bit rejection, and zero-length.
-- [ ] Verify, commit, and push `feat(runtime): add mbrtowc c locale`.
+- [x] Implement/register `mbrtowc`.
+- [x] Cover NULL/reset, destination NULL, NUL, ASCII, high-bit rejection, and zero-length.
+- [x] Verify, commit, and push `feat(runtime): add mbrtowc c locale`.
+
+Findings:
+
+- Added `mbrtowc` declaration to builtin `<wchar.h>` and registered the extern.
+- C-locale `mbrtowc` is stateless: NULL source reset returns `0`, NUL returns `0`, ASCII stores the wide char and returns `1`, destination NULL skips storage, zero-length non-NULL input returns `(size_t)-2`, and high-bit input returns `(size_t)-1` without modifying the destination.
+- Focused preprocessor and runtime tests passed.
 
 ## Milestone 16: `wcrtomb` C-Locale Behavior
 
