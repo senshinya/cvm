@@ -2696,9 +2696,15 @@ int main(void)
     return 1;
   if (strspn(text, "xyz") != 0)
     return 2;
-  if (strcspn(text, "de") != 3)
+  if (strspn(text, "") != 0)
     return 3;
-  return strcspn(text, "xyz") == 8 ? 0 : 4;
+  if (strcspn(text, "de") != 3)
+    return 4;
+  if (strcspn(text, "a") != 0)
+    return 5;
+  if (strcspn(text, "") != 8)
+    return 6;
+  return strcspn(text, "xyz") == 8 ? 0 : 7;
 }
 `
 	st := runGCCExecFixture(t, "string-span-runtime.c", source)

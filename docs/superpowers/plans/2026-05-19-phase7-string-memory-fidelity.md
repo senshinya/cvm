@@ -90,9 +90,9 @@ Calibration before execution: Re-read `stringSetSearchExtern`.
 
 Calibration before execution: Re-read `stringSpanExtern`.
 
-- [ ] Add direct/source tests for empty accept/reject sets and immediate hit/miss.
-- [ ] Fix span behavior if needed.
-- [ ] Verify, commit, and push `test(runtime): cover span edge cases`.
+- [x] Add direct/source tests for empty accept/reject sets and immediate hit/miss.
+- [x] Fix span behavior if needed.
+- [x] Verify, commit, and push `test(runtime): cover span edge cases`.
 
 ## Milestone 11: `strtok` Delimiter Mutation
 

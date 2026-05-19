@@ -4129,7 +4129,9 @@ func TestStringSpanExterns(t *testing.T) {
 	text := mustAllocBytes(t, mem, "span:text", []byte("abcde312\x00"), true, blockString)
 	abc := mustAllocBytes(t, mem, "span:abc", []byte("abc\x00"), true, blockString)
 	de := mustAllocBytes(t, mem, "span:de", []byte("de\x00"), true, blockString)
+	a := mustAllocBytes(t, mem, "span:a", []byte("a\x00"), true, blockString)
 	xyz := mustAllocBytes(t, mem, "span:xyz", []byte("xyz\x00"), true, blockString)
+	empty := mustAllocBytes(t, mem, "span:empty", []byte{0}, true, blockString)
 
 	strspnFn, ok := reg.Lookup("strspn")
 	if !ok {
@@ -4149,6 +4151,13 @@ func TestStringSpanExterns(t *testing.T) {
 	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
 		t.Fatalf("strspn miss ret=%#v, want size 0", ret)
 	}
+	ret, exit, err = strspnFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(empty)})
+	if err != nil || exit != nil {
+		t.Fatalf("strspn empty ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("strspn empty ret=%#v, want size 0", ret)
+	}
 
 	strcspnFn, ok := reg.Lookup("strcspn")
 	if !ok {
@@ -4161,12 +4170,26 @@ func TestStringSpanExterns(t *testing.T) {
 	if ret.Type != bytecode.TypeU64 || ret.Int != 3 {
 		t.Fatalf("strcspn hit ret=%#v, want size 3", ret)
 	}
+	ret, exit, err = strcspnFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(a)})
+	if err != nil || exit != nil {
+		t.Fatalf("strcspn immediate ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("strcspn immediate ret=%#v, want size 0", ret)
+	}
 	ret, exit, err = strcspnFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(xyz)})
 	if err != nil || exit != nil {
 		t.Fatalf("strcspn miss ret=%#v exit=%#v err=%v", ret, exit, err)
 	}
 	if ret.Type != bytecode.TypeU64 || ret.Int != 8 {
 		t.Fatalf("strcspn miss ret=%#v, want size 8", ret)
+	}
+	ret, exit, err = strcspnFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(empty)})
+	if err != nil || exit != nil {
+		t.Fatalf("strcspn empty ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 8 {
+		t.Fatalf("strcspn empty ret=%#v, want size 8", ret)
 	}
 }
 
