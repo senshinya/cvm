@@ -3548,6 +3548,58 @@ func TestStdlibMoreFloatParserExterns(t *testing.T) {
 	if loadedEnd.Int != longText+9 {
 		t.Fatalf("strtold endptr=%#x, want %#x", loadedEnd.Int, longText+9)
 	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtold overflow: %v", err)
+	}
+	longOverflowText := mustAllocBytes(t, mem, "strtold:overflow", []byte("1e309!\x00"), true, blockString)
+	ret, exit, err = strtoldFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(longOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtold overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeFLong || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtold overflow ret=%#v, want flong +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtold overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != longOverflowText+5 {
+		t.Fatalf("strtold overflow endptr=%#x, want %#x", loadedEnd.Int, longOverflowText+5)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtold overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtold overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtold negative overflow: %v", err)
+	}
+	negativeLongOverflowText := mustAllocBytes(t, mem, "strtold:negative-overflow", []byte("-1e309?\x00"), true, blockString)
+	ret, exit, err = strtoldFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeLongOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtold negative overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeFLong || !math.IsInf(ret.Float, -1) {
+		t.Fatalf("strtold negative overflow ret=%#v, want flong -inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtold negative overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeLongOverflowText+6 {
+		t.Fatalf("strtold negative overflow endptr=%#x, want %#x", loadedEnd.Int, negativeLongOverflowText+6)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtold negative overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtold negative overflow=%#v, want ERANGE", errnoValue)
+	}
 }
 
 func TestCtypeClassificationExterns(t *testing.T) {

@@ -198,9 +198,15 @@ Findings:
 
 Calibration before execution: Reconfirm current `TypeFLong` is binary64-backed.
 
-- [ ] Add direct/source tests documenting current flong overflow behavior.
-- [ ] Set `errno` to `ERANGE` consistently with current representation.
-- [ ] Verify, commit, and push `feat(runtime): mark strtold overflow`.
+- [x] Add direct/source tests documenting current flong overflow behavior.
+- [x] Set `errno` to `ERANGE` consistently with current representation.
+- [x] Verify, commit, and push `feat(runtime): mark strtold overflow`.
+
+Findings:
+
+- Current `TypeFLong` values are binary64-backed, so `strtold` intentionally follows the same overflow boundary as `strtod` for now.
+- Added direct extern and source-level runtime coverage for positive and negative `strtold` overflow, including end pointers and `errno`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibMoreFloatParser' -count=1` passed.
 
 ## Milestone 14: `strtold` Current Flong Underflow
 

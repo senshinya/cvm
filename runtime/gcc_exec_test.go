@@ -2668,7 +2668,23 @@ int main(void)
   long double l = strtold("-0x1.4p+2z", &end);
   if (l != -5.0L)
     return 3;
-  return *end == 'z' ? 0 : 4;
+  if (*end != 'z')
+    return 4;
+  errno = 0;
+  if (strtold("1e309!", &end) <= 1e300L)
+    return 20;
+  if (*end != '!')
+    return 21;
+  if (errno != ERANGE)
+    return 22;
+  errno = 0;
+  if (strtold("-1e309?", &end) >= -1e300L)
+    return 23;
+  if (*end != '?')
+    return 24;
+  if (errno != ERANGE)
+    return 25;
+  return 0;
 }
 `
 	st := runGCCExecFixture(t, "stdlib-more-float-parser-runtime.c", source)
