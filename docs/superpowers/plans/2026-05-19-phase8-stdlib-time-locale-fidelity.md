@@ -186,9 +186,15 @@ Findings:
 
 Calibration before execution: Re-read `setlocaleExtern`.
 
-- [ ] Add tests for query, `C`, empty locale, and unsupported locale.
-- [ ] Fix deterministic C-locale behavior if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden setlocale c locale`.
+- [x] Add tests for query, `C`, empty locale, and unsupported locale.
+- [x] Fix deterministic C-locale behavior if needed.
+- [x] Verify, commit, and push `feat(runtime): harden setlocale c locale`.
+
+Findings:
+
+- Existing direct/source coverage already checked query, explicit `C`, and unsupported locale rejection.
+- Added direct extern and source-level runtime coverage for empty locale `""` mapping to the deterministic C locale.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestLocaleSetlocale' -count=1` passed.
 
 ## Milestone 14: `clock` And `time` Determinism
 

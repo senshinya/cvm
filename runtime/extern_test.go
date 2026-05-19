@@ -3881,6 +3881,18 @@ func TestLocaleSetlocaleExtern(t *testing.T) {
 		t.Fatalf("setlocale C ret=%#v, want non-null C locale string", ret)
 	}
 
+	emptyLocale := mustAllocBytes(t, mem, "locale:empty", []byte("\x00"), true, blockString)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 0), PtrValue(emptyLocale)})
+	if err != nil || exit != nil {
+		t.Fatalf("setlocale empty ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("setlocale empty ret=%#v, want non-null C locale string", ret)
+	}
+	if got, err := mem.ReadCString(ret.Int); err != nil || got != "C" {
+		t.Fatalf("setlocale empty string=%q err=%v, want C", got, err)
+	}
+
 	unsupported := mustAllocBytes(t, mem, "locale:unsupported", []byte("ja_JP.UTF-8\x00"), true, blockString)
 	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 0), PtrValue(unsupported)})
 	if err != nil || exit != nil {

@@ -1777,6 +1777,8 @@ int main(void)
     return 1;
   if (setlocale(LC_NUMERIC, "C") == 0)
     return 2;
+  if (setlocale(LC_ALL, "") == 0)
+    return 4;
   return setlocale(LC_TIME, "ja_JP.UTF-8") == 0 ? 0 : 3;
 }
 `
