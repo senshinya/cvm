@@ -2567,6 +2567,30 @@ int main(void)
 	}
 }
 
+func TestMemcmpByteOrderingExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  unsigned char high[2] = {0xff, 0};
+  unsigned char low[2] = {0x7f, 0};
+
+  if (memcmp(high, low, 0) != 0)
+    return 1;
+  if (memcmp(high, low, 1) <= 0)
+    return 2;
+  if (memcmp(low, high, 1) >= 0)
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "memcmp-byte-ordering-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStringBoundedCompareSearchExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <string.h>

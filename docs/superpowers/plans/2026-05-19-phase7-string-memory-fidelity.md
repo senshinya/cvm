@@ -31,10 +31,10 @@ Calibration before execution: Re-read `memoryCharSearchExtern` and current `Test
 
 Calibration before execution: Re-read `memoryCompareExtern` and `TestMemoryCompareExtern`.
 
-- [ ] Add direct tests for zero-length equality and unsigned-byte ordering around `0xff`.
-- [ ] Fix comparison if it treats bytes as signed.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden memcmp byte semantics`.
+- [x] Add direct tests for zero-length equality and unsigned-byte ordering around `0xff`.
+- [x] Fix comparison if it treats bytes as signed.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden memcmp byte semantics`.
 
 ## Milestone 4: `strncmp` Termination And Zero Count
 

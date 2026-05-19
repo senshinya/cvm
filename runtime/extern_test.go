@@ -4227,6 +4227,8 @@ func TestMemcmpComparesBytes(t *testing.T) {
 	same := mustAllocBytes(t, mem, "memcmp:same", []byte{0, 1, 2, 9}, true, blockString)
 	diff := mustAllocBytes(t, mem, "memcmp:diff", []byte{0, 1, 4, 3}, true, blockString)
 	less := mustAllocBytes(t, mem, "memcmp:less", []byte{0, 1, 0, 3}, true, blockString)
+	high := mustAllocBytes(t, mem, "memcmp:high", []byte{0xff, 0}, true, blockString)
+	low := mustAllocBytes(t, mem, "memcmp:low", []byte{0x7f, 0}, true, blockString)
 	tests := []struct {
 		name  string
 		right uint64
@@ -4248,6 +4250,13 @@ func TestMemcmpComparesBytes(t *testing.T) {
 				t.Fatalf("memcmp = %#v, want i32 %d", ret, tt.want)
 			}
 		})
+	}
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(high), ObjectAddrValue(low), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil {
+		t.Fatalf("memcmp unsigned ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || int64(int32(ret.Int)) <= 0 {
+		t.Fatalf("memcmp unsigned = %#v, want positive i32", ret)
 	}
 }
 
