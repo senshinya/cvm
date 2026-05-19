@@ -113,9 +113,15 @@ Findings:
 
 Calibration before execution: Confirm storage widths and long double approximation.
 
-- [ ] Add direct/source tests for `strtof` f32 and `strtold` current flong storage.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover strtof strtold`.
+- [x] Add direct/source tests for `strtof` f32 and `strtold` current flong storage.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover strtof strtold`.
+
+Findings:
+
+- Direct extern coverage already asserted `strtof` returns `TypeF32` and `strtold` returns current `TypeFLong`.
+- Updated source-level runtime coverage to store `strtof` into a `float` local and `strtold` into a `long double` local before comparison.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibMoreFloatParser' -count=1` passed.
 
 ## Milestone 9: `atof` Wrapper Coverage
 

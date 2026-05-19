@@ -2492,12 +2492,14 @@ func TestStdlibMoreFloatParserExecuteThroughRuntime(t *testing.T) {
 int main(void)
 {
   char *end = 0;
+  float f = strtof(" 1.5!", &end);
 
-  if (strtof(" 1.5!", &end) != 1.5f)
+  if (f != 1.5f)
     return 1;
   if (*end != '!')
     return 2;
-  if (strtold("-0x1.4p+2z", &end) != -5.0L)
+  long double l = strtold("-0x1.4p+2z", &end);
+  if (l != -5.0L)
     return 3;
   return *end == 'z' ? 0 : 4;
 }
