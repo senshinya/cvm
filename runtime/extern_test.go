@@ -3938,6 +3938,20 @@ func TestStringBoundedCompareSearchExterns(t *testing.T) {
 	if ret.Type != bytecode.TypePtr || ret.Int != data+1 {
 		t.Fatalf("memchr hit ret=%#v, want pointer %#x", ret, data+1)
 	}
+	ret, exit, err = memchrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(data), IntValue(bytecode.TypeI32, 2), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("memchr zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("memchr zero ret=%#v, want null pointer", ret)
+	}
+	ret, exit, err = memchrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(data), IntValue(bytecode.TypeI32, 0x102), UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil {
+		t.Fatalf("memchr masked ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != data+1 {
+		t.Fatalf("memchr masked ret=%#v, want pointer %#x", ret, data+1)
+	}
 	ret, exit, err = memchrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(data), IntValue(bytecode.TypeI32, 9), UIntValue(bytecode.TypeU64, 4)})
 	if err != nil || exit != nil {
 		t.Fatalf("memchr miss ret=%#v exit=%#v err=%v", ret, exit, err)

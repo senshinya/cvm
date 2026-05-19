@@ -22,10 +22,10 @@ Calibration before execution: Confirm branch `codex/bytecode-runtime-phase-7` st
 
 Calibration before execution: Re-read `memoryCharSearchExtern` and current `TestStringSearchAndSpanExterns`.
 
-- [ ] Add direct tests for zero-length no-read and `int` argument byte masking.
-- [ ] Fix `memchr` if the search byte is not masked to unsigned char.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden memchr byte semantics`.
+- [x] Add direct tests for zero-length no-read and `int` argument byte masking.
+- [x] Fix `memchr` if the search byte is not masked to unsigned char.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden memchr byte semantics`.
 
 ## Milestone 3: `memcmp` Zero-Length And Byte Ordering
 

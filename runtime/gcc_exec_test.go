@@ -2585,7 +2585,11 @@ int main(void)
     return 3;
   if (memchr(data, 2, 4) != data + 1)
     return 4;
-  return memchr(data, 9, 4) == 0 ? 0 : 5;
+  if (memchr(data, 2, 0) != 0)
+    return 5;
+  if ((char *)memchr(data, 0x102, 4) != data + 1)
+    return 6;
+  return memchr(data, 9, 4) == 0 ? 0 : 7;
 }
 `
 	st := runGCCExecFixture(t, "string-bounded-compare-search-runtime.c", source)
