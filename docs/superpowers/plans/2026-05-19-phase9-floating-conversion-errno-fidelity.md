@@ -242,9 +242,15 @@ Findings:
 
 Calibration before execution: Check `strtoFloatExtern` endptr calculation after range errors.
 
-- [ ] Add direct/source tests proving overflow and underflow still set `endptr` after the consumed token.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover float range endptr`.
+- [x] Add direct/source tests proving overflow and underflow still set `endptr` after the consumed token.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover float range endptr`.
+
+Findings:
+
+- The previous range milestones already added direct end-pointer assertions for decimal `strtod`, hex `strtod`, `strtof`, and `strtold` overflow/underflow cases.
+- Source-level fixtures also check the trailing byte after every range conversion, covering both overflow and underflow paths.
+- No additional runtime change was needed; this milestone records the endptr audit and keeps the focused coverage from Milestones 7-14 as the executable proof.
 
 ## Milestone 17: Errno Direct Extern Sweep
 
