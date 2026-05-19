@@ -73,9 +73,9 @@ Calibration before execution: Re-read `memcpy` behavior and pointer return typin
 
 Calibration before execution: Re-read overlap handling in `memmove`.
 
-- [ ] Register and implement `wmemmove`.
-- [ ] Cover forward overlap, backward overlap, zero-count invalid pointers, and return value.
-- [ ] Verify, commit `feat(runtime): add wmemmove`, and push.
+- [x] Register and implement `wmemmove`.
+- [x] Cover forward overlap, backward overlap, zero-count invalid pointers, and return value.
+- [x] Verify, commit `feat(runtime): add wmemmove`, and push.
 
 ## Milestone 8: `wmemset`
 

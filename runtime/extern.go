@@ -2561,6 +2561,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("wmemchr", wideMemoryCharSearchExtern("wmemchr"))
 	r.Register("wmemcmp", wideMemoryCompareExtern("wmemcmp"))
 	r.Register("wmemcpy", wideMemoryCopyExtern("wmemcpy"))
+	r.Register("wmemmove", wideMemoryCopyExtern("wmemmove"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
 		r.Register(name, stringCopyExtern(name, false))
 	}
