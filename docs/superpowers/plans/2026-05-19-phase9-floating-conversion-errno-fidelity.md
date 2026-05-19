@@ -152,9 +152,16 @@ Findings:
 
 Calibration before execution: Check tiny hex float parsing and deterministic zero/subnormal boundary.
 
-- [ ] Add direct/source tests for hex underflow to zero.
-- [ ] Set `errno` to `ERANGE` on underflow-to-zero.
-- [ ] Verify, commit, and push `feat(runtime): mark strtod hex underflow`.
+- [x] Add direct/source tests for hex underflow to zero.
+- [x] Set `errno` to `ERANGE` on underflow-to-zero.
+- [x] Verify, commit, and push `feat(runtime): mark strtod hex underflow`.
+
+Findings:
+
+- `strconv.ParseFloat` also returns nil error for `0x1p-20000` and `-0x1p-20000`, so the explicit nonzero-significand underflow detector is required for hex tokens too.
+- The detector correctly stops at `p`/`P` for hex exponents, preserving exact zero hex inputs and representable hex subnormals.
+- Added direct extern and source-level runtime coverage for positive hex underflow, negative hex underflow, and `0x1p-1074`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
 
 ## Milestone 11: `strtof` Float32 Overflow
 

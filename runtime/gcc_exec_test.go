@@ -2586,6 +2586,27 @@ int main(void)
     return 43;
   if (errno != 0)
     return 44;
+  errno = 0;
+  if (strtod("0x1p-20000!", &end) != 0.0)
+    return 51;
+  if (*end != '!')
+    return 52;
+  if (errno != ERANGE)
+    return 53;
+  errno = 0;
+  if (strtod("-0x1p-20000?", &end) != 0.0)
+    return 54;
+  if (*end != '?')
+    return 55;
+  if (errno != ERANGE)
+    return 56;
+  errno = 0;
+  if (strtod("0x1p-1074!", &end) != 5e-324)
+    return 57;
+  if (*end != '!')
+    return 58;
+  if (errno != 0)
+    return 59;
   return 0;
 }
 `
