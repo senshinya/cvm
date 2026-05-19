@@ -295,9 +295,15 @@ Findings:
 
 Calibration before execution: Search locale/wide/multibyte touched surfaces across headers, registry, direct tests, and source tests.
 
-- [ ] Record declaration/registration/test surface status.
-- [ ] Add smoke coverage if missing.
-- [ ] Verify, commit, and push `docs: record phase 10 header registry recheck`.
+- [x] Record declaration/registration/test surface status.
+- [x] Add smoke coverage if missing.
+- [x] Verify, commit, and push `docs: record phase 10 header registry recheck`.
+
+Findings:
+
+- Builtin headers now expose `localeconv`, `struct lconv`, `<wchar.h>`, `<wctype.h>`, `wint_t`, `mbstate_t`, wide classification/case/descriptor declarations, and restartable multibyte declarations.
+- Default extern registry includes all declared Phase 10 runtime functions: `localeconv`, wide ctype/case/descriptor externs, `mbrlen`, `mbrtowc`, `wcrtomb`, `mbsrtowcs`, and `wcsrtombs`.
+- Direct extern coverage and source-level runtime coverage exist for locale, wide ctype, descriptor, and restartable multibyte surfaces.
 
 ## Milestone 21: GCC Runtime Fixture Recheck
 
