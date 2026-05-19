@@ -2902,13 +2902,18 @@ int main(void)
 
   if (stpncpy(buf, "pqrs", 2) != buf + 2)
     return 9;
-  if (buf[0] != 'p' || buf[1] != 'q')
+  if (buf[0] != 'p' || buf[1] != 'q' || buf[2] != 0)
     return 10;
+  buf[2] = '!';
+  if (stpncpy(buf, "pqrs", 2) != buf + 2)
+    return 11;
+  if (buf[0] != 'p' || buf[1] != 'q' || buf[2] != '!')
+    return 12;
 
   buf[0] = 0;
   if (strncat(buf, "uvwx", 2) != buf)
-    return 11;
-  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 12;
+    return 13;
+  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 14;
 }
 `
 	st := runGCCExecFixture(t, "plain-string-writes-runtime.c", source)
@@ -3760,13 +3765,18 @@ int main(void)
 
   if (__builtin_stpncpy(buf, "pqrs", 2) != buf + 2)
     return 9;
-  if (buf[0] != 'p' || buf[1] != 'q')
+  if (buf[0] != 'p' || buf[1] != 'q' || buf[2] != 0)
     return 10;
+  buf[2] = '!';
+  if (__builtin_stpncpy(buf, "pqrs", 2) != buf + 2)
+    return 11;
+  if (buf[0] != 'p' || buf[1] != 'q' || buf[2] != '!')
+    return 12;
 
   buf[0] = 0;
   if (__builtin_strncat(buf, "uvwx", 2) != buf)
-    return 11;
-  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 12;
+    return 13;
+  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 14;
 }
 `
 	st := runGCCExecFixture(t, "builtin-string-writes-runtime.c", source)

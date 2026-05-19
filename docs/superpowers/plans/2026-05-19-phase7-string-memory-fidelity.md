@@ -175,10 +175,10 @@ Calibration before execution: Re-read `stringCopyExtern`.
 
 Calibration before execution: Re-read `stringNCopyExtern`.
 
-- [ ] Add tests for padding, truncation without terminator, and `stpncpy` return pointer.
-- [ ] Fix if needed.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden strncpy padding`.
+- [x] Add tests for padding, truncation without terminator, and `stpncpy` return pointer.
+- [x] Fix if needed.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden strncpy padding`.
 
 ## Milestone 21: `strcat` And `strncat` Termination
 

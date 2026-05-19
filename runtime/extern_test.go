@@ -3236,6 +3236,60 @@ func TestPlainStringWriteExterns(t *testing.T) {
 	if err != nil || nul.Int != 0 {
 		t.Fatalf("stpcpy terminator=%#v err=%v, want zero", nul, err)
 	}
+
+	strncpyFn, _ := reg.Lookup("strncpy")
+	copyBuf := mustAllocBytes(t, mem, "strncpy:buf", []byte("??????"), false, blockLocal)
+	shortSrc := mustAllocBytes(t, mem, "strncpy:short", []byte("xy\x00"), true, blockString)
+	ret, exit, err = strncpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(copyBuf), PtrValue(shortSrc), UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil {
+		t.Fatalf("strncpy ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != copyBuf {
+		t.Fatalf("strncpy ret=%#v, want pointer %#x", ret, copyBuf)
+	}
+	block, off, err := mem.rangeAccess(copyBuf, 6, false)
+	if err != nil {
+		t.Fatalf("read strncpy dst: %v", err)
+	}
+	if got := []byte(block.data[off : off+6]); !bytes.Equal(got, []byte{'x', 'y', 0, 0, '?', '?'}) {
+		t.Fatalf("strncpy dst=%v, want [120 121 0 0 63 63]", got)
+	}
+
+	stpncpyFn, _ := reg.Lookup("stpncpy")
+	truncSrc := mustAllocBytes(t, mem, "stpncpy:trunc", []byte("pqrs\x00"), true, blockString)
+	if err := mem.Store(copyBuf+2, bytecode.TypeI8, 1, IntValue(bytecode.TypeI8, '!')); err != nil {
+		t.Fatalf("mark stpncpy trunc sentinel: %v", err)
+	}
+	ret, exit, err = stpncpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(copyBuf), PtrValue(truncSrc), UIntValue(bytecode.TypeU64, 2)})
+	if err != nil || exit != nil {
+		t.Fatalf("stpncpy trunc ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != copyBuf+2 {
+		t.Fatalf("stpncpy trunc ret=%#v, want pointer %#x", ret, copyBuf+2)
+	}
+	block, off, err = mem.rangeAccess(copyBuf, 4, false)
+	if err != nil {
+		t.Fatalf("read stpncpy trunc dst: %v", err)
+	}
+	if got := []byte(block.data[off : off+4]); !bytes.Equal(got, []byte{'p', 'q', '!', 0}) {
+		t.Fatalf("stpncpy trunc dst=%v, want [112 113 33 0]", got)
+	}
+
+	padSrc := mustAllocBytes(t, mem, "stpncpy:pad", []byte("a\x00"), true, blockString)
+	ret, exit, err = stpncpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(copyBuf), PtrValue(padSrc), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil {
+		t.Fatalf("stpncpy pad ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != copyBuf+1 {
+		t.Fatalf("stpncpy pad ret=%#v, want pointer %#x", ret, copyBuf+1)
+	}
+	block, off, err = mem.rangeAccess(copyBuf, 3, false)
+	if err != nil {
+		t.Fatalf("read stpncpy pad dst: %v", err)
+	}
+	if got := []byte(block.data[off : off+3]); !bytes.Equal(got, []byte{'a', 0, 0}) {
+		t.Fatalf("stpncpy pad dst=%v, want [97 0 0]", got)
+	}
 }
 
 func TestPlainAllocationExterns(t *testing.T) {
