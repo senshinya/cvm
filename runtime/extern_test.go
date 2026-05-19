@@ -3053,6 +3053,8 @@ func TestCtypeClassificationExterns(t *testing.T) {
 		{name: "isprint", ch: ' ', want: true},
 		{name: "isprint", ch: 0x7f, want: false},
 		{name: "isalpha", ch: -1, want: false},
+		{name: "isalpha", ch: 0x141, want: true},
+		{name: "isdigit", ch: 0x135, want: true},
 	}
 	for _, tt := range tests {
 		fn, ok := reg.Lookup(tt.name)

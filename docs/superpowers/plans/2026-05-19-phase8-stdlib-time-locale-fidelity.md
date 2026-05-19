@@ -258,9 +258,15 @@ Findings:
 
 Calibration before execution: Re-read ctype classification externs.
 
-- [ ] Add tests for EOF `-1`, ASCII letters/digits/space, and high int masking.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden ctype classification`.
+- [x] Add tests for EOF `-1`, ASCII letters/digits/space, and high int masking.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): harden ctype classification`.
+
+Findings:
+
+- Existing coverage checked ASCII classes and EOF `-1`, but high integer values above `UCHAR_MAX` were rejected instead of classified by their low byte.
+- Updated ctype classification externs so `-1` remains EOF/false and other integers classify through their unsigned-byte value.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestCtypeClassification' -count=1` passed after the fix.
 
 ## Milestone 19: Ctype Case Conversion Bounds
 

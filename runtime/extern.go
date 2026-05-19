@@ -1709,7 +1709,7 @@ func ctypeClassificationExtern(name string, pred func(byte) bool) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
 		}
 		ch := signedInt(args[0])
-		if ch < 0 || ch > 255 || !pred(byte(ch)) {
+		if ch == -1 || !pred(byte(unsignedInt(args[0]))) {
 			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, 1), nil, nil

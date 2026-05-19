@@ -2543,6 +2543,12 @@ int main(void)
     return 4;
   if (!isprint(' ') || isprint(127))
     return 5;
+  if (!isalpha('A' + 256))
+    return 6;
+  if (!isdigit('5' + 256))
+    return 7;
+  if (isalpha(-1))
+    return 8;
   return 0;
 }
 `
