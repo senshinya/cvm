@@ -49,15 +49,15 @@ Calibration before execution: Re-read `runtime/vm.go` around `OpCallIndirect`, `
 - Modify: `runtime/integration_test.go`
 - Modify: this plan file
 
-- [ ] **Step 1: Add failing source-level trap test**
+- [x] **Step 1: Add failing source-level trap test**
 
 Add a GNU nested-function integration test that returns a capturing nested function pointer from its enclosing function, calls it in `main`, and expects an error containing `expired closure pointer`.
 
-- [ ] **Step 2: Track expired closure addresses**
+- [x] **Step 2: Track expired closure addresses**
 
 Add an expired-closure map to `VM`, move frame-owned closures there during `popFrame`, and check it before normal function-address lookup in `OpCallIndirect`.
 
-- [ ] **Step 3: Verify focused tests**
+- [x] **Step 3: Verify focused tests**
 
 Run:
 
@@ -65,7 +65,7 @@ Run:
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestCompileAndRunEscapedNestedFunctionPointerTraps|TestGCCNestedFunctionPointer' -count=1
 ```
 
-- [ ] **Step 4: Verify, commit, and push expired closure trap**
+- [x] **Step 4: Verify, commit, and push expired closure trap**
 
 Run the standard verification chain, then commit `fix(runtime): trap expired nested closures`.
 

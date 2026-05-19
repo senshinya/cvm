@@ -13,12 +13,13 @@ type RunOptions struct {
 }
 
 type VM struct {
-	program  *Program
-	stack    []Value
-	frames   []frame
-	closures map[uint64]closure
-	steps    int
-	limit    int
+	program         *Program
+	stack           []Value
+	frames          []frame
+	closures        map[uint64]closure
+	expiredClosures map[uint64]expiredClosure
+	steps           int
+	limit           int
 }
 
 type frame struct {
@@ -42,6 +43,11 @@ type closure struct {
 	captures []Value
 }
 
+type expiredClosure struct {
+	creator string
+	global  int
+}
+
 func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -56,9 +62,10 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 		return ExitStatus{}, &TrapError{Reason: "program memory is nil"}
 	}
 	vm := &VM{
-		program:  p,
-		closures: make(map[uint64]closure),
-		limit:    opts.StepLimit,
+		program:         p,
+		closures:        make(map[uint64]closure),
+		expiredClosures: make(map[uint64]expiredClosure),
+		limit:           opts.StepLimit,
 	}
 	if err := vm.pushFrameAsEntry(p.entryFunc, p.entryArgs); err != nil {
 		return ExitStatus{}, err
@@ -553,6 +560,9 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 			}
 			break
 		}
+		if expired, ok := vm.expiredClosures[callee.Int]; ok {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("expired closure pointer %#x from %s to global %d", callee.Int, expired.creator, expired.global))
+		}
 		globalID, err := vm.program.FuncGlobalByAddress(callee.Int)
 		if err != nil {
 			return ExitStatus{}, true, vm.trapWithCause("invalid indirect call target", err)
@@ -693,7 +703,13 @@ func (vm *VM) popFrame() error {
 		}
 	}
 	for _, addr := range fr.closures {
-		delete(vm.closures, addr)
+		if cl, ok := vm.closures[addr]; ok {
+			vm.expiredClosures[addr] = expiredClosure{
+				creator: fr.fn.Name,
+				global:  cl.global,
+			}
+			delete(vm.closures, addr)
+		}
 		if err := vm.program.Memory().Free(addr, blockLocal); err != nil {
 			return vm.trapWithCause(fmt.Sprintf("closure %x free failed", addr), err)
 		}
