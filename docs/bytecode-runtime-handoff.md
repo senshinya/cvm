@@ -8,8 +8,8 @@ This document records the current state of the bytecode/runtime work so the bran
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-8`
-- Latest implementation/coverage commit before this handoff document update: `59cb5d2 docs: record phase 8 gcc fixture recheck`
+- Branch: `codex/bytecode-runtime-phase-9`
+- Latest implementation/coverage commit before this handoff document update: `69f387e docs: map phase 9 float conversion gaps`
 - Remote: `origin git@github.com:senshinya/cvm.git`
 - Upstream: `origin/codex/bytecode-runtime-phase-8`
 - Working tree at handoff time: clean
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-8 origin/codex/bytecode-runtime-phase-8
+git switch -c codex/bytecode-runtime-phase-9 origin/codex/bytecode-runtime-phase-9
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-8` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-9` instead.
 
 ## Verification Commands
 
@@ -180,6 +180,35 @@ Residual bounded surfaces after Phase 8:
 - `time` and `clock` intentionally return deterministic zero values rather than host time.
 - `system` intentionally never invokes a host shell; non-NULL commands fail deterministically.
 - Ctype behavior is deterministic byte-oriented C-locale behavior; broad locale-specific classification remains out of scope.
+
+## Phase 9 Closure
+
+Phase 9 floating conversion errno fidelity is closed on `codex/bytecode-runtime-phase-9`.
+
+Closed Phase 9 milestones:
+
+- Rechecked per-memory `errno` static variable behavior.
+- Covered floating conversion success and no-conversion errno preservation.
+- Hardened `strtod` decimal and hex overflow/underflow-to-zero behavior with signed infinities/zero, `endptr`, and `ERANGE`.
+- Covered `strtod` infinity spellings, NaN spellings, and parenthesized NaN payload consumption.
+- Hardened `strtof` float32 overflow and underflow after target-type narrowing, preserving representable subnormals.
+- Documented and covered current binary64-backed `strtold` overflow and underflow behavior.
+- Aligned `atof` with shared parser range handling and errno behavior.
+- Rechecked direct extern, source runtime, header, registry, and GCC fixture surfaces for Phase 9.
+- Added `docs/phase9-floating-conversion-errno-fidelity-gap-map.md`.
+
+Phase 9 recheck:
+
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed with 18 runnable manifest candidates and no failures.
+- Header declarations/macros and registry entries were rechecked for `errno`, `ERANGE`, `atof`, `strtod`, `strtof`, `strtold`, `nan`, `nanf`, and `nanl`.
+- Imported GCC accept scans did not identify a new stable low-risk runtime fixture beyond existing compile-manifest coverage.
+
+Residual bounded surfaces after Phase 9:
+
+- `long double` remains represented by the current binary64-backed runtime model; exact platform extended precision is deferred.
+- Floating conversion remains deterministic C-locale parsing, not host-locale parsing.
+- NaN payload text is consumed deterministically, but payload bits are not preserved.
+- Exact native libc errno corner cases beyond overflow and underflow-to-zero remain out of scope until a fixture or workflow requires them.
 
 ## Completed Work
 
