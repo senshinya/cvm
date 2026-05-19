@@ -14,10 +14,16 @@
 
 Calibration before execution: Start from Phase 7 closure on `codex/bytecode-runtime-phase-8`.
 
-- [ ] Create/switch Phase 8 branch.
-- [ ] Re-read Phase 8 roadmap.
-- [ ] Run baseline verification.
-- [ ] Commit branch setup docs if needed.
+- [x] Create/switch Phase 8 branch.
+- [x] Re-read Phase 8 roadmap.
+- [x] Run baseline verification.
+- [x] Commit branch setup docs if needed.
+
+Baseline:
+
+- Created `codex/bytecode-runtime-phase-8` from Phase 7 closure commit `ea28f54`.
+- Phase 8 contains 22 milestones covering stdlib conversion, random/env/process, locale/time, ctype, registry recheck, GCC fixture recheck, and closure docs.
+- No runtime code changes were needed for branch setup.
 
 ## Milestone 2: `strtol` Base Auto-Detection
 
