@@ -177,9 +177,9 @@ Calibration before execution: Re-read `strncpy` padding/truncation behavior.
 
 Calibration before execution: Mirror `strcat` destination scan and terminator write.
 
-- [ ] Register and implement `wcscat`.
-- [ ] Cover append, empty source, high wide value, terminator, and return pointer.
-- [ ] Verify, commit `feat(runtime): add wcscat`, and push.
+- [x] Register and implement `wcscat`.
+- [x] Cover append, empty source, high wide value, terminator, and return pointer.
+- [x] Verify, commit `feat(runtime): add wcscat`, and push.
 
 ## Milestone 21: `wcsncat`
 

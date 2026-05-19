@@ -2552,6 +2552,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("wcscspn", wideStringSpanExtern("wcscspn", false))
 	r.Register("wcscpy", wideStringCopyExtern("wcscpy"))
 	r.Register("wcsncpy", wideStringNCopyExtern("wcsncpy"))
+	r.Register("wcscat", wideStringConcatExtern("wcscat"))
 	r.Register("strnlen", stringNLengthExtern("strnlen"))
 	r.Register("strerror", stringErrorExtern("strerror", r))
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
@@ -3760,6 +3761,48 @@ func wideStringNCopyExtern(name string) ExternFunc {
 			}
 		}
 		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
+func wideStringConcatExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination and source wide strings", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		length, err := wideStringLength(ec.Memory, args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		start, err := wideElementAddr(args[0].Int, length)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		for i := int64(0); ; i++ {
+			srcAddr, err := wideElementAddr(args[1].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, srcAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			dstAddr, err := wideElementAddr(start, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if err := storeWideChar(ec.Memory, dstAddr, ch); err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				return PtrValue(args[0].Int), nil, nil
+			}
+		}
 	}
 }
 
