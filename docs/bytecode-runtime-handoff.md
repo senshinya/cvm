@@ -8,10 +8,10 @@ This document records the current state of the bytecode/runtime work so the bran
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-11`
-- Latest implementation/coverage commit before this handoff document update: `ea8feb1 docs: map phase 11 wide string gaps`
+- Branch: `codex/bytecode-runtime-phase-12`
+- Latest implementation/coverage commit before this handoff document update: `c5c5978 docs: map phase 12 wide stdio gaps`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: `origin/codex/bytecode-runtime-phase-11`
+- Upstream: `origin/codex/bytecode-runtime-phase-12`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-11 origin/codex/bytecode-runtime-phase-11
+git switch -c codex/bytecode-runtime-phase-12 origin/codex/bytecode-runtime-phase-12
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-11` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-12` instead.
 
 ## Verification Commands
 
@@ -268,6 +268,39 @@ Residual bounded surfaces after Phase 11:
 - `wchar_t` storage follows the existing target model: 32-bit elements addressed in 4-byte units.
 - Undefined C cases such as invalid pointers, insufficient destination storage, and overlapping `wmemcpy` or string-copy inputs remain governed by CVM memory access behavior rather than native-libc compatibility.
 - Stateful encodings, locale-specific multibyte behavior, and wide formatted I/O remain out of scope.
+
+## Phase 12 Closure
+
+Phase 12 wide stdio and wide formatted I/O fidelity is closed on `codex/bytecode-runtime-phase-12`.
+
+Closed Phase 12 milestones:
+
+- Added builtin `<wchar.h>` declarations and registry entries for wide stdio, wide printf, and wide scanf helpers.
+- Implemented stream orientation tracking through `fwide`, with byte/wide locking behavior shared by wide input and output helpers.
+- Implemented wide character and string stdio helpers: `fputwc`, `putwc`, `putwchar`, `fgetwc`, `getwc`, `getwchar`, `ungetwc`, `fputws`, and `fgetws`.
+- Implemented deterministic C-locale wide formatted output: `swprintf`, `wprintf`, `fwprintf`, `vwprintf`, `vfwprintf`, and `vswprintf`.
+- Implemented deterministic C-locale wide formatted input: `swscanf`, `wscanf`, and `fwscanf`.
+- Added wide scanner and formatter bridge coverage for wide format/input buffers, `%ls`, `%lc`, `%n`, width, assignment suppression, mismatch, EOF-like input, truncation, stream state, and memory-backed `va_list`.
+- Added source-level runtime workflows for wide stdio and wide formatted input/output.
+- Fixed runtime string constant allocation alignment so wide literals can be read safely, and fixed aggregate initializer field-store alignment to respect the containing object.
+- Rechecked GCC runtime gap report and imported accept roots for newly unblocked wide stdio fixtures.
+- Added `docs/phase12-wide-stdio-format-fidelity-gap-map.md`.
+
+Phase 12 recheck:
+
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed.
+- Header declarations, registry entries, direct extern tests, and source-level runtime tests were rechecked for the Phase 12 surface.
+- Imported `gcc-c99-extra/accept` scans for wide stdio names did not identify a new stable low-risk fixture to add.
+- Source workflow coverage was tightened with `fwprintf` stderr output in the wide format workflow.
+
+Residual bounded surfaces after Phase 12:
+
+- Wide stdio and wide formatted I/O intentionally use deterministic C-locale ASCII bridging; locale-specific wide I/O and stateful encodings remain out of scope.
+- High wide characters in wide format/input/output paths are rejected or reported through stream-error conventions instead of being transcoded.
+- Wide formatted output reuses the existing formatter subset; unsupported native-libc format behavior remains deferred.
+- Source-level `v*wide printf` workflows are not added; direct tests cover memory-backed `va_list` handling deterministically.
+- File behavior remains the runtime's hermetic host-file model, not native filesystem side effects.
+- Undefined C cases such as invalid pointers, insufficient destination storage, and incompatible stream orientation remain governed by CVM memory and stream error behavior rather than native-libc compatibility.
 
 ## Completed Work
 
@@ -1793,9 +1826,9 @@ Runtime support exists for real math externs and for the Phase 1 complex math ex
 
 ## Suggested Next Work
 
-The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, and Phases 2 through 8 are closed. Suggested next directions:
+The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, and Phases 2 through 12 are closed. Suggested next directions:
 
-- Scope any further hosted runtime work as a new phase, starting from the residual limits recorded in the Phase 8 gap map.
+- Scope any further hosted runtime work as a new phase, starting from the residual limits recorded in the Phase 12 gap map.
 - Expand runtime execution coverage only when a fixture has stable deterministic semantics or when the required hosted-runtime semantics are explicitly brought into scope.
 
 Recommended workflow:

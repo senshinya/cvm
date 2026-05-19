@@ -233,6 +233,6 @@ Calibration before execution: Confirm all Phase 12 implementation increments are
 
 Calibration before execution: Confirm branch, remote, and final verification status.
 
-- [ ] Update `docs/bytecode-runtime-handoff.md`.
-- [ ] Mark this plan complete.
-- [ ] Verify, commit `docs: close phase 12 wide stdio work`, and push.
+- [x] Update `docs/bytecode-runtime-handoff.md`.
+- [x] Mark this plan complete.
+- [x] Verify, commit `docs: close phase 12 wide stdio work`, and push.
