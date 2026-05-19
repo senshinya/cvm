@@ -121,9 +121,9 @@ Calibration before execution: Keep `WEOF` and full wide values unmasked.
 
 Calibration before execution: Mirror `strrchr` but advance in 4-byte `wchar_t` units.
 
-- [ ] Register and implement `wcsrchr`.
-- [ ] Cover last hit, miss, NUL terminator, repeated values, and high wide value.
-- [ ] Verify, commit `feat(runtime): add wcsrchr`, and push.
+- [x] Register and implement `wcsrchr`.
+- [x] Cover last hit, miss, NUL terminator, repeated values, and high wide value.
+- [x] Verify, commit `feat(runtime): add wcsrchr`, and push.
 
 ## Milestone 14: `wcsstr`
 

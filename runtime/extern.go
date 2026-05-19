@@ -2545,6 +2545,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("wcscmp", wideStringCompareExtern("wcscmp"))
 	r.Register("wcsncmp", wideStringNCompareExtern("wcsncmp"))
 	r.Register("wcschr", wideStringCharSearchExtern("wcschr"))
+	r.Register("wcsrchr", wideStringReverseCharSearchExtern("wcsrchr"))
 	r.Register("strnlen", stringNLengthExtern("strnlen"))
 	r.Register("strerror", stringErrorExtern("strerror", r))
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
@@ -3514,6 +3515,38 @@ func wideStringCharSearchExtern(name string) ExternFunc {
 			}
 			if ch == 0 {
 				return PtrValue(0), nil, nil
+			}
+		}
+	}
+}
+
+func wideStringReverseCharSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string and wchar arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		needle := uint32(args[1].Int)
+		var last uint64
+		for i := int64(0); ; i++ {
+			addr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == needle {
+				last = addr
+			}
+			if ch == 0 {
+				return PtrValue(last), nil, nil
 			}
 		}
 	}
