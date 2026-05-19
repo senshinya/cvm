@@ -2541,6 +2541,22 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_strlen", "strlen"} {
 		r.Register(name, stringLengthExtern(name))
 	}
+	r.Register("wcslen", wideStringLengthExtern("wcslen"))
+	r.Register("wcscmp", wideStringCompareExtern("wcscmp"))
+	r.Register("wcsncmp", wideStringNCompareExtern("wcsncmp"))
+	r.Register("wcscoll", wideStringCompareExtern("wcscoll"))
+	r.Register("wcsxfrm", wideStringTransformExtern("wcsxfrm"))
+	r.Register("wcstok", wideStringTokenExtern("wcstok"))
+	r.Register("wcschr", wideStringCharSearchExtern("wcschr"))
+	r.Register("wcsrchr", wideStringReverseCharSearchExtern("wcsrchr"))
+	r.Register("wcsstr", wideStringSearchExtern("wcsstr"))
+	r.Register("wcspbrk", wideStringSetSearchExtern("wcspbrk"))
+	r.Register("wcsspn", wideStringSpanExtern("wcsspn", true))
+	r.Register("wcscspn", wideStringSpanExtern("wcscspn", false))
+	r.Register("wcscpy", wideStringCopyExtern("wcscpy"))
+	r.Register("wcsncpy", wideStringNCopyExtern("wcsncpy"))
+	r.Register("wcscat", wideStringConcatExtern("wcscat"))
+	r.Register("wcsncat", wideStringNConcatExtern("wcsncat"))
 	r.Register("strnlen", stringNLengthExtern("strnlen"))
 	r.Register("strerror", stringErrorExtern("strerror", r))
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
@@ -2558,6 +2574,11 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("strncmp", stringNCompareExtern("strncmp"))
 	r.Register("strcoll", stringCollateExtern("strcoll"))
 	r.Register("memchr", memoryCharSearchExtern("memchr"))
+	r.Register("wmemchr", wideMemoryCharSearchExtern("wmemchr"))
+	r.Register("wmemcmp", wideMemoryCompareExtern("wmemcmp"))
+	r.Register("wmemcpy", wideMemoryCopyExtern("wmemcpy"))
+	r.Register("wmemmove", wideMemoryCopyExtern("wmemmove"))
+	r.Register("wmemset", wideMemorySetExtern("wmemset"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
 		r.Register(name, stringCopyExtern(name, false))
 	}
@@ -3280,6 +3301,803 @@ func memoryCheckedSetExtern(name string) ExternFunc {
 		}
 		return PtrValue(args[0].Int), nil, nil
 	}
+}
+
+func wideMemoryCharSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, wchar, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		needle := uint32(args[1].Int)
+		for i := int64(0); i < count; i++ {
+			addr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == needle {
+				return PtrValue(addr), nil, nil
+			}
+		}
+		return PtrValue(0), nil, nil
+	}
+}
+
+func wideMemoryCompareExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, pointer, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		for i := int64(0); i < count; i++ {
+			leftAddr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			rightAddr, err := wideElementAddr(args[1].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			left, err := loadWideChar(ec.Memory, leftAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			right, err := loadWideChar(ec.Memory, rightAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if left < right {
+				return IntValue(bytecode.TypeI32, -1), nil, nil
+			}
+			if left > right {
+				return IntValue(bytecode.TypeI32, 1), nil, nil
+			}
+		}
+		return IntValue(bytecode.TypeI32, 0), nil, nil
+	}
+}
+
+func wideMemoryCopyExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, pointer, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		size, err := wideByteSize(name, count)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if size > 0 {
+			if err := ec.Memory.Copy(args[0].Int, args[1].Int, size); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
+func wideMemorySetExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, wchar, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		ch := uint32(args[1].Int)
+		for i := int64(0); i < count; i++ {
+			addr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if err := storeWideChar(ec.Memory, addr, ch); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
+func wideStringLengthExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		length, err := wideStringLength(ec.Memory, args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, uint64(length)), nil, nil
+	}
+}
+
+func wideStringCompareExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		result, err := wideStringCompare(ec.Memory, args[0].Int, args[1].Int, -1)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(result)), nil, nil
+	}
+}
+
+func wideStringNCompareExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string, wide string, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if count == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		result, err := wideStringCompare(ec.Memory, args[0].Int, args[1].Int, count)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(result)), nil, nil
+	}
+}
+
+func wideStringCharSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string and wchar arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		needle := uint32(args[1].Int)
+		for i := int64(0); ; i++ {
+			addr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == needle {
+				return PtrValue(addr), nil, nil
+			}
+			if ch == 0 {
+				return PtrValue(0), nil, nil
+			}
+		}
+	}
+}
+
+func wideStringReverseCharSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string and wchar arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		needle := uint32(args[1].Int)
+		var last uint64
+		for i := int64(0); ; i++ {
+			addr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == needle {
+				last = addr
+			}
+			if ch == 0 {
+				return PtrValue(last), nil, nil
+			}
+		}
+	}
+}
+
+func wideStringSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		needleLen, err := wideStringLength(ec.Memory, args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if needleLen == 0 {
+			return PtrValue(args[0].Int), nil, nil
+		}
+		for i := int64(0); ; i++ {
+			hayAddr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, hayAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				return PtrValue(0), nil, nil
+			}
+			matched := true
+			for j := int64(0); j < needleLen; j++ {
+				leftAddr, err := wideElementAddr(args[0].Int, i+j)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				rightAddr, err := wideElementAddr(args[1].Int, j)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				left, err := loadWideChar(ec.Memory, leftAddr)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				right, err := loadWideChar(ec.Memory, rightAddr)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				if left != right {
+					matched = false
+					break
+				}
+			}
+			if matched {
+				return PtrValue(hayAddr), nil, nil
+			}
+		}
+	}
+}
+
+func wideStringSetSearchExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		for i := int64(0); ; i++ {
+			addr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				return PtrValue(0), nil, nil
+			}
+			contains, err := wideStringContainsChar(ec.Memory, args[1].Int, ch)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if contains {
+				return PtrValue(addr), nil, nil
+			}
+		}
+	}
+}
+
+func wideStringSpanExtern(name string, acceptMatch bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		for i := int64(0); ; i++ {
+			addr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				return UIntValue(bytecode.TypeU64, uint64(i)), nil, nil
+			}
+			contains, err := wideStringContainsChar(ec.Memory, args[1].Int, ch)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if contains != acceptMatch {
+				return UIntValue(bytecode.TypeU64, uint64(i)), nil, nil
+			}
+		}
+	}
+}
+
+func wideStringCopyExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination and source wide strings", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		for i := int64(0); ; i++ {
+			srcAddr, err := wideElementAddr(args[1].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, srcAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			dstAddr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if err := storeWideChar(ec.Memory, dstAddr, ch); err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				return PtrValue(args[0].Int), nil, nil
+			}
+		}
+	}
+}
+
+func wideStringNCopyExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, source, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		var padding bool
+		for i := int64(0); i < count; i++ {
+			ch := uint32(0)
+			if !padding {
+				srcAddr, err := wideElementAddr(args[1].Int, i)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				ch, err = loadWideChar(ec.Memory, srcAddr)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				if ch == 0 {
+					padding = true
+				}
+			}
+			dstAddr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if err := storeWideChar(ec.Memory, dstAddr, ch); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
+func wideStringConcatExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination and source wide strings", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		length, err := wideStringLength(ec.Memory, args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		start, err := wideElementAddr(args[0].Int, length)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		for i := int64(0); ; i++ {
+			srcAddr, err := wideElementAddr(args[1].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, srcAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			dstAddr, err := wideElementAddr(start, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if err := storeWideChar(ec.Memory, dstAddr, ch); err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				return PtrValue(args[0].Int), nil, nil
+			}
+		}
+	}
+}
+
+func wideStringNConcatExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, source, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		length, err := wideStringLength(ec.Memory, args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		start, err := wideElementAddr(args[0].Int, length)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		var copied int64
+		for copied < count {
+			srcAddr, err := wideElementAddr(args[1].Int, copied)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch, err := loadWideChar(ec.Memory, srcAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				break
+			}
+			dstAddr, err := wideElementAddr(start, copied)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if err := storeWideChar(ec.Memory, dstAddr, ch); err != nil {
+				return Value{}, nil, err
+			}
+			copied++
+		}
+		nulAddr, err := wideElementAddr(start, copied)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if err := storeWideChar(ec.Memory, nulAddr, 0); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
+func wideStringTransformExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, source, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		length, err := wideStringLength(ec.Memory, args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if count > 0 {
+			limit := count - 1
+			if limit > length {
+				limit = length
+			}
+			for i := int64(0); i < limit; i++ {
+				srcAddr, err := wideElementAddr(args[1].Int, i)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				ch, err := loadWideChar(ec.Memory, srcAddr)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				dstAddr, err := wideElementAddr(args[0].Int, i)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				if err := storeWideChar(ec.Memory, dstAddr, ch); err != nil {
+					return Value{}, nil, err
+				}
+			}
+			nulAddr, err := wideElementAddr(args[0].Int, limit)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if err := storeWideChar(ec.Memory, nulAddr, 0); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return UIntValue(bytecode.TypeU64, uint64(length)), nil, nil
+	}
+}
+
+func wideStringTokenExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string, delimiter string, and save pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		start := args[0].Int
+		if start == 0 {
+			saved, err := ec.Memory.Load(args[2].Int, bytecode.TypePtr, ec.Memory.target.PointerAlign)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			start = saved.Int
+		}
+		if start == 0 {
+			return PtrValue(0), nil, nil
+		}
+
+		addr := start
+		for {
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				if err := ec.Memory.WritePointer(args[2].Int, 0); err != nil {
+					return Value{}, nil, err
+				}
+				return PtrValue(0), nil, nil
+			}
+			matches, err := wideStringContainsChar(ec.Memory, args[1].Int, ch)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if !matches {
+				break
+			}
+			addr, err = wideElementAddr(addr, 1)
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
+
+		tokenStart := addr
+		for {
+			ch, err := loadWideChar(ec.Memory, addr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				if err := ec.Memory.WritePointer(args[2].Int, 0); err != nil {
+					return Value{}, nil, err
+				}
+				return PtrValue(tokenStart), nil, nil
+			}
+			matches, err := wideStringContainsChar(ec.Memory, args[1].Int, ch)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if matches {
+				if err := storeWideChar(ec.Memory, addr, 0); err != nil {
+					return Value{}, nil, err
+				}
+				next, err := wideElementAddr(addr, 1)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				if err := ec.Memory.WritePointer(args[2].Int, next); err != nil {
+					return Value{}, nil, err
+				}
+				return PtrValue(tokenStart), nil, nil
+			}
+			addr, err = wideElementAddr(addr, 1)
+			if err != nil {
+				return Value{}, nil, err
+			}
+		}
+	}
+}
+
+func wideStringContainsChar(mem *Memory, setAddr uint64, needle uint32) (bool, error) {
+	for i := int64(0); ; i++ {
+		addr, err := wideElementAddr(setAddr, i)
+		if err != nil {
+			return false, err
+		}
+		ch, err := loadWideChar(mem, addr)
+		if err != nil {
+			return false, err
+		}
+		if ch == 0 {
+			return false, nil
+		}
+		if ch == needle {
+			return true, nil
+		}
+	}
+}
+
+func wideStringCompare(mem *Memory, leftAddr, rightAddr uint64, limit int64) (int, error) {
+	for i := int64(0); limit < 0 || i < limit; i++ {
+		leftElem, err := wideElementAddr(leftAddr, i)
+		if err != nil {
+			return 0, err
+		}
+		rightElem, err := wideElementAddr(rightAddr, i)
+		if err != nil {
+			return 0, err
+		}
+		left, err := loadWideChar(mem, leftElem)
+		if err != nil {
+			return 0, err
+		}
+		right, err := loadWideChar(mem, rightElem)
+		if err != nil {
+			return 0, err
+		}
+		if left < right {
+			return -1, nil
+		}
+		if left > right {
+			return 1, nil
+		}
+		if left == 0 {
+			return 0, nil
+		}
+	}
+	return 0, nil
+}
+
+func wideStringLength(mem *Memory, addr uint64) (int64, error) {
+	for i := int64(0); ; i++ {
+		chAddr, err := wideElementAddr(addr, i)
+		if err != nil {
+			return 0, err
+		}
+		ch, err := loadWideChar(mem, chAddr)
+		if err != nil {
+			return 0, err
+		}
+		if ch == 0 {
+			return i, nil
+		}
+	}
+}
+
+func wideElementAddr(base uint64, index int64) (uint64, error) {
+	if index < 0 || uint64(index) > math.MaxUint64/4 {
+		return 0, fmt.Errorf("wide element index %d overflows address", index)
+	}
+	offset := uint64(index) * 4
+	if base > math.MaxUint64-offset {
+		return 0, fmt.Errorf("wide element address %#x + %d overflows", base, offset)
+	}
+	return base + offset, nil
+}
+
+func wideByteSize(name string, count int64) (int64, error) {
+	if count < 0 || count > math.MaxInt64/4 {
+		return 0, fmt.Errorf("%s wide count %d overflows byte size", name, count)
+	}
+	return count * 4, nil
+}
+
+func loadWideChar(mem *Memory, addr uint64) (uint32, error) {
+	v, err := mem.Load(addr, bytecode.TypeI32, 4)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(v.Int), nil
+}
+
+func storeWideChar(mem *Memory, addr uint64, ch uint32) error {
+	return mem.Store(addr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(int32(ch))))
 }
 
 func memorySizeArg(name string, arg Value) (int64, error) {

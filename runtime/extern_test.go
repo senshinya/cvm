@@ -12,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "_Exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fgetpos", "fsetpos", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "perror", "abs", "labs", "llabs", "div", "ldiv", "lldiv", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs", "wcsrtombs", "rand", "srand", "getenv", "system", "atexit", "setlocale", "localeconv", "clock", "difftime", "time", "nan", "nanf", "nanl", "fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl", "sinh", "sinhf", "sinhl", "cosh", "coshf", "coshl", "tanh", "tanhf", "tanhl", "asin", "asinf", "asinl", "acos", "acosf", "acosl", "atan", "atanf", "atanl", "asinh", "asinhf", "asinhl", "acosh", "acoshf", "acoshl", "atanh", "atanhf", "atanhl", "cbrt", "cbrtf", "cbrtl", "erf", "erff", "erfl", "erfc", "erfcf", "erfcl", "tgamma", "tgammaf", "tgammal", "lgamma", "lgammaf", "lgammal", "exp", "expf", "expl", "exp2", "exp2f", "exp2l", "expm1", "expm1f", "expm1l", "log", "logf", "logl", "log10", "log10f", "log10l", "log1p", "log1pf", "log1pl", "log2", "log2f", "log2l", "ceil", "ceilf", "ceill", "floor", "floorf", "floorl", "trunc", "truncf", "truncl", "round", "roundf", "roundl", "nearbyint", "nearbyintf", "nearbyintl", "rint", "rintf", "rintl", "logb", "logbf", "logbl", "ilogb", "ilogbf", "ilogbl", "lrint", "lrintf", "lrintl", "lround", "lroundf", "lroundl", "llrint", "llrintf", "llrintl", "llround", "llroundf", "llroundl", "scalbn", "scalbnf", "scalbnl", "scalbln", "scalblnf", "scalblnl", "ldexp", "ldexpf", "ldexpl", "frexp", "frexpf", "frexpl", "modf", "modff", "modfl", "remquo", "remquof", "remquol", "pow", "powf", "powl", "atan2", "atan2f", "atan2l", "hypot", "hypotf", "hypotl", "fdim", "fdimf", "fdiml", "fmax", "fmaxf", "fmaxl", "fmin", "fminf", "fminl", "fmod", "fmodf", "fmodl", "remainder", "remainderf", "remainderl", "copysign", "copysignf", "copysignl", "fma", "fmaf", "fmal", "nextafter", "nextafterf", "nextafterl", "nexttoward", "nexttowardf", "nexttowardl", "cabs", "cabsf", "cabsl", "creal", "crealf", "creall", "cimag", "cimagf", "cimagl", "carg", "cargf", "cargl", "conj", "conjf", "conjl", "cproj", "cprojf", "cprojl", "csin", "csinf", "csinl", "ccos", "ccosf", "ccosl", "ctan", "ctanf", "ctanl", "csinh", "csinhf", "csinhl", "ccosh", "ccoshf", "ccoshl", "ctanh", "ctanhf", "ctanhl", "casin", "casinf", "casinl", "cacos", "cacosf", "cacosl", "catan", "catanf", "catanl", "casinh", "casinhf", "casinhl", "cacosh", "cacoshf", "cacoshl", "catanh", "catanhf", "catanhl", "cexp", "cexpf", "cexpl", "clog", "clogf", "clogl", "csqrt", "csqrtf", "csqrtl", "cpow", "cpowf", "cpowl", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "iswdigit", "iswalpha", "iswalnum", "iswspace", "iswlower", "iswupper", "iswxdigit", "iswprint", "iswblank", "iswcntrl", "iswgraph", "iswpunct", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper", "strcmp", "memcmp", "bcmp", "strncmp", "strcoll", "memchr", "strrchr", "strpbrk", "strspn", "strcspn", "strtok", "strxfrm", "strnlen", "strerror", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "realloc", "__builtin_strdup", "strdup", "strndup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "memccpy", "bcopy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "sprintf", "snprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "scanf", "fscanf", "sscanf", "feclearexcept", "fetestexcept"} {
+	for _, name := range []string{"exit", "_Exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fgetpos", "fsetpos", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "perror", "abs", "labs", "llabs", "div", "ldiv", "lldiv", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs", "wcsrtombs", "rand", "srand", "getenv", "system", "atexit", "setlocale", "localeconv", "clock", "difftime", "time", "nan", "nanf", "nanl", "fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl", "sinh", "sinhf", "sinhl", "cosh", "coshf", "coshl", "tanh", "tanhf", "tanhl", "asin", "asinf", "asinl", "acos", "acosf", "acosl", "atan", "atanf", "atanl", "asinh", "asinhf", "asinhl", "acosh", "acoshf", "acoshl", "atanh", "atanhf", "atanhl", "cbrt", "cbrtf", "cbrtl", "erf", "erff", "erfl", "erfc", "erfcf", "erfcl", "tgamma", "tgammaf", "tgammal", "lgamma", "lgammaf", "lgammal", "exp", "expf", "expl", "exp2", "exp2f", "exp2l", "expm1", "expm1f", "expm1l", "log", "logf", "logl", "log10", "log10f", "log10l", "log1p", "log1pf", "log1pl", "log2", "log2f", "log2l", "ceil", "ceilf", "ceill", "floor", "floorf", "floorl", "trunc", "truncf", "truncl", "round", "roundf", "roundl", "nearbyint", "nearbyintf", "nearbyintl", "rint", "rintf", "rintl", "logb", "logbf", "logbl", "ilogb", "ilogbf", "ilogbl", "lrint", "lrintf", "lrintl", "lround", "lroundf", "lroundl", "llrint", "llrintf", "llrintl", "llround", "llroundf", "llroundl", "scalbn", "scalbnf", "scalbnl", "scalbln", "scalblnf", "scalblnl", "ldexp", "ldexpf", "ldexpl", "frexp", "frexpf", "frexpl", "modf", "modff", "modfl", "remquo", "remquof", "remquol", "pow", "powf", "powl", "atan2", "atan2f", "atan2l", "hypot", "hypotf", "hypotl", "fdim", "fdimf", "fdiml", "fmax", "fmaxf", "fmaxl", "fmin", "fminf", "fminl", "fmod", "fmodf", "fmodl", "remainder", "remainderf", "remainderl", "copysign", "copysignf", "copysignl", "fma", "fmaf", "fmal", "nextafter", "nextafterf", "nextafterl", "nexttoward", "nexttowardf", "nexttowardl", "cabs", "cabsf", "cabsl", "creal", "crealf", "creall", "cimag", "cimagf", "cimagl", "carg", "cargf", "cargl", "conj", "conjf", "conjl", "cproj", "cprojf", "cprojl", "csin", "csinf", "csinl", "ccos", "ccosf", "ccosl", "ctan", "ctanf", "ctanl", "csinh", "csinhf", "csinhl", "ccosh", "ccoshf", "ccoshl", "ctanh", "ctanhf", "ctanhl", "casin", "casinf", "casinl", "cacos", "cacosf", "cacosl", "catan", "catanf", "catanl", "casinh", "casinhf", "casinhl", "cacosh", "cacoshf", "cacoshl", "catanh", "catanhf", "catanhl", "cexp", "cexpf", "cexpl", "clog", "clogf", "clogl", "csqrt", "csqrtf", "csqrtl", "cpow", "cpowf", "cpowl", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "iswdigit", "iswalpha", "iswalnum", "iswspace", "iswlower", "iswupper", "iswxdigit", "iswprint", "iswblank", "iswcntrl", "iswgraph", "iswpunct", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper", "strcmp", "memcmp", "bcmp", "strncmp", "strcoll", "memchr", "wcslen", "wcscmp", "wcsncmp", "wcscoll", "wcsxfrm", "wcstok", "wcschr", "wcsrchr", "wcsstr", "wcspbrk", "wcsspn", "wcscspn", "wcscpy", "wcsncpy", "wcscat", "wcsncat", "wmemchr", "wmemcmp", "wmemcpy", "wmemmove", "wmemset", "strrchr", "strpbrk", "strspn", "strcspn", "strtok", "strxfrm", "strnlen", "strerror", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "realloc", "__builtin_strdup", "strdup", "strndup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "memccpy", "bcopy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "sprintf", "snprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "scanf", "fscanf", "sscanf", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -5795,6 +5795,1029 @@ func TestStringBoundedCompareSearchExterns(t *testing.T) {
 	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
 		t.Fatalf("memchr miss ret=%#v, want null pointer", ret)
 	}
+}
+
+func TestWideMemoryCharSearchExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wmemchr")
+	if !ok {
+		t.Fatal("missing wmemchr extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	data := mustAllocBytes(t, mem, "wmemchr:data", make([]byte, 16), false, blockLocal)
+	for i, ch := range []int64{'A', 0x1234, 0, 'Z'} {
+		if err := mem.Store(data+uint64(i*4), bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, ch)); err != nil {
+			t.Fatalf("store wide %d: %v", i, err)
+		}
+	}
+	tests := []struct {
+		name  string
+		ptr   uint64
+		ch    int64
+		count uint64
+		want  uint64
+	}{
+		{name: "hit", ptr: data, ch: 0x1234, count: 4, want: data + 4},
+		{name: "nul", ptr: data, ch: 0, count: 4, want: data + 8},
+		{name: "miss", ptr: data, ch: 'x', count: 4, want: 0},
+		{name: "zero invalid", ptr: 0xdeadbeef, ch: 'x', count: 0, want: 0},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.ptr), IntValue(bytecode.TypeI32, tt.ch), UIntValue(bytecode.TypeU64, tt.count)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != tt.want {
+			t.Fatalf("%s ret=%#v, want pointer %#x", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideMemoryCompareExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wmemcmp")
+	if !ok {
+		t.Fatal("missing wmemcmp extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	left := mustAllocBytes(t, mem, "wmemcmp:left", make([]byte, 12), false, blockLocal)
+	right := mustAllocBytes(t, mem, "wmemcmp:right", make([]byte, 12), false, blockLocal)
+	for i, ch := range []int64{'A', 0x1234, 'C'} {
+		if err := mem.Store(left+uint64(i*4), bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, ch)); err != nil {
+			t.Fatalf("store left %d: %v", i, err)
+		}
+	}
+	for i, ch := range []int64{'A', 0x1235, 'B'} {
+		if err := mem.Store(right+uint64(i*4), bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, ch)); err != nil {
+			t.Fatalf("store right %d: %v", i, err)
+		}
+	}
+	tests := []struct {
+		name  string
+		a     uint64
+		b     uint64
+		count uint64
+		want  int64
+	}{
+		{name: "zero invalid", a: 0xdeadbeef, b: 0xcafebabe, count: 0, want: 0},
+		{name: "equal prefix", a: left, b: right, count: 1, want: 0},
+		{name: "less", a: left, b: right, count: 2, want: -1},
+		{name: "greater", a: right, b: left, count: 2, want: 1},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.a), PtrValue(tt.b), UIntValue(bytecode.TypeU64, tt.count)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		got := int64(int32(ret.Int))
+		if ret.Type != bytecode.TypeI32 || got != tt.want {
+			t.Fatalf("%s ret=%#v, want i32 %d", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideMemoryCopyExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wmemcpy")
+	if !ok {
+		t.Fatal("missing wmemcpy extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	src := mustAllocBytes(t, mem, "wmemcpy:src", make([]byte, 12), false, blockLocal)
+	dst := mustAllocBytes(t, mem, "wmemcpy:dst", make([]byte, 12), false, blockLocal)
+	for i, ch := range []int64{'Q', 0x1234, 0} {
+		if err := mem.Store(src+uint64(i*4), bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, ch)); err != nil {
+			t.Fatalf("store src %d: %v", i, err)
+		}
+	}
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil {
+		t.Fatalf("copy ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("copy ret=%#v, want dst %#x", ret, dst)
+	}
+	for i, want := range []uint32{'Q', 0x1234, 0} {
+		got, err := loadWideChar(mem, dst+uint64(i*4))
+		if err != nil {
+			t.Fatalf("load dst %d: %v", i, err)
+		}
+		if got != want {
+			t.Fatalf("dst[%d]=%#x, want %#x", i, got, want)
+		}
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0xdeadbeef), PtrValue(0xcafebabe), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0xdeadbeef {
+		t.Fatalf("zero ret=%#v, want invalid dst preserved", ret)
+	}
+}
+
+func TestWideMemoryMoveExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wmemmove")
+	if !ok {
+		t.Fatal("missing wmemmove extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	data := mustAllocBytes(t, mem, "wmemmove:data", make([]byte, 20), false, blockLocal)
+	store := func(values ...int64) {
+		t.Helper()
+		for i, ch := range values {
+			if err := mem.Store(data+uint64(i*4), bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, ch)); err != nil {
+				t.Fatalf("store %d: %v", i, err)
+			}
+		}
+	}
+	check := func(values ...uint32) {
+		t.Helper()
+		for i, want := range values {
+			got, err := loadWideChar(mem, data+uint64(i*4))
+			if err != nil {
+				t.Fatalf("load %d: %v", i, err)
+			}
+			if got != want {
+				t.Fatalf("data[%d]=%#x, want %#x", i, got, want)
+			}
+		}
+	}
+	store('a', 'b', 'c', 'd', 0)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(data + 4), PtrValue(data), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil {
+		t.Fatalf("forward overlap ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != data+4 {
+		t.Fatalf("forward overlap ret=%#v, want dst %#x", ret, data+4)
+	}
+	check('a', 'a', 'b', 'c', 0)
+	store('a', 'b', 'c', 'd', 0)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(data), PtrValue(data + 4), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil {
+		t.Fatalf("backward overlap ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != data {
+		t.Fatalf("backward overlap ret=%#v, want dst %#x", ret, data)
+	}
+	check('b', 'c', 'd', 'd', 0)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0xdeadbeef), PtrValue(0xcafebabe), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0xdeadbeef {
+		t.Fatalf("zero ret=%#v, want invalid dst preserved", ret)
+	}
+}
+
+func TestWideMemorySetExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wmemset")
+	if !ok {
+		t.Fatal("missing wmemset extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	data := mustAllocBytes(t, mem, "wmemset:data", make([]byte, 12), false, blockLocal)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(data), IntValue(bytecode.TypeI32, 0x1234), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil {
+		t.Fatalf("set ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != data {
+		t.Fatalf("set ret=%#v, want dst %#x", ret, data)
+	}
+	for i := 0; i < 3; i++ {
+		got, err := loadWideChar(mem, data+uint64(i*4))
+		if err != nil {
+			t.Fatalf("load %d: %v", i, err)
+		}
+		if got != 0x1234 {
+			t.Fatalf("data[%d]=%#x, want 0x1234", i, got)
+		}
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0xdeadbeef), IntValue(bytecode.TypeI32, 'x'), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0xdeadbeef {
+		t.Fatalf("zero ret=%#v, want invalid dst preserved", ret)
+	}
+}
+
+func TestWideStringLengthExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcslen")
+	if !ok {
+		t.Fatal("missing wcslen extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	empty := mustAllocBytes(t, mem, "wcslen:empty", make([]byte, 4), false, blockLocal)
+	text := mustAllocBytes(t, mem, "wcslen:text", make([]byte, 16), false, blockLocal)
+	for i, ch := range []uint32{'A', 0x1234, 'Z', 0} {
+		if err := storeWideChar(mem, text+uint64(i*4), ch); err != nil {
+			t.Fatalf("store text %d: %v", i, err)
+		}
+	}
+	tests := []struct {
+		name string
+		addr uint64
+		want uint64
+	}{
+		{name: "empty", addr: empty, want: 0},
+		{name: "text", addr: text, want: 3},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.addr)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypeU64 || ret.Int != tt.want {
+			t.Fatalf("%s ret=%#v, want u64 %d", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideStringCompareExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcscmp")
+	if !ok {
+		t.Fatal("missing wcscmp extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	abc := makeWide("wcscmp:abc", 'a', 'b', 'c', 0)
+	abd := makeWide("wcscmp:abd", 'a', 'b', 'd', 0)
+	ab := makeWide("wcscmp:ab", 'a', 'b', 0)
+	high := makeWide("wcscmp:high", 0x1234, 0)
+	low := makeWide("wcscmp:low", 0x1233, 0)
+	empty := makeWide("wcscmp:empty", 0)
+	tests := []struct {
+		name string
+		a    uint64
+		b    uint64
+		want int64
+	}{
+		{name: "equal", a: abc, b: abc, want: 0},
+		{name: "less", a: abc, b: abd, want: -1},
+		{name: "greater", a: abd, b: abc, want: 1},
+		{name: "prefix greater", a: abc, b: ab, want: 1},
+		{name: "prefix less", a: ab, b: abc, want: -1},
+		{name: "empty", a: empty, b: empty, want: 0},
+		{name: "high", a: high, b: low, want: 1},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.a), PtrValue(tt.b)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		got := int64(int32(ret.Int))
+		if ret.Type != bytecode.TypeI32 || got != tt.want {
+			t.Fatalf("%s ret=%#v, want i32 %d", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideStringCollateExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcscoll")
+	if !ok {
+		t.Fatal("missing wcscoll extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	abc := makeWide("wcscoll:abc", 'a', 'b', 'c', 0)
+	abd := makeWide("wcscoll:abd", 'a', 'b', 'd', 0)
+	high := makeWide("wcscoll:high", 0x1234, 0)
+	low := makeWide("wcscoll:low", 0x1233, 0)
+	tests := []struct {
+		name string
+		a    uint64
+		b    uint64
+		want int64
+	}{
+		{name: "equal", a: abc, b: abc, want: 0},
+		{name: "less", a: abc, b: abd, want: -1},
+		{name: "greater", a: abd, b: abc, want: 1},
+		{name: "high", a: high, b: low, want: 1},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.a), PtrValue(tt.b)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		got := int64(int32(ret.Int))
+		if ret.Type != bytecode.TypeI32 || got != tt.want {
+			t.Fatalf("%s ret=%#v, want i32 %d", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideStringNCompareExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcsncmp")
+	if !ok {
+		t.Fatal("missing wcsncmp extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	abc := makeWide("wcsncmp:abc", 'a', 'b', 'c', 0)
+	abd := makeWide("wcsncmp:abd", 'a', 'b', 'd', 0)
+	ab := makeWide("wcsncmp:ab", 'a', 'b', 0)
+	high := makeWide("wcsncmp:high", 0x1234, 0)
+	low := makeWide("wcsncmp:low", 0x1233, 0)
+	tests := []struct {
+		name  string
+		a     uint64
+		b     uint64
+		count uint64
+		want  int64
+	}{
+		{name: "zero invalid", a: 0xdeadbeef, b: 0xcafebabe, count: 0, want: 0},
+		{name: "equal prefix", a: abc, b: abd, count: 2, want: 0},
+		{name: "less", a: abc, b: abd, count: 3, want: -1},
+		{name: "greater", a: abd, b: abc, count: 3, want: 1},
+		{name: "early terminator", a: ab, b: abc, count: 3, want: -1},
+		{name: "high", a: high, b: low, count: 1, want: 1},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.a), PtrValue(tt.b), UIntValue(bytecode.TypeU64, tt.count)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		got := int64(int32(ret.Int))
+		if ret.Type != bytecode.TypeI32 || got != tt.want {
+			t.Fatalf("%s ret=%#v, want i32 %d", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideStringCharSearchExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcschr")
+	if !ok {
+		t.Fatal("missing wcschr extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	text := mustAllocBytes(t, mem, "wcschr:text", make([]byte, 16), false, blockLocal)
+	for i, ch := range []uint32{'a', 0x1234, 'c', 0} {
+		if err := storeWideChar(mem, text+uint64(i*4), ch); err != nil {
+			t.Fatalf("store text %d: %v", i, err)
+		}
+	}
+	tests := []struct {
+		name string
+		ch   int64
+		want uint64
+	}{
+		{name: "hit", ch: 0x1234, want: text + 4},
+		{name: "nul", ch: 0, want: text + 12},
+		{name: "miss", ch: 'z', want: 0},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, tt.ch)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != tt.want {
+			t.Fatalf("%s ret=%#v, want pointer %#x", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideStringReverseCharSearchExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcsrchr")
+	if !ok {
+		t.Fatal("missing wcsrchr extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	text := mustAllocBytes(t, mem, "wcsrchr:text", make([]byte, 24), false, blockLocal)
+	for i, ch := range []uint32{'a', 0x1234, 'b', 0x1234, 'c', 0} {
+		if err := storeWideChar(mem, text+uint64(i*4), ch); err != nil {
+			t.Fatalf("store text %d: %v", i, err)
+		}
+	}
+	tests := []struct {
+		name string
+		ch   int64
+		want uint64
+	}{
+		{name: "last hit", ch: 0x1234, want: text + 12},
+		{name: "nul", ch: 0, want: text + 20},
+		{name: "miss", ch: 'z', want: 0},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, tt.ch)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != tt.want {
+			t.Fatalf("%s ret=%#v, want pointer %#x", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideStringSearchExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcsstr")
+	if !ok {
+		t.Fatal("missing wcsstr extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	haystack := makeWide("wcsstr:haystack", 'a', 0x1234, 'c', 'd', 0)
+	empty := makeWide("wcsstr:empty", 0)
+	full := makeWide("wcsstr:full", 'a', 0x1234, 'c', 'd', 0)
+	middle := makeWide("wcsstr:middle", 0x1234, 'c', 0)
+	suffix := makeWide("wcsstr:suffix", 'd', 0)
+	miss := makeWide("wcsstr:miss", 'x', 0)
+	tests := []struct {
+		name   string
+		needle uint64
+		want   uint64
+	}{
+		{name: "empty", needle: empty, want: haystack},
+		{name: "full", needle: full, want: haystack},
+		{name: "middle", needle: middle, want: haystack + 4},
+		{name: "suffix", needle: suffix, want: haystack + 12},
+		{name: "miss", needle: miss, want: 0},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(haystack), PtrValue(tt.needle)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != tt.want {
+			t.Fatalf("%s ret=%#v, want pointer %#x", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideStringSetSearchExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcspbrk")
+	if !ok {
+		t.Fatal("missing wcspbrk extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	text := makeWide("wcspbrk:text", 'a', 'b', 0x1234, 'd', 0)
+	highSet := makeWide("wcspbrk:high", 0x1234, 'x', 0)
+	missSet := makeWide("wcspbrk:miss", 'x', 'y', 0)
+	emptySet := makeWide("wcspbrk:empty", 0)
+	tests := []struct {
+		name string
+		set  uint64
+		want uint64
+	}{
+		{name: "hit", set: highSet, want: text + 8},
+		{name: "miss", set: missSet, want: 0},
+		{name: "empty", set: emptySet, want: 0},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(tt.set)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != tt.want {
+			t.Fatalf("%s ret=%#v, want pointer %#x", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideStringSpanExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcsspn")
+	if !ok {
+		t.Fatal("missing wcsspn extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	text := makeWide("wcsspn:text", 'a', 0x1234, 'c', 0)
+	fullSet := makeWide("wcsspn:full", 'a', 0x1234, 'c', 0)
+	partialSet := makeWide("wcsspn:partial", 'a', 0x1234, 0)
+	emptySet := makeWide("wcsspn:empty", 0)
+	emptyText := makeWide("wcsspn:empty-text", 0)
+	tests := []struct {
+		name string
+		s    uint64
+		set  uint64
+		want uint64
+	}{
+		{name: "full", s: text, set: fullSet, want: 3},
+		{name: "partial", s: text, set: partialSet, want: 2},
+		{name: "empty set", s: text, set: emptySet, want: 0},
+		{name: "empty text", s: emptyText, set: fullSet, want: 0},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.s), PtrValue(tt.set)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypeU64 || ret.Int != tt.want {
+			t.Fatalf("%s ret=%#v, want u64 %d", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideStringComplementSpanExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcscspn")
+	if !ok {
+		t.Fatal("missing wcscspn extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	text := makeWide("wcscspn:text", 'a', 0x1234, 'c', 0)
+	rejectHigh := makeWide("wcscspn:reject-high", 0x1234, 0)
+	rejectMiss := makeWide("wcscspn:reject-miss", 'x', 0)
+	emptyReject := makeWide("wcscspn:empty", 0)
+	emptyText := makeWide("wcscspn:empty-text", 0)
+	tests := []struct {
+		name   string
+		s      uint64
+		reject uint64
+		want   uint64
+	}{
+		{name: "early reject", s: text, reject: rejectHigh, want: 1},
+		{name: "full", s: text, reject: rejectMiss, want: 3},
+		{name: "empty reject", s: text, reject: emptyReject, want: 3},
+		{name: "empty text", s: emptyText, reject: rejectHigh, want: 0},
+	}
+	for _, tt := range tests {
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.s), PtrValue(tt.reject)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypeU64 || ret.Int != tt.want {
+			t.Fatalf("%s ret=%#v, want u64 %d", tt.name, ret, tt.want)
+		}
+	}
+}
+
+func TestWideStringCopyExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcscpy")
+	if !ok {
+		t.Fatal("missing wcscpy extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	src := makeWide("wcscpy:src", 'A', 0x1234, 'Z', 0)
+	dst := makeWide("wcscpy:dst", '?', '?', '?', '?')
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src)})
+	if err != nil || exit != nil {
+		t.Fatalf("ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("ret=%#v, want pointer %#x", ret, dst)
+	}
+	for i, want := range []uint32{'A', 0x1234, 'Z', 0} {
+		got, err := loadWideChar(mem, dst+uint64(i*4))
+		if err != nil {
+			t.Fatalf("load dst[%d]: %v", i, err)
+		}
+		if got != want {
+			t.Fatalf("dst[%d]=%#x, want %#x", i, got, want)
+		}
+	}
+
+	empty := makeWide("wcscpy:empty", 0)
+	emptyDst := makeWide("wcscpy:empty-dst", 'x', 'y')
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(emptyDst), PtrValue(empty)})
+	if err != nil || exit != nil {
+		t.Fatalf("empty ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != emptyDst {
+		t.Fatalf("empty ret=%#v, want pointer %#x", ret, emptyDst)
+	}
+	got, err := loadWideChar(mem, emptyDst)
+	if err != nil {
+		t.Fatalf("load empty dst: %v", err)
+	}
+	if got != 0 {
+		t.Fatalf("empty dst[0]=%#x, want 0", got)
+	}
+}
+
+func TestWideStringNCopyExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcsncpy")
+	if !ok {
+		t.Fatal("missing wcsncpy extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	assertWide := func(name string, addr uint64, want ...uint32) {
+		t.Helper()
+		for i, ch := range want {
+			got, err := loadWideChar(mem, addr+uint64(i*4))
+			if err != nil {
+				t.Fatalf("%s load[%d]: %v", name, i, err)
+			}
+			if got != ch {
+				t.Fatalf("%s[%d]=%#x, want %#x", name, i, got, ch)
+			}
+		}
+	}
+
+	src := makeWide("wcsncpy:src", 'x', 0x1234, 0)
+	dst := makeWide("wcsncpy:dst", '?', '?', '?', '?', '?')
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil {
+		t.Fatalf("ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("ret=%#v, want pointer %#x", ret, dst)
+	}
+	assertWide("padded dst", dst, 'x', 0x1234, 0, 0, '?')
+
+	truncSrc := makeWide("wcsncpy:trunc-src", 'p', 'q', 'r', 0)
+	truncDst := makeWide("wcsncpy:trunc-dst", '!', '!', '!', 0)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(truncDst), PtrValue(truncSrc), UIntValue(bytecode.TypeU64, 2)})
+	if err != nil || exit != nil {
+		t.Fatalf("trunc ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != truncDst {
+		t.Fatalf("trunc ret=%#v, want pointer %#x", ret, truncDst)
+	}
+	assertWide("truncated dst", truncDst, 'p', 'q', '!', 0)
+
+	zeroDst := makeWide("wcsncpy:zero-dst", 0x7777)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(zeroDst), PtrValue(0), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != zeroDst {
+		t.Fatalf("zero ret=%#v, want pointer %#x", ret, zeroDst)
+	}
+	assertWide("zero-count dst", zeroDst, 0x7777)
+}
+
+func TestWideStringConcatExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcscat")
+	if !ok {
+		t.Fatal("missing wcscat extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	assertWide := func(name string, addr uint64, want ...uint32) {
+		t.Helper()
+		for i, ch := range want {
+			got, err := loadWideChar(mem, addr+uint64(i*4))
+			if err != nil {
+				t.Fatalf("%s load[%d]: %v", name, i, err)
+			}
+			if got != ch {
+				t.Fatalf("%s[%d]=%#x, want %#x", name, i, got, ch)
+			}
+		}
+	}
+
+	dst := makeWide("wcscat:dst", 'A', 0, '?', '?', '?')
+	src := makeWide("wcscat:src", 0x1234, 'Z', 0)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src)})
+	if err != nil || exit != nil {
+		t.Fatalf("ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("ret=%#v, want pointer %#x", ret, dst)
+	}
+	assertWide("appended dst", dst, 'A', 0x1234, 'Z', 0, '?')
+
+	empty := makeWide("wcscat:empty", 0)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(empty)})
+	if err != nil || exit != nil {
+		t.Fatalf("empty ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("empty ret=%#v, want pointer %#x", ret, dst)
+	}
+	assertWide("empty append dst", dst, 'A', 0x1234, 'Z', 0, '?')
+}
+
+func TestWideStringNConcatExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcsncat")
+	if !ok {
+		t.Fatal("missing wcsncat extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	assertWide := func(name string, addr uint64, want ...uint32) {
+		t.Helper()
+		for i, ch := range want {
+			got, err := loadWideChar(mem, addr+uint64(i*4))
+			if err != nil {
+				t.Fatalf("%s load[%d]: %v", name, i, err)
+			}
+			if got != ch {
+				t.Fatalf("%s[%d]=%#x, want %#x", name, i, got, ch)
+			}
+		}
+	}
+
+	dst := makeWide("wcsncat:dst", 'A', 0, '?', '?', '?')
+	src := makeWide("wcsncat:src", 0x1234, 'Z', 'Q', 0)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 2)})
+	if err != nil || exit != nil {
+		t.Fatalf("ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("ret=%#v, want pointer %#x", ret, dst)
+	}
+	assertWide("limited append dst", dst, 'A', 0x1234, 'Z', 0, '?')
+
+	emptyDst := makeWide("wcsncat:empty-dst", 'x', 0, '?')
+	empty := makeWide("wcsncat:empty", 0)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(emptyDst), PtrValue(empty), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil {
+		t.Fatalf("empty ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != emptyDst {
+		t.Fatalf("empty ret=%#v, want pointer %#x", ret, emptyDst)
+	}
+	assertWide("empty append dst", emptyDst, 'x', 0, '?')
+
+	zeroDst := makeWide("wcsncat:zero-dst", 'z', 0, '?')
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(zeroDst), PtrValue(0), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != zeroDst {
+		t.Fatalf("zero ret=%#v, want pointer %#x", ret, zeroDst)
+	}
+	assertWide("zero append dst", zeroDst, 'z', 0, '?')
+}
+
+func TestWideStringTransformExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcsxfrm")
+	if !ok {
+		t.Fatal("missing wcsxfrm extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	assertWide := func(name string, addr uint64, want ...uint32) {
+		t.Helper()
+		for i, ch := range want {
+			got, err := loadWideChar(mem, addr+uint64(i*4))
+			if err != nil {
+				t.Fatalf("%s load[%d]: %v", name, i, err)
+			}
+			if got != ch {
+				t.Fatalf("%s[%d]=%#x, want %#x", name, i, got, ch)
+			}
+		}
+	}
+
+	src := makeWide("wcsxfrm:src", 'a', 0x1234, 'z', 0)
+	dst := makeWide("wcsxfrm:dst", '?', '?', '?', '?')
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil {
+		t.Fatalf("ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 3 {
+		t.Fatalf("ret=%#v, want size 3", ret)
+	}
+	assertWide("truncated dst", dst, 'a', 0x1234, 0, '?')
+
+	exact := makeWide("wcsxfrm:exact", '?', '?', '?', '?')
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(exact), PtrValue(src), UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil {
+		t.Fatalf("exact ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 3 {
+		t.Fatalf("exact ret=%#v, want size 3", ret)
+	}
+	assertWide("exact dst", exact, 'a', 0x1234, 'z', 0)
+
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(src), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 3 {
+		t.Fatalf("zero ret=%#v, want size 3", ret)
+	}
+}
+
+func TestWideStringTokenExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	fn, ok := reg.Lookup("wcstok")
+	if !ok {
+		t.Fatal("missing wcstok extern")
+	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	assertToken := func(name string, addr uint64, want ...uint32) {
+		t.Helper()
+		for i, ch := range append(want, 0) {
+			got, err := loadWideChar(mem, addr+uint64(i*4))
+			if err != nil {
+				t.Fatalf("%s load[%d]: %v", name, i, err)
+			}
+			if got != ch {
+				t.Fatalf("%s[%d]=%#x, want %#x", name, i, got, ch)
+			}
+		}
+	}
+	wideAt := func(base uint64, index int64) uint64 {
+		t.Helper()
+		addr, err := wideElementAddr(base, index)
+		if err != nil {
+			t.Fatalf("wide address %d: %v", index, err)
+		}
+		return addr
+	}
+	savePtr := func(name string) uint64 {
+		t.Helper()
+		return mustAlloc(t, mem, name, mem.target.PointerSize, mem.target.PointerAlign, false, blockLocal)
+	}
+	loadSave := func(name string, addr uint64) uint64 {
+		t.Helper()
+		got, err := mem.Load(addr, bytecode.TypePtr, mem.target.PointerAlign)
+		if err != nil {
+			t.Fatalf("%s load save: %v", name, err)
+		}
+		return got.Int
+	}
+	call := func(name string, s uint64, delim uint64, save uint64) uint64 {
+		t.Helper()
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(s), PtrValue(delim), PtrValue(save)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s ret=%#v exit=%#v err=%v", name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr {
+			t.Fatalf("%s ret=%#v, want pointer", name, ret)
+		}
+		return ret.Int
+	}
+
+	delims := makeWide("wcstok:delims", ',', ';', 0)
+	text := makeWide("wcstok:text", ',', ',', 'a', 'l', 'p', 'h', 'a', ',', 'b', 'e', 't', 'a', ';', 'g', 'a', 'm', 'm', 'a', 0)
+	save := savePtr("wcstok:save")
+	tok := call("first", text, delims, save)
+	if tok != wideAt(text, 2) || loadSave("first", save) != wideAt(text, 8) {
+		t.Fatalf("first tok=%#x save=%#x", tok, loadSave("first", save))
+	}
+	assertToken("first token", tok, 'a', 'l', 'p', 'h', 'a')
+	tok = call("second", 0, delims, save)
+	if tok != wideAt(text, 8) || loadSave("second", save) != wideAt(text, 13) {
+		t.Fatalf("second tok=%#x save=%#x", tok, loadSave("second", save))
+	}
+	assertToken("second token", tok, 'b', 'e', 't', 'a')
+	tok = call("third", 0, delims, save)
+	if tok != wideAt(text, 13) || loadSave("third", save) != 0 {
+		t.Fatalf("third tok=%#x save=%#x", tok, loadSave("third", save))
+	}
+	assertToken("third token", tok, 'g', 'a', 'm', 'm', 'a')
+	if tok = call("exhausted", 0, delims, save); tok != 0 {
+		t.Fatalf("exhausted tok=%#x, want null", tok)
+	}
+
+	text2 := makeWide("wcstok:changing", 'a', 'l', 'p', 'h', 'a', ',', 'b', 'e', 't', 'a', ';', 'g', 'a', 'm', 'm', 'a', '.', 'd', 'e', 'l', 't', 'a', 0)
+	comma := makeWide("wcstok:comma", ',', 0)
+	semicolon := makeWide("wcstok:semicolon", ';', 0)
+	dot := makeWide("wcstok:dot", '.', 0)
+	save2 := savePtr("wcstok:save-changing")
+	if tok = call("changing first", text2, comma, save2); tok != text2 {
+		t.Fatalf("changing first tok=%#x, want %#x", tok, text2)
+	}
+	if tok = call("changing second", 0, semicolon, save2); tok != wideAt(text2, 6) {
+		t.Fatalf("changing second tok=%#x", tok)
+	}
+	if tok = call("changing third", 0, dot, save2); tok != wideAt(text2, 11) {
+		t.Fatalf("changing third tok=%#x", tok)
+	}
+	if tok = call("changing fourth", 0, dot, save2); tok != wideAt(text2, 17) || loadSave("changing fourth", save2) != 0 {
+		t.Fatalf("changing fourth tok=%#x save=%#x", tok, loadSave("changing fourth", save2))
+	}
+
+	emptyDelims := makeWide("wcstok:empty-delims", 0)
+	whole := makeWide("wcstok:whole", 'w', 'i', 'd', 'e', 0)
+	save3 := savePtr("wcstok:save-empty")
+	tok = call("empty delims", whole, emptyDelims, save3)
+	if tok != whole || loadSave("empty delims", save3) != 0 {
+		t.Fatalf("empty delimiter tok=%#x save=%#x", tok, loadSave("empty delims", save3))
+	}
+	assertToken("empty delimiter token", tok, 'w', 'i', 'd', 'e')
 }
 
 func TestStringReverseAndSetSearchExterns(t *testing.T) {
