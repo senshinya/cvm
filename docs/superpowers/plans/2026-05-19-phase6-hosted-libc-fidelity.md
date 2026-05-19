@@ -89,10 +89,10 @@ Calibration before execution: Check C failure expectations and current close beh
 
 Calibration before execution: Re-read `tmpnamExtern` and existing stub tests; confirm `tmpnam(NULL)` currently returns null.
 
-- [ ] Add failing direct test expecting a stable non-null static C string for `tmpnam(NULL)`.
-- [ ] Implement deterministic generated names such as `/tmp/cvm-tmp-0`.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): generate hermetic tmp names`.
+- [x] Add failing direct test expecting a stable non-null static C string for `tmpnam(NULL)`.
+- [x] Implement deterministic generated names such as `/tmp/cvm-tmp-0`.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): generate hermetic tmp names`.
 
 ## Milestone 10: Deterministic `tmpnam(buffer)`
 

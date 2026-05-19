@@ -115,7 +115,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("fopen", fopenExtern("fopen", r))
 	r.Register("freopen", freopenExtern("freopen", r))
 	r.Register("tmpfile", tmpfileExtern("tmpfile", r))
-	r.Register("tmpnam", tmpnamExtern("tmpnam"))
+	r.Register("tmpnam", tmpnamExtern("tmpnam", r))
 	for _, name := range []string{"puts", "puts_unlocked"} {
 		r.Register(name, putsExtern(name, r))
 	}
@@ -525,7 +525,7 @@ func tmpfileExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
-func tmpnamExtern(name string) ExternFunc {
+func tmpnamExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
@@ -533,15 +533,21 @@ func tmpnamExtern(name string) ExternFunc {
 		if !isPointerType(args[0].Type) {
 			return Value{}, nil, fmt.Errorf("%s expects buffer pointer", name)
 		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		tmpName := "/tmp/cvm-tmp-0"
 		if args[0].Int != 0 {
-			if ec == nil || ec.Memory == nil {
-				return Value{}, nil, fmt.Errorf("%s requires memory", name)
-			}
 			if err := writeMemoryByte(ec.Memory, args[0].Int, 0); err != nil {
 				return Value{}, nil, err
 			}
+			return PtrValue(args[0].Int), nil, nil
 		}
-		return PtrValue(0), nil, nil
+		addr, err := r.staticCString(ec.Memory, "tmpnam", tmpName)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
 	}
 }
 

@@ -904,18 +904,33 @@ func TestFopenUpdateModeRequiresDirectionBarriers(t *testing.T) {
 	}
 }
 
-func TestStdioTmpnamStub(t *testing.T) {
+func TestTmpnamNullReturnsStaticName(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
 	fn, ok := reg.Lookup("tmpnam")
 	if !ok {
 		t.Fatal("missing tmpnam extern")
 	}
-	ret, exit, err := fn(context.Background(), nil, []Value{PtrValue(0)})
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0)})
 	if err != nil || exit != nil {
 		t.Fatalf("tmpnam ret=%#v exit=%#v err=%v", ret, exit, err)
 	}
-	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
-		t.Fatalf("tmpnam ret=%#v, want null", ret)
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("tmpnam ret=%#v, want non-null pointer", ret)
+	}
+	got, err := mem.ReadCString(ret.Int)
+	if err != nil {
+		t.Fatalf("tmpnam string: %v", err)
+	}
+	if got != "/tmp/cvm-tmp-0" {
+		t.Fatalf("tmpnam string = %q, want /tmp/cvm-tmp-0", got)
+	}
+	ret2, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0)})
+	if err != nil || exit != nil {
+		t.Fatalf("tmpnam second ret=%#v exit=%#v err=%v", ret2, exit, err)
+	}
+	if ret2.Type != bytecode.TypePtr || ret2.Int != ret.Int {
+		t.Fatalf("tmpnam second ret=%#v, want same static pointer %#x", ret2, ret.Int)
 	}
 }
 
