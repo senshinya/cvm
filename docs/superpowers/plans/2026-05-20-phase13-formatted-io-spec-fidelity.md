@@ -18,10 +18,15 @@ Calibration before execution: Start from closed Phase 12 and confirm the branch/
 
 Calibration before execution: Re-read `formatCString`, `scanString`, and direct/source coverage before changing behavior.
 
-- [ ] Map supported printf flags, width, precision, length modifiers, and verbs.
-- [ ] Map supported scanf width, assignment suppression, length modifiers, and verbs.
-- [ ] Record the next low-risk implementation order in this plan.
+- [x] Map supported printf flags, width, precision, length modifiers, and verbs.
+- [x] Map supported scanf width, assignment suppression, length modifiers, and verbs.
+- [x] Record the next low-risk implementation order in this plan.
 - [ ] Verify, commit `docs: map phase 13 format parser baseline`, and push.
+
+Baseline result:
+- `formatCString` parses flags, numeric and dynamic width, numeric and dynamic precision, and `hh`/`h`/`l`/`ll`/`j`/`z`/`t`/`L` length modifiers. It supports narrow string, integer, pointer, character, count, floating, and literal percent verbs, but length modifiers are only semantically honored for `%n` today.
+- `scanString` parses assignment suppression, numeric width, the same length modifiers, integer, float, pointer, count, narrow/wide text, scansets, whitespace, literals, and literal percent. Its integer, float, count, and text stores already route through length-aware helpers.
+- The next low-risk order remains printf signed and unsigned integer length semantics first, then count/text/character edge hardening, then pointer, dynamic width/precision, alternate form, floating, scanf edge cases, and fixture rechecks.
 
 ## Milestone 3: Printf Signed Integer Length Modifiers
 
