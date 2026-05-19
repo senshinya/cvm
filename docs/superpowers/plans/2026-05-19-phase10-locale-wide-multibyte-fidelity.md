@@ -14,10 +14,16 @@
 
 Calibration before execution: Start from Phase 9 closure on `codex/bytecode-runtime-phase-10`.
 
-- [ ] Create/switch Phase 10 branch.
-- [ ] Re-read Phase 10 roadmap.
-- [ ] Run baseline verification.
-- [ ] Commit branch setup docs if needed.
+- [x] Create/switch Phase 10 branch.
+- [x] Re-read Phase 10 roadmap.
+- [x] Run baseline verification.
+- [x] Commit branch setup docs if needed.
+
+Baseline:
+
+- Created `codex/bytecode-runtime-phase-10` from Phase 9 closure commit `00fcdc6`.
+- Phase 10 contains 23 milestones covering deterministic locale state, `localeconv`, wide ctype/wctrans surfaces, restartable multibyte conversion, rechecks, gap map, and closure docs.
+- Baseline `git diff --check`, `go test ./codegen`, and `go test ./...` passed with `GOCACHE=/private/tmp/cvm-go-build-cache`.
 
 ## Milestone 2: Deterministic Locale Model
 
