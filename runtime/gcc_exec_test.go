@@ -2785,13 +2785,22 @@ int main(void)
   if (dst[2] != 'p' || dst[3] != 'q')
     return 6;
 
-  if (memset(dst + 4, 'r', 2) != dst + 4)
+  if (memset(dst + 1, 0x182, 0) != dst + 1)
     return 7;
-  if (dst[4] != 'r' || dst[5] != 'r')
+  if (memset(dst + 4, 'r', 2) != dst + 4)
     return 8;
+  if (dst[4] != 'r' || dst[5] != 'r')
+    return 9;
+  if (memset(dst + 4, 0x182, 2) != dst + 4)
+    return 10;
+  if ((unsigned char)dst[4] != 0x82 || (unsigned char)dst[5] != 0x82)
+    return 11;
 
+  bzero(dst + 5, 0);
+  if ((unsigned char)dst[5] != 0x82)
+    return 12;
   bzero(dst + 5, 2);
-  return dst[5] == 0 && dst[6] == 0 ? 0 : 9;
+  return dst[5] == 0 && dst[6] == 0 ? 0 : 13;
 }
 `
 	st := runGCCExecFixture(t, "plain-memory-ops-runtime.c", source)

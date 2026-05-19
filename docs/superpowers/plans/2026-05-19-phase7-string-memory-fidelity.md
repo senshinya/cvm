@@ -158,9 +158,9 @@ Calibration before execution: Re-read `memoryBcopyExtern`.
 
 Calibration before execution: Re-read `memorySetExtern`, checked memset, and `memoryBzeroExtern`.
 
-- [ ] Add tests for zero length, high int byte masking, and exact bounds.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover memory fill boundaries`.
+- [x] Add tests for zero length, high int byte masking, and exact bounds.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover memory fill boundaries`.
 
 ## Milestone 19: `strcpy` And `stpcpy` Return Values
 

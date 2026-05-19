@@ -190,6 +190,9 @@ func (m *Memory) Copy(dst, src uint64, size int64) error {
 }
 
 func (m *Memory) Set(dst uint64, value byte, size int64) error {
+	if size == 0 {
+		return nil
+	}
 	b, off, err := m.rangeAccess(dst, size, true)
 	if err != nil {
 		return err

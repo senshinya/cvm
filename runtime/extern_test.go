@@ -2976,11 +2976,55 @@ func TestPlainMemoryOperationExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
 	buf := mustAllocBytes(t, mem, "plain-memory:buf", []byte("abcdef\x00"), false, blockLocal)
+	memsetFn, ok := reg.Lookup("memset")
+	if !ok {
+		t.Fatal("missing memset extern")
+	}
+	ret, exit, err := memsetFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(0xdeadbeef),
+		IntValue(bytecode.TypeI32, 0x182),
+		UIntValue(bytecode.TypeU64, 0),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("memset zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0xdeadbeef {
+		t.Fatalf("memset zero ret=%#v, want original pointer", ret)
+	}
+	ret, exit, err = memsetFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(buf + 4),
+		IntValue(bytecode.TypeI32, 0x182),
+		UIntValue(bytecode.TypeU64, 2),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("memset masked ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != buf+4 {
+		t.Fatalf("memset masked ret=%#v, want pointer %#x", ret, buf+4)
+	}
+	block, off, err := mem.rangeAccess(buf, 7, false)
+	if err != nil {
+		t.Fatalf("read memset buffer: %v", err)
+	}
+	if got := []byte(block.data[off+4 : off+6]); !bytes.Equal(got, []byte{0x82, 0x82}) {
+		t.Fatalf("memset masked bytes=%v, want [130 130]", got)
+	}
+
 	fn, ok := reg.Lookup("bzero")
 	if !ok {
 		t.Fatal("missing bzero extern")
 	}
-	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(0xdeadbeef),
+		UIntValue(bytecode.TypeU64, 0),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("bzero zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeVoid {
+		t.Fatalf("bzero zero ret=%#v, want void value", ret)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
 		ObjectAddrValue(buf + 2),
 		UIntValue(bytecode.TypeU64, 2),
 	})
