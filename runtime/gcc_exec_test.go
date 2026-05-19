@@ -2080,6 +2080,32 @@ int main(void)
 	}
 }
 
+func TestWideStringTransformExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  wchar_t buf[4];
+  wchar_t exact[7];
+
+  if (wcsxfrm(buf, L"abcdef", sizeof buf / sizeof buf[0]) != 6)
+    return 1;
+  if (wcscmp(buf, L"abc") != 0)
+    return 2;
+  if (wcsxfrm(exact, L"abcdef", sizeof exact / sizeof exact[0]) != 6)
+    return 3;
+  if (wcscmp(exact, L"abcdef") != 0)
+    return 4;
+  return wcsxfrm((wchar_t *)0, L"abcdef", 0) == 6 ? 0 : 5;
+}
+`
+	st := runGCCExecFixture(t, "wide-string-transform-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <time.h>

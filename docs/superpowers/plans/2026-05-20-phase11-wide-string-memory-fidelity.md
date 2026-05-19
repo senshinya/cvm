@@ -201,9 +201,9 @@ Calibration before execution: C locale collation is deterministic code-point ord
 
 Calibration before execution: Mirror C-locale `strxfrm` with wide-character destination semantics.
 
-- [ ] Register and implement `wcsxfrm`.
-- [ ] Cover length query, bounded copy with terminator, truncation, zero count, and return length.
-- [ ] Verify, commit `feat(runtime): add wcsxfrm`, and push.
+- [x] Register and implement `wcsxfrm`.
+- [x] Cover length query, bounded copy with terminator, truncation, zero count, and return length.
+- [x] Verify, commit `feat(runtime): add wcsxfrm`, and push.
 
 ## Milestone 24: `wcstok`
 

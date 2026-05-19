@@ -2545,6 +2545,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("wcscmp", wideStringCompareExtern("wcscmp"))
 	r.Register("wcsncmp", wideStringNCompareExtern("wcsncmp"))
 	r.Register("wcscoll", wideStringCompareExtern("wcscoll"))
+	r.Register("wcsxfrm", wideStringTransformExtern("wcsxfrm"))
 	r.Register("wcschr", wideStringCharSearchExtern("wcschr"))
 	r.Register("wcsrchr", wideStringReverseCharSearchExtern("wcsrchr"))
 	r.Register("wcsstr", wideStringSearchExtern("wcsstr"))
@@ -3861,6 +3862,59 @@ func wideStringNConcatExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
+func wideStringTransformExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, source, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		length, err := wideStringLength(ec.Memory, args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if count > 0 {
+			limit := count - 1
+			if limit > length {
+				limit = length
+			}
+			for i := int64(0); i < limit; i++ {
+				srcAddr, err := wideElementAddr(args[1].Int, i)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				ch, err := loadWideChar(ec.Memory, srcAddr)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				dstAddr, err := wideElementAddr(args[0].Int, i)
+				if err != nil {
+					return Value{}, nil, err
+				}
+				if err := storeWideChar(ec.Memory, dstAddr, ch); err != nil {
+					return Value{}, nil, err
+				}
+			}
+			nulAddr, err := wideElementAddr(args[0].Int, limit)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if err := storeWideChar(ec.Memory, nulAddr, 0); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return UIntValue(bytecode.TypeU64, uint64(length)), nil, nil
 	}
 }
 
