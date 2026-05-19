@@ -1607,6 +1607,8 @@ int main(void)
     return 1;
   if (strcmp(v, "configured-value") != 0)
     return 2;
+  if (getenv("CVM_TEST") != v)
+    return 4;
   return getenv("MISSING") == 0 ? 0 : 3;
 }
 `

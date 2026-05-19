@@ -3799,6 +3799,20 @@ func TestStdlibGetenvExternReadsConfiguredEnvironment(t *testing.T) {
 	if ret2.Int != ret.Int {
 		t.Fatalf("getenv pointer changed %#x -> %#x", ret.Int, ret2.Int)
 	}
+
+	mem2 := NewMemory(bytecode.DefaultTarget())
+	name2 := mustAllocBytes(t, mem2, "getenv:configured-name-2", []byte("CVM_TEST\x00"), true, blockString)
+	ret3, exit, err := fn(context.Background(), &ExternContext{Memory: mem2}, []Value{PtrValue(name2)})
+	if err != nil || exit != nil {
+		t.Fatalf("getenv other memory ret=%#v exit=%#v err=%v", ret3, exit, err)
+	}
+	if ret3.Type != bytecode.TypePtr || ret3.Int == 0 {
+		t.Fatalf("getenv other memory ret=%#v, want non-null pointer", ret3)
+	}
+	got, err = mem2.ReadCString(ret3.Int)
+	if err != nil || got != "configured-value" {
+		t.Fatalf("getenv other memory value=%q err=%v, want configured-value", got, err)
+	}
 }
 
 func TestStdlibSystemExtern(t *testing.T) {

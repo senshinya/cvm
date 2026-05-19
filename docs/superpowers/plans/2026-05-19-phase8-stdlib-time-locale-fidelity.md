@@ -156,10 +156,16 @@ Findings:
 
 Calibration before execution: Re-read `getenvExtern` and `ExternRegistry.SetEnv`.
 
-- [ ] Add tests for missing variables, configured values, stable pointers, and per-memory strings.
-- [ ] Add source-level runtime coverage with load options env.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden getenv storage`.
+- [x] Add tests for missing variables, configured values, stable pointers, and per-memory strings.
+- [x] Add source-level runtime coverage with load options env.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): harden getenv storage`.
+
+Findings:
+
+- Existing direct/source coverage already checked missing variables, configured values, and stable repeated pointers in one memory.
+- Added direct extern coverage for per-memory static string materialization through the same registry and source-level coverage that repeated `getenv` returns the same pointer.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlib.*Getenv' -count=1` passed.
 
 ## Milestone 12: `system` Hermetic Semantics
 
