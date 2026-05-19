@@ -282,8 +282,14 @@ Findings:
 
 Calibration before execution: Search source tests for restartable multibyte coverage.
 
-- [ ] Add a compact source-level runtime workflow covering `mbrlen`, `mbrtowc`, `wcrtomb`, `mbsrtowcs`, and `wcsrtombs`.
-- [ ] Verify, commit, and push `test(runtime): cover restartable multibyte workflow`.
+- [x] Add a compact source-level runtime workflow covering `mbrlen`, `mbrtowc`, `wcrtomb`, `mbsrtowcs`, and `wcsrtombs`.
+- [x] Verify, commit, and push `test(runtime): cover restartable multibyte workflow`.
+
+Findings:
+
+- Added a source-level workflow covering `mbrlen`, `mbrtowc`, `wcrtomb`, `mbsrtowcs`, and `wcsrtombs` with a zeroed `mbstate_t`.
+- The workflow validates ASCII/NUL behavior, `(size_t)-2` for incomplete zero-length `mbrlen`, destination NULL handling, source pointer NULL on completion, and source pointer advancement on truncation.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestRestartableMultibyteExecuteThroughRuntime -count=1` passed.
 
 ## Milestone 20: Header/Registry Recheck
 

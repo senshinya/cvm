@@ -1973,6 +1973,71 @@ int main(void)
 	}
 }
 
+func TestRestartableMultibyteExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  mbstate_t st = {0};
+  wchar_t wide[4];
+  char out[4];
+  const char *src = "Az";
+  const wchar_t *wsrc = wide;
+
+  if (mbrlen("A", 1, &st) != 1)
+    return 1;
+  if (mbrlen("", 1, &st) != 0)
+    return 2;
+  if (mbrlen("A", 0, &st) != (size_t)-2)
+    return 3;
+
+  if (mbrtowc(&wide[0], "B", 1, &st) != 1 || wide[0] != L'B')
+    return 4;
+  if (mbrtowc(0, "B", 1, &st) != 1)
+    return 5;
+  if (mbrtowc(&wide[1], "", 1, &st) != 0 || wide[1] != 0)
+    return 6;
+
+  if (wcrtomb(out, L'C', &st) != 1 || out[0] != 'C')
+    return 7;
+  if (wcrtomb(out, 0, &st) != 1 || out[0] != 0)
+    return 8;
+  if (wcrtomb(0, L'C', &st) != 1)
+    return 9;
+
+  src = "Az";
+  if (mbsrtowcs(wide, &src, 4, &st) != 2 || src != 0)
+    return 10;
+  if (wide[0] != L'A' || wide[1] != L'z' || wide[2] != 0)
+    return 11;
+  src = "Az";
+  wide[1] = L'X';
+  if (mbsrtowcs(wide, &src, 1, &st) != 1 || src == 0 || *src != 'z' || wide[1] != L'X')
+    return 12;
+
+  wide[0] = L'o';
+  wide[1] = L'k';
+  wide[2] = 0;
+  wsrc = wide;
+  if (wcsrtombs(out, &wsrc, 4, &st) != 2 || wsrc != 0)
+    return 13;
+  if (out[0] != 'o' || out[1] != 'k' || out[2] != 0)
+    return 14;
+  wsrc = wide;
+  out[1] = 'X';
+  if (wcsrtombs(out, &wsrc, 1, &st) != 1 || wsrc != wide + 1 || out[1] != 'X')
+    return 15;
+
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "restartable-multibyte-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <time.h>
