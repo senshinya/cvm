@@ -93,9 +93,9 @@ Calibration before execution: Reuse wide string scan and `fputwc` write behavior
 
 Calibration before execution: Mirror `fgets` line/width semantics in wide units.
 
-- [ ] Register and implement `fgetws`.
-- [ ] Cover newline, width limit, EOF before data, EOF after data, invalid high byte, and terminator.
-- [ ] Verify, commit `feat(runtime): add fgetws`, and push.
+- [x] Register and implement `fgetws`.
+- [x] Cover newline, width limit, EOF before data, EOF after data, invalid high byte, and terminator.
+- [x] Verify, commit `feat(runtime): add fgetws`, and push.
 
 ## Milestone 11: Wide Output Format Header Surface
 

@@ -1981,6 +1981,93 @@ func TestFputwsRejectsClosedStream(t *testing.T) {
 	}
 }
 
+func TestFgetwsReadsWideLineFromHostHandle(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("ab\ncd"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	buf := mustAllocBytes(t, mem, "fgetws:buf", make([]byte, 16), false, blockLocal)
+	fgetwsFn, ok := reg.Lookup("fgetws")
+	if !ok {
+		t.Fatal("missing fgetws extern")
+	}
+
+	ret, exit, err := fgetwsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf), IntValue(bytecode.TypeI32, 4), PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != buf {
+		t.Fatalf("fgetws ret=%#v exit=%#v err=%v, want buffer", ret, exit, err)
+	}
+	for i, want := range []uint32{'a', 'b', '\n', 0} {
+		got, err := loadWideChar(mem, buf+uint64(i*4))
+		if err != nil || got != want {
+			t.Fatalf("fgetws line[%d]=%#x err=%v, want %#x", i, got, err, want)
+		}
+	}
+
+	ret, exit, err = fgetwsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf), IntValue(bytecode.TypeI32, 3), PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != buf {
+		t.Fatalf("fgetws width ret=%#v exit=%#v err=%v, want buffer", ret, exit, err)
+	}
+	for i, want := range []uint32{'c', 'd', 0} {
+		got, err := loadWideChar(mem, buf+uint64(i*4))
+		if err != nil || got != want {
+			t.Fatalf("fgetws width[%d]=%#x err=%v, want %#x", i, got, err, want)
+		}
+	}
+}
+
+func TestFgetwsEOFAndInvalidInput(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("x"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdin, ok := reg.LookupVariable("stdin", mem)
+	if !ok {
+		t.Fatal("missing stdin extern variable")
+	}
+	buf := mustAllocBytes(t, mem, "fgetws:eof-buf", make([]byte, 8), false, blockLocal)
+	fgetwsFn, ok := reg.Lookup("fgetws")
+	if !ok {
+		t.Fatal("missing fgetws extern")
+	}
+	feofFn, ok := reg.Lookup("feof")
+	if !ok {
+		t.Fatal("missing feof extern")
+	}
+
+	ret, exit, err := fgetwsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf), IntValue(bytecode.TypeI32, 3), PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != buf {
+		t.Fatalf("fgetws data before EOF ret=%#v exit=%#v err=%v, want buffer", ret, exit, err)
+	}
+	got, err := loadWideChar(mem, buf)
+	if err != nil || got != 'x' {
+		t.Fatalf("fgetws data stored %#x err=%v, want x", got, err)
+	}
+	ret, exit, err = fgetwsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf), IntValue(bytecode.TypeI32, 3), PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("fgetws EOF ret=%#v exit=%#v err=%v, want null", ret, exit, err)
+	}
+	ret, exit, err = feofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("feof ret=%#v exit=%#v err=%v, want 1", ret, exit, err)
+	}
+
+	highReg := DefaultExternRegistryWithIO(bytes.NewReader([]byte{0x80}), nil, nil)
+	highMem := NewMemory(bytecode.DefaultTarget())
+	highStdin, ok := highReg.LookupVariable("stdin", highMem)
+	if !ok {
+		t.Fatal("missing high stdin extern variable")
+	}
+	highBuf := mustAllocBytes(t, highMem, "fgetws:high-buf", make([]byte, 8), false, blockLocal)
+	highFgetwsFn, ok := highReg.Lookup("fgetws")
+	if !ok {
+		t.Fatal("missing high fgetws extern")
+	}
+	ret, exit, err = highFgetwsFn(context.Background(), &ExternContext{Memory: highMem}, []Value{PtrValue(highBuf), IntValue(bytecode.TypeI32, 3), PtrValue(highStdin)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("fgetws high ret=%#v exit=%#v err=%v, want null", ret, exit, err)
+	}
+}
+
 func TestOutputCharacterAliasesWriteBytes(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

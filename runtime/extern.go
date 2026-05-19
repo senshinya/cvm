@@ -162,7 +162,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("getwchar", getwcharExtern("getwchar", r))
 	r.Register("ungetwc", ungetwcExtern("ungetwc", r))
 	r.Register("fputws", fputwsExtern("fputws", r))
-	r.Register("fgetws", wideStdioPtrStubExtern("fgetws", 0))
+	r.Register("fgetws", fgetwsExtern("fgetws", r))
 	r.Register("perror", perrorExtern("perror", r))
 	for _, name := range []string{"fflush", "fflush_unlocked"} {
 		r.Register(name, fflushExtern(name, r))
@@ -909,6 +909,62 @@ func fputwsExtern(name string, r *ExternRegistry) ExternFunc {
 			}
 		}
 		return IntValue(bytecode.TypeI32, int64(len(chars))), nil, nil
+	}
+}
+
+func fgetwsExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects buffer, size, and stream arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, ok := r.lookupHostWriter(args[2].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[2].Int)
+		}
+		if r.setHostOrientation(args[2].Int, streamWide) != streamWide {
+			r.hostError[args[2].Int] = true
+			return PtrValue(0), nil, nil
+		}
+		if r.markHostReadErrorIfUnreadable(args[2].Int) {
+			return PtrValue(0), nil, nil
+		}
+		n := int32(args[1].Int)
+		if n <= 1 {
+			return PtrValue(0), nil, nil
+		}
+		chars := make([]uint32, 0, n-1)
+		for len(chars) < int(n)-1 {
+			ch, ok := r.readHostChar(args[2].Int)
+			if !ok {
+				break
+			}
+			if ch >= 0x80 {
+				r.hostError[args[2].Int] = true
+				return PtrValue(0), nil, nil
+			}
+			chars = append(chars, uint32(ch))
+			if ch == '\n' {
+				break
+			}
+		}
+		if len(chars) == 0 {
+			r.hostEOF[args[2].Int] = true
+			return PtrValue(0), nil, nil
+		}
+		for i, ch := range chars {
+			if err := storeWideChar(ec.Memory, args[0].Int+uint64(i*4), ch); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		if err := storeWideChar(ec.Memory, args[0].Int+uint64(len(chars)*4), 0); err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(args[0].Int), nil, nil
 	}
 }
 
