@@ -65,9 +65,9 @@ Calibration before execution: Re-read `stringCharSearchExtern`.
 
 Calibration before execution: Re-read `stringReverseCharSearchExtern`.
 
-- [ ] Add tests for repeated bytes, NUL terminator lookup, missing byte, and byte masking.
-- [ ] Fix `strrchr` if needed.
-- [ ] Verify, commit, and push `feat(runtime): harden strrchr byte semantics`.
+- [x] Add tests for repeated bytes, NUL terminator lookup, missing byte, and byte masking.
+- [x] Fix `strrchr` if needed.
+- [x] Verify, commit, and push `feat(runtime): harden strrchr byte semantics`.
 
 ## Milestone 8: `strstr` Empty Needle And Misses
 

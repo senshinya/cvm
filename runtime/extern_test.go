@@ -4034,6 +4034,21 @@ func TestStringReverseAndSetSearchExterns(t *testing.T) {
 	if ret.Type != bytecode.TypePtr || ret.Int != text+6 {
 		t.Fatalf("strrchr nul ret=%#v, want pointer %#x", ret, text+6)
 	}
+	ret, exit, err = strrchrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, 'z')})
+	if err != nil || exit != nil {
+		t.Fatalf("strrchr miss ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("strrchr miss ret=%#v, want null pointer", ret)
+	}
+	highText := mustAllocBytes(t, mem, "strrchr:high", []byte{0x82, 'a', 0x82, 0}, true, blockString)
+	ret, exit, err = strrchrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(highText), IntValue(bytecode.TypeI32, 0x182)})
+	if err != nil || exit != nil {
+		t.Fatalf("strrchr masked ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != highText+2 {
+		t.Fatalf("strrchr masked ret=%#v, want pointer %#x", ret, highText+2)
+	}
 
 	strpbrkFn, ok := reg.Lookup("strpbrk")
 	if !ok {

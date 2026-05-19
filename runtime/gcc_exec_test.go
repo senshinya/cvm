@@ -2651,6 +2651,7 @@ func TestStringReverseAndSetSearchExecuteThroughRuntime(t *testing.T) {
 int main(void)
 {
   const char *text = "abacad";
+  char high[4] = {(char)0x82, 'a', (char)0x82, 0};
 
   if (strrchr(text, 'a') != text + 4)
     return 1;
@@ -2658,9 +2659,11 @@ int main(void)
     return 2;
   if (strrchr(text, 'z') != 0)
     return 3;
-  if (strpbrk(text, "xyc") != text + 3)
+  if (strrchr(high, 0x182) != high + 2)
     return 4;
-  return strpbrk(text, "xyz") == 0 ? 0 : 5;
+  if (strpbrk(text, "xyc") != text + 3)
+    return 5;
+  return strpbrk(text, "xyz") == 0 ? 0 : 6;
 }
 `
 	st := runGCCExecFixture(t, "string-reverse-set-search-runtime.c", source)
