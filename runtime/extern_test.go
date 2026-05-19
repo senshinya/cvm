@@ -1923,7 +1923,10 @@ func TestFputwsWritesWideStringToHostHandle(t *testing.T) {
 	}
 	makeWide := func(name string, chars ...uint32) uint64 {
 		t.Helper()
-		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
 		for i, ch := range chars {
 			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
 				t.Fatalf("store %s[%d]: %v", name, i, err)
@@ -2077,7 +2080,10 @@ func TestWideFormatCStringBridge(t *testing.T) {
 	mem := NewMemory(bytecode.DefaultTarget())
 	makeWide := func(name string, chars ...uint32) uint64 {
 		t.Helper()
-		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
 		for i, ch := range chars {
 			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
 				t.Fatalf("store %s[%d]: %v", name, i, err)
@@ -2094,6 +2100,96 @@ func TestWideFormatCStringBridge(t *testing.T) {
 	got, err = wideFormatCString("test", mem, high)
 	if err == nil || got != "" || !strings.Contains(err.Error(), "unsupported") {
 		t.Fatalf("wideFormatCString high = %q err=%v, want unsupported error", got, err)
+	}
+}
+
+func TestSwprintfWritesWideFormattedOutput(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	buf := mustAllocBytes(t, mem, "swprintf:buf", make([]byte, 64), false, blockLocal)
+	str := mustAllocBytes(t, mem, "swprintf:str", []byte("abcdef\x00"), true, blockString)
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	readWide := func(addr uint64) string {
+		t.Helper()
+		chars, err := readWideCString(mem, addr)
+		if err != nil {
+			t.Fatalf("read wide string: %v", err)
+		}
+		var b strings.Builder
+		for _, ch := range chars {
+			b.WriteByte(byte(ch))
+		}
+		return b.String()
+	}
+	format := makeWide("swprintf:fmt", '%', '0', '4', 'd', ' ', '%', '.', '2', 's', ' ', '%', 'c', ' ', '%', '%', 0)
+	fn, ok := reg.Lookup("swprintf")
+	if !ok {
+		t.Fatal("missing swprintf extern")
+	}
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(buf),
+		UIntValue(bytecode.TypeU64, 16),
+		PtrValue(format),
+		IntValue(bytecode.TypeI32, 7),
+		PtrValue(str),
+		IntValue(bytecode.TypeI32, 'Z'),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 11 {
+		t.Fatalf("swprintf ret=%#v exit=%#v err=%v, want 11", ret, exit, err)
+	}
+	if got := readWide(buf); got != "0007 ab Z %" {
+		t.Fatalf("swprintf output = %q, want formatted output", got)
+	}
+}
+
+func TestSwprintfTruncatesAndRejectsHighFormat(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	buf := mustAllocBytes(t, mem, "swprintf:trunc-buf", make([]byte, 24), false, blockLocal)
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	fn, ok := reg.Lookup("swprintf")
+	if !ok {
+		t.Fatal("missing swprintf extern")
+	}
+	format := makeWide("swprintf:trunc-fmt", 'a', 'b', 'c', 'd', 'e', 0)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf), UIntValue(bytecode.TypeU64, 4), PtrValue(format)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("swprintf trunc ret=%#v exit=%#v err=%v, want -1", ret, exit, err)
+	}
+	for i, want := range []uint32{'a', 'b', 'c', 0} {
+		got, err := loadWideChar(mem, buf+uint64(i*4))
+		if err != nil || got != want {
+			t.Fatalf("swprintf trunc[%d]=%#x err=%v, want %#x", i, got, err, want)
+		}
+	}
+	high := makeWide("swprintf:high-fmt", '%', 'd', 0x80, 0)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf), UIntValue(bytecode.TypeU64, 4), PtrValue(high), IntValue(bytecode.TypeI32, 1)})
+	if err == nil || exit != nil {
+		t.Fatalf("swprintf high ret=%#v exit=%#v err=%v, want error", ret, exit, err)
 	}
 }
 

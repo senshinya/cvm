@@ -118,9 +118,9 @@ Calibration before execution: Inspect current formatter and identify reusable by
 
 Calibration before execution: Reuse buffer formatter output, then widen ASCII bytes into destination.
 
-- [ ] Register and implement `swprintf`.
-- [ ] Cover integer, string, char, percent, width/precision, truncation, and return value.
-- [ ] Verify, commit `feat(runtime): add swprintf`, and push.
+- [x] Register and implement `swprintf`.
+- [x] Cover integer, string, char, percent, width/precision, truncation, and return value.
+- [x] Verify, commit `feat(runtime): add swprintf`, and push.
 
 ## Milestone 14: `wprintf`
 

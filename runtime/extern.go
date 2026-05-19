@@ -163,7 +163,8 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("ungetwc", ungetwcExtern("ungetwc", r))
 	r.Register("fputws", fputwsExtern("fputws", r))
 	r.Register("fgetws", fgetwsExtern("fgetws", r))
-	for _, name := range []string{"wprintf", "fwprintf", "swprintf", "vwprintf", "vfwprintf", "vswprintf"} {
+	r.Register("swprintf", swprintfExtern("swprintf"))
+	for _, name := range []string{"wprintf", "fwprintf", "vwprintf", "vfwprintf", "vswprintf"} {
 		r.Register(name, wideStdioIntStubExtern(name, -1))
 	}
 	r.Register("perror", perrorExtern("perror", r))
@@ -5219,6 +5220,52 @@ func snprintfExtern(name string) ExternFunc {
 	}
 }
 
+func swprintfExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 3 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, size, and wide format arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatWideCString(name, ec.Memory, args[2].Int, args[3:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		size, err := memorySizeArg(name, args[1])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if size <= 0 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		limit := int(size) - 1
+		truncated := len(out) > limit
+		writeLen := len(out)
+		if truncated {
+			writeLen = limit
+		}
+		for i := 0; i < writeLen; i++ {
+			if out[i] >= 0x80 {
+				return IntValue(bytecode.TypeI32, -1), nil, nil
+			}
+			if err := storeWideChar(ec.Memory, args[0].Int+uint64(i*4), uint32(out[i])); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		if err := storeWideChar(ec.Memory, args[0].Int+uint64(writeLen*4), 0); err != nil {
+			return Value{}, nil, err
+		}
+		if truncated {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
 func vsprintfExtern(name string) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 3 {
@@ -6104,6 +6151,21 @@ func formatVaListCString(name string, mem *Memory, formatAddr, vaListAddr uint64
 		return "", err
 	}
 	return formatCString(name, mem, formatAddr, args)
+}
+
+func formatWideCString(name string, mem *Memory, formatAddr uint64, args []Value) (string, error) {
+	format, err := wideFormatCString(name, mem, formatAddr)
+	if err != nil {
+		return "", err
+	}
+	addr, err := mem.TryAlloc("extern:"+name+":wide-format", int64(len(format)+1), 1, false, blockString)
+	if err != nil {
+		return "", err
+	}
+	if err := writeMemoryBytes(mem, addr, append([]byte(format), 0)); err != nil {
+		return "", err
+	}
+	return formatCString(name, mem, addr, args)
 }
 
 func readMemoryVaList(name string, mem *Memory, vaListAddr uint64) ([]Value, error) {
