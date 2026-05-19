@@ -2807,6 +2807,8 @@ func TestMemoryCharCopyExecuteThroughRuntime(t *testing.T) {
 int main(void)
 {
   char dst[8] = "xxxxxxx";
+  unsigned char high_src[3] = {1, 0x82, 3};
+  unsigned char high_dst[3] = {9, 9, 9};
 
   if (memccpy(dst, "abczef", 'z', 6) != dst + 4)
     return 1;
@@ -2815,7 +2817,11 @@ int main(void)
   dst[3] = 'Z';
   if (memccpy(dst, "abc", 'q', 3) != 0)
     return 3;
-  return dst[0] == 'a' && dst[1] == 'b' && dst[2] == 'c' && dst[3] == 'Z' ? 0 : 4;
+  if (!(dst[0] == 'a' && dst[1] == 'b' && dst[2] == 'c' && dst[3] == 'Z'))
+    return 4;
+  if (memccpy(high_dst, high_src, 0x182, 3) != high_dst + 2)
+    return 5;
+  return high_dst[0] == 1 && high_dst[1] == 0x82 && high_dst[2] == 9 ? 0 : 6;
 }
 `
 	st := runGCCExecFixture(t, "string-memccpy-runtime.c", source)

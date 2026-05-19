@@ -3051,6 +3051,28 @@ func TestMemoryCharCopyExtern(t *testing.T) {
 	if got := string(block.data[off : off+6]); got != "abcZxx" {
 		t.Fatalf("memccpy dst after miss = %q, want abcZxx", got)
 	}
+
+	highSrc := mustAllocBytes(t, mem, "memccpy:high-src", []byte{1, 0x82, 3}, true, blockString)
+	highDst := mustAllocBytes(t, mem, "memccpy:high-dst", []byte{9, 9, 9}, false, blockLocal)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(highDst),
+		PtrValue(highSrc),
+		IntValue(bytecode.TypeI32, 0x182),
+		UIntValue(bytecode.TypeU64, 3),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("memccpy masked ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != highDst+2 {
+		t.Fatalf("memccpy masked ret=%#v, want pointer %#x", ret, highDst+2)
+	}
+	block, off, err = mem.rangeAccess(highDst, 3, false)
+	if err != nil {
+		t.Fatalf("read memccpy masked dst: %v", err)
+	}
+	if got := []byte(block.data[off : off+3]); !bytes.Equal(got, []byte{1, 0x82, 9}) {
+		t.Fatalf("memccpy masked dst after hit = %v, want [1 130 9]", got)
+	}
 }
 
 func TestStringsBSDMemoryExterns(t *testing.T) {

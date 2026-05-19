@@ -141,10 +141,10 @@ Calibration before execution: Re-read `stringErrorExtern` and static string allo
 
 Calibration before execution: Re-read `memoryCharCopyExtern`.
 
-- [ ] Add tests for hit returning byte-after-destination, miss returning NULL, and byte masking.
-- [ ] Fix `memccpy` if needed.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden memccpy semantics`.
+- [x] Add tests for hit returning byte-after-destination, miss returning NULL, and byte masking.
+- [x] Fix `memccpy` if needed.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden memccpy semantics`.
 
 ## Milestone 17: `bcopy` Overlap Semantics
 
