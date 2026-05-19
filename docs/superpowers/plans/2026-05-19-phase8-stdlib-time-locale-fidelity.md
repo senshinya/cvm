@@ -200,10 +200,16 @@ Findings:
 
 Calibration before execution: Re-read `clockExtern`, `timeExtern`, and storage width.
 
-- [ ] Add tests for NULL time pointer, non-NULL store, invalid pointer, and `clock`.
-- [ ] Add source-level runtime coverage.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover deterministic time`.
+- [x] Add tests for NULL time pointer, non-NULL store, invalid pointer, and `clock`.
+- [x] Add source-level runtime coverage.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover deterministic time`.
+
+Findings:
+
+- Existing direct/source coverage already checked deterministic `time(NULL)`, `time(&slot)`, stored `time_t`, and `clock()`.
+- Added direct extern coverage for invalid non-NULL time pointer memory errors.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestTimeExterns|TestTimeHeader' -count=1` passed.
 
 ## Milestone 15: `difftime` Arithmetic
 

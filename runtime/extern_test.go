@@ -3929,6 +3929,9 @@ func TestTimeExterns(t *testing.T) {
 	if signedInt(stored) != 0 {
 		t.Fatalf("stored time=%#v, want 0", stored)
 	}
+	if ret, exit, err = timeFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(1)}); err == nil || exit != nil {
+		t.Fatalf("time invalid ret=%#v exit=%#v err=%v, want memory error without exit", ret, exit, err)
+	}
 
 	diffFn, ok := reg.Lookup("difftime")
 	if !ok {
