@@ -132,6 +132,7 @@ wint_t wc = WEOF;
 mbstate_t state = {0};
 wctype_t cls = 0;
 wctrans_t trans = 0;
+FILE *wf = 0;
 int checks[] = {
   iswalnum(L'A'), iswalpha(L'A'), iswblank(L' '), iswcntrl(L'\n'),
   iswdigit(L'7'), iswgraph(L'!'), iswlower(L'a'), iswprint(L' '),
@@ -147,11 +148,21 @@ const wchar_t *wsrcp = L"A";
 size_t narrow_count = wcsrtombs(0, &wsrcp, 0, &state);
 wctype_t named_cls = wctype("alpha");
 wctrans_t named_trans = wctrans("tolower");
+wint_t wrote = fputwc(L'A', wf);
+wint_t put = putwc(L'B', wf);
+wint_t put_stdout = putwchar(L'C');
+wint_t read = fgetwc(wf);
+wint_t got = getwc(wf);
+wint_t got_stdin = getwchar();
+wint_t pushed = ungetwc(L'D', wf);
+int wide = fwide(wf, 1);
+int wrote_string = fputws(L"wide", wf);
+wchar_t *read_string = fgetws(0, 0, wf);
 `, Options{})
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	for _, name := range []string{"wchar_t", "wint_t", "mbstate_t", "wctype_t", "wctrans_t", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs", "wcsrtombs", "iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans"} {
+	for _, name := range []string{"wchar_t", "wint_t", "mbstate_t", "FILE", "wctype_t", "wctrans_t", "fwide", "fputwc", "putwc", "putwchar", "fgetwc", "getwc", "getwchar", "ungetwc", "fputws", "fgetws", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs", "wcsrtombs", "iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans"} {
 		if !hasIdentifier(res.Tokens, name) {
 			t.Fatalf("wide header identifier %q missing: %#v", name, res.Tokens)
 		}

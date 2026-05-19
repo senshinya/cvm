@@ -146,7 +146,10 @@ func stdioHeader() string {
 #define __CVM_SIZE_T
 typedef __SIZE_TYPE__ size_t;
 #endif
+#ifndef __CVM_FILE_T
+#define __CVM_FILE_T
 typedef struct __cvm_FILE FILE;
+#endif
 typedef long fpos_t;
 #define EOF (-1)
 #define _IOFBF 0
@@ -363,7 +366,21 @@ typedef int wint_t;
 #define __CVM_MBSTATE_T
 typedef struct { unsigned int __count; unsigned int __value; } mbstate_t;
 #endif
+#ifndef __CVM_FILE_T
+#define __CVM_FILE_T
+typedef struct __cvm_FILE FILE;
+#endif
 #define WEOF (-1)
+int fwide(FILE *, int);
+wint_t fputwc(wchar_t, FILE *);
+wint_t putwc(wchar_t, FILE *);
+wint_t putwchar(wchar_t);
+wint_t fgetwc(FILE *);
+wint_t getwc(FILE *);
+wint_t getwchar(void);
+wint_t ungetwc(wint_t, FILE *);
+int fputws(const wchar_t * restrict, FILE * restrict);
+wchar_t *fgetws(wchar_t * restrict, int, FILE * restrict);
 size_t wcslen(const wchar_t *);
 int wcscmp(const wchar_t *, const wchar_t *);
 int wcsncmp(const wchar_t *, const wchar_t *, size_t);

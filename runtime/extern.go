@@ -141,6 +141,12 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	for _, name := range []string{"fputs", "fputs_unlocked"} {
 		r.Register(name, fputsExtern(name, r))
 	}
+	r.Register("fwide", wideStdioIntStubExtern("fwide", 0))
+	for _, name := range []string{"fputwc", "putwc", "putwchar", "fgetwc", "getwc", "getwchar", "ungetwc"} {
+		r.Register(name, wideStdioIntStubExtern(name, -1))
+	}
+	r.Register("fputws", wideStdioIntStubExtern("fputws", -1))
+	r.Register("fgetws", wideStdioPtrStubExtern("fgetws", 0))
 	r.Register("perror", perrorExtern("perror", r))
 	for _, name := range []string{"fflush", "fflush_unlocked"} {
 		r.Register(name, fflushExtern(name, r))
@@ -747,6 +753,18 @@ func fputsExtern(name string, r *ExternRegistry) ExternFunc {
 			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, int64(len(s))), nil, nil
+	}
+}
+
+func wideStdioIntStubExtern(name string, value int64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		return IntValue(bytecode.TypeI32, value), nil, nil
+	}
+}
+
+func wideStdioPtrStubExtern(name string, value uint64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		return PtrValue(value), nil, nil
 	}
 }
 

@@ -26,9 +26,11 @@ Baseline notes:
 
 Calibration before execution: Re-read `stdioHeader`, `wcharHeader`, and C99 declaration placement.
 
-- [ ] Declare `fwide`, `fputwc`, `putwc`, `putwchar`, `fgetwc`, `getwc`, `getwchar`, `ungetwc`, `fputws`, and `fgetws`.
-- [ ] Add header smoke tests.
-- [ ] Verify, commit `feat(headers): declare wide stdio functions`, and push.
+- [x] Declare `fwide`, `fputwc`, `putwc`, `putwchar`, `fgetwc`, `getwc`, `getwchar`, `ungetwc`, `fputws`, and `fgetws`.
+- [x] Add header smoke tests.
+- [x] Verify, commit `feat(headers): declare wide stdio functions`, and push.
+
+Calibration adjustment: runtime loading requires every declared extern to have a registry entry, even when a source file only includes `<wchar.h>` and does not call the new function. Milestone 2 therefore adds conservative placeholder registrations for the new wide stdio names; Milestones 3-10 replace them with real deterministic implementations.
 
 ## Milestone 3: Stream Orientation Model
 
