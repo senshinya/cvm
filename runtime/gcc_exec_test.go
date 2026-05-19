@@ -2746,10 +2746,13 @@ int main(void)
 {
   char *a = strerror(1);
   char *b = strerror(2);
+  char *c = strerror(1);
 
   if (strcmp(a, "error") != 0)
     return 1;
-  return a == b ? 0 : 2;
+  if (a != b)
+    return 2;
+  return a == c ? 0 : 3;
 }
 `
 	st := runGCCExecFixture(t, "string-strerror-runtime.c", source)

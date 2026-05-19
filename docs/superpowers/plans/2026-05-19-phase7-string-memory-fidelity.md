@@ -132,10 +132,10 @@ Calibration before execution: Re-read `stringCollateExtern`.
 
 Calibration before execution: Re-read `stringErrorExtern` and static string allocation.
 
-- [ ] Add tests for multiple errno values, repeated calls, and per-memory stable pointers.
-- [ ] Fix static storage if needed.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): harden strerror storage`.
+- [x] Add tests for multiple errno values, repeated calls, and per-memory stable pointers.
+- [x] Fix static storage if needed.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): harden strerror storage`.
 
 ## Milestone 16: `memccpy` Stop And Return Pointer
 

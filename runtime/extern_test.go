@@ -4479,6 +4479,32 @@ func TestStringStrerrorExtern(t *testing.T) {
 	if again.Int != ret.Int {
 		t.Fatalf("strerror stable pointer = %#x, want %#x", again.Int, ret.Int)
 	}
+	for _, errno := range []int64{1, 2, 123} {
+		next, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, errno)})
+		if err != nil || exit != nil {
+			t.Fatalf("strerror errno %d ret=%#v exit=%#v err=%v", errno, next, exit, err)
+		}
+		if next.Int != ret.Int {
+			t.Fatalf("strerror errno %d pointer = %#x, want stable pointer %#x", errno, next.Int, ret.Int)
+		}
+	}
+
+	otherMem := NewMemory(bytecode.DefaultTarget())
+	other, exit, err := fn(context.Background(), &ExternContext{Memory: otherMem}, []Value{IntValue(bytecode.TypeI32, 2)})
+	if err != nil || exit != nil {
+		t.Fatalf("strerror other memory ret=%#v exit=%#v err=%v", other, exit, err)
+	}
+	otherAgain, exit, err := fn(context.Background(), &ExternContext{Memory: otherMem}, []Value{IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("strerror other memory again ret=%#v exit=%#v err=%v", otherAgain, exit, err)
+	}
+	if other.Type != bytecode.TypePtr || other.Int == 0 || otherAgain.Int != other.Int {
+		t.Fatalf("strerror other memory pointers = %#v then %#v, want stable non-null", other, otherAgain)
+	}
+	otherString, err := otherMem.ReadCString(other.Int)
+	if err != nil || otherString != "error" {
+		t.Fatalf("strerror other memory string=%q err=%v, want error", otherString, err)
+	}
 }
 
 func TestMemcmpComparesBytes(t *testing.T) {
