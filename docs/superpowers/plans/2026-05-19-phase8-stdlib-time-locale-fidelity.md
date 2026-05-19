@@ -171,10 +171,16 @@ Findings:
 
 Calibration before execution: Re-read `systemExtern`.
 
-- [ ] Add tests for NULL command availability and non-NULL command failure.
-- [ ] Add source-level runtime coverage.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover hermetic system`.
+- [x] Add tests for NULL command availability and non-NULL command failure.
+- [x] Add source-level runtime coverage.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover hermetic system`.
+
+Findings:
+
+- Existing direct extern and source-level runtime coverage already checked `system(NULL) == 0` and non-NULL commands returning `-1` without invoking a host shell.
+- No runtime code changes were needed.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibSystem' -count=1` passed.
 
 ## Milestone 13: `setlocale` C Locale Queries
 
