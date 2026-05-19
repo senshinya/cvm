@@ -2155,9 +2155,15 @@ int main(void)
 {
   char buf[BUFSIZ];
   setbuf(stdout, buf);
-  if (setvbuf(stdout, 0, _IONBF, 0) != 0)
+  if (setvbuf(stdout, 0, _IOFBF, 0) != 0)
     return 1;
-  return fputc('S', stdout) == 'S' ? 0 : 2;
+  if (setvbuf(stdout, 0, _IOLBF, 0) != 0)
+    return 2;
+  if (setvbuf(stdout, 0, _IONBF, 0) != 0)
+    return 3;
+  if (setvbuf(stdout, 0, 99, 0) == 0)
+    return 4;
+  return fputc('S', stdout) == 'S' ? 0 : 5;
 }
 `
 	st := runGCCExecFixture(t, "stdio-buffer-controls-runtime.c", source)

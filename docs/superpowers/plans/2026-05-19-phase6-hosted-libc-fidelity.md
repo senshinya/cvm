@@ -123,10 +123,10 @@ Calibration before execution: Check `fopen("w")` can create registry files whose
 
 Calibration before execution: Re-read `setvbufExtern`, header macros, and existing no-op tests.
 
-- [ ] Add direct tests for `_IOFBF`, `_IOLBF`, `_IONBF`, and invalid mode.
-- [ ] Make invalid modes return nonzero while valid modes remain no-op success.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): validate setvbuf modes`.
+- [x] Add direct tests for `_IOFBF`, `_IOLBF`, `_IONBF`, and invalid mode.
+- [x] Make invalid modes return nonzero while valid modes remain no-op success.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): validate setvbuf modes`.
 
 ## Milestone 14: `setvbuf` Size And Stream Validation
 

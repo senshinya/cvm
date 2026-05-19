@@ -2242,17 +2242,31 @@ func TestStdioBufferControls(t *testing.T) {
 	if !ok {
 		t.Fatal("missing setvbuf extern")
 	}
+	for _, mode := range []int64{0, 1, 2} {
+		ret, exit, err := setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+			PtrValue(stdout),
+			PtrValue(0),
+			IntValue(bytecode.TypeI32, mode),
+			UIntValue(bytecode.TypeU64, 0),
+		})
+		if err != nil || exit != nil {
+			t.Fatalf("setvbuf mode %d ret=%#v exit=%#v err=%v", mode, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+			t.Fatalf("setvbuf mode %d ret=%#v, want i32 0", mode, ret)
+		}
+	}
 	ret, exit, err := setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
 		PtrValue(stdout),
 		PtrValue(0),
-		IntValue(bytecode.TypeI32, 2),
+		IntValue(bytecode.TypeI32, 99),
 		UIntValue(bytecode.TypeU64, 0),
 	})
 	if err != nil || exit != nil {
-		t.Fatalf("setvbuf ret=%#v exit=%#v err=%v", ret, exit, err)
+		t.Fatalf("setvbuf invalid mode ret=%#v exit=%#v err=%v", ret, exit, err)
 	}
-	if ret.Type != bytecode.TypeI32 || ret.Int != 0 {
-		t.Fatalf("setvbuf ret=%#v, want i32 0", ret)
+	if ret.Type != bytecode.TypeI32 || ret.Int == 0 {
+		t.Fatalf("setvbuf invalid mode ret=%#v, want nonzero i32", ret)
 	}
 }
 

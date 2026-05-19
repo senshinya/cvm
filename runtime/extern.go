@@ -1004,6 +1004,10 @@ func setvbufExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		mode := signedInt(args[2])
+		if mode < 0 || mode > 2 {
+			return IntValue(bytecode.TypeI32, 1), nil, nil
+		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
