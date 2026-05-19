@@ -193,6 +193,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("wctomb", wctombExtern("wctomb"))
 	r.Register("mbstowcs", mbstowcsExtern("mbstowcs"))
 	r.Register("wcstombs", wcstombsExtern("wcstombs"))
+	r.Register("mbrlen", mbrlenExtern("mbrlen"))
 	r.Register("rand", randExtern("rand", r))
 	r.Register("srand", srandExtern("srand", r))
 	r.Register("getenv", getenvExtern("getenv", r))
@@ -1397,6 +1398,37 @@ func wctombExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func mbrlenExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if args[0].Int == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || (args[2].Int != 0 && !isPointerType(args[2].Type)) {
+			return Value{}, nil, fmt.Errorf("%s expects string, length, and state pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if unsignedInt(args[1]) == 0 {
+			return UIntValue(bytecode.TypeU64, math.MaxUint64-1), nil, nil
+		}
+		ch, err := readMemoryByte(ec.Memory, args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if ch >= 0x80 {
+			return UIntValue(bytecode.TypeU64, math.MaxUint64), nil, nil
+		}
+		if ch == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		return UIntValue(bytecode.TypeU64, 1), nil, nil
 	}
 }
 

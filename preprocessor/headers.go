@@ -364,6 +364,7 @@ typedef int wint_t;
 typedef struct { unsigned int __count; unsigned int __value; } mbstate_t;
 #endif
 #define WEOF (-1)
+size_t mbrlen(const char *, size_t, mbstate_t *);
 #endif
 `
 }

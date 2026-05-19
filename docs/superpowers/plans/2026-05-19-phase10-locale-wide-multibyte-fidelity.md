@@ -211,9 +211,16 @@ Findings:
 
 Calibration before execution: Re-read existing `mblen` behavior and state reset policy.
 
-- [ ] Implement/register `mbrlen`.
-- [ ] Cover NULL/reset, zero-length, NUL, ASCII, and high-bit rejection.
-- [ ] Verify, commit, and push `feat(runtime): add mbrlen c locale`.
+- [x] Implement/register `mbrlen`.
+- [x] Cover NULL/reset, zero-length, NUL, ASCII, and high-bit rejection.
+- [x] Verify, commit, and push `feat(runtime): add mbrlen c locale`.
+
+Findings:
+
+- Added `mbrlen` declaration to builtin `<wchar.h>` and registered the extern.
+- C-locale `mbrlen` is stateless: NULL/reset returns `0`, NUL returns `0`, ASCII returns `1`, zero-length non-NULL input returns `(size_t)-2`, and high-bit input returns `(size_t)-1`.
+- Added header, registry, and direct extern coverage.
+- Focused preprocessor and runtime tests passed.
 
 ## Milestone 15: `mbrtowc` C-Locale Behavior
 
