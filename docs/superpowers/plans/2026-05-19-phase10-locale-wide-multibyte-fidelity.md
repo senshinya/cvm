@@ -118,9 +118,16 @@ Findings:
 
 Calibration before execution: Mirror byte-oriented ctype behavior for C-locale ASCII `wint_t`.
 
-- [ ] Register and implement `iswdigit`, `iswalpha`, `iswalnum`, `iswspace`, `iswlower`, `iswupper`, `iswxdigit`, and `iswprint`.
-- [ ] Add direct extern tests for EOF, ASCII, high values.
-- [ ] Verify, commit, and push `feat(runtime): add wide ctype classification`.
+- [x] Register and implement `iswdigit`, `iswalpha`, `iswalnum`, `iswspace`, `iswlower`, `iswupper`, `iswxdigit`, and `iswprint`.
+- [x] Add direct extern tests for EOF, ASCII, high values.
+- [x] Verify, commit, and push `feat(runtime): add wide ctype classification`.
+
+Findings:
+
+- Added wide classification externs for the core C-locale ASCII classes.
+- Wide classification uses the full `wint_t` value and does not mask high values down to unsigned byte.
+- Added direct extern tests for ASCII positives/negatives, `WEOF`/`-1`, and high non-ASCII values.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestDefaultExternRegistryHasExitAndAbort|TestWideCtypeClassificationExterns' -count=1` passed.
 
 ## Milestone 9: Wide Extra Classification
 

@@ -205,6 +205,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("time", timeExtern("time"))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
+	registerWideCtypeClassificationExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("strcmp expects 2 arguments")
@@ -1848,6 +1849,49 @@ func ctypeClassificationExtern(name string, pred func(byte) bool) ExternFunc {
 		}
 		ch := signedInt(args[0])
 		if ch == -1 || !pred(byte(unsignedInt(args[0]))) {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func registerWideCtypeClassificationExterns(r *ExternRegistry) {
+	r.Register("iswdigit", wideCtypeClassificationExtern("iswdigit", func(ch int64) bool {
+		return ch >= '0' && ch <= '9'
+	}))
+	r.Register("iswalpha", wideCtypeClassificationExtern("iswalpha", func(ch int64) bool {
+		return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+	}))
+	r.Register("iswalnum", wideCtypeClassificationExtern("iswalnum", func(ch int64) bool {
+		return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+	}))
+	r.Register("iswspace", wideCtypeClassificationExtern("iswspace", func(ch int64) bool {
+		return ch >= 0 && ch <= 0x7f && isASCIIWhitespace(byte(ch))
+	}))
+	r.Register("iswlower", wideCtypeClassificationExtern("iswlower", func(ch int64) bool {
+		return ch >= 'a' && ch <= 'z'
+	}))
+	r.Register("iswupper", wideCtypeClassificationExtern("iswupper", func(ch int64) bool {
+		return ch >= 'A' && ch <= 'Z'
+	}))
+	r.Register("iswxdigit", wideCtypeClassificationExtern("iswxdigit", func(ch int64) bool {
+		return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f')
+	}))
+	r.Register("iswprint", wideCtypeClassificationExtern("iswprint", func(ch int64) bool {
+		return ch >= 0x20 && ch <= 0x7e
+	}))
+}
+
+func wideCtypeClassificationExtern(name string, pred func(int64) bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
+		}
+		ch := signedInt(args[0])
+		if ch == -1 || !pred(ch) {
 			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, 1), nil, nil
