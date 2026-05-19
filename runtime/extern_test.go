@@ -2073,6 +2073,30 @@ func TestFgetwsEOFAndInvalidInput(t *testing.T) {
 	}
 }
 
+func TestWideFormatCStringBridge(t *testing.T) {
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	format := makeWide("wide-format:ascii", '%', '0', '4', 'd', ' ', '%', 's', 0)
+	got, err := wideFormatCString("test", mem, format)
+	if err != nil || got != "%04d %s" {
+		t.Fatalf("wideFormatCString ascii = %q err=%v, want %%04d %%s", got, err)
+	}
+	high := makeWide("wide-format:high", '%', 'd', 0x80, 0)
+	got, err = wideFormatCString("test", mem, high)
+	if err == nil || got != "" || !strings.Contains(err.Error(), "unsupported") {
+		t.Fatalf("wideFormatCString high = %q err=%v, want unsupported error", got, err)
+	}
+}
+
 func TestOutputCharacterAliasesWriteBytes(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

@@ -6401,6 +6401,21 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 	return out.String(), nil
 }
 
+func wideFormatCString(name string, mem *Memory, formatAddr uint64) (string, error) {
+	chars, err := readWideCString(mem, formatAddr)
+	if err != nil {
+		return "", err
+	}
+	var out strings.Builder
+	for _, ch := range chars {
+		if ch > 0x7f {
+			return "", fmt.Errorf("%s wide format contains unsupported character %#x", name, ch)
+		}
+		out.WriteByte(byte(ch))
+	}
+	return out.String(), nil
+}
+
 func applyIntegerPrecision(piece string, precision int) string {
 	prefix, digits := splitNumericPrefix(piece)
 	if precision == 0 && digits == "0" {

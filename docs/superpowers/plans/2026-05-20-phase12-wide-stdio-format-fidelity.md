@@ -109,10 +109,10 @@ Calibration before execution: Re-read current printf/vprintf declaration pattern
 
 Calibration before execution: Inspect current formatter and identify reusable byte-format pieces.
 
-- [ ] Add helper to convert wide format strings to deterministic C-locale byte formats.
-- [ ] Reject high wide format characters with a deterministic error result.
-- [ ] Cover direct helper through extern tests.
-- [ ] Verify, commit `feat(runtime): add wide format bridge`, and push.
+- [x] Add helper to convert wide format strings to deterministic C-locale byte formats.
+- [x] Reject high wide format characters with a deterministic error result.
+- [x] Cover direct helper through extern tests.
+- [x] Verify, commit `feat(runtime): add wide format bridge`, and push.
 
 ## Milestone 13: `swprintf`
 
