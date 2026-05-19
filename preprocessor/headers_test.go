@@ -107,17 +107,57 @@ func TestBuiltinLocaleHeaderDeclaresRuntimeSurface(t *testing.T) {
 	res, err := PreprocessSource("main.c", `
 #include <locale.h>
 int categories[] = { LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY, LC_NUMERIC, LC_TIME };
+struct lconv *lc = localeconv();
 `, Options{})
 	if err != nil {
 		t.Fatalf("PreprocessSource failed: %v", err)
 	}
-	if !hasIdentifier(res.Tokens, "setlocale") {
-		t.Fatalf("locale identifier %q missing: %#v", "setlocale", res.Tokens)
+	for _, name := range []string{"lconv", "decimal_point", "thousands_sep", "grouping", "setlocale", "localeconv"} {
+		if !hasIdentifier(res.Tokens, name) {
+			t.Fatalf("locale identifier %q missing: %#v", name, res.Tokens)
+		}
 	}
 	for _, value := range []string{"0", "1", "2", "3", "4", "5"} {
 		if !hasLexeme(res.Tokens, value) {
 			t.Fatalf("locale category macro value %q missing: %#v", value, res.Tokens)
 		}
+	}
+}
+
+func TestBuiltinWideHeadersDeclareRuntimeSurface(t *testing.T) {
+	res, err := PreprocessSource("main.c", `
+#include <wchar.h>
+#include <wctype.h>
+wint_t wc = WEOF;
+mbstate_t state = {0};
+wctype_t cls = 0;
+wctrans_t trans = 0;
+int checks[] = {
+  iswalnum(L'A'), iswalpha(L'A'), iswblank(L' '), iswcntrl(L'\n'),
+  iswdigit(L'7'), iswgraph(L'!'), iswlower(L'a'), iswprint(L' '),
+  iswpunct(L'!'), iswspace(L'\t'), iswupper(L'Z'), iswxdigit(L'f'),
+  towlower(L'A'), towupper(L'a'), iswctype(L'A', cls), towctrans(L'A', trans)
+};
+size_t len = mbrlen("A", 1, &state);
+size_t converted = mbrtowc(0, "A", 1, &state);
+size_t emitted = wcrtomb(0, L'A', &state);
+const char *srcp = "A";
+size_t wide_count = mbsrtowcs(0, &srcp, 0, &state);
+const wchar_t *wsrcp = L"A";
+size_t narrow_count = wcsrtombs(0, &wsrcp, 0, &state);
+wctype_t named_cls = wctype("alpha");
+wctrans_t named_trans = wctrans("tolower");
+`, Options{})
+	if err != nil {
+		t.Fatalf("PreprocessSource failed: %v", err)
+	}
+	for _, name := range []string{"wchar_t", "wint_t", "mbstate_t", "wctype_t", "wctrans_t", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs", "wcsrtombs", "iswalnum", "iswalpha", "iswblank", "iswcntrl", "iswdigit", "iswgraph", "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans"} {
+		if !hasIdentifier(res.Tokens, name) {
+			t.Fatalf("wide header identifier %q missing: %#v", name, res.Tokens)
+		}
+	}
+	if !hasLexeme(res.Tokens, "-") || !hasLexeme(res.Tokens, "1") {
+		t.Fatalf("WEOF did not expand to -1: %#v", res.Tokens)
 	}
 }
 

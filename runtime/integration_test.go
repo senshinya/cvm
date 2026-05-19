@@ -3,6 +3,7 @@ package runtime
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"shinya.click/cvm/bytecode"
@@ -286,6 +287,28 @@ int main(void) {
 	}
 	if st.Code != 7 {
 		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+}
+
+func TestCompileAndRunEscapedNestedFunctionPointerTraps(t *testing.T) {
+	_, err := compileAndRunWithOptions(t, `
+typedef int (*fn_t)(int);
+
+fn_t escape(void) {
+	int base = 40;
+	int inner(int x) { return base + x; }
+	return inner;
+}
+
+int main(void) {
+	fn_t fn = escape();
+	return fn(2);
+}`, nil, sema.SemaOptions{GNUExtensions: true})
+	if err == nil {
+		t.Fatal("Run succeeded, want expired closure pointer trap")
+	}
+	if !strings.Contains(err.Error(), "expired closure pointer") {
+		t.Fatalf("Run err = %v, want expired closure pointer trap", err)
 	}
 }
 

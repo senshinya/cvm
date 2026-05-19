@@ -9,7 +9,7 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 	case "stddef.h":
 		return fmt.Sprintf("#ifndef __CVM_STDDEF_H\n#define __CVM_STDDEF_H\n#define __SIZE_TYPE__ %s\n#define __PTRDIFF_TYPE__ %s\n#ifndef __CVM_SIZE_T\n#define __CVM_SIZE_T\ntypedef __SIZE_TYPE__ size_t;\n#endif\ntypedef __PTRDIFF_TYPE__ ptrdiff_t;\n#define NULL ((void *)0)\n#endif\n", target.SizeType, target.PtrdiffType), true
 	case "stdarg.h":
-		return "#ifndef __CVM_STDARG_H\n#define __CVM_STDARG_H\ntypedef __builtin_va_list va_list;\n#define va_start(ap, last) __builtin_va_start(ap, last)\n#define va_end(ap) __builtin_va_end(ap)\n#define va_arg(ap, type) ((type)0)\n#endif\n", true
+		return "#ifndef __CVM_STDARG_H\n#define __CVM_STDARG_H\ntypedef __builtin_va_list va_list;\n#define va_start(ap, last) __builtin_va_start(ap, last)\n#define va_end(ap) __builtin_va_end(ap)\n#define va_copy(dst, src) __builtin_va_copy(dst, src)\n#define va_arg(ap, type) (*(type *)__builtin_va_arg(ap))\n#endif\n", true
 	case "stdint.h":
 		return stdintHeader(target), true
 	case "inttypes.h":
@@ -42,6 +42,10 @@ func builtinHeader(name string, target TargetInfo) (string, bool) {
 		return ctypeHeader(), true
 	case "locale.h":
 		return localeHeader(), true
+	case "wchar.h":
+		return wcharHeader(), true
+	case "wctype.h":
+		return wctypeHeader(), true
 	case "time.h":
 		return timeHeader(), true
 	case "string.h":
@@ -208,12 +212,15 @@ int getc_unlocked(FILE *);
 int ungetc(int, FILE *);
 char *fgets(char * restrict, int, FILE * restrict);
 char *fgets_unlocked(char * restrict, int, FILE * restrict);
+int scanf(const char *, ...);
+int fscanf(FILE *, const char *, ...);
 int printf(const char *, ...);
 int printf_unlocked(const char *, ...);
 int fprintf(FILE *, const char *, ...);
 int fprintf_unlocked(FILE *, const char *, ...);
 int sprintf(char *, const char *, ...);
 int snprintf(char *, size_t, const char *, ...);
+int sscanf(const char *, const char *, ...);
 int vprintf(const char *, void *);
 int vprintf_unlocked(const char *, void *);
 int vfprintf(FILE *, const char *, void *);
@@ -231,7 +238,10 @@ func stdlibHeader() string {
 #define __CVM_SIZE_T
 typedef __SIZE_TYPE__ size_t;
 #endif
+#ifndef __CVM_WCHAR_T
+#define __CVM_WCHAR_T
 typedef __WCHAR_TYPE__ wchar_t;
+#endif
 typedef struct { int quot; int rem; } div_t;
 typedef struct { long quot; long rem; } ldiv_t;
 typedef struct { long long quot; long long rem; } lldiv_t;
@@ -305,7 +315,94 @@ func localeHeader() string {
 #define LC_MONETARY 3
 #define LC_NUMERIC 4
 #define LC_TIME 5
+struct lconv {
+  char *decimal_point;
+  char *thousands_sep;
+  char *grouping;
+  char *int_curr_symbol;
+  char *currency_symbol;
+  char *mon_decimal_point;
+  char *mon_thousands_sep;
+  char *mon_grouping;
+  char *positive_sign;
+  char *negative_sign;
+  char int_frac_digits;
+  char frac_digits;
+  char p_cs_precedes;
+  char p_sep_by_space;
+  char n_cs_precedes;
+  char n_sep_by_space;
+  char p_sign_posn;
+  char n_sign_posn;
+  char int_p_cs_precedes;
+  char int_p_sep_by_space;
+  char int_n_cs_precedes;
+  char int_n_sep_by_space;
+  char int_p_sign_posn;
+  char int_n_sign_posn;
+};
 char *setlocale(int, const char *);
+struct lconv *localeconv(void);
+#endif
+`
+}
+
+func wcharHeader() string {
+	return `#ifndef __CVM_WCHAR_H
+#define __CVM_WCHAR_H
+#include <stddef.h>
+#ifndef __CVM_WCHAR_T
+#define __CVM_WCHAR_T
+typedef __WCHAR_TYPE__ wchar_t;
+#endif
+#ifndef __CVM_WINT_T
+#define __CVM_WINT_T
+typedef int wint_t;
+#endif
+#ifndef __CVM_MBSTATE_T
+#define __CVM_MBSTATE_T
+typedef struct { unsigned int __count; unsigned int __value; } mbstate_t;
+#endif
+#define WEOF (-1)
+size_t mbrlen(const char *, size_t, mbstate_t *);
+size_t mbrtowc(wchar_t *, const char *, size_t, mbstate_t *);
+size_t wcrtomb(char *, wchar_t, mbstate_t *);
+size_t mbsrtowcs(wchar_t *, const char **, size_t, mbstate_t *);
+size_t wcsrtombs(char *, const wchar_t **, size_t, mbstate_t *);
+#endif
+`
+}
+
+func wctypeHeader() string {
+	return `#ifndef __CVM_WCTYPE_H
+#define __CVM_WCTYPE_H
+#include <wchar.h>
+#ifndef __CVM_WCTYPE_T
+#define __CVM_WCTYPE_T
+typedef unsigned long wctype_t;
+#endif
+#ifndef __CVM_WCTRANS_T
+#define __CVM_WCTRANS_T
+typedef unsigned long wctrans_t;
+#endif
+int iswalnum(wint_t);
+int iswalpha(wint_t);
+int iswblank(wint_t);
+int iswcntrl(wint_t);
+int iswdigit(wint_t);
+int iswgraph(wint_t);
+int iswlower(wint_t);
+int iswprint(wint_t);
+int iswpunct(wint_t);
+int iswspace(wint_t);
+int iswupper(wint_t);
+int iswxdigit(wint_t);
+wint_t towlower(wint_t);
+wint_t towupper(wint_t);
+wctype_t wctype(const char *);
+int iswctype(wint_t, wctype_t);
+wctrans_t wctrans(const char *);
+wint_t towctrans(wint_t, wctrans_t);
 #endif
 `
 }

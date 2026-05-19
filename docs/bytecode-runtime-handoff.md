@@ -8,10 +8,10 @@ This document records the current state of the bytecode/runtime work so the bran
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-1`
-- Latest implementation/coverage commit before this handoff document update: `e363b6d fix(codegen): propagate captures through nested function pointers`
+- Branch: `codex/bytecode-runtime-phase-10`
+- Latest implementation/coverage commit before this handoff document update: `da55d45 docs: map phase 10 locale wide gaps`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: `origin/codex/bytecode-runtime-phase-1`
+- Upstream: `origin/codex/bytecode-runtime-phase-9`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-1 origin/codex/bytecode-runtime-phase-1
+git switch -c codex/bytecode-runtime-phase-10 origin/codex/bytecode-runtime-phase-10
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-1` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-10` instead.
 
 ## Verification Commands
 
@@ -41,6 +41,204 @@ git diff --check
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./codegen -count=1
 env GOCACHE=/private/tmp/cvm-go-build-cache go test ./... -count=1
 ```
+
+## Phase 3 Closure
+
+Phase 3 runtime ABI fidelity is closed on `codex/bytecode-runtime-phase-3`.
+
+Closed Phase 3 milestones:
+
+- Baseline roadmap and gap map.
+- Source-level `va_arg` lowering for integer, pointer, long double, complex, struct, and union values.
+- Multiple live source-level `va_list` cursors and `va_copy`.
+- Bounded formatted input: `sscanf`, `scanf`, `fscanf`, integer/string/char conversions, assignment suppression, and `%n`.
+- FILE state: EOF/error/clear/close behavior plus read/write mode error indicators.
+- Hermetic file mode expansion for `r`, `w`, `a`, `+`, and append write positioning.
+- Explicit configured environment via `ExternRegistry.SetEnv` and `cvm run --env NAME=VALUE`.
+- Program termination semantics: `atexit` callbacks run in reverse order for normal termination and `exit`, while `_Exit` skips them.
+- Long double/complex ABI sweep, including preservation of `f`/`l` floating literal suffix types before default argument promotion.
+- Struct/union ABI sweep through aggregate `va_arg` coverage.
+- GCC runtime fixture sweep: manifest gap report remains closed.
+- Runtime status/error stabilization: internal atexit cleanup state no longer leaks through `ExitStatus`.
+- CLI runtime UX: `cvm run --stdin text` and `--env NAME=VALUE` configure deterministic hosted state.
+
+Residual bounded surfaces after Phase 3:
+
+- Formatted input remains intentionally scoped to integer/string/char conversions; scansets, floating input, pointer input, and exact EOF corner semantics are deferred until a fixture or workflow requires them.
+- Update-mode streams do not enforce the C sequencing rule requiring a flush or positioning operation between certain read/write direction changes.
+- Capturing GNU nested-function closure pointers follow stack-trampoline lifetime rules; calling one after the enclosing frame returns remains invalid.
+- Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
+
+## Phase 4 Closure
+
+Phase 4 hosted runtime stdio/input fidelity is closed on `codex/bytecode-runtime-phase-4`.
+
+Closed Phase 4 milestones:
+
+- Baseline Phase 4 roadmap and hosted stdio/input design.
+- Formatted input scansets: `%[...]`, `%[^...]`, ranges, width, assignment suppression, and source-level `sscanf` execution coverage.
+- Floating formatted input: `%f`, `%e`, `%g`, and `%a` families with `float *`, `double *`, and current runtime `long double *` storage.
+- Pointer formatted input: `%p` parses deterministic hexadecimal pointer input and writes pointer-sized runtime values.
+- Formatted-input failure returns: empty input or whitespace-only first-conversion input failure returns `EOF`, while matching failures return `0` or the number of prior assignments.
+- Hermetic update-mode stream sequencing: invalid read-after-write and write-after-read transitions set the stream error indicator; `fflush`, `fseek`, `rewind`, and read EOF allow the documented transitions.
+- Cross-extern scanner coverage: new scanner formats are covered through `scanf`, `fscanf`, and `sscanf`, including unread-byte preservation for stdin and configured files.
+- GCC runtime fixture recheck: the directive-based runtime gap report remains closed with 18 runnable manifest candidates and no failures; no newly unblocked imported scanf fixtures were found.
+
+Residual bounded surfaces after Phase 4:
+
+- Capturing GNU nested-function closure pointers follow stack-trampoline lifetime rules; calling one after the enclosing frame returns remains invalid.
+- Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
+- Locale-specific formatted input, multibyte/wide-character formatted input, native file descriptors, and exact native libc compatibility remain outside the deterministic hosted-runtime model.
+
+## Phase 5 Closure
+
+Phase 5 nested closure lifetime safety is closed on `codex/bytecode-runtime-phase-5`.
+
+Closed Phase 5 milestones:
+
+- Baseline Phase 5 roadmap and nested closure lifetime design.
+- Expired GNU nested-function closure pointers are now tracked after the creating frame exits.
+- Indirect calls through expired closure pointers now trap with an explicit `expired closure pointer` lifecycle diagnostic instead of falling through to a generic invalid indirect-call target.
+- Valid live nested closure calls still pass through existing local, passed-to-callee, VLA capture, and transitive capture runtime coverage.
+- GCC runtime fixture recheck remains closed with 18 runnable manifest candidates and no failures; no newly suitable nested-function pointer fixture was found.
+
+Residual bounded surfaces after Phase 5:
+
+- Escaped GNU nested-function pointers remain invalid after the enclosing frame returns, matching stack-trampoline lifetime constraints. Phase 5 improves diagnostics but does not make those pointers callable.
+- Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
+- Locale-specific formatted input, multibyte/wide-character formatted input, native file descriptors, and exact native libc compatibility remain outside the deterministic hosted-runtime model.
+
+## Phase 6 Closure
+
+Phase 6 hosted libc fidelity is closed on `codex/bytecode-runtime-phase-6`.
+
+Closed Phase 6 milestones:
+
+- Configured-file `fgetpos`/`fsetpos` support, including negative position, invalid memory, and standard-stream failure edges.
+- `freopen` over hermetic configured files for read, write/truncate, append, update-mode append, and failure-preservation semantics.
+- Deterministic `tmpnam` behavior for `tmpnam(NULL)`, caller-provided buffers, sequence uniqueness, and integration with hermetic `fopen` read/write flows.
+- `setvbuf` mode validation for `_IOFBF`, `_IOLBF`, `_IONBF`, invalid modes, buffer range checks, NULL buffers, and closed-stream validation.
+- `setbuf` source/direct coverage for explicit buffer and NULL buffer usage.
+- C-locale multibyte helper hardening for `mblen`, `mbtowc`, `wctomb`, `mbstowcs`, and `wcstombs`, including null/reset paths, truncation, terminators, and high-bit rejection.
+- Header/registry recheck for touched stdio/stdlib surfaces.
+- GCC runtime gap report recheck; no new low-risk imported GCC fixture was found.
+
+Residual bounded surfaces after Phase 6:
+
+- Multibyte handling intentionally models the C locale only. Stateful encodings, locale-specific behavior, and wide-character classification remain out of scope.
+- `tmpnam` uses deterministic hermetic names and does not model native filesystem races or host temporary directories.
+- File streams remain hermetic registry-backed streams, not native file descriptors.
+- Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
+
+## Phase 7 Closure
+
+Phase 7 string and memory fidelity is closed on `codex/bytecode-runtime-phase-7`.
+
+Closed Phase 7 milestones:
+
+- Hardened `memchr`, `memcmp`, `strncmp`, and `strnlen` zero-length, bounded-read, and unsigned-byte behavior.
+- Covered `strchr`, `strrchr`, `strstr`, `strpbrk`, `strspn`, and `strcspn` search/span boundaries.
+- Covered `strtok` delimiter changes, exhaustion, all-delimiter input, and restart behavior.
+- Covered `strxfrm`, `strcoll`, and deterministic per-memory `strerror` storage.
+- Hardened `memccpy`, `bcopy`, `memset`, and `bzero` edge cases.
+- Covered string write helpers and checked string/memory builtin object-size success/failure behavior.
+
+Phase 7 recheck:
+
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed with 18 runnable manifest candidates and no failures.
+- Header, sema builtin, registry, direct extern, and source-level runtime coverage were rechecked for the Phase 7 surface.
+- Imported GCC accept scans found only warning-only/non-runtime candidates or fixtures already represented in the compile manifest.
+
+Residual bounded surfaces after Phase 7:
+
+- `strerror` remains a deterministic hosted stub returning `"error"` rather than host-specific errno text.
+- Checked builtin overflow diagnostics remain split between compile-time GCC accept coverage and runtime direct trap coverage.
+- Broader stdlib, time, locale, and ctype edge fidelity is next-phase work.
+
+## Phase 8 Closure
+
+Phase 8 stdlib, time, locale, and ctype fidelity is closed on `codex/bytecode-runtime-phase-8`.
+
+Closed Phase 8 milestones:
+
+- Hardened integer conversion coverage for `strtol`, `strtoul`, `strtoll`, and `strtoull`, including base auto-detection, unsigned negative input, max signed, max unsigned, no-conversion, and `endptr` behavior.
+- Covered `atoi`, `atol`, `atoll`, `atof`, `strtod`, `strtof`, and `strtold` parsing, including decimal, exponent, hex float, no-conversion, and current `long double` storage behavior.
+- Covered deterministic `rand`/`srand`, `getenv`, and `system` hosted semantics.
+- Rechecked `atexit`, `exit`, and `_Exit` handler ordering and cleanup-control behavior.
+- Covered deterministic C-locale `setlocale`, deterministic `clock`/`time`, and `difftime` arithmetic.
+- Hardened ctype classification and case conversion bounds, preserving EOF while masking non-EOF inputs through unsigned-byte values.
+
+Phase 8 recheck:
+
+- Header declarations, sema builtin typing, extern registry entries, direct extern tests, and source-level runtime tests were rechecked for touched Phase 8 surfaces.
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed with 18 runnable manifest candidates and no failures.
+- Imported GCC accept scans did not identify a new stable low-risk runtime fixture for the Phase 8 surface.
+
+Residual bounded surfaces after Phase 8:
+
+- Floating conversion continues to use Go `strconv.ParseFloat` over the deterministic C-locale subset; host locale, errno/range diagnostics, and exact native libc overflow behavior remain out of scope.
+- `time` and `clock` intentionally return deterministic zero values rather than host time.
+- `system` intentionally never invokes a host shell; non-NULL commands fail deterministically.
+- Ctype behavior is deterministic byte-oriented C-locale behavior; broad locale-specific classification remains out of scope.
+
+## Phase 9 Closure
+
+Phase 9 floating conversion errno fidelity is closed on `codex/bytecode-runtime-phase-9`.
+
+Closed Phase 9 milestones:
+
+- Rechecked per-memory `errno` static variable behavior.
+- Covered floating conversion success and no-conversion errno preservation.
+- Hardened `strtod` decimal and hex overflow/underflow-to-zero behavior with signed infinities/zero, `endptr`, and `ERANGE`.
+- Covered `strtod` infinity spellings, NaN spellings, and parenthesized NaN payload consumption.
+- Hardened `strtof` float32 overflow and underflow after target-type narrowing, preserving representable subnormals.
+- Documented and covered current binary64-backed `strtold` overflow and underflow behavior.
+- Aligned `atof` with shared parser range handling and errno behavior.
+- Rechecked direct extern, source runtime, header, registry, and GCC fixture surfaces for Phase 9.
+- Added `docs/phase9-floating-conversion-errno-fidelity-gap-map.md`.
+
+Phase 9 recheck:
+
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed with 18 runnable manifest candidates and no failures.
+- Header declarations/macros and registry entries were rechecked for `errno`, `ERANGE`, `atof`, `strtod`, `strtof`, `strtold`, `nan`, `nanf`, and `nanl`.
+- Imported GCC accept scans did not identify a new stable low-risk runtime fixture beyond existing compile-manifest coverage.
+
+Residual bounded surfaces after Phase 9:
+
+- `long double` remains represented by the current binary64-backed runtime model; exact platform extended precision is deferred.
+- Floating conversion remains deterministic C-locale parsing, not host-locale parsing.
+- NaN payload text is consumed deterministically, but payload bits are not preserved.
+- Exact native libc errno corner cases beyond overflow and underflow-to-zero remain out of scope until a fixture or workflow requires them.
+
+## Phase 10 Closure
+
+Phase 10 locale, wide-character, and restartable multibyte fidelity is closed on `codex/bytecode-runtime-phase-10`.
+
+Closed Phase 10 milestones:
+
+- Added `docs/phase10-locale-model.md` to pin the deterministic C-locale boundary for locale and multibyte behavior.
+- Extended deterministic `setlocale` category tracking across standard `LC_*` categories.
+- Added builtin `<locale.h>` `struct lconv` and `localeconv` declarations.
+- Implemented per-memory C-locale `localeconv` storage and source-level coverage.
+- Added builtin `<wchar.h>` and `<wctype.h>` declarations for `wchar_t`, `wint_t`, `mbstate_t`, `WEOF`, wide ctype, wide case conversion, descriptors, and restartable multibyte functions.
+- Implemented C-locale wide ctype classification, wide case conversion, `wctype`, `iswctype`, `wctrans`, and `towctrans`.
+- Added opaque C-locale `mbstate_t` support and restartable multibyte externs: `mbrlen`, `mbrtowc`, `wcrtomb`, `mbsrtowcs`, and `wcsrtombs`.
+- Added source-level runtime coverage for localeconv, wide ctype/case/descriptor workflows, and restartable multibyte conversion.
+- Rechecked header, registry, direct extern, source runtime, and GCC fixture surfaces for Phase 10.
+- Added `docs/phase10-locale-wide-multibyte-fidelity-gap-map.md`.
+
+Phase 10 recheck:
+
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed with 18 runnable manifest candidates and no failures.
+- Header declarations and registry entries were rechecked for locale, wide-character, descriptor, and restartable multibyte surfaces.
+- Imported GCC accept scans did not identify a new stable low-risk runtime fixture beyond existing compile/runtime coverage.
+
+Residual bounded surfaces after Phase 10:
+
+- Locale behavior remains deterministic C-locale behavior; host locale databases, collation, and localized numeric formatting are deferred.
+- `mbstate_t` is opaque and effectively stateless for the supported single-byte C-locale conversions.
+- Restartable multibyte conversion supports ASCII and NUL bytes only; stateful encodings and UTF-8 multibyte sequences remain out of scope.
+- Wide ctype classification is C-locale ASCII classification; non-ASCII wide values are unclassified and unchanged by case conversion.
 
 ## Completed Work
 
@@ -1557,8 +1755,8 @@ Runtime support exists for real math externs and for the Phase 1 complex math ex
 - Bytecode design is intended to be complete enough for the compiler artifact, but execution support is still catching up.
 - Broader complex runtime execution outside the Phase 1 math extern surface is not complete.
 - Broader long double runtime memory/operations outside the Phase 1 math extern surface are still limited in places.
-- `va_list` execution has two partial paths: bytecode `OpVa*` uses an interpreter-internal frame cursor, and v-format externs can consume the CVM memory-backed `va_list` layout. Ordinary C source-level `va_arg(ap, type)` is still not lowered into that memory layout.
-- Standard input can be configured through the default extern registry constructors. File streams can be configured hermetically through `ExternRegistry.AddFile`, `fopen`, `tmpfile`, `remove`, `rename`, `fseek`, `ftell`, and stdio read/write helpers; direct host filesystem access and interactive terminal behavior are intentionally not modeled.
+- `va_list` execution has two bounded paths: source-level `va_arg(ap, type)` uses bytecode `OpVa*` over an interpreter-internal frame cursor, while v-format externs consume the CVM memory-backed `va_list` layout.
+- Standard input can be configured through the default extern registry constructors or `cvm run --stdin text`. File streams can be configured hermetically through `ExternRegistry.AddFile`, `fopen`, `tmpfile`, `remove`, `rename`, `fseek`, `ftell`, and stdio read/write helpers; direct host filesystem access and interactive terminal behavior are intentionally not modeled.
 - `fclose` now invalidates known host stream handles. Broader FILE lifetime behavior beyond standard host streams remains intentionally narrow.
 - The imported `.c` GCC accept fixtures from the three tracked roots are covered by bytecode compile validation. Phase 1 runtime execution has also closed the low-risk non-math `main` candidate set; remaining compile-only `main` fixtures are intentionally not runtime targets for the reasons listed above.
 - Static-chain support now includes runtime-managed closure/trampoline pointers for capturing GNU nested functions while their creating frame is alive. Calling one after the enclosing frame has returned remains intentionally invalid, matching stack-trampoline lifetime constraints.
@@ -1566,10 +1764,10 @@ Runtime support exists for real math externs and for the Phase 1 complex math ex
 
 ## Suggested Next Work
 
-The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, the first Phase 2 runtime environment milestone is complete, and the bounded Phase 2B `va_list`/file-stream/nested-trampoline runtime work is complete. Suggested next directions:
+The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, and Phases 2 through 8 are closed. Suggested next directions:
 
-- Expand runtime execution coverage only when a fixture has stable runtime semantics or when the required semantics are explicitly brought into scope.
-- Treat any further Phase 2 work as a newly scoped hosted-runtime or ABI milestone rather than continuing the now-closed bounded Phase 2B set.
+- Scope any further hosted runtime work as a new phase, starting from the residual limits recorded in the Phase 8 gap map.
+- Expand runtime execution coverage only when a fixture has stable deterministic semantics or when the required hosted-runtime semantics are explicitly brought into scope.
 
 Recommended workflow:
 

@@ -23,6 +23,7 @@ type Program struct {
 	stringAddr []uint64
 	externs    map[int]ExternFunc
 	externCtx  *ExternContext
+	externReg  *ExternRegistry
 	entryFunc  int
 	entryArgs  []Value
 }
@@ -48,6 +49,7 @@ func Load(r io.Reader, opts LoadOptions) (*Program, error) {
 		funcAddr:   make([]uint64, len(mod.Globals)),
 		stringAddr: make([]uint64, len(mod.Strings)),
 		externs:    make(map[int]ExternFunc),
+		externReg:  reg,
 	}
 	p.externCtx = reg.context(p.memory)
 	if err := p.allocateGlobals(reg); err != nil {

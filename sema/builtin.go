@@ -140,6 +140,10 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(intT, []Type{voidPtr, constCharPtr}, true, true)
 	case "fprintf", "fprintf_unlocked":
 		return s.Types.Function(intT, []Type{voidPtr, constCharPtr}, true, true)
+	case "scanf":
+		return s.Types.Function(intT, []Type{constCharPtr}, true, true)
+	case "fscanf":
+		return s.Types.Function(intT, []Type{voidPtr, constCharPtr}, true, true)
 	case "__builtin_sprintf":
 		return s.Types.Function(intT, []Type{charPtr, constCharPtr}, true, true)
 	case "sprintf":
@@ -148,6 +152,8 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(intT, []Type{charPtr, sizeT, constCharPtr}, true, true)
 	case "snprintf":
 		return s.Types.Function(intT, []Type{charPtr, sizeT, constCharPtr}, true, true)
+	case "sscanf":
+		return s.Types.Function(intT, []Type{constCharPtr, constCharPtr}, true, true)
 	case "__builtin_vprintf":
 		return s.Types.Function(intT, []Type{constCharPtr, vaList}, false, true)
 	case "vprintf":
@@ -182,6 +188,10 @@ func (s *Sema) builtinFunctionType(name string) *FunctionType {
 		return s.Types.Function(intT, []Type{charPtr, sizeT, intT, sizeT, constCharPtr, vaList}, false, true)
 	case "__builtin_va_start", "__builtin_va_end":
 		return s.Types.Function(voidT, nil, true, true)
+	case "__builtin_va_copy":
+		return s.Types.Function(voidT, []Type{vaList, vaList}, false, true)
+	case "__builtin_va_arg":
+		return s.Types.Function(voidPtr, []Type{vaList}, false, true)
 	case "__builtin_pow":
 		return s.Types.Function(doubleT, []Type{doubleT, doubleT}, false, true)
 	case "__builtin_cabs":

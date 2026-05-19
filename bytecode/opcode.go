@@ -46,6 +46,7 @@ const (
 	OpCallIndirect
 	OpVaStart
 	OpVaArg
+	OpVaCopy
 	OpVaEnd
 	OpMakeClosure
 )
@@ -93,6 +94,7 @@ func (op Opcode) String() string {
 		"OpCallIndirect",
 		"OpVaStart",
 		"OpVaArg",
+		"OpVaCopy",
 		"OpVaEnd",
 		"OpMakeClosure",
 	}

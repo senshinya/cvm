@@ -231,6 +231,139 @@ int main(void)
 	}
 }
 
+func TestGCCFreopenConfiguredReadFileExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  FILE *f = fopen("old.txt", "r");
+  if (!f)
+    return 1;
+  if (fgetc(f) != 'O')
+    return 2;
+  if (freopen("new.txt", "r", f) != f)
+    return 3;
+  if (fgetc(f) != 'N')
+    return 4;
+  return 0;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("new.txt", []byte("NEW"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-freopen-configured-read-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCFreopenConfiguredWriteFileExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[3] = { 0, 0, 0 };
+  FILE *f = fopen("old.txt", "r");
+  if (!f)
+    return 1;
+  if (freopen("out.txt", "w", f) != f)
+    return 2;
+  if (fputs("XY", f) < 0)
+    return 3;
+  if (fclose(f) != 0)
+    return 4;
+  f = fopen("out.txt", "r");
+  if (!f)
+    return 5;
+  if (fread(buf, 1, 2, f) != 2)
+    return 6;
+  return buf[0] == 'X' && buf[1] == 'Y' ? 0 : 7;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("out.txt", []byte("stale"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-freopen-configured-write-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCFreopenConfiguredAppendFileExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[4] = { 0, 0, 0, 0 };
+  FILE *f = fopen("old.txt", "r");
+  if (!f)
+    return 1;
+  if (freopen("log.txt", "a", f) != f)
+    return 2;
+  if (fseek(f, 0, SEEK_SET) != 0)
+    return 3;
+  if (fputc('C', f) != 'C')
+    return 4;
+  if (freopen("log.txt", "r", f) != f)
+    return 5;
+  if (fread(buf, 1, 3, f) != 3)
+    return 6;
+  if (buf[0] != 'A' || buf[1] != 'B' || buf[2] != 'C')
+    return 7;
+  if (freopen("plus.txt", "a+", f) != f)
+    return 8;
+  if (fseek(f, 0, SEEK_SET) != 0)
+    return 9;
+  if (fputc('Z', f) != 'Z')
+    return 10;
+  if (freopen("plus.txt", "r", f) != f)
+    return 11;
+  if (fread(buf, 1, 3, f) != 3)
+    return 12;
+  return buf[0] == 'A' && buf[1] == 'B' && buf[2] == 'Z' ? 0 : 13;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("log.txt", []byte("AB"))
+	reg.AddFile("plus.txt", []byte("AB"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-freopen-configured-append-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCFreopenFailurePreservesStreamExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  FILE *f = fopen("data.txt", "r");
+  if (!f)
+    return 1;
+  if (fgetc(f) != 'A')
+    return 2;
+  if (freopen("missing.txt", "r", f) != 0)
+    return 3;
+  if (fgetc(f) != 'B')
+    return 4;
+  if (freopen("data.txt", "x+", f) != 0)
+    return 5;
+  return fgetc(f) == 'C' ? 0 : 6;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("ABC"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-freopen-failure-preserves-stream-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCTmpfileReadWriteExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
@@ -286,6 +419,7 @@ func TestGCCFopenConfiguredFilePositioningExecutesThroughRuntime(t *testing.T) {
 
 int main(void)
 {
+  fpos_t pos = 0;
   FILE *f = fopen("data.txt", "r");
   if (!f)
     return 1;
@@ -293,8 +427,16 @@ int main(void)
     return 2;
   if (ftell(f) != 2L)
     return 3;
+  if (fgetpos(f, &pos) != 0)
+    return 8;
+  if (pos != 2)
+    return 9;
   if (fgetc(f) != 'C')
     return 4;
+  if (fsetpos(f, &pos) != 0)
+    return 10;
+  if (fgetc(f) != 'C')
+    return 11;
   if (fseek(f, -1, SEEK_END) != 0)
     return 5;
   if (fgetc(f) != 'E')
@@ -372,18 +514,98 @@ int main(void)
 	}
 }
 
+func TestGCCFopenAppendModeWritesAtEndAfterSeekExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char buf[3] = { 0, 0, 0 };
+  FILE *f = fopen("log.txt", "a+");
+  if (!f)
+    return 1;
+  if (fseek(f, 0, SEEK_SET) != 0)
+    return 2;
+  if (fputc('Z', f) != 'Z')
+    return 3;
+  if (fclose(f) != 0)
+    return 4;
+  f = fopen("log.txt", "r");
+  if (!f)
+    return 5;
+  if (fread(buf, 1, 3, f) != 3)
+    return 6;
+  return buf[0] == 'A' && buf[1] == 'B' && buf[2] == 'Z' ? 0 : 7;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("log.txt", []byte("AB"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-fopen-append-after-seek-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioTmpnamExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
 
 int main(void)
 {
+  char *p;
+  char buf[L_tmpnam];
+  char buf2[L_tmpnam];
   if (L_tmpnam < 1 || TMP_MAX < 1)
     return 1;
-  return tmpnam(0) == 0 ? 0 : 2;
+  p = tmpnam(0);
+  if (!p)
+    return 2;
+  if (p[0] != '/' || p[1] != 't' || p[2] != 'm' || p[3] != 'p')
+    return 3;
+  p = tmpnam(buf);
+  if (p != buf)
+    return 4;
+  if (buf[0] != '/' || buf[1] != 't' || buf[2] != 'm' || buf[3] != 'p')
+    return 5;
+  p = tmpnam(buf2);
+  if (p != buf2)
+    return 6;
+  return buf[13] != buf2[13] ? 0 : 7;
 }
 `
 	st := runGCCExecFixture(t, "stdio-tmpnam-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestStdioTmpnamWithConfiguredFilesExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char name[L_tmpnam];
+  char buf[3] = { 0, 0, 0 };
+  FILE *f;
+  if (tmpnam(name) != name)
+    return 1;
+  f = fopen(name, "w");
+  if (!f)
+    return 2;
+  if (fputs("AB", f) < 0)
+    return 3;
+  if (fclose(f) != 0)
+    return 4;
+  f = fopen(name, "r");
+  if (!f)
+    return 5;
+  if (fread(buf, 1, 2, f) != 2)
+    return 6;
+  return buf[0] == 'A' && buf[1] == 'B' ? 0 : 7;
+}
+`
+	st := runGCCExecFixture(t, "stdio-tmpnam-configured-files-runtime.c", source)
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
@@ -1150,6 +1372,9 @@ int main(void)
   float nf = nanf("");
   double m = nan("");
   long double nl = nanl("");
+  float nf_payload = nanf("123");
+  double m_payload = nan("payload");
+  long double nl_payload = nanl("bad");
 
   if (!(hf > 1e30f))
     return 1;
@@ -1165,6 +1390,12 @@ int main(void)
     return 6;
   if (!(nl != nl))
     return 7;
+  if (!(nf_payload != nf_payload))
+    return 11;
+  if (!(m_payload != m_payload))
+    return 12;
+  if (!(nl_payload != nl_payload))
+    return 13;
 
   if (!signbit(-0.0f))
     return 8;
@@ -1330,9 +1561,14 @@ int main(void)
   int a;
   int b;
   int c;
+  int d;
 
   if (RAND_MAX < 32767)
     return 1;
+  d = rand();
+  srand(1);
+  if (rand() != d)
+    return 5;
   srand(123);
   a = rand();
   b = rand();
@@ -1363,6 +1599,31 @@ int main(void)
 }
 `
 	st := runGCCExecFixture(t, "stdlib-getenv-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestStdlibConfiguredGetenvExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+#include <string.h>
+
+int main(void)
+{
+  char *v = getenv("CVM_TEST");
+  if (!v)
+    return 1;
+  if (strcmp(v, "configured-value") != 0)
+    return 2;
+  if (getenv("CVM_TEST") != v)
+    return 4;
+  return getenv("MISSING") == 0 ? 0 : 3;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.SetEnv("CVM_TEST", "configured-value")
+	st := runGCCExecFixtureWithLoadOptions(t, "stdlib-configured-getenv-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
@@ -1404,6 +1665,115 @@ int main(void)
 	}
 }
 
+func TestStdlibAtexitRunsHandlersInReverseOrderThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+#include <stdio.h>
+
+static void first(void)
+{
+  putchar('1');
+}
+
+static void second(void)
+{
+  putchar('2');
+}
+
+int main(void)
+{
+  if (atexit(first) != 0)
+    return 1;
+  if (atexit(second) != 0)
+    return 2;
+  return 0;
+}
+`
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdlib-atexit-order-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+	if got := out.String(); got != "21" {
+		t.Fatalf("stdout = %q, want %q", got, "21")
+	}
+}
+
+func TestStdlibExitRunsAtexitHandlersThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+#include <stdio.h>
+
+static void cleanup(void)
+{
+  putchar('x');
+}
+
+int main(void)
+{
+  if (atexit(cleanup) != 0)
+    return 1;
+  exit(7);
+}
+`
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdlib-exit-atexit-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+	if got := out.String(); got != "x" {
+		t.Fatalf("stdout = %q, want %q", got, "x")
+	}
+}
+
+func TestStdlibUnderscoreExitSkipsAtexitHandlersThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+#include <stdio.h>
+
+static void cleanup(void)
+{
+  putchar('x');
+}
+
+int main(void)
+{
+  if (atexit(cleanup) != 0)
+    return 1;
+  _Exit(9);
+}
+`
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdlib-underscore-exit-atexit-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 9 {
+		t.Fatalf("exit code = %d, want 9", st.Code)
+	}
+	if got := out.String(); got != "" {
+		t.Fatalf("stdout = %q, want empty", got)
+	}
+}
+
+func TestStdlibUnderscoreExitDoesNotExposeCleanupControlThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  _Exit(7);
+}
+`
+	st := runGCCExecFixture(t, "stdlib-underscore-exit-public-status-runtime.c", source)
+	if st.Code != 7 {
+		t.Fatalf("exit code = %d, want 7", st.Code)
+	}
+	if st.skipAtexit {
+		t.Fatalf("ExitStatus exposed internal cleanup control")
+	}
+}
+
 func TestLocaleSetlocaleExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <locale.h>
@@ -1414,12 +1784,255 @@ int main(void)
   char *current = setlocale(LC_ALL, 0);
   if (current == 0 || strcmp(current, "C") != 0)
     return 1;
-  if (setlocale(LC_NUMERIC, "C") == 0)
+  if (setlocale(LC_COLLATE, "C") == 0 || strcmp(setlocale(LC_COLLATE, 0), "C") != 0)
     return 2;
+  if (setlocale(LC_CTYPE, "C") == 0 || strcmp(setlocale(LC_CTYPE, 0), "C") != 0)
+    return 5;
+  if (setlocale(LC_MONETARY, "C") == 0 || strcmp(setlocale(LC_MONETARY, 0), "C") != 0)
+    return 6;
+  if (setlocale(LC_NUMERIC, "C") == 0 || strcmp(setlocale(LC_NUMERIC, 0), "C") != 0)
+    return 7;
+  if (setlocale(LC_TIME, "C") == 0 || strcmp(setlocale(LC_TIME, 0), "C") != 0)
+    return 8;
+  if (setlocale(LC_ALL, "") == 0 || strcmp(setlocale(LC_ALL, 0), "C") != 0)
+    return 4;
   return setlocale(LC_TIME, "ja_JP.UTF-8") == 0 ? 0 : 3;
 }
 `
 	st := runGCCExecFixture(t, "locale-setlocale-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestLocaleconvExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <locale.h>
+#include <string.h>
+
+int main(void)
+{
+  struct lconv *first = localeconv();
+  struct lconv *second = localeconv();
+  if (first == 0)
+    return 1;
+  if (first != second)
+    return 2;
+  if (strcmp(first->decimal_point, ".") != 0)
+    return 3;
+  if (first->thousands_sep[0] != 0)
+    return 4;
+  if (first->grouping[0] != 0)
+    return 5;
+  if (first->int_frac_digits != 127)
+    return 6;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "localeconv-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestWideCtypeClassificationExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wctype.h>
+
+int main(void)
+{
+  if (!iswblank(L' ') || !iswblank(L'\t') || iswblank(L'\n'))
+    return 1;
+  if (!iswcntrl(L'\n') || !iswcntrl(0x7f) || iswcntrl(L'A'))
+    return 2;
+  if (!iswgraph(L'!') || iswgraph(L' '))
+    return 3;
+  if (!iswpunct(L'!') || iswpunct(L'A') || iswpunct(0x121))
+    return 4;
+  if (!iswalpha(L'Z') || iswalpha(0x141))
+    return 5;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-ctype-classification-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestWideCtypeCaseConversionExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wctype.h>
+
+int main(void)
+{
+  if (towlower(L'A') != L'a')
+    return 1;
+  if (towlower(L'z') != L'z')
+    return 2;
+  if (towlower(L'!') != L'!')
+    return 3;
+  if (towlower(WEOF) != WEOF)
+    return 4;
+  if (towlower(0x141) != 0x141)
+    return 5;
+  if (towupper(L'q') != L'Q')
+    return 6;
+  if (towupper(L'Z') != L'Z')
+    return 7;
+  if (towupper(L'!') != L'!')
+    return 8;
+  if (towupper(WEOF) != WEOF)
+    return 9;
+  if (towupper(0x171) != 0x171)
+    return 10;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-ctype-case-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestWideCtypeDescriptorExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wctype.h>
+
+int main(void)
+{
+  wctype_t alpha = wctype("alpha");
+  wctype_t digit = wctype("digit");
+  if (alpha == 0 || digit == 0)
+    return 1;
+  if (wctype("emoji") != 0)
+    return 2;
+  if (!iswctype(L'A', alpha) || iswctype(L'!', alpha))
+    return 3;
+  if (iswctype(0x141, alpha) || iswctype(WEOF, alpha))
+    return 4;
+  if (!iswctype(L'7', digit) || iswctype(L'x', digit))
+    return 5;
+  if (iswctype(L'A', 0))
+    return 6;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-ctype-descriptor-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestWideCtypeTransDescriptorExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wctype.h>
+
+int main(void)
+{
+  wctrans_t lower = wctrans("tolower");
+  wctrans_t upper = wctrans("toupper");
+  if (lower == 0 || upper == 0)
+    return 1;
+  if (wctrans("swapcase") != 0)
+    return 2;
+  if (towctrans(L'A', lower) != L'a' || towctrans(L'z', lower) != L'z')
+    return 3;
+  if (towctrans(L'q', upper) != L'Q' || towctrans(L'Z', upper) != L'Z')
+    return 4;
+  if (towctrans(L'!', upper) != L'!')
+    return 5;
+  if (towctrans(WEOF, lower) != WEOF)
+    return 6;
+  if (towctrans(0x141, lower) != 0x141)
+    return 7;
+  if (towctrans(L'A', 0) != L'A')
+    return 8;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-ctype-trans-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestMbstateHeaderExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  mbstate_t st = {0};
+  return sizeof(st) > 0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "mbstate-header-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestRestartableMultibyteExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  mbstate_t st = {0};
+  wchar_t wide[4];
+  char out[4];
+  const char *src = "Az";
+  const wchar_t *wsrc = wide;
+
+  if (mbrlen("A", 1, &st) != 1)
+    return 1;
+  if (mbrlen("", 1, &st) != 0)
+    return 2;
+  if (mbrlen("A", 0, &st) != (size_t)-2)
+    return 3;
+
+  if (mbrtowc(&wide[0], "B", 1, &st) != 1 || wide[0] != L'B')
+    return 4;
+  if (mbrtowc(0, "B", 1, &st) != 1)
+    return 5;
+  if (mbrtowc(&wide[1], "", 1, &st) != 0 || wide[1] != 0)
+    return 6;
+
+  if (wcrtomb(out, L'C', &st) != 1 || out[0] != 'C')
+    return 7;
+  if (wcrtomb(out, 0, &st) != 1 || out[0] != 0)
+    return 8;
+  if (wcrtomb(0, L'C', &st) != 1)
+    return 9;
+
+  src = "Az";
+  if (mbsrtowcs(wide, &src, 4, &st) != 2 || src != 0)
+    return 10;
+  if (wide[0] != L'A' || wide[1] != L'z' || wide[2] != 0)
+    return 11;
+  src = "Az";
+  wide[1] = L'X';
+  if (mbsrtowcs(wide, &src, 1, &st) != 1 || src == 0 || *src != 'z' || wide[1] != L'X')
+    return 12;
+
+  wide[0] = L'o';
+  wide[1] = L'k';
+  wide[2] = 0;
+  wsrc = wide;
+  if (wcsrtombs(out, &wsrc, 4, &st) != 2 || wsrc != 0)
+    return 13;
+  if (out[0] != 'o' || out[1] != 'k' || out[2] != 0)
+    return 14;
+  wsrc = wide;
+  out[1] = 'X';
+  if (wcsrtombs(out, &wsrc, 1, &st) != 1 || wsrc != wide + 1 || out[1] != 'X')
+    return 15;
+
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "restartable-multibyte-runtime.c", source)
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
@@ -1440,6 +2053,10 @@ int main(void)
     return 3;
   if (difftime(7, 2) != 5.0)
     return 4;
+  if (difftime(7, 7) != 0.0)
+    return 6;
+  if (difftime(2, 7) != -5.0)
+    return 7;
   return clock() == 0 ? 0 : 5;
 }
 `
@@ -1723,6 +2340,55 @@ int main(void)
 	}
 }
 
+func TestStdioStreamErrorIndicatorExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  FILE *f = fopen("readonly.txt", "r");
+  if (!f)
+    return 1;
+  if (fputc('X', f) != EOF)
+    return 2;
+  if (ferror(f) == 0)
+    return 3;
+  clearerr(f);
+  if (ferror(f) != 0)
+    return 4;
+  return fgetc(f) == 'A' ? 0 : 5;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("readonly.txt", []byte("AB"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-stream-error-indicator-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestStdioStreamReadErrorIndicatorExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  FILE *f = fopen("writeonly.txt", "w");
+  if (!f)
+    return 1;
+  if (fgetc(f) != EOF)
+    return 2;
+  if (ferror(f) == 0)
+    return 3;
+  return feof(f) == 0 ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdio-stream-read-error-indicator-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioFilenoExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
@@ -1752,9 +2418,16 @@ int main(void)
 {
   char buf[BUFSIZ];
   setbuf(stdout, buf);
-  if (setvbuf(stdout, 0, _IONBF, 0) != 0)
+  setbuf(stdout, 0);
+  if (setvbuf(stdout, 0, _IOFBF, 0) != 0)
     return 1;
-  return fputc('S', stdout) == 'S' ? 0 : 2;
+  if (setvbuf(stdout, 0, _IOLBF, 0) != 0)
+    return 2;
+  if (setvbuf(stdout, 0, _IONBF, 0) != 0)
+    return 3;
+  if (setvbuf(stdout, 0, 99, 0) == 0)
+    return 4;
+  return fputc('S', stdout) == 'S' ? 0 : 5;
 }
 `
 	st := runGCCExecFixture(t, "stdio-buffer-controls-runtime.c", source)
@@ -1829,6 +2502,8 @@ int main(void)
 {
   if (atoi(" \t-42tail") != -42)
     return 1;
+  if (atoi("+17") != 17)
+    return 5;
   if (atol("\n12345x") != 12345L)
     return 2;
   if (atoll("  -9876543210") != -9876543210LL)
@@ -1852,6 +2527,9 @@ int main(void)
 {
   wchar_t wide[4];
   char out[4];
+  char bad[2];
+  bad[0] = (char)0x80;
+  bad[1] = 0;
 
   if (mblen("A", 2) != 1)
     return 1;
@@ -1859,8 +2537,23 @@ int main(void)
     return 2;
   if (mblen(0, 0) != 0)
     return 3;
+  if (mblen("A", 0) != -1)
+    return 11;
+  if (mblen(bad, 1) != -1)
+    return 12;
   if (mbtowc(&wide[0], "B", 2) != 1 || wide[0] != L'B')
     return 4;
+  if (mbtowc(0, "B", 2) != 1)
+    return 13;
+  if (mbtowc(0, 0, 0) != 0)
+    return 14;
+  if (mbtowc(&wide[1], "", 1) != 0 || wide[1] != 0)
+    return 15;
+  wide[1] = L'X';
+  if (mbtowc(&wide[1], "B", 0) != -1 || wide[1] != L'X')
+    return 16;
+  if (mbtowc(&wide[1], bad, 1) != -1 || wide[1] != L'X')
+    return 17;
   wide[0] = L'O';
   wide[1] = L'K';
   wide[2] = 0;
@@ -1868,16 +2561,71 @@ int main(void)
     return 5;
   if (out[0] != 'O' || out[1] != 'K' || out[2] != 0)
     return 6;
+  out[1] = 'X';
+  if (wcstombs(out, wide, 1) != 1 || out[0] != 'O' || out[1] != 'X')
+    return 22;
+  wide[1] = 0x80;
+  out[0] = 'X';
+  if (wcstombs(out, wide, sizeof out) != (size_t)-1 || out[0] != 'X')
+    return 23;
   if (mbstowcs(wide, "xy", 4) != 2)
     return 7;
   if (wide[0] != L'x' || wide[1] != L'y' || wide[2] != 0)
     return 8;
+  wide[1] = L'X';
+  if (mbstowcs(wide, "xy", 1) != 1 || wide[0] != L'x' || wide[1] != L'X')
+    return 20;
+  if (mbstowcs(wide, bad, 4) != (size_t)-1)
+    return 21;
   if (wctomb(out, L'Z') != 1 || out[0] != 'Z')
     return 9;
+  if (wctomb(out, 0) != 1 || out[0] != 0)
+    return 18;
+  out[0] = 'X';
+  if (wctomb(out, 0x80) != -1 || out[0] != 'X')
+    return 19;
   return wctomb(0, 0) == 0 ? 0 : 10;
 }
 `
 	st := runGCCExecFixture(t, "stdlib-multibyte-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestStdlibMultibyteWorkflowExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  wchar_t wide[4];
+  char out[4] = { 0, 0, 0, 0 };
+  char one[2] = { 0, 0 };
+  const char *input = "Hi";
+
+  if (mblen(input, 2) != 1)
+    return 1;
+  if (mbtowc(&wide[0], input, 2) != 1)
+    return 2;
+  if (mbtowc(&wide[1], input + 1, 1) != 1)
+    return 3;
+  wide[2] = 0;
+  if (wcstombs(out, wide, sizeof out) != 2)
+    return 4;
+  if (out[0] != 'H' || out[1] != 'i' || out[2] != 0)
+    return 5;
+  wide[0] = wide[1] = wide[2] = 0;
+  if (mbstowcs(wide, out, 4) != 2)
+    return 6;
+  if (wide[0] != L'H' || wide[1] != L'i' || wide[2] != 0)
+    return 7;
+  if (wctomb(one, wide[1]) != 1 || one[0] != 'i')
+    return 8;
+  return wctomb(0, 0) == 0 ? 0 : 9;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-multibyte-workflow-runtime.c", source)
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
@@ -1895,12 +2643,28 @@ int main(void)
     return 1;
   if (*end != ' ')
     return 2;
+  if (strtol("  +123abc", &end, 0) != 123L)
+    return 8;
+  if (*end != 'a')
+    return 9;
+  if (strtol("0755,tail", &end, 0) != 493L)
+    return 10;
+  if (*end != ',')
+    return 11;
   if (strtoul("077z", &end, 0) != 63UL)
     return 3;
   if (*end != 'z')
     return 4;
   if (strtoul("7f!", 0, 16) != 127UL)
     return 5;
+  if (strtoul("-42xyz", &end, 10) != (unsigned long)-42)
+    return 12;
+  if (*end != 'x')
+    return 13;
+  if (strtoul("nope", &end, 10) != 0UL)
+    return 14;
+  if (*end != 'n')
+    return 15;
   if (strtol("xyz", &end, 10) != 0L)
     return 6;
   return *end == 'x' ? 0 : 7;
@@ -1924,9 +2688,17 @@ int main(void)
     return 1;
   if (*end != 'x')
     return 2;
+  if (strtoll("9223372036854775807;", &end, 10) != 9223372036854775807LL)
+    return 5;
+  if (*end != ';')
+    return 6;
   if (strtoull("0X100000000z", &end, 0) != 4294967296ULL)
     return 3;
-  return *end == 'z' ? 0 : 4;
+  if (*end != 'z')
+    return 4;
+  if (strtoull("18446744073709551615!", &end, 10) != 18446744073709551615ULL)
+    return 7;
+  return *end == '!' ? 0 : 8;
 }
 `
 	st := runGCCExecFixture(t, "stdlib-strtoll-runtime.c", source)
@@ -1937,25 +2709,159 @@ int main(void)
 
 func TestStdlibFloatParserExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
+#include <errno.h>
 #include <stdlib.h>
 
 int main(void)
 {
   char *end = 0;
+  errno = 77;
 
   if (atof(" \t3.25tail") != 3.25)
     return 1;
+  if (atof("-1.25e2x") != -125.0)
+    return 14;
+  if (atof("word") != 0.0)
+    return 15;
+  if (errno != 77)
+    return 60;
+  errno = 0;
+  if (atof("1e309tail") <= 1e300)
+    return 61;
+  if (errno != ERANGE)
+    return 62;
+  errno = 0;
+  if (atof("-1e-400tail") != 0.0)
+    return 63;
+  if (errno != ERANGE)
+    return 64;
+  errno = 77;
   if (strtod(" -12.5e1x", &end) != -125.0)
     return 2;
   if (*end != 'x')
     return 3;
+  if (errno != 77)
+    return 16;
+  if (strtod(" +6.25e-1;", &end) != 0.625)
+    return 8;
+  if (*end != ';')
+    return 9;
   if (strtod("0x1.8p+2!", &end) != 6.0)
     return 4;
   if (*end != '!')
     return 5;
+  if (strtod("0x1p0:", &end) != 1.0)
+    return 10;
+  if (*end != ':')
+    return 11;
+  if (strtod("0x1.fp-1?", &end) != 0.96875)
+    return 12;
+  if (*end != '?')
+    return 13;
+  if (strtod("inf!", &end) <= 1e300)
+    return 18;
+  if (*end != '!')
+    return 19;
+  if (strtod("+infinity;", &end) <= 1e300)
+    return 20;
+  if (*end != ';')
+    return 21;
+  if (strtod("-INF?", &end) >= -1e300)
+    return 22;
+  if (*end != '?')
+    return 23;
+  double nan_plain = strtod("nan!", &end);
+  if (nan_plain == nan_plain)
+    return 24;
+  if (*end != '!')
+    return 25;
+  double nan_upper = strtod("NAN;", &end);
+  if (nan_upper == nan_upper)
+    return 26;
+  if (*end != ';')
+    return 27;
+  double nan_payload = strtod("nan(payload)?", &end);
+  if (nan_payload == nan_payload)
+    return 28;
+  if (*end != '?')
+    return 29;
   if (strtod("word", &end) != 0.0)
     return 6;
-  return *end == 'w' ? 0 : 7;
+  if (errno != 77)
+    return 17;
+  if (*end != 'w')
+    return 7;
+  errno = 0;
+  if (strtod("1e309!", &end) <= 1e300)
+    return 30;
+  if (*end != '!')
+    return 31;
+  if (errno != ERANGE)
+    return 32;
+  errno = 0;
+  if (strtod("-1e309?", &end) >= -1e300)
+    return 33;
+  if (*end != '?')
+    return 34;
+  if (errno != ERANGE)
+    return 35;
+  errno = 0;
+  if (strtod("0x1p+2048!", &end) <= 1e300)
+    return 45;
+  if (*end != '!')
+    return 46;
+  if (errno != ERANGE)
+    return 47;
+  errno = 0;
+  if (strtod("-0x1p+2048?", &end) >= -1e300)
+    return 48;
+  if (*end != '?')
+    return 49;
+  if (errno != ERANGE)
+    return 50;
+  errno = 0;
+  if (strtod("1e-400!", &end) != 0.0)
+    return 36;
+  if (*end != '!')
+    return 37;
+  if (errno != ERANGE)
+    return 38;
+  errno = 0;
+  if (strtod("-1e-400?", &end) != 0.0)
+    return 39;
+  if (*end != '?')
+    return 40;
+  if (errno != ERANGE)
+    return 41;
+  errno = 0;
+  if (strtod("5e-324!", &end) != 5e-324)
+    return 42;
+  if (*end != '!')
+    return 43;
+  if (errno != 0)
+    return 44;
+  errno = 0;
+  if (strtod("0x1p-20000!", &end) != 0.0)
+    return 51;
+  if (*end != '!')
+    return 52;
+  if (errno != ERANGE)
+    return 53;
+  errno = 0;
+  if (strtod("-0x1p-20000?", &end) != 0.0)
+    return 54;
+  if (*end != '?')
+    return 55;
+  if (errno != ERANGE)
+    return 56;
+  errno = 0;
+  if (strtod("0x1p-1074!", &end) != 5e-324)
+    return 57;
+  if (*end != '!')
+    return 58;
+  if (errno != 0)
+    return 59;
+  return 0;
 }
 `
 	st := runGCCExecFixture(t, "stdlib-float-parser-runtime.c", source)
@@ -1966,19 +2872,94 @@ int main(void)
 
 func TestStdlibMoreFloatParserExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
+#include <errno.h>
 #include <stdlib.h>
 
 int main(void)
 {
   char *end = 0;
+  float f = strtof(" 1.5!", &end);
 
-  if (strtof(" 1.5!", &end) != 1.5f)
+  if (f != 1.5f)
     return 1;
   if (*end != '!')
     return 2;
-  if (strtold("-0x1.4p+2z", &end) != -5.0L)
+  errno = 0;
+  if (strtof("1e39!", &end) <= 1e30f)
+    return 5;
+  if (*end != '!')
+    return 6;
+  if (errno != ERANGE)
+    return 7;
+  errno = 0;
+  if (strtof("-1e39?", &end) >= -1e30f)
+    return 8;
+  if (*end != '?')
+    return 9;
+  if (errno != ERANGE)
+    return 10;
+  errno = 0;
+  if (strtof("1e-50!", &end) != 0.0f)
+    return 11;
+  if (*end != '!')
+    return 12;
+  if (errno != ERANGE)
+    return 13;
+  errno = 0;
+  if (strtof("-1e-50?", &end) != 0.0f)
+    return 14;
+  if (*end != '?')
+    return 15;
+  if (errno != ERANGE)
+    return 16;
+  errno = 0;
+  if (strtof("1e-45!", &end) != 0x1p-149f)
+    return 17;
+  if (*end != '!')
+    return 18;
+  if (errno != 0)
+    return 19;
+  long double l = strtold("-0x1.4p+2z", &end);
+  if (l != -5.0L)
     return 3;
-  return *end == 'z' ? 0 : 4;
+  if (*end != 'z')
+    return 4;
+  errno = 0;
+  if (strtold("1e309!", &end) <= 1e300L)
+    return 20;
+  if (*end != '!')
+    return 21;
+  if (errno != ERANGE)
+    return 22;
+  errno = 0;
+  if (strtold("-1e309?", &end) >= -1e300L)
+    return 23;
+  if (*end != '?')
+    return 24;
+  if (errno != ERANGE)
+    return 25;
+  errno = 0;
+  if (strtold("1e-400!", &end) != 0.0L)
+    return 26;
+  if (*end != '!')
+    return 27;
+  if (errno != ERANGE)
+    return 28;
+  errno = 0;
+  if (strtold("-1e-400?", &end) != 0.0L)
+    return 29;
+  if (*end != '?')
+    return 30;
+  if (errno != ERANGE)
+    return 31;
+  errno = 0;
+  if (strtold("5e-324!", &end) != 5e-324L)
+    return 32;
+  if (*end != '!')
+    return 33;
+  if (errno != 0)
+    return 34;
+  return 0;
 }
 `
 	st := runGCCExecFixture(t, "stdlib-more-float-parser-runtime.c", source)
@@ -2003,6 +2984,12 @@ int main(void)
     return 4;
   if (!isprint(' ') || isprint(127))
     return 5;
+  if (!isalpha('A' + 256))
+    return 6;
+  if (!isdigit('5' + 256))
+    return 7;
+  if (isalpha(-1))
+    return 8;
   return 0;
 }
 `
@@ -2049,6 +3036,12 @@ int main(void)
     return 3;
   if (toupper('!') != '!')
     return 4;
+  if (tolower('A' + 256) != 'a')
+    return 5;
+  if (toupper('q' + 256) != 'Q')
+    return 6;
+  if (tolower(-1) != -1 || toupper(-1) != -1)
+    return 7;
   return 0;
 }
 `
@@ -2065,20 +3058,58 @@ func TestStringHeaderReadOnlyHelpersExecuteThroughRuntime(t *testing.T) {
 int main(void)
 {
   const char *text = "abcdef";
+  char high[4] = {'a', (char)0x82, 'c', 0};
+
   if (strlen(text) != 6)
     return 1;
   if (strchr(text, 'd') != text + 3)
     return 2;
   if (strchr(text, 'z') != 0)
     return 3;
-  if (strstr(text, "cd") != text + 2)
+  if (strchr(text, 0) != text + 6)
     return 4;
-  if (strcmp(text, "abcdef") != 0)
+  if (strchr(high, 0x182) != high + 1)
     return 5;
-  return memcmp(text, "abcxef", 4) < 0 ? 0 : 6;
+  if (strstr(text, "") != text)
+    return 6;
+  if (strstr(text, "abcdef") != text)
+    return 7;
+  if (strstr(text, "ef") != text + 4)
+    return 8;
+  if (strstr(text, "cd") != text + 2)
+    return 9;
+  if (strstr(text, "gh") != 0)
+    return 10;
+  if (strcmp(text, "abcdef") != 0)
+    return 11;
+  return memcmp(text, "abcxef", 4) < 0 ? 0 : 12;
 }
 `
 	st := runGCCExecFixture(t, "string-read-only-header-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestMemcmpByteOrderingExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <string.h>
+
+int main(void)
+{
+  unsigned char high[2] = {0xff, 0};
+  unsigned char low[2] = {0x7f, 0};
+
+  if (memcmp(high, low, 0) != 0)
+    return 1;
+  if (memcmp(high, low, 1) <= 0)
+    return 2;
+  if (memcmp(low, high, 1) >= 0)
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "memcmp-byte-ordering-runtime.c", source)
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
@@ -2093,6 +3124,12 @@ int main(void)
   const char *left = "abcdef";
   const char *right = "abcxyz";
   char data[5] = {1, 2, 3, 2, 0};
+  char left_terminated[3] = {'a', 0, 'z'};
+  char right_terminated[3] = {'a', 0, 'y'};
+  char left_unterminated[3] = {'a', 'b', 'c'};
+  char right_unterminated[3] = {'a', 'b', 'd'};
+  unsigned char high[2] = {0xff, 0};
+  unsigned char low[2] = {0x7f, 0};
 
   if (strncmp(left, right, 3) != 0)
     return 1;
@@ -2100,9 +3137,23 @@ int main(void)
     return 2;
   if (strncmp(left, "abbzzz", 3) <= 0)
     return 3;
-  if (memchr(data, 2, 4) != data + 1)
+  if (strncmp((char *)high, (char *)low, 0) != 0)
     return 4;
-  return memchr(data, 9, 4) == 0 ? 0 : 5;
+  if (strncmp(left_terminated, right_terminated, 3) != 0)
+    return 5;
+  if (strncmp(left_unterminated, right_unterminated, 2) != 0)
+    return 6;
+  if (strncmp(left_unterminated, right_unterminated, 3) >= 0)
+    return 7;
+  if (strncmp((char *)high, (char *)low, 1) <= 0)
+    return 8;
+  if (memchr(data, 2, 4) != data + 1)
+    return 9;
+  if (memchr(data, 2, 0) != 0)
+    return 10;
+  if ((char *)memchr(data, 0x102, 4) != data + 1)
+    return 11;
+  return memchr(data, 9, 4) == 0 ? 0 : 12;
 }
 `
 	st := runGCCExecFixture(t, "string-bounded-compare-search-runtime.c", source)
@@ -2118,6 +3169,7 @@ func TestStringReverseAndSetSearchExecuteThroughRuntime(t *testing.T) {
 int main(void)
 {
   const char *text = "abacad";
+  char high[4] = {(char)0x82, 'a', (char)0x82, 0};
 
   if (strrchr(text, 'a') != text + 4)
     return 1;
@@ -2125,9 +3177,15 @@ int main(void)
     return 2;
   if (strrchr(text, 'z') != 0)
     return 3;
-  if (strpbrk(text, "xyc") != text + 3)
+  if (strrchr(high, 0x182) != high + 2)
     return 4;
-  return strpbrk(text, "xyz") == 0 ? 0 : 5;
+  if (strpbrk(text, "a") != text)
+    return 5;
+  if (strpbrk(text, "xyc") != text + 3)
+    return 6;
+  if (strpbrk(text, "") != 0)
+    return 7;
+  return strpbrk(text, "xyz") == 0 ? 0 : 8;
 }
 `
 	st := runGCCExecFixture(t, "string-reverse-set-search-runtime.c", source)
@@ -2148,9 +3206,15 @@ int main(void)
     return 1;
   if (strspn(text, "xyz") != 0)
     return 2;
-  if (strcspn(text, "de") != 3)
+  if (strspn(text, "") != 0)
     return 3;
-  return strcspn(text, "xyz") == 8 ? 0 : 4;
+  if (strcspn(text, "de") != 3)
+    return 4;
+  if (strcspn(text, "a") != 0)
+    return 5;
+  if (strcspn(text, "") != 8)
+    return 6;
+  return strcspn(text, "xyz") == 8 ? 0 : 7;
 }
 `
 	st := runGCCExecFixture(t, "string-span-runtime.c", source)
@@ -2165,11 +3229,17 @@ func TestStringNLengthExecuteThroughRuntime(t *testing.T) {
 
 int main(void)
 {
-  if (strnlen("abc", 2) != 2)
+  char no_null[4] = {'a', 'b', 'c', 'd'};
+
+  if (strnlen(no_null, 0) != 0)
     return 1;
-  if (strnlen("hello", 10) != 5)
+  if (strnlen("abc", 2) != 2)
     return 2;
-  return strnlen("hello", 3) == 3 ? 0 : 3;
+  if (strnlen("hello", 10) != 5)
+    return 3;
+  if (strnlen(no_null, 4) != 4)
+    return 4;
+  return strnlen("hello", 3) == 3 ? 0 : 5;
 }
 `
 	st := runGCCExecFixture(t, "string-strnlen-runtime.c", source)
@@ -2186,10 +3256,13 @@ int main(void)
 {
   char *a = strerror(1);
   char *b = strerror(2);
+  char *c = strerror(1);
 
   if (strcmp(a, "error") != 0)
     return 1;
-  return a == b ? 0 : 2;
+  if (a != b)
+    return 2;
+  return a == c ? 0 : 3;
 }
 `
 	st := runGCCExecFixture(t, "string-strerror-runtime.c", source)
@@ -2222,13 +3295,22 @@ int main(void)
   if (dst[2] != 'p' || dst[3] != 'q')
     return 6;
 
-  if (memset(dst + 4, 'r', 2) != dst + 4)
+  if (memset(dst + 1, 0x182, 0) != dst + 1)
     return 7;
-  if (dst[4] != 'r' || dst[5] != 'r')
+  if (memset(dst + 4, 'r', 2) != dst + 4)
     return 8;
+  if (dst[4] != 'r' || dst[5] != 'r')
+    return 9;
+  if (memset(dst + 4, 0x182, 2) != dst + 4)
+    return 10;
+  if ((unsigned char)dst[4] != 0x82 || (unsigned char)dst[5] != 0x82)
+    return 11;
 
+  bzero(dst + 5, 0);
+  if ((unsigned char)dst[5] != 0x82)
+    return 12;
   bzero(dst + 5, 2);
-  return dst[5] == 0 && dst[6] == 0 ? 0 : 9;
+  return dst[5] == 0 && dst[6] == 0 ? 0 : 13;
 }
 `
 	st := runGCCExecFixture(t, "plain-memory-ops-runtime.c", source)
@@ -2244,6 +3326,8 @@ func TestMemoryCharCopyExecuteThroughRuntime(t *testing.T) {
 int main(void)
 {
   char dst[8] = "xxxxxxx";
+  unsigned char high_src[3] = {1, 0x82, 3};
+  unsigned char high_dst[3] = {9, 9, 9};
 
   if (memccpy(dst, "abczef", 'z', 6) != dst + 4)
     return 1;
@@ -2252,7 +3336,11 @@ int main(void)
   dst[3] = 'Z';
   if (memccpy(dst, "abc", 'q', 3) != 0)
     return 3;
-  return dst[0] == 'a' && dst[1] == 'b' && dst[2] == 'c' && dst[3] == 'Z' ? 0 : 4;
+  if (!(dst[0] == 'a' && dst[1] == 'b' && dst[2] == 'c' && dst[3] == 'Z'))
+    return 4;
+  if (memccpy(high_dst, high_src, 0x182, 3) != high_dst + 2)
+    return 5;
+  return high_dst[0] == 1 && high_dst[1] == 0x82 && high_dst[2] == 9 ? 0 : 6;
 }
 `
 	st := runGCCExecFixture(t, "string-memccpy-runtime.c", source)
@@ -2264,19 +3352,28 @@ int main(void)
 func TestStringsBSDMemoryExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <strings.h>
+#include <string.h>
 
 int main(void)
 {
   const char src[5] = "abcd";
   char dst[5] = "xxxx";
+  char overlap[7] = "abcdef";
 
   if (bcmp(src, "abce", 4) >= 0)
     return 1;
   bcopy(src, dst, 4);
   if (bcmp(dst, "abcd", 4) != 0)
     return 2;
+  bcopy(overlap, overlap + 1, 5);
+  if (strcmp(overlap, "aabcde") != 0)
+    return 3;
+  strcpy(overlap, "abcdef");
+  bcopy(overlap + 1, overlap, 5);
+  if (strcmp(overlap, "bcdeff") != 0)
+    return 4;
   bzero(dst + 2, 2);
-  return dst[2] == 0 && dst[3] == 0 ? 0 : 3;
+  return dst[2] == 0 && dst[3] == 0 ? 0 : 5;
 }
 `
 	st := runGCCExecFixture(t, "strings-bsd-memory-runtime.c", source)
@@ -2315,13 +3412,22 @@ int main(void)
 
   if (stpncpy(buf, "pqrs", 2) != buf + 2)
     return 9;
-  if (buf[0] != 'p' || buf[1] != 'q')
+  if (buf[0] != 'p' || buf[1] != 'q' || buf[2] != 0)
     return 10;
+  buf[2] = '!';
+  if (stpncpy(buf, "pqrs", 2) != buf + 2)
+    return 11;
+  if (buf[0] != 'p' || buf[1] != 'q' || buf[2] != '!')
+    return 12;
 
   buf[0] = 0;
+  if (strncat(buf, "zz", 0) != buf)
+    return 13;
+  if (buf[0] != 0)
+    return 14;
   if (strncat(buf, "uvwx", 2) != buf)
-    return 11;
-  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 12;
+    return 15;
+  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 16;
 }
 `
 	st := runGCCExecFixture(t, "plain-string-writes-runtime.c", source)
@@ -2349,7 +3455,39 @@ int main(void)
   tok = strtok(0, ",;");
   if (tok != text + 12 || strcmp(tok, "gamma") != 0)
     return 3;
-  return strtok(0, ",;") == 0 ? 0 : 4;
+  if (strtok(0, ",;") != 0)
+    return 4;
+
+  strcpy(text, "alpha,beta;gamma.delta");
+  tok = strtok(text, ",");
+  if (tok != text || strcmp(tok, "alpha") != 0)
+    return 5;
+  tok = strtok(0, ";");
+  if (tok != text + 6 || strcmp(tok, "beta") != 0)
+    return 6;
+  tok = strtok(0, ".");
+  if (tok != text + 11 || strcmp(tok, "gamma") != 0)
+    return 7;
+  tok = strtok(0, ".");
+  if (tok != text + 17 || strcmp(tok, "delta") != 0)
+    return 8;
+  if (strtok(0, ".") != 0)
+    return 9;
+
+  strcpy(text, ";;;");
+  if (strtok(text, ";") != 0)
+    return 10;
+  if (strtok(0, ";") != 0)
+    return 11;
+
+  strcpy(text, "one,two");
+  tok = strtok(text, ",");
+  if (tok != text || strcmp(tok, "one") != 0)
+    return 12;
+  tok = strtok(0, ",");
+  if (tok != text + 4 || strcmp(tok, "two") != 0)
+    return 13;
+  return 0;
 }
 `
 	st := runGCCExecFixture(t, "string-strtok-runtime.c", source)
@@ -2365,12 +3503,25 @@ func TestStringCollateTransformExecuteThroughRuntime(t *testing.T) {
 int main(void)
 {
   char buf[4];
+  char exact[7];
 
   if (strcoll("abc", "abd") >= 0)
     return 1;
-  if (strxfrm(buf, "abcdef", sizeof buf) != 6)
+  if (strcoll("abc", "abc") != 0)
     return 2;
-  return strcmp(buf, "abc") == 0 ? 0 : 3;
+  if (strcoll("abd", "abc") <= 0)
+    return 3;
+  if (strcoll("ab", "abc") >= 0)
+    return 4;
+  if (strxfrm(buf, "abcdef", sizeof buf) != 6)
+    return 5;
+  if (strcmp(buf, "abc") != 0)
+    return 6;
+  if (strxfrm(exact, "abcdef", sizeof exact) != 6)
+    return 7;
+  if (strcmp(exact, "abcdef") != 0)
+    return 8;
+  return strxfrm(buf, "abcdef", 0) == 6 ? 0 : 9;
 }
 `
 	st := runGCCExecFixture(t, "string-collate-transform-runtime.c", source)
@@ -2531,6 +3682,311 @@ int main(void)
 `
 	reg := DefaultExternRegistryWithIO(strings.NewReader("ABC\nDE"), nil, nil)
 	st := runGCCExecFixtureWithLoadOptions(t, "stdio-configured-stdin-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioSscanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+  int n = 0;
+  unsigned u = 0;
+  char word[8] = {0};
+  char ch = 0;
+  int r = sscanf(" -12 34 hello Z", "%d %u %5s %c", &n, &u, word, &ch);
+  if (r != 4)
+    return 1;
+  if (n != -12 || u != 34)
+    return 2;
+  if (strcmp(word, "hello") != 0)
+    return 3;
+  return ch == 'Z' ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdio-sscanf-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioScanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  int n = 0;
+  if (scanf("%d", &n) != 1)
+    return 1;
+  if (n != 41)
+    return 2;
+  return getchar() == ' ' ? 0 : 3;
+}
+`
+	reg := DefaultExternRegistryWithIO(strings.NewReader("41 tail"), nil, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-scanf-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioScanfScansetExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+  char word[4] = {0};
+  if (scanf("%[a-z]", word) != 1)
+    return 1;
+  if (strcmp(word, "abc") != 0)
+    return 2;
+  return getchar() == '!' ? 0 : 3;
+}
+`
+	reg := DefaultExternRegistryWithIO(strings.NewReader("abc!"), nil, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-scanf-scanset-stdin-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioFscanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  int n = 0;
+  FILE *f = fopen("input.txt", "r");
+  if (!f)
+    return 1;
+  if (fscanf(f, "%d", &n) != 1)
+    return 2;
+  if (n != 52)
+    return 3;
+  return fgetc(f) == ' ' ? 0 : 4;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("input.txt", []byte("52 tail"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-fscanf-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioFscanfFloatExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  float f = 0.0f;
+  FILE *fp = fopen("float.txt", "r");
+  if (!fp)
+    return 1;
+  if (fscanf(fp, "%f", &f) != 1)
+    return 2;
+  if (f != 1.5f)
+    return 3;
+  return fgetc(fp) == '!' ? 0 : 4;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("float.txt", []byte("1.5!"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-fscanf-float-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioUpdateModeSequencingExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char ch = 0;
+  char buf[2] = {0, 0};
+  FILE *f = fopen("data.txt", "r+");
+  if (!f)
+    return 1;
+  if (fread(&ch, 1, 1, f) != 1)
+    return 2;
+  if (fwrite("Z", 1, 1, f) != 0)
+    return 3;
+  if (!ferror(f))
+    return 4;
+  fclose(f);
+
+  f = fopen("seek.txt", "r+");
+  if (!f)
+    return 5;
+  if (fread(&ch, 1, 1, f) != 1)
+    return 6;
+  if (fseek(f, 1, SEEK_SET) != 0)
+    return 7;
+  if (fwrite("Z", 1, 1, f) != 1)
+    return 8;
+  fclose(f);
+  f = fopen("seek.txt", "r");
+  if (!f)
+    return 9;
+  if (fread(buf, 1, 2, f) != 2)
+    return 10;
+  fclose(f);
+  if (buf[0] != 'A' || buf[1] != 'Z')
+    return 11;
+
+  f = fopen("eof.txt", "r+");
+  if (!f)
+    return 12;
+  if (fread(buf, 1, 2, f) != 1)
+    return 13;
+  if (fwrite("Z", 1, 1, f) != 1)
+    return 14;
+  fclose(f);
+  f = fopen("eof.txt", "r");
+  if (!f)
+    return 15;
+  if (fread(buf, 1, 2, f) != 2)
+    return 16;
+  return buf[0] == 'A' && buf[1] == 'Z' ? 0 : 17;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("AB"))
+	reg.AddFile("seek.txt", []byte("AB"))
+	reg.AddFile("eof.txt", []byte("A"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-update-mode-sequencing-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioScanfRadixSuppressionAndCountExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  unsigned x = 0;
+  unsigned o = 0;
+  int n = 0;
+  int r = sscanf("11 0x2a 10 rest", "%*d %x %o%n", &x, &o, &n);
+  if (r != 2)
+    return 1;
+  if (x != 42 || o != 8)
+    return 2;
+  return n == 10 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "stdio-scanf-radix-suppression-count-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioScansetExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+  char word[4] = {0};
+  char digits[4] = {0};
+  char ch = 0;
+  int r = sscanf("abc123 xyz!", "%[a-z]%3[0-9] %*[^!]%c", word, digits, &ch);
+  if (r != 3)
+    return 1;
+  if (strcmp(word, "abc") != 0)
+    return 2;
+  if (strcmp(digits, "123") != 0)
+    return 3;
+  return ch == '!' ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdio-scanf-scanset-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioFloatScanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  float f = 0.0f;
+  double d = 0.0;
+  long double l = 0.0L;
+  int r = sscanf("1.5 -2.25 0x1.8p+2 rest", "%f %lf %La", &f, &d, &l);
+  if (r != 3)
+    return 1;
+  if (f != 1.5f)
+    return 2;
+  if (d != -2.25)
+    return 3;
+  return l == 6.0L ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdio-scanf-float-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioPointerScanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  void *p = 0;
+  void *q = 0;
+  int r = sscanf("0x1234 0", "%p %p", &p, &q);
+  if (r != 2)
+    return 1;
+  if ((unsigned long)p != 0x1234UL)
+    return 2;
+  return q == 0 ? 0 : 3;
+}
+`
+	st := runGCCExecFixture(t, "stdio-scanf-pointer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioScanfFailureReturnsExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  int n = 99;
+  if (sscanf("", "%d", &n) != EOF)
+    return 1;
+  if (sscanf("word", "%d", &n) != 0)
+    return 2;
+  if (sscanf("12 word", "%d %d", &n, &n) != 1)
+    return 3;
+  if (scanf("%d", &n) != EOF)
+    return 4;
+  return n == 12 ? 0 : 5;
+}
+`
+	reg := DefaultExternRegistryWithIO(strings.NewReader(""), nil, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-scanf-failure-returns-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
@@ -2777,9 +4233,15 @@ int main(void)
     return 3;
   if (__builtin_strchr(text, 0) != text + 6)
     return 4;
-  if (__builtin_strstr(text, "cd") != text + 2)
+  if (__builtin_strstr(text, "") != text)
     return 5;
-  return __builtin_strstr(text, "gh") == 0 ? 0 : 6;
+  if (__builtin_strstr(text, "abcdef") != text)
+    return 6;
+  if (__builtin_strstr(text, "cd") != text + 2)
+    return 7;
+  if (__builtin_strstr(text, "ef") != text + 4)
+    return 8;
+  return __builtin_strstr(text, "gh") == 0 ? 0 : 9;
 }
 `
 	st := runGCCExecFixture(t, "builtin-string-search-runtime.c", source)
@@ -2817,13 +4279,22 @@ int main(void)
 
   if (__builtin_stpncpy(buf, "pqrs", 2) != buf + 2)
     return 9;
-  if (buf[0] != 'p' || buf[1] != 'q')
+  if (buf[0] != 'p' || buf[1] != 'q' || buf[2] != 0)
     return 10;
+  buf[2] = '!';
+  if (__builtin_stpncpy(buf, "pqrs", 2) != buf + 2)
+    return 11;
+  if (buf[0] != 'p' || buf[1] != 'q' || buf[2] != '!')
+    return 12;
 
   buf[0] = 0;
+  if (__builtin_strncat(buf, "zz", 0) != buf)
+    return 13;
+  if (buf[0] != 0)
+    return 14;
   if (__builtin_strncat(buf, "uvwx", 2) != buf)
-    return 11;
-  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 12;
+    return 15;
+  return buf[0] == 'u' && buf[1] == 'v' && buf[2] == 0 ? 0 : 16;
 }
 `
 	st := runGCCExecFixture(t, "builtin-string-writes-runtime.c", source)
@@ -4535,6 +6006,224 @@ int main(void)
 }
 `
 	st := runGCCExecFixture(t, "builtin-va-start-end-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaArgIntegerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+int sum2(int n, ...)
+{
+  va_list ap;
+  va_start(ap, n);
+  int a = va_arg(ap, int);
+  int b = va_arg(ap, int);
+  va_end(ap);
+  return a + b;
+}
+
+int main(void)
+{
+  return sum2(2, 19, 23) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-integer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaArgPointerExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+int first(int n, ...)
+{
+  va_list ap;
+  va_start(ap, n);
+  int *p = va_arg(ap, int *);
+  va_end(ap);
+  return *p;
+}
+
+int main(void)
+{
+  int x = 42;
+  return first(1, &x) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-pointer-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaArgLongDoubleExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+long double first(int count, ...)
+{
+  va_list ap;
+  va_start(ap, count);
+  long double value = va_arg(ap, long double);
+  va_end(ap);
+  return value;
+}
+
+int main(void)
+{
+  return first(1, 4.0L) == 4.0L ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-long-double-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaArgComplexExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+__complex__ double first(int count, ...)
+{
+  va_list ap;
+  va_start(ap, count);
+  __complex__ double value = va_arg(ap, __complex__ double);
+  va_end(ap);
+  return value;
+}
+
+int main(void)
+{
+  __complex__ double value = first(1, __builtin_complex(3.0, 4.0));
+  return __builtin_cabs(value) == 5.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-complex-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaArgStructExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+struct pair {
+  int tag;
+  double value;
+};
+
+double first(int count, ...)
+{
+  va_list ap;
+  va_start(ap, count);
+  struct pair value = va_arg(ap, struct pair);
+  va_end(ap);
+  return value.tag + value.value;
+}
+
+int main(void)
+{
+  struct pair value = { 7, 5.0 };
+  return first(1, value) == 12.0 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-struct-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaArgUnionExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+union number {
+  int i;
+  unsigned char bytes[4];
+};
+
+int first(int count, ...)
+{
+  va_list ap;
+  va_start(ap, count);
+  union number value = va_arg(ap, union number);
+  va_end(ap);
+  return value.i;
+}
+
+int main(void)
+{
+  union number value;
+  value.i = 42;
+  return first(1, value) == 42 ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-union-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaArgMultipleListsExecuteIndependently(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+int check(int n, ...)
+{
+  va_list a;
+  va_list b;
+  va_start(a, n);
+  va_start(b, n);
+  int ax = va_arg(a, int);
+  int bx = va_arg(b, int);
+  int ay = va_arg(a, int);
+  va_end(b);
+  va_end(a);
+  return ax == 5 && bx == 5 && ay == 7;
+}
+
+int main(void)
+{
+  return check(2, 5, 7) ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-arg-multiple-lists-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCSourceVaCopyExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdarg.h>
+
+int check(int n, ...)
+{
+  va_list a;
+  va_list b;
+  va_start(a, n);
+  int first = va_arg(a, int);
+  va_copy(b, a);
+  int second = va_arg(a, int);
+  int copied = va_arg(b, int);
+  va_end(b);
+  va_end(a);
+  return first == 1 && second == 2 && copied == 2;
+}
+
+int main(void)
+{
+  return check(2, 1, 2) ? 0 : 1;
+}
+`
+	st := runGCCExecFixture(t, "source-va-copy-runtime.c", source)
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}

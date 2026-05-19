@@ -12,7 +12,7 @@ import (
 
 func TestDefaultExternRegistryHasExitAndAbort(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	for _, name := range []string{"exit", "_Exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fgetpos", "fsetpos", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "perror", "abs", "labs", "llabs", "div", "ldiv", "lldiv", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "rand", "srand", "getenv", "system", "atexit", "setlocale", "clock", "difftime", "time", "nan", "nanf", "nanl", "fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl", "sinh", "sinhf", "sinhl", "cosh", "coshf", "coshl", "tanh", "tanhf", "tanhl", "asin", "asinf", "asinl", "acos", "acosf", "acosl", "atan", "atanf", "atanl", "asinh", "asinhf", "asinhl", "acosh", "acoshf", "acoshl", "atanh", "atanhf", "atanhl", "cbrt", "cbrtf", "cbrtl", "erf", "erff", "erfl", "erfc", "erfcf", "erfcl", "tgamma", "tgammaf", "tgammal", "lgamma", "lgammaf", "lgammal", "exp", "expf", "expl", "exp2", "exp2f", "exp2l", "expm1", "expm1f", "expm1l", "log", "logf", "logl", "log10", "log10f", "log10l", "log1p", "log1pf", "log1pl", "log2", "log2f", "log2l", "ceil", "ceilf", "ceill", "floor", "floorf", "floorl", "trunc", "truncf", "truncl", "round", "roundf", "roundl", "nearbyint", "nearbyintf", "nearbyintl", "rint", "rintf", "rintl", "logb", "logbf", "logbl", "ilogb", "ilogbf", "ilogbl", "lrint", "lrintf", "lrintl", "lround", "lroundf", "lroundl", "llrint", "llrintf", "llrintl", "llround", "llroundf", "llroundl", "scalbn", "scalbnf", "scalbnl", "scalbln", "scalblnf", "scalblnl", "ldexp", "ldexpf", "ldexpl", "frexp", "frexpf", "frexpl", "modf", "modff", "modfl", "remquo", "remquof", "remquol", "pow", "powf", "powl", "atan2", "atan2f", "atan2l", "hypot", "hypotf", "hypotl", "fdim", "fdimf", "fdiml", "fmax", "fmaxf", "fmaxl", "fmin", "fminf", "fminl", "fmod", "fmodf", "fmodl", "remainder", "remainderf", "remainderl", "copysign", "copysignf", "copysignl", "fma", "fmaf", "fmal", "nextafter", "nextafterf", "nextafterl", "nexttoward", "nexttowardf", "nexttowardl", "cabs", "cabsf", "cabsl", "creal", "crealf", "creall", "cimag", "cimagf", "cimagl", "carg", "cargf", "cargl", "conj", "conjf", "conjl", "cproj", "cprojf", "cprojl", "csin", "csinf", "csinl", "ccos", "ccosf", "ccosl", "ctan", "ctanf", "ctanl", "csinh", "csinhf", "csinhl", "ccosh", "ccoshf", "ccoshl", "ctanh", "ctanhf", "ctanhl", "casin", "casinf", "casinl", "cacos", "cacosf", "cacosl", "catan", "catanf", "catanl", "casinh", "casinhf", "casinhl", "cacosh", "cacoshf", "cacoshl", "catanh", "catanhf", "catanhl", "cexp", "cexpf", "cexpl", "clog", "clogf", "clogl", "csqrt", "csqrtf", "csqrtl", "cpow", "cpowf", "cpowl", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper", "strcmp", "memcmp", "bcmp", "strncmp", "strcoll", "memchr", "strrchr", "strpbrk", "strspn", "strcspn", "strtok", "strxfrm", "strnlen", "strerror", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "realloc", "__builtin_strdup", "strdup", "strndup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "memccpy", "bcopy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "sprintf", "snprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "feclearexcept", "fetestexcept"} {
+	for _, name := range []string{"exit", "_Exit", "abort", "__builtin_abort", "__builtin_va_start", "__builtin_va_end", "remove", "rename", "fopen", "freopen", "tmpfile", "tmpnam", "fseek", "ftell", "rewind", "fgetpos", "fsetpos", "puts", "puts_unlocked", "putchar", "putchar_unlocked", "getchar", "getchar_unlocked", "fputc", "fputc_unlocked", "putc", "putc_unlocked", "fputs", "fputs_unlocked", "fgetc", "fgetc_unlocked", "getc", "getc_unlocked", "ungetc", "fgets", "fgets_unlocked", "fflush", "fflush_unlocked", "fclose", "fileno", "fileno_unlocked", "setbuf", "setvbuf", "flockfile", "ftrylockfile", "funlockfile", "ferror", "ferror_unlocked", "clearerr", "clearerr_unlocked", "feof", "feof_unlocked", "fwrite", "fwrite_unlocked", "fread", "fread_unlocked", "perror", "abs", "labs", "llabs", "div", "ldiv", "lldiv", "atoi", "atol", "atoll", "atof", "strtol", "strtoul", "strtoll", "strtoull", "strtod", "strtof", "strtold", "mblen", "mbtowc", "wctomb", "mbstowcs", "wcstombs", "mbrlen", "mbrtowc", "wcrtomb", "mbsrtowcs", "wcsrtombs", "rand", "srand", "getenv", "system", "atexit", "setlocale", "localeconv", "clock", "difftime", "time", "nan", "nanf", "nanl", "fabs", "fabsf", "fabsl", "sqrt", "sqrtf", "sqrtl", "sin", "sinf", "sinl", "cos", "cosf", "cosl", "tan", "tanf", "tanl", "sinh", "sinhf", "sinhl", "cosh", "coshf", "coshl", "tanh", "tanhf", "tanhl", "asin", "asinf", "asinl", "acos", "acosf", "acosl", "atan", "atanf", "atanl", "asinh", "asinhf", "asinhl", "acosh", "acoshf", "acoshl", "atanh", "atanhf", "atanhl", "cbrt", "cbrtf", "cbrtl", "erf", "erff", "erfl", "erfc", "erfcf", "erfcl", "tgamma", "tgammaf", "tgammal", "lgamma", "lgammaf", "lgammal", "exp", "expf", "expl", "exp2", "exp2f", "exp2l", "expm1", "expm1f", "expm1l", "log", "logf", "logl", "log10", "log10f", "log10l", "log1p", "log1pf", "log1pl", "log2", "log2f", "log2l", "ceil", "ceilf", "ceill", "floor", "floorf", "floorl", "trunc", "truncf", "truncl", "round", "roundf", "roundl", "nearbyint", "nearbyintf", "nearbyintl", "rint", "rintf", "rintl", "logb", "logbf", "logbl", "ilogb", "ilogbf", "ilogbl", "lrint", "lrintf", "lrintl", "lround", "lroundf", "lroundl", "llrint", "llrintf", "llrintl", "llround", "llroundf", "llroundl", "scalbn", "scalbnf", "scalbnl", "scalbln", "scalblnf", "scalblnl", "ldexp", "ldexpf", "ldexpl", "frexp", "frexpf", "frexpl", "modf", "modff", "modfl", "remquo", "remquof", "remquol", "pow", "powf", "powl", "atan2", "atan2f", "atan2l", "hypot", "hypotf", "hypotl", "fdim", "fdimf", "fdiml", "fmax", "fmaxf", "fmaxl", "fmin", "fminf", "fminl", "fmod", "fmodf", "fmodl", "remainder", "remainderf", "remainderl", "copysign", "copysignf", "copysignl", "fma", "fmaf", "fmal", "nextafter", "nextafterf", "nextafterl", "nexttoward", "nexttowardf", "nexttowardl", "cabs", "cabsf", "cabsl", "creal", "crealf", "creall", "cimag", "cimagf", "cimagl", "carg", "cargf", "cargl", "conj", "conjf", "conjl", "cproj", "cprojf", "cprojl", "csin", "csinf", "csinl", "ccos", "ccosf", "ccosl", "ctan", "ctanf", "ctanl", "csinh", "csinhf", "csinhl", "ccosh", "ccoshf", "ccoshl", "ctanh", "ctanhf", "ctanhl", "casin", "casinf", "casinl", "cacos", "cacosf", "cacosl", "catan", "catanf", "catanl", "casinh", "casinhf", "casinhl", "cacosh", "cacoshf", "cacoshl", "catanh", "catanhf", "catanhl", "cexp", "cexpf", "cexpl", "clog", "clogf", "clogl", "csqrt", "csqrtf", "csqrtl", "cpow", "cpowf", "cpowl", "isdigit", "isalpha", "isalnum", "isspace", "islower", "isupper", "isxdigit", "isprint", "iswdigit", "iswalpha", "iswalnum", "iswspace", "iswlower", "iswupper", "iswxdigit", "iswprint", "iswblank", "iswcntrl", "iswgraph", "iswpunct", "towlower", "towupper", "wctype", "iswctype", "wctrans", "towctrans", "isblank", "iscntrl", "isgraph", "ispunct", "tolower", "toupper", "strcmp", "memcmp", "bcmp", "strncmp", "strcoll", "memchr", "strrchr", "strpbrk", "strspn", "strcspn", "strtok", "strxfrm", "strnlen", "strerror", "__builtin_malloc", "malloc", "__builtin_calloc", "calloc", "realloc", "__builtin_strdup", "strdup", "strndup", "free", "__builtin_object_size", "__builtin_dynamic_object_size", "__builtin_memcpy", "memcpy", "__builtin_memmove", "memmove", "__builtin_mempcpy", "mempcpy", "memccpy", "bcopy", "__builtin_memset", "memset", "__builtin_bzero", "bzero", "__builtin___memcpy_chk", "__builtin___memmove_chk", "__builtin___mempcpy_chk", "__builtin___memset_chk", "__builtin_strlen", "strlen", "__builtin_strchr", "strchr", "__builtin_strstr", "strstr", "__builtin_strcpy", "strcpy", "__builtin_stpcpy", "stpcpy", "__builtin_strcat", "strcat", "__builtin_strncpy", "strncpy", "__builtin_stpncpy", "stpncpy", "__builtin_strncat", "strncat", "__builtin___strcpy_chk", "__builtin___stpcpy_chk", "__builtin___strcat_chk", "__builtin___strncpy_chk", "__builtin___stpncpy_chk", "__builtin___strncat_chk", "__builtin_sprintf", "__builtin_snprintf", "__builtin_vsprintf", "__builtin_vsnprintf", "sprintf", "snprintf", "vsprintf", "vsnprintf", "__builtin___sprintf_chk", "__builtin___snprintf_chk", "__builtin___vsprintf_chk", "__builtin___vsnprintf_chk", "__builtin_printf", "__builtin_printf_unlocked", "printf", "printf_unlocked", "__builtin_fprintf", "__builtin_fprintf_unlocked", "fprintf", "fprintf_unlocked", "__builtin_vprintf", "vprintf", "vprintf_unlocked", "__builtin_vfprintf", "vfprintf", "vfprintf_unlocked", "__builtin___printf_chk", "__builtin___fprintf_chk", "__builtin___vprintf_chk", "__builtin___vfprintf_chk", "scanf", "fscanf", "sscanf", "feclearexcept", "fetestexcept"} {
 		if _, ok := reg.Lookup(name); !ok {
 			t.Fatalf("missing extern %s", name)
 		}
@@ -167,6 +167,214 @@ func TestStdioOpenMissingFileStubs(t *testing.T) {
 	}
 }
 
+func TestFreopenConfiguredReadFile(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("new.txt", []byte("NEW"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	oldPath := mustAllocBytes(t, mem, "stdio:freopen-old-path", []byte("old.txt\x00"), true, blockString)
+	newPath := mustAllocBytes(t, mem, "stdio:freopen-new-path", []byte("new.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "stdio:freopen-read-mode", []byte("r\x00"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	freopenFn, ok := reg.Lookup("freopen")
+	if !ok {
+		t.Fatal("missing freopen extern")
+	}
+	fgetcFn, ok := reg.Lookup("fgetc")
+	if !ok {
+		t.Fatal("missing fgetc extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(oldPath), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'O' {
+		t.Fatalf("fgetc old ret=%#v exit=%#v err=%v, want O", ret, exit, err)
+	}
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(newPath), PtrValue(mode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != file {
+		t.Fatalf("freopen ret=%#v exit=%#v err=%v, want same file handle", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'N' {
+		t.Fatalf("fgetc reopened ret=%#v exit=%#v err=%v, want N", ret, exit, err)
+	}
+}
+
+func TestFreopenConfiguredWriteFile(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("out.txt", []byte("stale"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	oldPath := mustAllocBytes(t, mem, "stdio:freopen-write-old-path", []byte("old.txt\x00"), true, blockString)
+	outPath := mustAllocBytes(t, mem, "stdio:freopen-write-out-path", []byte("out.txt\x00"), true, blockString)
+	readMode := mustAllocBytes(t, mem, "stdio:freopen-write-read-mode", []byte("r\x00"), true, blockString)
+	writeMode := mustAllocBytes(t, mem, "stdio:freopen-write-mode", []byte("w\x00"), true, blockString)
+	data := mustAllocBytes(t, mem, "stdio:freopen-write-data", []byte("XY"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	freopenFn, ok := reg.Lookup("freopen")
+	if !ok {
+		t.Fatal("missing freopen extern")
+	}
+	fwriteFn, ok := reg.Lookup("fwrite")
+	if !ok {
+		t.Fatal("missing fwrite extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(oldPath), PtrValue(readMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(outPath), PtrValue(writeMode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != file {
+		t.Fatalf("freopen ret=%#v exit=%#v err=%v, want same file handle", ret, exit, err)
+	}
+	if got := string(reg.files["out.txt"]); got != "" {
+		t.Fatalf("freopen truncated out.txt to %q, want empty", got)
+	}
+	ret, exit, err = fwriteFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(data),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 2),
+		PtrValue(file),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("fwrite ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
+	}
+	if got := string(reg.files["out.txt"]); got != "XY" {
+		t.Fatalf("written out.txt = %q, want XY", got)
+	}
+}
+
+func TestFreopenConfiguredAppendFile(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("old.txt", []byte("OLD"))
+	reg.AddFile("log.txt", []byte("AB"))
+	reg.AddFile("plus.txt", []byte("AB"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	oldPath := mustAllocBytes(t, mem, "stdio:freopen-append-old-path", []byte("old.txt\x00"), true, blockString)
+	logPath := mustAllocBytes(t, mem, "stdio:freopen-append-log-path", []byte("log.txt\x00"), true, blockString)
+	plusPath := mustAllocBytes(t, mem, "stdio:freopen-append-plus-path", []byte("plus.txt\x00"), true, blockString)
+	readMode := mustAllocBytes(t, mem, "stdio:freopen-append-read-mode", []byte("r\x00"), true, blockString)
+	appendMode := mustAllocBytes(t, mem, "stdio:freopen-append-mode", []byte("a\x00"), true, blockString)
+	appendPlusMode := mustAllocBytes(t, mem, "stdio:freopen-append-plus-mode", []byte("a+\x00"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	freopenFn, ok := reg.Lookup("freopen")
+	if !ok {
+		t.Fatal("missing freopen extern")
+	}
+	fseekFn, ok := reg.Lookup("fseek")
+	if !ok {
+		t.Fatal("missing fseek extern")
+	}
+	fputcFn, ok := reg.Lookup("fputc")
+	if !ok {
+		t.Fatal("missing fputc extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(oldPath), PtrValue(readMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(logPath), PtrValue(appendMode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != file {
+		t.Fatalf("freopen append ret=%#v exit=%#v err=%v, want same file handle", ret, exit, err)
+	}
+	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), IntValue(bytecode.TypeI64, 0), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fseek append ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fputcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'C'), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'C' {
+		t.Fatalf("fputc append ret=%#v exit=%#v err=%v, want C", ret, exit, err)
+	}
+	if got := string(reg.files["log.txt"]); got != "ABC" {
+		t.Fatalf("append log.txt = %q, want ABC", got)
+	}
+
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(plusPath), PtrValue(appendPlusMode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != file {
+		t.Fatalf("freopen append plus ret=%#v exit=%#v err=%v, want same file handle", ret, exit, err)
+	}
+	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), IntValue(bytecode.TypeI64, 0), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fseek append plus ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fputcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'Z'), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'Z' {
+		t.Fatalf("fputc append plus ret=%#v exit=%#v err=%v, want Z", ret, exit, err)
+	}
+	if got := string(reg.files["plus.txt"]); got != "ABZ" {
+		t.Fatalf("append plus.txt = %q, want ABZ", got)
+	}
+}
+
+func TestFreopenFailurePreservesStream(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("ABC"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:freopen-fail-path", []byte("data.txt\x00"), true, blockString)
+	missingPath := mustAllocBytes(t, mem, "stdio:freopen-fail-missing-path", []byte("missing.txt\x00"), true, blockString)
+	readMode := mustAllocBytes(t, mem, "stdio:freopen-fail-read-mode", []byte("r\x00"), true, blockString)
+	invalidMode := mustAllocBytes(t, mem, "stdio:freopen-fail-invalid-mode", []byte("x+\x00"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	freopenFn, ok := reg.Lookup("freopen")
+	if !ok {
+		t.Fatal("missing freopen extern")
+	}
+	fgetcFn, ok := reg.Lookup("fgetc")
+	if !ok {
+		t.Fatal("missing fgetc extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(readMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'A' {
+		t.Fatalf("fgetc initial ret=%#v exit=%#v err=%v, want A", ret, exit, err)
+	}
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(missingPath), PtrValue(readMode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("freopen missing ret=%#v exit=%#v err=%v, want null", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'B' {
+		t.Fatalf("fgetc after missing ret=%#v exit=%#v err=%v, want B", ret, exit, err)
+	}
+	ret, exit, err = freopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(invalidMode), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("freopen invalid ret=%#v exit=%#v err=%v, want null", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'C' {
+		t.Fatalf("fgetc after invalid ret=%#v exit=%#v err=%v, want C", ret, exit, err)
+	}
+}
+
 func TestTmpfileReadWrite(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
@@ -295,6 +503,14 @@ func TestConfiguredFilePositioning(t *testing.T) {
 	if !ok {
 		t.Fatal("missing ftell extern")
 	}
+	fgetposFn, ok := reg.Lookup("fgetpos")
+	if !ok {
+		t.Fatal("missing fgetpos extern")
+	}
+	fsetposFn, ok := reg.Lookup("fsetpos")
+	if !ok {
+		t.Fatal("missing fsetpos extern")
+	}
 	rewindFn, ok := reg.Lookup("rewind")
 	if !ok {
 		t.Fatal("missing rewind extern")
@@ -322,9 +538,26 @@ func TestConfiguredFilePositioning(t *testing.T) {
 	if err != nil || exit != nil || ret.Type != bytecode.TypeI64 || ret.Int != 2 {
 		t.Fatalf("ftell ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
 	}
+	posAddr := mustAlloc(t, mem, "stdio:file-pos-fpos", 8, 8, false, blockLocal)
+	ret, exit, err = fgetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), PtrValue(posAddr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fgetpos ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	pos, err := mem.Load(posAddr, bytecode.TypeI64, 8)
+	if err != nil || pos.Int != 2 {
+		t.Fatalf("fgetpos stored=%#v err=%v, want 2", pos, err)
+	}
 	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
 	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'C' {
 		t.Fatalf("fgetc ret=%#v exit=%#v err=%v, want C", ret, exit, err)
+	}
+	ret, exit, err = fsetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), PtrValue(posAddr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fsetpos ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'C' {
+		t.Fatalf("fgetc after fsetpos ret=%#v exit=%#v err=%v, want C", ret, exit, err)
 	}
 	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{
 		PtrValue(file),
@@ -488,18 +721,272 @@ func TestFopenAppendsConfiguredFile(t *testing.T) {
 	}
 }
 
-func TestStdioTmpnamStub(t *testing.T) {
+func TestFopenAppendModeWritesAtEndAfterSeek(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("log.txt", []byte("AB"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:file-append-seek-path", []byte("log.txt\x00"), true, blockString)
+	appendMode := mustAllocBytes(t, mem, "stdio:file-append-seek-mode", []byte("a+\x00"), true, blockString)
+	readMode := mustAllocBytes(t, mem, "stdio:file-append-seek-read-mode", []byte("r\x00"), true, blockString)
+	buf := mustAllocBytes(t, mem, "stdio:file-append-seek-buf", []byte{0, 0, 0}, false, blockLocal)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	fseekFn, ok := reg.Lookup("fseek")
+	if !ok {
+		t.Fatal("missing fseek extern")
+	}
+	fputcFn, ok := reg.Lookup("fputc")
+	if !ok {
+		t.Fatal("missing fputc extern")
+	}
+	fcloseFn, ok := reg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+	freadFn, ok := reg.Lookup("fread")
+	if !ok {
+		t.Fatal("missing fread extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(appendMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen append ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(file),
+		IntValue(bytecode.TypeI64, 0),
+		IntValue(bytecode.TypeI32, 0),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fseek ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fputcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'Z'), PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'Z' {
+		t.Fatalf("fputc ret=%#v exit=%#v err=%v, want Z", ret, exit, err)
+	}
+	if _, exit, err = fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)}); err != nil || exit != nil {
+		t.Fatalf("fclose append exit=%#v err=%v", exit, err)
+	}
+
+	ret, exit, err = fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(readMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen read ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	ret, exit, err = freadFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(buf),
+		UIntValue(bytecode.TypeU64, 1),
+		UIntValue(bytecode.TypeU64, 3),
+		PtrValue(ret.Int),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 3 {
+		t.Fatalf("fread ret=%#v exit=%#v err=%v, want 3", ret, exit, err)
+	}
+	block, off, err := mem.rangeAccess(buf, 3, false)
+	if err != nil {
+		t.Fatalf("rangeAccess buf: %v", err)
+	}
+	if got := string(block.data[off : off+3]); got != "ABZ" {
+		t.Fatalf("append after seek bytes = %q, want ABZ", got)
+	}
+}
+
+func TestFopenUpdateModeRequiresDirectionBarriers(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("AB"))
+	reg.AddFile("eof.txt", []byte("A"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	dataPath := mustAllocBytes(t, mem, "stdio:update-data-path", []byte("data.txt\x00"), true, blockString)
+	eofPath := mustAllocBytes(t, mem, "stdio:update-eof-path", []byte("eof.txt\x00"), true, blockString)
+	writePath := mustAllocBytes(t, mem, "stdio:update-write-path", []byte("write.txt\x00"), true, blockString)
+	readWriteMode := mustAllocBytes(t, mem, "stdio:update-rplus-mode", []byte("r+\x00"), true, blockString)
+	writeReadMode := mustAllocBytes(t, mem, "stdio:update-wplus-mode", []byte("w+\x00"), true, blockString)
+	readMode := mustAllocBytes(t, mem, "stdio:update-read-mode", []byte("r\x00"), true, blockString)
+	buf := mustAllocBytes(t, mem, "stdio:update-buf", []byte{0, 0}, false, blockLocal)
+	z := mustAllocBytes(t, mem, "stdio:update-z", []byte("Z"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	freadFn, ok := reg.Lookup("fread")
+	if !ok {
+		t.Fatal("missing fread extern")
+	}
+	fwriteFn, ok := reg.Lookup("fwrite")
+	if !ok {
+		t.Fatal("missing fwrite extern")
+	}
+	ferrorFn, ok := reg.Lookup("ferror")
+	if !ok {
+		t.Fatal("missing ferror extern")
+	}
+	fcloseFn, ok := reg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dataPath), PtrValue(readWriteMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen r+ ret=%#v exit=%#v err=%v, want handle", ret, exit, err)
+	}
+	dataFile := ret.Int
+	ret, exit, err = freadFn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(buf), UIntValue(bytecode.TypeU64, 1), UIntValue(bytecode.TypeU64, 1), PtrValue(dataFile)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("initial fread ret=%#v exit=%#v err=%v, want 1", ret, exit, err)
+	}
+	ret, exit, err = fwriteFn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(z), UIntValue(bytecode.TypeU64, 1), UIntValue(bytecode.TypeU64, 1), PtrValue(dataFile)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("write after read ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = ferrorFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dataFile)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int == 0 {
+		t.Fatalf("ferror after invalid write ret=%#v exit=%#v err=%v, want nonzero", ret, exit, err)
+	}
+	if _, exit, err = fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dataFile)}); err != nil || exit != nil {
+		t.Fatalf("fclose data exit=%#v err=%v", exit, err)
+	}
+
+	ret, exit, err = fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(writePath), PtrValue(writeReadMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen w+ ret=%#v exit=%#v err=%v, want handle", ret, exit, err)
+	}
+	writeFile := ret.Int
+	ret, exit, err = fwriteFn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(z), UIntValue(bytecode.TypeU64, 1), UIntValue(bytecode.TypeU64, 1), PtrValue(writeFile)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("initial fwrite ret=%#v exit=%#v err=%v, want 1", ret, exit, err)
+	}
+	ret, exit, err = freadFn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(buf), UIntValue(bytecode.TypeU64, 1), UIntValue(bytecode.TypeU64, 1), PtrValue(writeFile)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("read after write ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = ferrorFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(writeFile)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int == 0 {
+		t.Fatalf("ferror after invalid read ret=%#v exit=%#v err=%v, want nonzero", ret, exit, err)
+	}
+	if _, exit, err = fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(writeFile)}); err != nil || exit != nil {
+		t.Fatalf("fclose write exit=%#v err=%v", exit, err)
+	}
+
+	ret, exit, err = fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(eofPath), PtrValue(readWriteMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen eof r+ ret=%#v exit=%#v err=%v, want handle", ret, exit, err)
+	}
+	eofFile := ret.Int
+	ret, exit, err = freadFn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(buf), UIntValue(bytecode.TypeU64, 1), UIntValue(bytecode.TypeU64, 2), PtrValue(eofFile)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("eof fread ret=%#v exit=%#v err=%v, want 1", ret, exit, err)
+	}
+	ret, exit, err = fwriteFn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(z), UIntValue(bytecode.TypeU64, 1), UIntValue(bytecode.TypeU64, 1), PtrValue(eofFile)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("write after read EOF ret=%#v exit=%#v err=%v, want 1", ret, exit, err)
+	}
+	if _, exit, err = fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(eofFile)}); err != nil || exit != nil {
+		t.Fatalf("fclose eof exit=%#v err=%v", exit, err)
+	}
+	ret, exit, err = fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(eofPath), PtrValue(readMode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("reopen eof ret=%#v exit=%#v err=%v, want handle", ret, exit, err)
+	}
+	ret, exit, err = freadFn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(buf), UIntValue(bytecode.TypeU64, 1), UIntValue(bytecode.TypeU64, 2), PtrValue(ret.Int)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("read eof file ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
+	}
+	block, off, err := mem.rangeAccess(buf, 2, false)
+	if err != nil {
+		t.Fatalf("rangeAccess buf: %v", err)
+	}
+	if got := string(block.data[off : off+2]); got != "AZ" {
+		t.Fatalf("eof file bytes = %q, want AZ", got)
+	}
+}
+
+func TestTmpnamNullReturnsStaticName(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
 	fn, ok := reg.Lookup("tmpnam")
 	if !ok {
 		t.Fatal("missing tmpnam extern")
 	}
-	ret, exit, err := fn(context.Background(), nil, []Value{PtrValue(0)})
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0)})
 	if err != nil || exit != nil {
 		t.Fatalf("tmpnam ret=%#v exit=%#v err=%v", ret, exit, err)
 	}
-	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
-		t.Fatalf("tmpnam ret=%#v, want null", ret)
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("tmpnam ret=%#v, want non-null pointer", ret)
+	}
+	got, err := mem.ReadCString(ret.Int)
+	if err != nil {
+		t.Fatalf("tmpnam string: %v", err)
+	}
+	if got != "/tmp/cvm-tmp-0" {
+		t.Fatalf("tmpnam string = %q, want /tmp/cvm-tmp-0", got)
+	}
+	ret2, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0)})
+	if err != nil || exit != nil {
+		t.Fatalf("tmpnam second ret=%#v exit=%#v err=%v", ret2, exit, err)
+	}
+	if ret2.Type != bytecode.TypePtr || ret2.Int != ret.Int {
+		t.Fatalf("tmpnam second ret=%#v, want same static pointer %#x", ret2, ret.Int)
+	}
+}
+
+func TestTmpnamWritesCallerBuffer(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	buf := mustAlloc(t, mem, "stdio:tmpnam-buffer", 20, 1, false, blockLocal)
+	fn, ok := reg.Lookup("tmpnam")
+	if !ok {
+		t.Fatal("missing tmpnam extern")
+	}
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf)})
+	if err != nil || exit != nil {
+		t.Fatalf("tmpnam ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != buf {
+		t.Fatalf("tmpnam ret=%#v, want buffer pointer %#x", ret, buf)
+	}
+	got, err := mem.ReadCString(buf)
+	if err != nil {
+		t.Fatalf("tmpnam buffer string: %v", err)
+	}
+	if got != "/tmp/cvm-tmp-0" {
+		t.Fatalf("tmpnam buffer = %q, want /tmp/cvm-tmp-0", got)
+	}
+}
+
+func TestTmpnamCallerBufferSequence(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	first := mustAlloc(t, mem, "stdio:tmpnam-sequence-first", 20, 1, false, blockLocal)
+	second := mustAlloc(t, mem, "stdio:tmpnam-sequence-second", 20, 1, false, blockLocal)
+	fn, ok := reg.Lookup("tmpnam")
+	if !ok {
+		t.Fatal("missing tmpnam extern")
+	}
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(first)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != first {
+		t.Fatalf("first tmpnam ret=%#v exit=%#v err=%v, want first buffer", ret, exit, err)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(second)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != second {
+		t.Fatalf("second tmpnam ret=%#v exit=%#v err=%v, want second buffer", ret, exit, err)
+	}
+	firstName, err := mem.ReadCString(first)
+	if err != nil {
+		t.Fatalf("first tmpnam string: %v", err)
+	}
+	secondName, err := mem.ReadCString(second)
+	if err != nil {
+		t.Fatalf("second tmpnam string: %v", err)
+	}
+	if firstName != "/tmp/cvm-tmp-0" || secondName != "/tmp/cvm-tmp-1" {
+		t.Fatalf("tmpnam names = %q, %q; want sequence 0, 1", firstName, secondName)
 	}
 }
 
@@ -563,6 +1050,13 @@ func TestStdioPositionStubs(t *testing.T) {
 	if ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
 		t.Fatalf("fgetpos ret=%#v, want i32 -1", ret)
 	}
+	ret, exit, err = fgetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), PtrValue(0xdeadbeef)})
+	if err != nil || exit != nil {
+		t.Fatalf("fgetpos invalid stdout ptr ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("fgetpos invalid stdout ptr ret=%#v, want i32 -1", ret)
+	}
 
 	fsetposFn, ok := reg.Lookup("fsetpos")
 	if !ok {
@@ -574,6 +1068,78 @@ func TestStdioPositionStubs(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
 		t.Fatalf("fsetpos ret=%#v, want i32 -1", ret)
+	}
+	ret, exit, err = fsetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), PtrValue(0xdeadbeef)})
+	if err != nil || exit != nil {
+		t.Fatalf("fsetpos invalid stdout ptr ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("fsetpos invalid stdout ptr ret=%#v, want i32 -1", ret)
+	}
+}
+
+func TestConfiguredFilePositionErrors(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("ABCDE"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:file-pos-error-path", []byte("data.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "stdio:file-pos-error-mode", []byte("r\x00"), true, blockString)
+	pos := mustAlloc(t, mem, "stdio:file-pos-error-fpos", 8, 8, false, blockLocal)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	fseekFn, ok := reg.Lookup("fseek")
+	if !ok {
+		t.Fatal("missing fseek extern")
+	}
+	ftellFn, ok := reg.Lookup("ftell")
+	if !ok {
+		t.Fatal("missing ftell extern")
+	}
+	fgetposFn, ok := reg.Lookup("fgetpos")
+	if !ok {
+		t.Fatal("missing fgetpos extern")
+	}
+	fsetposFn, ok := reg.Lookup("fsetpos")
+	if !ok {
+		t.Fatal("missing fsetpos extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(file),
+		IntValue(bytecode.TypeI64, 2),
+		IntValue(bytecode.TypeI32, 0),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fseek ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+
+	ret, exit, err = fgetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), PtrValue(0xdeadbeef)})
+	if err == nil || !strings.Contains(err.Error(), "invalid memory access") || exit != nil {
+		t.Fatalf("fgetpos invalid ptr ret=%#v exit=%#v err=%v, want invalid memory access", ret, exit, err)
+	}
+	ret, exit, err = fsetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), PtrValue(0xdeadbeef)})
+	if err == nil || !strings.Contains(err.Error(), "invalid memory access") || exit != nil {
+		t.Fatalf("fsetpos invalid ptr ret=%#v exit=%#v err=%v, want invalid memory access", ret, exit, err)
+	}
+
+	if err := mem.Store(pos, bytecode.TypeI64, 8, IntValue(bytecode.TypeI64, -1)); err != nil {
+		t.Fatalf("store negative fpos: %v", err)
+	}
+	ret, exit, err = fsetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), PtrValue(pos)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("fsetpos negative ret=%#v exit=%#v err=%v, want -1", ret, exit, err)
+	}
+	ret, exit, err = ftellFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI64 || ret.Int != 2 {
+		t.Fatalf("ftell after negative fsetpos ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
 	}
 }
 
@@ -792,6 +1358,7 @@ func TestPlainMathTernaryExterns(t *testing.T) {
 
 func TestPlainMathNanExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
 	tests := []struct {
 		name string
 		want bytecode.ValueType
@@ -800,18 +1367,22 @@ func TestPlainMathNanExterns(t *testing.T) {
 		{name: "nan", want: bytecode.TypeF64},
 		{name: "nanl", want: bytecode.TypeFLong},
 	}
+	payloads := []string{"", "123", "payload"}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fn, ok := reg.Lookup(tt.name)
 			if !ok {
 				t.Fatalf("missing %s extern", tt.name)
 			}
-			ret, exit, err := fn(context.Background(), nil, []Value{PtrValue(0)})
-			if err != nil || exit != nil {
-				t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
-			}
-			if ret.Type != tt.want || !math.IsNaN(ret.Float) {
-				t.Fatalf("%s ret=%#v, want %s NaN", tt.name, ret, tt.want)
+			for _, payload := range payloads {
+				addr := mustAllocBytes(t, mem, "nan:"+tt.name+":"+payload, []byte(payload+"\x00"), true, blockString)
+				ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(addr)})
+				if err != nil || exit != nil {
+					t.Fatalf("%s(%q) ret=%#v exit=%#v err=%v", tt.name, payload, ret, exit, err)
+				}
+				if ret.Type != tt.want || !math.IsNaN(ret.Float) {
+					t.Fatalf("%s(%q) ret=%#v, want %s NaN", tt.name, payload, ret, tt.want)
+				}
 			}
 		})
 	}
@@ -1535,6 +2106,98 @@ func TestFcloseRejectsLaterStreamUse(t *testing.T) {
 	}
 }
 
+func TestStreamWriteErrorSetsErrorIndicator(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("readonly.txt", []byte("AB"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:error-path", []byte("readonly.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "stdio:error-mode", []byte("r\x00"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	fputcFn, ok := reg.Lookup("fputc")
+	if !ok {
+		t.Fatal("missing fputc extern")
+	}
+	ret, exit, err = fputcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'X'), PtrValue(file)})
+	if err != nil || exit != nil {
+		t.Fatalf("fputc ret=%#v exit=%#v err=%v, want EOF without trap", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || int32(ret.Int) != -1 {
+		t.Fatalf("fputc ret=%#v, want EOF", ret)
+	}
+	ferrorFn, ok := reg.Lookup("ferror")
+	if !ok {
+		t.Fatal("missing ferror extern")
+	}
+	ret, exit, err = ferrorFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("ferror ret=%#v exit=%#v err=%v, want 1", ret, exit, err)
+	}
+	clearerrFn, ok := reg.Lookup("clearerr")
+	if !ok {
+		t.Fatal("missing clearerr extern")
+	}
+	if _, exit, err := clearerrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)}); err != nil || exit != nil {
+		t.Fatalf("clearerr exit=%#v err=%v", exit, err)
+	}
+	ret, exit, err = ferrorFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("ferror after clearerr ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+}
+
+func TestStreamReadErrorSetsErrorIndicator(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:read-error-path", []byte("writeonly.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "stdio:read-error-mode", []byte("w\x00"), true, blockString)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	fgetcFn, ok := reg.Lookup("fgetc")
+	if !ok {
+		t.Fatal("missing fgetc extern")
+	}
+	ret, exit, err = fgetcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil {
+		t.Fatalf("fgetc ret=%#v exit=%#v err=%v, want EOF without trap", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || int32(ret.Int) != -1 {
+		t.Fatalf("fgetc ret=%#v, want EOF", ret)
+	}
+	ferrorFn, ok := reg.Lookup("ferror")
+	if !ok {
+		t.Fatal("missing ferror extern")
+	}
+	ret, exit, err = ferrorFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("ferror ret=%#v exit=%#v err=%v, want 1", ret, exit, err)
+	}
+	feofFn, ok := reg.Lookup("feof")
+	if !ok {
+		t.Fatal("missing feof extern")
+	}
+	ret, exit, err = feofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("feof ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+}
+
 func TestFilenoReturnsStandardStreamDescriptors(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
@@ -1569,6 +2232,7 @@ func TestFilenoReturnsStandardStreamDescriptors(t *testing.T) {
 func TestStdioBufferControls(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
+	buf := mustAlloc(t, mem, "stdio:setvbuf-buffer", 8, 1, false, blockLocal)
 	stdout, ok := reg.LookupVariable("stdout", mem)
 	if !ok {
 		t.Fatal("missing stdout extern variable")
@@ -1580,21 +2244,90 @@ func TestStdioBufferControls(t *testing.T) {
 	if ret, exit, err := setbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), PtrValue(0)}); err != nil || exit != nil || ret.Type != 0 {
 		t.Fatalf("setbuf ret=%#v exit=%#v err=%v", ret, exit, err)
 	}
+	if ret, exit, err := setbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), PtrValue(buf)}); err != nil || exit != nil || ret.Type != 0 {
+		t.Fatalf("setbuf buffer ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
 	setvbufFn, ok := reg.Lookup("setvbuf")
 	if !ok {
 		t.Fatal("missing setvbuf extern")
 	}
+	for _, mode := range []int64{0, 1, 2} {
+		ret, exit, err := setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+			PtrValue(stdout),
+			PtrValue(0),
+			IntValue(bytecode.TypeI32, mode),
+			UIntValue(bytecode.TypeU64, 0),
+		})
+		if err != nil || exit != nil {
+			t.Fatalf("setvbuf mode %d ret=%#v exit=%#v err=%v", mode, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+			t.Fatalf("setvbuf mode %d ret=%#v, want i32 0", mode, ret)
+		}
+	}
 	ret, exit, err := setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
 		PtrValue(stdout),
 		PtrValue(0),
-		IntValue(bytecode.TypeI32, 2),
+		IntValue(bytecode.TypeI32, 99),
 		UIntValue(bytecode.TypeU64, 0),
 	})
 	if err != nil || exit != nil {
-		t.Fatalf("setvbuf ret=%#v exit=%#v err=%v", ret, exit, err)
+		t.Fatalf("setvbuf invalid mode ret=%#v exit=%#v err=%v", ret, exit, err)
 	}
-	if ret.Type != bytecode.TypeI32 || ret.Int != 0 {
-		t.Fatalf("setvbuf ret=%#v, want i32 0", ret)
+	if ret.Type != bytecode.TypeI32 || ret.Int == 0 {
+		t.Fatalf("setvbuf invalid mode ret=%#v, want nonzero i32", ret)
+	}
+	ret, exit, err = setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(stdout),
+		PtrValue(0),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU64, 8),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("setvbuf null buffer nonzero size ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(stdout),
+		PtrValue(buf),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU64, 8),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("setvbuf valid buffer ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(stdout),
+		PtrValue(buf + 4),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU64, 8),
+	})
+	if err == nil || !strings.Contains(err.Error(), "invalid memory access") || exit != nil {
+		t.Fatalf("setvbuf invalid buffer ret=%#v exit=%#v err=%v, want invalid memory access", ret, exit, err)
+	}
+	tmpfileFn, ok := reg.Lookup("tmpfile")
+	if !ok {
+		t.Fatal("missing tmpfile extern")
+	}
+	fcloseFn, ok := reg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+	ret, exit, err = tmpfileFn(context.Background(), &ExternContext{Memory: mem}, nil)
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("tmpfile ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	closed := ret.Int
+	if _, exit, err = fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(closed)}); err != nil || exit != nil {
+		t.Fatalf("fclose exit=%#v err=%v", exit, err)
+	}
+	ret, exit, err = setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(closed),
+		PtrValue(0),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU64, 0),
+	})
+	if err == nil || !strings.Contains(err.Error(), "unknown stream handle") || exit != nil {
+		t.Fatalf("setvbuf closed stream ret=%#v exit=%#v err=%v, want unknown stream handle", ret, exit, err)
 	}
 }
 
@@ -1689,8 +2422,10 @@ func TestStdlibAtoiExterns(t *testing.T) {
 
 func TestStdlibMultibyteExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
-	mem := NewMemory(bytecode.DefaultTarget())
+	target := bytecode.DefaultTarget()
+	mem := NewMemory(target)
 	text := mustAllocBytes(t, mem, "stdlib:mb:text", []byte("Az\x00"), true, blockString)
+	high := mustAllocBytes(t, mem, "stdlib:mb:high", []byte{0x80, 0}, true, blockString)
 	wide, err := mem.TryAlloc("stdlib:mb:wide", 16, 4, false, blockLocal)
 	if err != nil {
 		t.Fatalf("alloc wide: %v", err)
@@ -1716,6 +2451,119 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
 		t.Fatalf("mblen reset ret=%#v exit=%#v err=%v, want i32 0", ret, exit, err)
 	}
+	ret, exit, err = mblenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("mblen zero n ret=%#v exit=%#v err=%v, want i32 -1", ret, exit, err)
+	}
+	ret, exit, err = mblenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(high), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("mblen high-bit ret=%#v exit=%#v err=%v, want i32 -1", ret, exit, err)
+	}
+
+	mbrlenFn, ok := reg.Lookup("mbrlen")
+	if !ok {
+		t.Fatal("missing mbrlen extern")
+	}
+	ret, exit, err = mbrlenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), UIntValue(bytecode.TypeU64, 3), PtrValue(wide)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("mbrlen ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	ret, exit, err = mbrlenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text + 2), UIntValue(bytecode.TypeU64, 1), PtrValue(wide)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("mbrlen nul ret=%#v exit=%#v err=%v, want u64 0", ret, exit, err)
+	}
+	ret, exit, err = mbrlenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), UIntValue(bytecode.TypeU64, 0), PtrValue(wide)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("mbrlen reset ret=%#v exit=%#v err=%v, want u64 0", ret, exit, err)
+	}
+	ret, exit, err = mbrlenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), UIntValue(bytecode.TypeU64, 0), PtrValue(wide)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != math.MaxUint64-1 {
+		t.Fatalf("mbrlen zero n ret=%#v exit=%#v err=%v, want u64 -2", ret, exit, err)
+	}
+	ret, exit, err = mbrlenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(high), UIntValue(bytecode.TypeU64, 1), PtrValue(wide)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != math.MaxUint64 {
+		t.Fatalf("mbrlen high-bit ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
+	}
+
+	mbrtowcFn, ok := reg.Lookup("mbrtowc")
+	if !ok {
+		t.Fatal("missing mbrtowc extern")
+	}
+	ret, exit, err = mbrtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(text), UIntValue(bytecode.TypeU64, 3), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("mbrtowc ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	got, err := mem.Load(wide, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 'A' {
+		t.Fatalf("mbrtowc stored %#v err=%v, want 'A'", got, err)
+	}
+	ret, exit, err = mbrtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(text), UIntValue(bytecode.TypeU64, 3), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("mbrtowc null dest ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	ret, exit, err = mbrtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(0), UIntValue(bytecode.TypeU64, 0), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("mbrtowc null source ret=%#v exit=%#v err=%v, want u64 0", ret, exit, err)
+	}
+	ret, exit, err = mbrtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(text), UIntValue(bytecode.TypeU64, 0), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != math.MaxUint64-1 {
+		t.Fatalf("mbrtowc zero n ret=%#v exit=%#v err=%v, want u64 -2", ret, exit, err)
+	}
+	ret, exit, err = mbrtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(text + 2), UIntValue(bytecode.TypeU64, 1), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("mbrtowc nul ret=%#v exit=%#v err=%v, want u64 0", ret, exit, err)
+	}
+	got, err = mem.Load(wide, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 0 {
+		t.Fatalf("mbrtowc nul stored %#v err=%v, want 0", got, err)
+	}
+	if err := mem.Store(wide, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 'Q')); err != nil {
+		t.Fatalf("store mbrtowc sentinel: %v", err)
+	}
+	ret, exit, err = mbrtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(high), UIntValue(bytecode.TypeU64, 1), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != math.MaxUint64 {
+		t.Fatalf("mbrtowc high-bit ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
+	}
+	got, err = mem.Load(wide, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 'Q' {
+		t.Fatalf("mbrtowc high-bit stored %#v err=%v, want sentinel", got, err)
+	}
+
+	wcrtombFn, ok := reg.Lookup("wcrtomb")
+	if !ok {
+		t.Fatal("missing wcrtomb extern")
+	}
+	ret, exit, err = wcrtombFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), IntValue(bytecode.TypeI32, 'R'), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("wcrtomb ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	storedByte, err := mem.Load(out, bytecode.TypeI8, 1)
+	if err != nil || storedByte.Int != 'R' {
+		t.Fatalf("wcrtomb stored %#v err=%v, want 'R'", storedByte, err)
+	}
+	ret, exit, err = wcrtombFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), IntValue(bytecode.TypeI32, 0), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("wcrtomb nul ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	storedByte, err = mem.Load(out, bytecode.TypeI8, 1)
+	if err != nil || storedByte.Int != 0 {
+		t.Fatalf("wcrtomb nul stored %#v err=%v, want 0", storedByte, err)
+	}
+	ret, exit, err = wcrtombFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), IntValue(bytecode.TypeI32, 'R'), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("wcrtomb reset ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	if err := mem.Store(out, bytecode.TypeI8, 1, IntValue(bytecode.TypeI8, '!')); err != nil {
+		t.Fatalf("store wcrtomb sentinel: %v", err)
+	}
+	ret, exit, err = wcrtombFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), IntValue(bytecode.TypeI32, 0x80), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != math.MaxUint64 {
+		t.Fatalf("wcrtomb high wchar ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
+	}
+	storedByte, err = mem.Load(out, bytecode.TypeI8, 1)
+	if err != nil || storedByte.Int != '!' {
+		t.Fatalf("wcrtomb high wchar stored %#v err=%v, want sentinel", storedByte, err)
+	}
 
 	mbtowcFn, ok := reg.Lookup("mbtowc")
 	if !ok {
@@ -1725,9 +2573,40 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
 		t.Fatalf("mbtowc ret=%#v exit=%#v err=%v, want i32 1", ret, exit, err)
 	}
-	got, err := mem.Load(wide, bytecode.TypeI32, 4)
+	got, err = mem.Load(wide, bytecode.TypeI32, 4)
 	if err != nil || got.Int != 'A' {
 		t.Fatalf("mbtowc stored %#v err=%v, want 'A'", got, err)
+	}
+	ret, exit, err = mbtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(text), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("mbtowc null dest ret=%#v exit=%#v err=%v, want i32 1", ret, exit, err)
+	}
+	ret, exit, err = mbtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(0), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("mbtowc null source ret=%#v exit=%#v err=%v, want i32 0", ret, exit, err)
+	}
+	ret, exit, err = mbtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(text), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("mbtowc zero n ret=%#v exit=%#v err=%v, want i32 -1", ret, exit, err)
+	}
+	ret, exit, err = mbtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(text + 2), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("mbtowc nul ret=%#v exit=%#v err=%v, want i32 0", ret, exit, err)
+	}
+	got, err = mem.Load(wide, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 0 {
+		t.Fatalf("mbtowc nul stored %#v err=%v, want 0", got, err)
+	}
+	if err := mem.Store(wide, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0x1234)); err != nil {
+		t.Fatalf("store wide sentinel: %v", err)
+	}
+	ret, exit, err = mbtowcFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(high), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("mbtowc high-bit ret=%#v exit=%#v err=%v, want i32 -1", ret, exit, err)
+	}
+	got, err = mem.Load(wide, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 0x1234 {
+		t.Fatalf("mbtowc high-bit stored %#v err=%v, want sentinel", got, err)
 	}
 
 	wctombFn, ok := reg.Lookup("wctomb")
@@ -1741,6 +2620,25 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	ch, err := readMemoryByte(mem, out)
 	if err != nil || ch != 'Q' {
 		t.Fatalf("wctomb wrote %q err=%v, want Q", ch, err)
+	}
+	ret, exit, err = wctombFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("wctomb nul ret=%#v exit=%#v err=%v, want i32 1", ret, exit, err)
+	}
+	ch, err = readMemoryByte(mem, out)
+	if err != nil || ch != 0 {
+		t.Fatalf("wctomb nul wrote %#x err=%v, want 0", ch, err)
+	}
+	if err := writeMemoryByte(mem, out, 'X'); err != nil {
+		t.Fatalf("store wctomb sentinel: %v", err)
+	}
+	ret, exit, err = wctombFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), IntValue(bytecode.TypeI32, 0x80)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("wctomb high wchar ret=%#v exit=%#v err=%v, want i32 -1", ret, exit, err)
+	}
+	ch, err = readMemoryByte(mem, out)
+	if err != nil || ch != 'X' {
+		t.Fatalf("wctomb high wchar wrote %q err=%v, want sentinel", ch, err)
 	}
 	ret, exit, err = wctombFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), IntValue(bytecode.TypeI32, 0)})
 	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
@@ -1759,9 +2657,88 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	if err != nil || got.Int != 'z' {
 		t.Fatalf("mbstowcs second stored %#v err=%v, want 'z'", got, err)
 	}
+	got, err = mem.Load(wide+8, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 0 {
+		t.Fatalf("mbstowcs terminator stored %#v err=%v, want 0", got, err)
+	}
+	if err := mem.Store(wide+4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 'X')); err != nil {
+		t.Fatalf("store mbstowcs trunc sentinel: %v", err)
+	}
+	ret, exit, err = mbstowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(text), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("mbstowcs trunc ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	got, err = mem.Load(wide+4, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 'X' {
+		t.Fatalf("mbstowcs trunc sentinel %#v err=%v, want unchanged", got, err)
+	}
 	ret, exit, err = mbstowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(text), UIntValue(bytecode.TypeU64, 0)})
 	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
 		t.Fatalf("mbstowcs length ret=%#v exit=%#v err=%v, want u64 2", ret, exit, err)
+	}
+	ret, exit, err = mbstowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(high), UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || signedInt(ret) != -1 {
+		t.Fatalf("mbstowcs high-bit ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
+	}
+
+	srcSlot, err := mem.TryAlloc("stdlib:mb:srcslot", target.PointerSize, target.PointerAlign, false, blockLocal)
+	if err != nil {
+		t.Fatalf("alloc source slot: %v", err)
+	}
+	mbsrtowcsFn, ok := reg.Lookup("mbsrtowcs")
+	if !ok {
+		t.Fatal("missing mbsrtowcs extern")
+	}
+	if err := mem.WritePointer(srcSlot, text); err != nil {
+		t.Fatalf("store mbsrtowcs source: %v", err)
+	}
+	ret, exit, err = mbsrtowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 4), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("mbsrtowcs ret=%#v exit=%#v err=%v, want u64 2", ret, exit, err)
+	}
+	got, err = mem.Load(wide+4, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 'z' {
+		t.Fatalf("mbsrtowcs second stored %#v err=%v, want 'z'", got, err)
+	}
+	loadedPtr, err := mem.Load(srcSlot, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || loadedPtr.Int != 0 {
+		t.Fatalf("mbsrtowcs source after complete=%#v err=%v, want null", loadedPtr, err)
+	}
+	if err := mem.WritePointer(srcSlot, text); err != nil {
+		t.Fatalf("store mbsrtowcs trunc source: %v", err)
+	}
+	if err := mem.Store(wide+4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 'X')); err != nil {
+		t.Fatalf("store mbsrtowcs trunc sentinel: %v", err)
+	}
+	ret, exit, err = mbsrtowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 1), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("mbsrtowcs trunc ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	loadedPtr, err = mem.Load(srcSlot, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || loadedPtr.Int != text+1 {
+		t.Fatalf("mbsrtowcs source after trunc=%#v err=%v, want %#x", loadedPtr, err, text+1)
+	}
+	got, err = mem.Load(wide+4, bytecode.TypeI32, 4)
+	if err != nil || got.Int != 'X' {
+		t.Fatalf("mbsrtowcs trunc sentinel %#v err=%v, want unchanged", got, err)
+	}
+	if err := mem.WritePointer(srcSlot, text); err != nil {
+		t.Fatalf("store mbsrtowcs length source: %v", err)
+	}
+	ret, exit, err = mbsrtowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 0), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("mbsrtowcs length ret=%#v exit=%#v err=%v, want u64 2", ret, exit, err)
+	}
+	loadedPtr, err = mem.Load(srcSlot, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || loadedPtr.Int != text {
+		t.Fatalf("mbsrtowcs source after length=%#v err=%v, want unchanged", loadedPtr, err)
+	}
+	if err := mem.WritePointer(srcSlot, high); err != nil {
+		t.Fatalf("store mbsrtowcs high source: %v", err)
+	}
+	ret, exit, err = mbsrtowcsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(wide), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 4), PtrValue(wide + 8)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != math.MaxUint64 {
+		t.Fatalf("mbsrtowcs high-bit ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
 	}
 
 	if err := mem.Store(wide, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 'o')); err != nil {
@@ -1785,9 +2762,102 @@ func TestStdlibMultibyteExterns(t *testing.T) {
 	if err != nil || gotString != "ok" {
 		t.Fatalf("wcstombs string %q err=%v, want ok", gotString, err)
 	}
+	if err := writeMemoryByte(mem, out+1, 'X'); err != nil {
+		t.Fatalf("store wcstombs trunc sentinel: %v", err)
+	}
+	ret, exit, err = wcstombsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), PtrValue(wide), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("wcstombs trunc ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	ch, err = readMemoryByte(mem, out+1)
+	if err != nil || ch != 'X' {
+		t.Fatalf("wcstombs trunc sentinel %q err=%v, want unchanged", ch, err)
+	}
 	ret, exit, err = wcstombsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(wide), UIntValue(bytecode.TypeU64, 0)})
 	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
 		t.Fatalf("wcstombs length ret=%#v exit=%#v err=%v, want u64 2", ret, exit, err)
+	}
+	if err := mem.Store(wide+4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0x80)); err != nil {
+		t.Fatalf("store high wide: %v", err)
+	}
+	if err := writeMemoryByte(mem, out, 'X'); err != nil {
+		t.Fatalf("store wcstombs high sentinel: %v", err)
+	}
+	ret, exit, err = wcstombsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), PtrValue(wide), UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || signedInt(ret) != -1 {
+		t.Fatalf("wcstombs high wchar ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
+	}
+	ch, err = readMemoryByte(mem, out)
+	if err != nil || ch != 'X' {
+		t.Fatalf("wcstombs high wchar wrote %q err=%v, want sentinel", ch, err)
+	}
+
+	if err := mem.Store(wide, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 'o')); err != nil {
+		t.Fatalf("store wcsrtombs wide[0]: %v", err)
+	}
+	if err := mem.Store(wide+4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 'k')); err != nil {
+		t.Fatalf("store wcsrtombs wide[1]: %v", err)
+	}
+	if err := mem.Store(wide+8, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store wcsrtombs wide[2]: %v", err)
+	}
+	wcsrtombsFn, ok := reg.Lookup("wcsrtombs")
+	if !ok {
+		t.Fatal("missing wcsrtombs extern")
+	}
+	if err := mem.WritePointer(srcSlot, wide); err != nil {
+		t.Fatalf("store wcsrtombs source: %v", err)
+	}
+	ret, exit, err = wcsrtombsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 4), PtrValue(wide + 12)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("wcsrtombs ret=%#v exit=%#v err=%v, want u64 2", ret, exit, err)
+	}
+	gotString, err = mem.ReadCString(out)
+	if err != nil || gotString != "ok" {
+		t.Fatalf("wcsrtombs string %q err=%v, want ok", gotString, err)
+	}
+	loadedPtr, err = mem.Load(srcSlot, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || loadedPtr.Int != 0 {
+		t.Fatalf("wcsrtombs source after complete=%#v err=%v, want null", loadedPtr, err)
+	}
+	if err := mem.WritePointer(srcSlot, wide); err != nil {
+		t.Fatalf("store wcsrtombs trunc source: %v", err)
+	}
+	if err := writeMemoryByte(mem, out+1, 'X'); err != nil {
+		t.Fatalf("store wcsrtombs trunc sentinel: %v", err)
+	}
+	ret, exit, err = wcsrtombsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 1), PtrValue(wide + 12)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 1 {
+		t.Fatalf("wcsrtombs trunc ret=%#v exit=%#v err=%v, want u64 1", ret, exit, err)
+	}
+	loadedPtr, err = mem.Load(srcSlot, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || loadedPtr.Int != wide+4 {
+		t.Fatalf("wcsrtombs source after trunc=%#v err=%v, want %#x", loadedPtr, err, wide+4)
+	}
+	ch, err = readMemoryByte(mem, out+1)
+	if err != nil || ch != 'X' {
+		t.Fatalf("wcsrtombs trunc sentinel %q err=%v, want unchanged", ch, err)
+	}
+	if err := mem.WritePointer(srcSlot, wide); err != nil {
+		t.Fatalf("store wcsrtombs length source: %v", err)
+	}
+	ret, exit, err = wcsrtombsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 0), PtrValue(wide + 12)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != 2 {
+		t.Fatalf("wcsrtombs length ret=%#v exit=%#v err=%v, want u64 2", ret, exit, err)
+	}
+	loadedPtr, err = mem.Load(srcSlot, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || loadedPtr.Int != wide {
+		t.Fatalf("wcsrtombs source after length=%#v err=%v, want unchanged", loadedPtr, err)
+	}
+	if err := mem.Store(wide+4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0x80)); err != nil {
+		t.Fatalf("store wcsrtombs high wide: %v", err)
+	}
+	if err := mem.WritePointer(srcSlot, wide); err != nil {
+		t.Fatalf("store wcsrtombs high source: %v", err)
+	}
+	ret, exit, err = wcsrtombsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(out), PtrValue(srcSlot), UIntValue(bytecode.TypeU64, 4), PtrValue(wide + 12)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeU64 || ret.Int != math.MaxUint64 {
+		t.Fatalf("wcsrtombs high wchar ret=%#v exit=%#v err=%v, want u64 -1", ret, exit, err)
 	}
 }
 
@@ -1820,6 +2890,38 @@ func TestStdlibStrtolExterns(t *testing.T) {
 		t.Fatalf("strtol endptr=%#x, want %#x", loadedEnd.Int, signedText+7)
 	}
 
+	decimalText := mustAllocBytes(t, mem, "strtol:decimal", []byte("  +123abc\x00"), true, blockString)
+	ret, exit, err = strtolFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(decimalText), PtrValue(endptr), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtol decimal ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI64 || signedInt(ret) != 123 {
+		t.Fatalf("strtol decimal ret=%#v, want i64 123", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtol decimal endptr: %v", err)
+	}
+	if loadedEnd.Int != decimalText+6 {
+		t.Fatalf("strtol decimal endptr=%#x, want %#x", loadedEnd.Int, decimalText+6)
+	}
+
+	octalSignedText := mustAllocBytes(t, mem, "strtol:octal", []byte("0755,tail\x00"), true, blockString)
+	ret, exit, err = strtolFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(octalSignedText), PtrValue(endptr), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtol octal ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI64 || signedInt(ret) != 493 {
+		t.Fatalf("strtol octal ret=%#v, want i64 493", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtol octal endptr: %v", err)
+	}
+	if loadedEnd.Int != octalSignedText+4 {
+		t.Fatalf("strtol octal endptr=%#x, want %#x", loadedEnd.Int, octalSignedText+4)
+	}
+
 	strtoulFn, ok := reg.Lookup("strtoul")
 	if !ok {
 		t.Fatal("missing strtoul extern")
@@ -1847,6 +2949,38 @@ func TestStdlibStrtolExterns(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypeU64 || ret.Int != 127 {
 		t.Fatalf("strtoul hex ret=%#v, want u64 127", ret)
+	}
+
+	negativeUnsignedText := mustAllocBytes(t, mem, "strtoul:negative", []byte("-42xyz\x00"), true, blockString)
+	ret, exit, err = strtoulFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeUnsignedText), PtrValue(endptr), IntValue(bytecode.TypeI32, 10)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtoul negative ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != ^uint64(41) {
+		t.Fatalf("strtoul negative ret=%#v, want u64 -42", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtoul negative endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeUnsignedText+3 {
+		t.Fatalf("strtoul negative endptr=%#x, want %#x", loadedEnd.Int, negativeUnsignedText+3)
+	}
+
+	unsignedNoneText := mustAllocBytes(t, mem, "strtoul:none", []byte("nope\x00"), true, blockString)
+	ret, exit, err = strtoulFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(unsignedNoneText), PtrValue(endptr), IntValue(bytecode.TypeI32, 10)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtoul none ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("strtoul none ret=%#v, want u64 0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtoul none endptr: %v", err)
+	}
+	if loadedEnd.Int != unsignedNoneText {
+		t.Fatalf("strtoul none endptr=%#x, want %#x", loadedEnd.Int, unsignedNoneText)
 	}
 
 	noneText := mustAllocBytes(t, mem, "strtol:none", []byte("xyz\x00"), true, blockString)
@@ -1895,6 +3029,22 @@ func TestStdlibStrtollExterns(t *testing.T) {
 		t.Fatalf("strtoll endptr=%#x, want %#x", loadedEnd.Int, signedText+11)
 	}
 
+	maxSignedText := mustAllocBytes(t, mem, "strtoll:max", []byte("9223372036854775807;\x00"), true, blockString)
+	ret, exit, err = strtollFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(maxSignedText), PtrValue(endptr), IntValue(bytecode.TypeI32, 10)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtoll max ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI64 || signedInt(ret) != 9223372036854775807 {
+		t.Fatalf("strtoll max ret=%#v, want i64 max", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtoll max endptr: %v", err)
+	}
+	if loadedEnd.Int != maxSignedText+19 {
+		t.Fatalf("strtoll max endptr=%#x, want %#x", loadedEnd.Int, maxSignedText+19)
+	}
+
 	strtoullFn, ok := reg.Lookup("strtoull")
 	if !ok {
 		t.Fatal("missing strtoull extern")
@@ -1913,6 +3063,22 @@ func TestStdlibStrtollExterns(t *testing.T) {
 	}
 	if loadedEnd.Int != unsignedText+11 {
 		t.Fatalf("strtoull endptr=%#x, want %#x", loadedEnd.Int, unsignedText+11)
+	}
+
+	maxUnsignedText := mustAllocBytes(t, mem, "strtoull:max", []byte("18446744073709551615!\x00"), true, blockString)
+	ret, exit, err = strtoullFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(maxUnsignedText), PtrValue(endptr), IntValue(bytecode.TypeI32, 10)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtoull max ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != ^uint64(0) {
+		t.Fatalf("strtoull max ret=%#v, want u64 max", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtoull max endptr: %v", err)
+	}
+	if loadedEnd.Int != maxUnsignedText+20 {
+		t.Fatalf("strtoull max endptr=%#x, want %#x", loadedEnd.Int, maxUnsignedText+20)
 	}
 }
 
@@ -1938,9 +3104,87 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 		t.Fatalf("atof ret=%#v, want f64 3.25", ret)
 	}
 
+	atofExponentText := mustAllocBytes(t, mem, "atof:exponent", []byte("-1.25e2x\x00"), true, blockString)
+	ret, exit, err = atofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(atofExponentText)})
+	if err != nil || exit != nil {
+		t.Fatalf("atof exponent ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != -125 {
+		t.Fatalf("atof exponent ret=%#v, want f64 -125", ret)
+	}
+
+	atofNoneText := mustAllocBytes(t, mem, "atof:none", []byte("word\x00"), true, blockString)
+	ret, exit, err = atofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(atofNoneText)})
+	if err != nil || exit != nil {
+		t.Fatalf("atof none ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 {
+		t.Fatalf("atof none ret=%#v, want f64 0", ret)
+	}
+
 	strtodFn, ok := reg.Lookup("strtod")
 	if !ok {
 		t.Fatal("missing strtod extern")
+	}
+	errnoAddr, ok := reg.LookupVariable("errno", mem)
+	if !ok {
+		t.Fatal("missing errno extern variable")
+	}
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 77)); err != nil {
+		t.Fatalf("store errno before strtod: %v", err)
+	}
+	ret, exit, err = atofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(atofNoneText)})
+	if err != nil || exit != nil {
+		t.Fatalf("atof errno-preserving none ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 {
+		t.Fatalf("atof errno-preserving none ret=%#v, want f64 0", ret)
+	}
+	errnoValue, err := mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after atof none: %v", err)
+	}
+	if signedInt(errnoValue) != 77 {
+		t.Fatalf("errno after atof none=%#v, want 77", errnoValue)
+	}
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before atof overflow: %v", err)
+	}
+	atofOverflowText := mustAllocBytes(t, mem, "atof:overflow", []byte("1e309tail\x00"), true, blockString)
+	ret, exit, err = atofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(atofOverflowText)})
+	if err != nil || exit != nil {
+		t.Fatalf("atof overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("atof overflow ret=%#v, want +inf", ret)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after atof overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after atof overflow=%#v, want ERANGE", errnoValue)
+	}
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before atof underflow: %v", err)
+	}
+	atofUnderflowText := mustAllocBytes(t, mem, "atof:underflow", []byte("-1e-400tail\x00"), true, blockString)
+	ret, exit, err = atofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(atofUnderflowText)})
+	if err != nil || exit != nil {
+		t.Fatalf("atof underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 || !math.Signbit(ret.Float) {
+		t.Fatalf("atof underflow ret=%#v, want -0", ret)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after atof underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after atof underflow=%#v, want ERANGE", errnoValue)
+	}
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 77)); err != nil {
+		t.Fatalf("restore errno before strtod: %v", err)
 	}
 	decimalText := mustAllocBytes(t, mem, "strtod:decimal", []byte(" -12.5e1x\x00"), true, blockString)
 	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(decimalText), PtrValue(endptr)})
@@ -1956,6 +3200,29 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 	}
 	if loadedEnd.Int != decimalText+8 {
 		t.Fatalf("strtod decimal endptr=%#x, want %#x", loadedEnd.Int, decimalText+8)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod success: %v", err)
+	}
+	if signedInt(errnoValue) != 77 {
+		t.Fatalf("errno after strtod success=%#v, want 77", errnoValue)
+	}
+
+	positiveExponentText := mustAllocBytes(t, mem, "strtod:positive-exponent", []byte(" +6.25e-1;\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(positiveExponentText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod positive exponent ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0.625 {
+		t.Fatalf("strtod positive exponent ret=%#v, want f64 0.625", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod positive exponent endptr: %v", err)
+	}
+	if loadedEnd.Int != positiveExponentText+9 {
+		t.Fatalf("strtod positive exponent endptr=%#x, want %#x", loadedEnd.Int, positiveExponentText+9)
 	}
 
 	hexText := mustAllocBytes(t, mem, "strtod:hex", []byte("0x1.8p+2!\x00"), true, blockString)
@@ -1974,6 +3241,134 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 		t.Fatalf("strtod hex endptr=%#x, want %#x", loadedEnd.Int, hexText+8)
 	}
 
+	hexOneText := mustAllocBytes(t, mem, "strtod:hex-one", []byte("0x1p0:\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(hexOneText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod hex one ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 1 {
+		t.Fatalf("strtod hex one ret=%#v, want f64 1", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod hex one endptr: %v", err)
+	}
+	if loadedEnd.Int != hexOneText+5 {
+		t.Fatalf("strtod hex one endptr=%#x, want %#x", loadedEnd.Int, hexOneText+5)
+	}
+
+	hexFractionText := mustAllocBytes(t, mem, "strtod:hex-fraction", []byte("0x1.fp-1?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(hexFractionText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod hex fraction ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0.96875 {
+		t.Fatalf("strtod hex fraction ret=%#v, want f64 0.96875", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod hex fraction endptr: %v", err)
+	}
+	if loadedEnd.Int != hexFractionText+8 {
+		t.Fatalf("strtod hex fraction endptr=%#x, want %#x", loadedEnd.Int, hexFractionText+8)
+	}
+
+	infText := mustAllocBytes(t, mem, "strtod:inf", []byte("inf!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(infText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod inf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtod inf ret=%#v, want +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod inf endptr: %v", err)
+	}
+	if loadedEnd.Int != infText+3 {
+		t.Fatalf("strtod inf endptr=%#x, want %#x", loadedEnd.Int, infText+3)
+	}
+
+	positiveInfinityText := mustAllocBytes(t, mem, "strtod:positive-infinity", []byte("+infinity;\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(positiveInfinityText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod positive infinity ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtod positive infinity ret=%#v, want +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod positive infinity endptr: %v", err)
+	}
+	if loadedEnd.Int != positiveInfinityText+9 {
+		t.Fatalf("strtod positive infinity endptr=%#x, want %#x", loadedEnd.Int, positiveInfinityText+9)
+	}
+
+	negativeInfText := mustAllocBytes(t, mem, "strtod:negative-inf", []byte("-INF?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeInfText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod negative inf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, -1) {
+		t.Fatalf("strtod negative inf ret=%#v, want -inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod negative inf endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeInfText+4 {
+		t.Fatalf("strtod negative inf endptr=%#x, want %#x", loadedEnd.Int, negativeInfText+4)
+	}
+
+	nanText := mustAllocBytes(t, mem, "strtod:nan", []byte("nan!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(nanText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod nan ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsNaN(ret.Float) {
+		t.Fatalf("strtod nan ret=%#v, want NaN", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod nan endptr: %v", err)
+	}
+	if loadedEnd.Int != nanText+3 {
+		t.Fatalf("strtod nan endptr=%#x, want %#x", loadedEnd.Int, nanText+3)
+	}
+
+	upperNanText := mustAllocBytes(t, mem, "strtod:upper-nan", []byte("NAN;\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(upperNanText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod upper nan ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsNaN(ret.Float) {
+		t.Fatalf("strtod upper nan ret=%#v, want NaN", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod upper nan endptr: %v", err)
+	}
+	if loadedEnd.Int != upperNanText+3 {
+		t.Fatalf("strtod upper nan endptr=%#x, want %#x", loadedEnd.Int, upperNanText+3)
+	}
+
+	nanPayloadText := mustAllocBytes(t, mem, "strtod:nan-payload", []byte("nan(payload)?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(nanPayloadText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod nan payload ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsNaN(ret.Float) {
+		t.Fatalf("strtod nan payload ret=%#v, want NaN", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod nan payload endptr: %v", err)
+	}
+	if loadedEnd.Int != nanPayloadText+12 {
+		t.Fatalf("strtod nan payload endptr=%#x, want %#x", loadedEnd.Int, nanPayloadText+12)
+	}
+
 	noneText := mustAllocBytes(t, mem, "strtod:none", []byte("word\x00"), true, blockString)
 	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(noneText), PtrValue(endptr)})
 	if err != nil || exit != nil {
@@ -1988,6 +3383,273 @@ func TestStdlibFloatParserExterns(t *testing.T) {
 	}
 	if loadedEnd.Int != noneText {
 		t.Fatalf("strtod none endptr=%#x, want %#x", loadedEnd.Int, noneText)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod none: %v", err)
+	}
+	if signedInt(errnoValue) != 77 {
+		t.Fatalf("errno after strtod none=%#v, want 77", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod positive overflow: %v", err)
+	}
+	overflowText := mustAllocBytes(t, mem, "strtod:overflow", []byte("1e309!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(overflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtod overflow ret=%#v, want +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != overflowText+5 {
+		t.Fatalf("strtod overflow endptr=%#x, want %#x", loadedEnd.Int, overflowText+5)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtod overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod negative overflow: %v", err)
+	}
+	negativeOverflowText := mustAllocBytes(t, mem, "strtod:negative-overflow", []byte("-1e309?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod negative overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, -1) {
+		t.Fatalf("strtod negative overflow ret=%#v, want -inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod negative overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeOverflowText+6 {
+		t.Fatalf("strtod negative overflow endptr=%#x, want %#x", loadedEnd.Int, negativeOverflowText+6)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod negative overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtod negative overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod hex overflow: %v", err)
+	}
+	hexOverflowText := mustAllocBytes(t, mem, "strtod:hex-overflow", []byte("0x1p+2048!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(hexOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod hex overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtod hex overflow ret=%#v, want +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod hex overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != hexOverflowText+9 {
+		t.Fatalf("strtod hex overflow endptr=%#x, want %#x", loadedEnd.Int, hexOverflowText+9)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod hex overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtod hex overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod negative hex overflow: %v", err)
+	}
+	negativeHexOverflowText := mustAllocBytes(t, mem, "strtod:negative-hex-overflow", []byte("-0x1p+2048?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeHexOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod negative hex overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || !math.IsInf(ret.Float, -1) {
+		t.Fatalf("strtod negative hex overflow ret=%#v, want -inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod negative hex overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeHexOverflowText+10 {
+		t.Fatalf("strtod negative hex overflow endptr=%#x, want %#x", loadedEnd.Int, negativeHexOverflowText+10)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod negative hex overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtod negative hex overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod underflow: %v", err)
+	}
+	underflowText := mustAllocBytes(t, mem, "strtod:underflow", []byte("1e-400!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(underflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 || math.Signbit(ret.Float) {
+		t.Fatalf("strtod underflow ret=%#v, want +0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod underflow endptr: %v", err)
+	}
+	if loadedEnd.Int != underflowText+6 {
+		t.Fatalf("strtod underflow endptr=%#x, want %#x", loadedEnd.Int, underflowText+6)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtod underflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod negative underflow: %v", err)
+	}
+	negativeUnderflowText := mustAllocBytes(t, mem, "strtod:negative-underflow", []byte("-1e-400?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeUnderflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod negative underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 || !math.Signbit(ret.Float) {
+		t.Fatalf("strtod negative underflow ret=%#v, want -0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod negative underflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeUnderflowText+7 {
+		t.Fatalf("strtod negative underflow endptr=%#x, want %#x", loadedEnd.Int, negativeUnderflowText+7)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod negative underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtod negative underflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod subnormal: %v", err)
+	}
+	subnormalText := mustAllocBytes(t, mem, "strtod:subnormal", []byte("5e-324!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(subnormalText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod subnormal ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 5e-324 {
+		t.Fatalf("strtod subnormal ret=%#v, want smallest subnormal", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod subnormal endptr: %v", err)
+	}
+	if loadedEnd.Int != subnormalText+6 {
+		t.Fatalf("strtod subnormal endptr=%#x, want %#x", loadedEnd.Int, subnormalText+6)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod subnormal: %v", err)
+	}
+	if signedInt(errnoValue) != 0 {
+		t.Fatalf("errno after strtod subnormal=%#v, want 0", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod hex underflow: %v", err)
+	}
+	hexUnderflowText := mustAllocBytes(t, mem, "strtod:hex-underflow", []byte("0x1p-20000!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(hexUnderflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod hex underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 || math.Signbit(ret.Float) {
+		t.Fatalf("strtod hex underflow ret=%#v, want +0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod hex underflow endptr: %v", err)
+	}
+	if loadedEnd.Int != hexUnderflowText+10 {
+		t.Fatalf("strtod hex underflow endptr=%#x, want %#x", loadedEnd.Int, hexUnderflowText+10)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod hex underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtod hex underflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod negative hex underflow: %v", err)
+	}
+	negativeHexUnderflowText := mustAllocBytes(t, mem, "strtod:negative-hex-underflow", []byte("-0x1p-20000?\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeHexUnderflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod negative hex underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 || !math.Signbit(ret.Float) {
+		t.Fatalf("strtod negative hex underflow ret=%#v, want -0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod negative hex underflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeHexUnderflowText+11 {
+		t.Fatalf("strtod negative hex underflow endptr=%#x, want %#x", loadedEnd.Int, negativeHexUnderflowText+11)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod negative hex underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtod negative hex underflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtod hex subnormal: %v", err)
+	}
+	hexSubnormalText := mustAllocBytes(t, mem, "strtod:hex-subnormal", []byte("0x1p-1074!\x00"), true, blockString)
+	ret, exit, err = strtodFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(hexSubnormalText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtod hex subnormal ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 5e-324 {
+		t.Fatalf("strtod hex subnormal ret=%#v, want smallest subnormal", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtod hex subnormal endptr: %v", err)
+	}
+	if loadedEnd.Int != hexSubnormalText+9 {
+		t.Fatalf("strtod hex subnormal endptr=%#x, want %#x", loadedEnd.Int, hexSubnormalText+9)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtod hex subnormal: %v", err)
+	}
+	if signedInt(errnoValue) != 0 {
+		t.Fatalf("errno after strtod hex subnormal=%#v, want 0", errnoValue)
 	}
 }
 
@@ -2020,6 +3682,140 @@ func TestStdlibMoreFloatParserExterns(t *testing.T) {
 		t.Fatalf("strtof endptr=%#x, want %#x", loadedEnd.Int, floatText+4)
 	}
 
+	errnoAddr, ok := reg.LookupVariable("errno", mem)
+	if !ok {
+		t.Fatal("missing errno extern variable")
+	}
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtof overflow: %v", err)
+	}
+	floatOverflowText := mustAllocBytes(t, mem, "strtof:overflow", []byte("1e39!\x00"), true, blockString)
+	ret, exit, err = strtofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(floatOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtof overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF32 || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtof overflow ret=%#v, want f32 +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtof overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != floatOverflowText+4 {
+		t.Fatalf("strtof overflow endptr=%#x, want %#x", loadedEnd.Int, floatOverflowText+4)
+	}
+	errnoValue, err := mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtof overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtof overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtof negative overflow: %v", err)
+	}
+	negativeFloatOverflowText := mustAllocBytes(t, mem, "strtof:negative-overflow", []byte("-1e39?\x00"), true, blockString)
+	ret, exit, err = strtofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeFloatOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtof negative overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF32 || !math.IsInf(ret.Float, -1) {
+		t.Fatalf("strtof negative overflow ret=%#v, want f32 -inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtof negative overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeFloatOverflowText+5 {
+		t.Fatalf("strtof negative overflow endptr=%#x, want %#x", loadedEnd.Int, negativeFloatOverflowText+5)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtof negative overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtof negative overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtof underflow: %v", err)
+	}
+	floatUnderflowText := mustAllocBytes(t, mem, "strtof:underflow", []byte("1e-50!\x00"), true, blockString)
+	ret, exit, err = strtofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(floatUnderflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtof underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF32 || ret.Float != 0 || math.Signbit(ret.Float) {
+		t.Fatalf("strtof underflow ret=%#v, want f32 +0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtof underflow endptr: %v", err)
+	}
+	if loadedEnd.Int != floatUnderflowText+5 {
+		t.Fatalf("strtof underflow endptr=%#x, want %#x", loadedEnd.Int, floatUnderflowText+5)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtof underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtof underflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtof negative underflow: %v", err)
+	}
+	negativeFloatUnderflowText := mustAllocBytes(t, mem, "strtof:negative-underflow", []byte("-1e-50?\x00"), true, blockString)
+	ret, exit, err = strtofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeFloatUnderflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtof negative underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF32 || ret.Float != 0 || !math.Signbit(ret.Float) {
+		t.Fatalf("strtof negative underflow ret=%#v, want f32 -0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtof negative underflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeFloatUnderflowText+6 {
+		t.Fatalf("strtof negative underflow endptr=%#x, want %#x", loadedEnd.Int, negativeFloatUnderflowText+6)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtof negative underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtof negative underflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtof subnormal: %v", err)
+	}
+	floatSubnormalText := mustAllocBytes(t, mem, "strtof:subnormal", []byte("1e-45!\x00"), true, blockString)
+	ret, exit, err = strtofFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(floatSubnormalText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtof subnormal ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF32 || ret.Float != float64(float32(math.SmallestNonzeroFloat32)) {
+		t.Fatalf("strtof subnormal ret=%#v, want smallest float32 subnormal", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtof subnormal endptr: %v", err)
+	}
+	if loadedEnd.Int != floatSubnormalText+5 {
+		t.Fatalf("strtof subnormal endptr=%#x, want %#x", loadedEnd.Int, floatSubnormalText+5)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtof subnormal: %v", err)
+	}
+	if signedInt(errnoValue) != 0 {
+		t.Fatalf("errno after strtof subnormal=%#v, want 0", errnoValue)
+	}
+
 	strtoldFn, ok := reg.Lookup("strtold")
 	if !ok {
 		t.Fatal("missing strtold extern")
@@ -2038,6 +3834,136 @@ func TestStdlibMoreFloatParserExterns(t *testing.T) {
 	}
 	if loadedEnd.Int != longText+9 {
 		t.Fatalf("strtold endptr=%#x, want %#x", loadedEnd.Int, longText+9)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtold overflow: %v", err)
+	}
+	longOverflowText := mustAllocBytes(t, mem, "strtold:overflow", []byte("1e309!\x00"), true, blockString)
+	ret, exit, err = strtoldFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(longOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtold overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeFLong || !math.IsInf(ret.Float, 1) {
+		t.Fatalf("strtold overflow ret=%#v, want flong +inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtold overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != longOverflowText+5 {
+		t.Fatalf("strtold overflow endptr=%#x, want %#x", loadedEnd.Int, longOverflowText+5)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtold overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtold overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtold negative overflow: %v", err)
+	}
+	negativeLongOverflowText := mustAllocBytes(t, mem, "strtold:negative-overflow", []byte("-1e309?\x00"), true, blockString)
+	ret, exit, err = strtoldFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeLongOverflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtold negative overflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeFLong || !math.IsInf(ret.Float, -1) {
+		t.Fatalf("strtold negative overflow ret=%#v, want flong -inf", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtold negative overflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeLongOverflowText+6 {
+		t.Fatalf("strtold negative overflow endptr=%#x, want %#x", loadedEnd.Int, negativeLongOverflowText+6)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtold negative overflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtold negative overflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtold underflow: %v", err)
+	}
+	longUnderflowText := mustAllocBytes(t, mem, "strtold:underflow", []byte("1e-400!\x00"), true, blockString)
+	ret, exit, err = strtoldFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(longUnderflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtold underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeFLong || ret.Float != 0 || math.Signbit(ret.Float) {
+		t.Fatalf("strtold underflow ret=%#v, want flong +0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtold underflow endptr: %v", err)
+	}
+	if loadedEnd.Int != longUnderflowText+6 {
+		t.Fatalf("strtold underflow endptr=%#x, want %#x", loadedEnd.Int, longUnderflowText+6)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtold underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtold underflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtold negative underflow: %v", err)
+	}
+	negativeLongUnderflowText := mustAllocBytes(t, mem, "strtold:negative-underflow", []byte("-1e-400?\x00"), true, blockString)
+	ret, exit, err = strtoldFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(negativeLongUnderflowText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtold negative underflow ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeFLong || ret.Float != 0 || !math.Signbit(ret.Float) {
+		t.Fatalf("strtold negative underflow ret=%#v, want flong -0", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtold negative underflow endptr: %v", err)
+	}
+	if loadedEnd.Int != negativeLongUnderflowText+7 {
+		t.Fatalf("strtold negative underflow endptr=%#x, want %#x", loadedEnd.Int, negativeLongUnderflowText+7)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtold negative underflow: %v", err)
+	}
+	if signedInt(errnoValue) != 34 {
+		t.Fatalf("errno after strtold negative underflow=%#v, want ERANGE", errnoValue)
+	}
+
+	if err := mem.Store(errnoAddr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, 0)); err != nil {
+		t.Fatalf("store errno before strtold subnormal: %v", err)
+	}
+	longSubnormalText := mustAllocBytes(t, mem, "strtold:subnormal", []byte("5e-324!\x00"), true, blockString)
+	ret, exit, err = strtoldFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(longSubnormalText), PtrValue(endptr)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtold subnormal ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeFLong || ret.Float != 5e-324 {
+		t.Fatalf("strtold subnormal ret=%#v, want smallest binary64 subnormal", ret)
+	}
+	loadedEnd, err = mem.Load(endptr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil {
+		t.Fatalf("load strtold subnormal endptr: %v", err)
+	}
+	if loadedEnd.Int != longSubnormalText+6 {
+		t.Fatalf("strtold subnormal endptr=%#x, want %#x", loadedEnd.Int, longSubnormalText+6)
+	}
+	errnoValue, err = mem.Load(errnoAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load errno after strtold subnormal: %v", err)
+	}
+	if signedInt(errnoValue) != 0 {
+		t.Fatalf("errno after strtold subnormal=%#v, want 0", errnoValue)
 	}
 }
 
@@ -2060,6 +3986,46 @@ func TestCtypeClassificationExterns(t *testing.T) {
 		{name: "isprint", ch: ' ', want: true},
 		{name: "isprint", ch: 0x7f, want: false},
 		{name: "isalpha", ch: -1, want: false},
+		{name: "isalpha", ch: 0x141, want: true},
+		{name: "isdigit", ch: 0x135, want: true},
+	}
+	for _, tt := range tests {
+		fn, ok := reg.Lookup(tt.name)
+		if !ok {
+			t.Fatalf("missing %s extern", tt.name)
+		}
+		ret, exit, err := fn(context.Background(), nil, []Value{IntValue(bytecode.TypeI32, tt.ch)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s(%d) ret=%#v exit=%#v err=%v", tt.name, tt.ch, ret, exit, err)
+		}
+		got := ret.Int != 0
+		if ret.Type != bytecode.TypeI32 || got != tt.want {
+			t.Fatalf("%s(%d) ret=%#v, want bool %v", tt.name, tt.ch, ret, tt.want)
+		}
+	}
+}
+
+func TestWideCtypeClassificationExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	tests := []struct {
+		name string
+		ch   int64
+		want bool
+	}{
+		{name: "iswdigit", ch: '5', want: true},
+		{name: "iswdigit", ch: 'x', want: false},
+		{name: "iswalpha", ch: 'Z', want: true},
+		{name: "iswalnum", ch: '7', want: true},
+		{name: "iswspace", ch: '\n', want: true},
+		{name: "iswlower", ch: 'q', want: true},
+		{name: "iswupper", ch: 'Q', want: true},
+		{name: "iswxdigit", ch: 'f', want: true},
+		{name: "iswxdigit", ch: 'G', want: false},
+		{name: "iswprint", ch: ' ', want: true},
+		{name: "iswprint", ch: 0x7f, want: false},
+		{name: "iswalpha", ch: -1, want: false},
+		{name: "iswalpha", ch: 0x141, want: false},
+		{name: "iswdigit", ch: 0x135, want: false},
 	}
 	for _, tt := range tests {
 		fn, ok := reg.Lookup(tt.name)
@@ -2112,6 +4078,42 @@ func TestCtypeExtraClassificationExterns(t *testing.T) {
 	}
 }
 
+func TestWideCtypeExtraClassificationExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	tests := []struct {
+		name string
+		ch   int64
+		want bool
+	}{
+		{name: "iswblank", ch: ' ', want: true},
+		{name: "iswblank", ch: '\t', want: true},
+		{name: "iswblank", ch: '\n', want: false},
+		{name: "iswcntrl", ch: 0x1f, want: true},
+		{name: "iswcntrl", ch: 0x7f, want: true},
+		{name: "iswcntrl", ch: 'A', want: false},
+		{name: "iswgraph", ch: '!', want: true},
+		{name: "iswgraph", ch: ' ', want: false},
+		{name: "iswpunct", ch: '!', want: true},
+		{name: "iswpunct", ch: 'A', want: false},
+		{name: "iswpunct", ch: ' ', want: false},
+		{name: "iswpunct", ch: 0x121, want: false},
+	}
+	for _, tt := range tests {
+		fn, ok := reg.Lookup(tt.name)
+		if !ok {
+			t.Fatalf("missing %s extern", tt.name)
+		}
+		ret, exit, err := fn(context.Background(), nil, []Value{IntValue(bytecode.TypeI32, tt.ch)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s(%d) ret=%#v exit=%#v err=%v", tt.name, tt.ch, ret, exit, err)
+		}
+		got := ret.Int != 0
+		if ret.Type != bytecode.TypeI32 || got != tt.want {
+			t.Fatalf("%s(%d) ret=%#v, want bool %v", tt.name, tt.ch, ret, tt.want)
+		}
+	}
+}
+
 func TestCtypeCaseConversionExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	tests := []struct {
@@ -2122,9 +4124,13 @@ func TestCtypeCaseConversionExterns(t *testing.T) {
 		{name: "tolower", ch: 'A', want: 'a'},
 		{name: "tolower", ch: 'z', want: 'z'},
 		{name: "tolower", ch: '!', want: '!'},
+		{name: "tolower", ch: -1, want: -1},
+		{name: "tolower", ch: 0x141, want: 'a'},
 		{name: "toupper", ch: 'q', want: 'Q'},
 		{name: "toupper", ch: 'Z', want: 'Z'},
+		{name: "toupper", ch: '!', want: '!'},
 		{name: "toupper", ch: -1, want: -1},
+		{name: "toupper", ch: 0x171, want: 'Q'},
 	}
 	for _, tt := range tests {
 		fn, ok := reg.Lookup(tt.name)
@@ -2141,15 +4147,198 @@ func TestCtypeCaseConversionExterns(t *testing.T) {
 	}
 }
 
+func TestWideCtypeCaseConversionExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	tests := []struct {
+		name string
+		ch   int64
+		want int64
+	}{
+		{name: "towlower", ch: 'A', want: 'a'},
+		{name: "towlower", ch: 'z', want: 'z'},
+		{name: "towlower", ch: '!', want: '!'},
+		{name: "towlower", ch: -1, want: -1},
+		{name: "towlower", ch: 0x141, want: 0x141},
+		{name: "towupper", ch: 'q', want: 'Q'},
+		{name: "towupper", ch: 'Z', want: 'Z'},
+		{name: "towupper", ch: '!', want: '!'},
+		{name: "towupper", ch: -1, want: -1},
+		{name: "towupper", ch: 0x171, want: 0x171},
+	}
+	for _, tt := range tests {
+		fn, ok := reg.Lookup(tt.name)
+		if !ok {
+			t.Fatalf("missing %s extern", tt.name)
+		}
+		ret, exit, err := fn(context.Background(), nil, []Value{IntValue(bytecode.TypeI32, tt.ch)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s(%d) ret=%#v exit=%#v err=%v", tt.name, tt.ch, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypeI32 || signedInt(ret) != tt.want {
+			t.Fatalf("%s(%d) ret=%#v, want i32 %d", tt.name, tt.ch, ret, tt.want)
+		}
+	}
+}
+
+func TestWideCtypeDescriptorExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	wctypeFn, ok := reg.Lookup("wctype")
+	if !ok {
+		t.Fatal("missing wctype extern")
+	}
+	iswctypeFn, ok := reg.Lookup("iswctype")
+	if !ok {
+		t.Fatal("missing iswctype extern")
+	}
+	alphaName := mustAllocBytes(t, mem, "wctype:alpha", []byte("alpha\x00"), true, blockString)
+	digitName := mustAllocBytes(t, mem, "wctype:digit", []byte("digit\x00"), true, blockString)
+	unknownName := mustAllocBytes(t, mem, "wctype:unknown", []byte("emoji\x00"), true, blockString)
+
+	alpha, exit, err := wctypeFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(alphaName)})
+	if err != nil || exit != nil || alpha.Type != bytecode.TypeU64 || alpha.Int == 0 {
+		t.Fatalf("wctype alpha ret=%#v exit=%#v err=%v, want nonzero descriptor", alpha, exit, err)
+	}
+	digit, exit, err := wctypeFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(digitName)})
+	if err != nil || exit != nil || digit.Type != bytecode.TypeU64 || digit.Int == 0 {
+		t.Fatalf("wctype digit ret=%#v exit=%#v err=%v, want nonzero descriptor", digit, exit, err)
+	}
+	unknown, exit, err := wctypeFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(unknownName)})
+	if err != nil || exit != nil || unknown.Type != bytecode.TypeU64 || unknown.Int != 0 {
+		t.Fatalf("wctype unknown ret=%#v exit=%#v err=%v, want zero descriptor", unknown, exit, err)
+	}
+
+	tests := []struct {
+		ch   int64
+		desc Value
+		want bool
+	}{
+		{ch: 'A', desc: alpha, want: true},
+		{ch: '!', desc: alpha, want: false},
+		{ch: 0x141, desc: alpha, want: false},
+		{ch: -1, desc: alpha, want: false},
+		{ch: '7', desc: digit, want: true},
+		{ch: 'x', desc: digit, want: false},
+		{ch: 'A', desc: unknown, want: false},
+	}
+	for _, tt := range tests {
+		ret, exit, err := iswctypeFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, tt.ch), tt.desc})
+		if err != nil || exit != nil {
+			t.Fatalf("iswctype(%d, %#v) ret=%#v exit=%#v err=%v", tt.ch, tt.desc, ret, exit, err)
+		}
+		got := ret.Int != 0
+		if ret.Type != bytecode.TypeI32 || got != tt.want {
+			t.Fatalf("iswctype(%d, %#v) ret=%#v, want %v", tt.ch, tt.desc, ret, tt.want)
+		}
+	}
+}
+
+func TestWideCtypeTransDescriptorExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	wctransFn, ok := reg.Lookup("wctrans")
+	if !ok {
+		t.Fatal("missing wctrans extern")
+	}
+	towctransFn, ok := reg.Lookup("towctrans")
+	if !ok {
+		t.Fatal("missing towctrans extern")
+	}
+	lowerName := mustAllocBytes(t, mem, "wctrans:tolower", []byte("tolower\x00"), true, blockString)
+	upperName := mustAllocBytes(t, mem, "wctrans:toupper", []byte("toupper\x00"), true, blockString)
+	unknownName := mustAllocBytes(t, mem, "wctrans:unknown", []byte("swapcase\x00"), true, blockString)
+
+	lower, exit, err := wctransFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(lowerName)})
+	if err != nil || exit != nil || lower.Type != bytecode.TypeU64 || lower.Int == 0 {
+		t.Fatalf("wctrans lower ret=%#v exit=%#v err=%v, want nonzero descriptor", lower, exit, err)
+	}
+	upper, exit, err := wctransFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(upperName)})
+	if err != nil || exit != nil || upper.Type != bytecode.TypeU64 || upper.Int == 0 {
+		t.Fatalf("wctrans upper ret=%#v exit=%#v err=%v, want nonzero descriptor", upper, exit, err)
+	}
+	unknown, exit, err := wctransFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(unknownName)})
+	if err != nil || exit != nil || unknown.Type != bytecode.TypeU64 || unknown.Int != 0 {
+		t.Fatalf("wctrans unknown ret=%#v exit=%#v err=%v, want zero descriptor", unknown, exit, err)
+	}
+
+	tests := []struct {
+		ch   int64
+		desc Value
+		want int64
+	}{
+		{ch: 'A', desc: lower, want: 'a'},
+		{ch: 'z', desc: lower, want: 'z'},
+		{ch: 'q', desc: upper, want: 'Q'},
+		{ch: 'Z', desc: upper, want: 'Z'},
+		{ch: '!', desc: upper, want: '!'},
+		{ch: -1, desc: lower, want: -1},
+		{ch: 0x141, desc: lower, want: 0x141},
+		{ch: 'A', desc: unknown, want: 'A'},
+	}
+	for _, tt := range tests {
+		ret, exit, err := towctransFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, tt.ch), tt.desc})
+		if err != nil || exit != nil {
+			t.Fatalf("towctrans(%d, %#v) ret=%#v exit=%#v err=%v", tt.ch, tt.desc, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypeI32 || signedInt(ret) != tt.want {
+			t.Fatalf("towctrans(%d, %#v) ret=%#v, want %d", tt.ch, tt.desc, ret, tt.want)
+		}
+	}
+}
+
 func TestPlainMemoryOperationExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
 	buf := mustAllocBytes(t, mem, "plain-memory:buf", []byte("abcdef\x00"), false, blockLocal)
+	memsetFn, ok := reg.Lookup("memset")
+	if !ok {
+		t.Fatal("missing memset extern")
+	}
+	ret, exit, err := memsetFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(0xdeadbeef),
+		IntValue(bytecode.TypeI32, 0x182),
+		UIntValue(bytecode.TypeU64, 0),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("memset zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0xdeadbeef {
+		t.Fatalf("memset zero ret=%#v, want original pointer", ret)
+	}
+	ret, exit, err = memsetFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(buf + 4),
+		IntValue(bytecode.TypeI32, 0x182),
+		UIntValue(bytecode.TypeU64, 2),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("memset masked ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != buf+4 {
+		t.Fatalf("memset masked ret=%#v, want pointer %#x", ret, buf+4)
+	}
+	block, off, err := mem.rangeAccess(buf, 7, false)
+	if err != nil {
+		t.Fatalf("read memset buffer: %v", err)
+	}
+	if got := []byte(block.data[off+4 : off+6]); !bytes.Equal(got, []byte{0x82, 0x82}) {
+		t.Fatalf("memset masked bytes=%v, want [130 130]", got)
+	}
+
 	fn, ok := reg.Lookup("bzero")
 	if !ok {
 		t.Fatal("missing bzero extern")
 	}
-	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(0xdeadbeef),
+		UIntValue(bytecode.TypeU64, 0),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("bzero zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeVoid {
+		t.Fatalf("bzero zero ret=%#v, want void value", ret)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
 		ObjectAddrValue(buf + 2),
 		UIntValue(bytecode.TypeU64, 2),
 	})
@@ -2220,6 +4409,28 @@ func TestMemoryCharCopyExtern(t *testing.T) {
 	if got := string(block.data[off : off+6]); got != "abcZxx" {
 		t.Fatalf("memccpy dst after miss = %q, want abcZxx", got)
 	}
+
+	highSrc := mustAllocBytes(t, mem, "memccpy:high-src", []byte{1, 0x82, 3}, true, blockString)
+	highDst := mustAllocBytes(t, mem, "memccpy:high-dst", []byte{9, 9, 9}, false, blockLocal)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(highDst),
+		PtrValue(highSrc),
+		IntValue(bytecode.TypeI32, 0x182),
+		UIntValue(bytecode.TypeU64, 3),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("memccpy masked ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != highDst+2 {
+		t.Fatalf("memccpy masked ret=%#v, want pointer %#x", ret, highDst+2)
+	}
+	block, off, err = mem.rangeAccess(highDst, 3, false)
+	if err != nil {
+		t.Fatalf("read memccpy masked dst: %v", err)
+	}
+	if got := []byte(block.data[off : off+3]); !bytes.Equal(got, []byte{1, 0x82, 9}) {
+		t.Fatalf("memccpy masked dst after hit = %v, want [1 130 9]", got)
+	}
 }
 
 func TestStringsBSDMemoryExterns(t *testing.T) {
@@ -2259,6 +4470,24 @@ func TestStringsBSDMemoryExterns(t *testing.T) {
 	if got != "abcd" {
 		t.Fatalf("bcopy dst=%q, want abcd", got)
 	}
+	overlapForward := mustAllocBytes(t, mem, "bcopy:overlap-forward", []byte("abcdef\x00"), false, blockGlobal)
+	ret, exit, err = bcopyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(overlapForward), PtrValue(overlapForward + 1), UIntValue(bytecode.TypeU64, 5)})
+	if err != nil || exit != nil {
+		t.Fatalf("bcopy overlap forward ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	got, err = mem.ReadCString(overlapForward)
+	if err != nil || got != "aabcde" {
+		t.Fatalf("bcopy overlap forward dst=%q err=%v, want aabcde", got, err)
+	}
+	overlapBackward := mustAllocBytes(t, mem, "bcopy:overlap-backward", []byte("abcdef\x00"), false, blockGlobal)
+	ret, exit, err = bcopyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(overlapBackward + 1), PtrValue(overlapBackward), UIntValue(bytecode.TypeU64, 5)})
+	if err != nil || exit != nil {
+		t.Fatalf("bcopy overlap backward ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	got, err = mem.ReadCString(overlapBackward)
+	if err != nil || got != "bcdeff" {
+		t.Fatalf("bcopy overlap backward dst=%q err=%v, want bcdeff", got, err)
+	}
 
 	bzeroFn, ok := reg.Lookup("bzero")
 	if !ok {
@@ -2284,6 +4513,200 @@ func TestPlainStringWriteExterns(t *testing.T) {
 			t.Fatalf("missing %s extern", name)
 		}
 	}
+	mem := NewMemory(bytecode.DefaultTarget())
+	buf := mustAllocBytes(t, mem, "strcpy:buf", make([]byte, 8), false, blockLocal)
+	src := mustAllocBytes(t, mem, "strcpy:src", []byte("ab\x00"), true, blockString)
+	strcpyFn, _ := reg.Lookup("strcpy")
+	ret, exit, err := strcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf), PtrValue(src)})
+	if err != nil || exit != nil {
+		t.Fatalf("strcpy ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != buf {
+		t.Fatalf("strcpy ret=%#v, want pointer %#x", ret, buf)
+	}
+	got, err := mem.ReadCString(buf)
+	if err != nil || got != "ab" {
+		t.Fatalf("strcpy dst=%q err=%v, want ab", got, err)
+	}
+	nul, err := mem.Load(buf+2, bytecode.TypeI8, 1)
+	if err != nil || nul.Int != 0 {
+		t.Fatalf("strcpy terminator=%#v err=%v, want zero", nul, err)
+	}
+
+	stpcpyFn, _ := reg.Lookup("stpcpy")
+	src2 := mustAllocBytes(t, mem, "stpcpy:src", []byte("cd\x00"), true, blockString)
+	ret, exit, err = stpcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf + 2), PtrValue(src2)})
+	if err != nil || exit != nil {
+		t.Fatalf("stpcpy ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != buf+4 {
+		t.Fatalf("stpcpy ret=%#v, want pointer %#x", ret, buf+4)
+	}
+	got, err = mem.ReadCString(buf)
+	if err != nil || got != "abcd" {
+		t.Fatalf("stpcpy dst=%q err=%v, want abcd", got, err)
+	}
+	nul, err = mem.Load(buf+4, bytecode.TypeI8, 1)
+	if err != nil || nul.Int != 0 {
+		t.Fatalf("stpcpy terminator=%#v err=%v, want zero", nul, err)
+	}
+
+	strncpyFn, _ := reg.Lookup("strncpy")
+	copyBuf := mustAllocBytes(t, mem, "strncpy:buf", []byte("??????"), false, blockLocal)
+	shortSrc := mustAllocBytes(t, mem, "strncpy:short", []byte("xy\x00"), true, blockString)
+	ret, exit, err = strncpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(copyBuf), PtrValue(shortSrc), UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil {
+		t.Fatalf("strncpy ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != copyBuf {
+		t.Fatalf("strncpy ret=%#v, want pointer %#x", ret, copyBuf)
+	}
+	block, off, err := mem.rangeAccess(copyBuf, 6, false)
+	if err != nil {
+		t.Fatalf("read strncpy dst: %v", err)
+	}
+	if got := []byte(block.data[off : off+6]); !bytes.Equal(got, []byte{'x', 'y', 0, 0, '?', '?'}) {
+		t.Fatalf("strncpy dst=%v, want [120 121 0 0 63 63]", got)
+	}
+
+	stpncpyFn, _ := reg.Lookup("stpncpy")
+	truncSrc := mustAllocBytes(t, mem, "stpncpy:trunc", []byte("pqrs\x00"), true, blockString)
+	if err := mem.Store(copyBuf+2, bytecode.TypeI8, 1, IntValue(bytecode.TypeI8, '!')); err != nil {
+		t.Fatalf("mark stpncpy trunc sentinel: %v", err)
+	}
+	ret, exit, err = stpncpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(copyBuf), PtrValue(truncSrc), UIntValue(bytecode.TypeU64, 2)})
+	if err != nil || exit != nil {
+		t.Fatalf("stpncpy trunc ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != copyBuf+2 {
+		t.Fatalf("stpncpy trunc ret=%#v, want pointer %#x", ret, copyBuf+2)
+	}
+	block, off, err = mem.rangeAccess(copyBuf, 4, false)
+	if err != nil {
+		t.Fatalf("read stpncpy trunc dst: %v", err)
+	}
+	if got := []byte(block.data[off : off+4]); !bytes.Equal(got, []byte{'p', 'q', '!', 0}) {
+		t.Fatalf("stpncpy trunc dst=%v, want [112 113 33 0]", got)
+	}
+
+	padSrc := mustAllocBytes(t, mem, "stpncpy:pad", []byte("a\x00"), true, blockString)
+	ret, exit, err = stpncpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(copyBuf), PtrValue(padSrc), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil {
+		t.Fatalf("stpncpy pad ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != copyBuf+1 {
+		t.Fatalf("stpncpy pad ret=%#v, want pointer %#x", ret, copyBuf+1)
+	}
+	block, off, err = mem.rangeAccess(copyBuf, 3, false)
+	if err != nil {
+		t.Fatalf("read stpncpy pad dst: %v", err)
+	}
+	if got := []byte(block.data[off : off+3]); !bytes.Equal(got, []byte{'a', 0, 0}) {
+		t.Fatalf("stpncpy pad dst=%v, want [97 0 0]", got)
+	}
+
+	catBuf := mustAllocBytes(t, mem, "strcat:buf", []byte("ab\x00?????"), false, blockLocal)
+	catSrc := mustAllocBytes(t, mem, "strcat:src", []byte("cd\x00"), true, blockString)
+	strcatFn, _ := reg.Lookup("strcat")
+	ret, exit, err = strcatFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(catBuf), PtrValue(catSrc)})
+	if err != nil || exit != nil {
+		t.Fatalf("strcat ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != catBuf {
+		t.Fatalf("strcat ret=%#v, want pointer %#x", ret, catBuf)
+	}
+	got, err = mem.ReadCString(catBuf)
+	if err != nil || got != "abcd" {
+		t.Fatalf("strcat dst=%q err=%v, want abcd", got, err)
+	}
+	nul, err = mem.Load(catBuf+4, bytecode.TypeI8, 1)
+	if err != nil || nul.Int != 0 {
+		t.Fatalf("strcat terminator=%#v err=%v, want zero", nul, err)
+	}
+
+	strncatFn, _ := reg.Lookup("strncat")
+	longSrc := mustAllocBytes(t, mem, "strncat:src", []byte("efgh\x00"), true, blockString)
+	ret, exit, err = strncatFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(catBuf), PtrValue(longSrc), UIntValue(bytecode.TypeU64, 2)})
+	if err != nil || exit != nil {
+		t.Fatalf("strncat ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != catBuf {
+		t.Fatalf("strncat ret=%#v, want pointer %#x", ret, catBuf)
+	}
+	got, err = mem.ReadCString(catBuf)
+	if err != nil || got != "abcdef" {
+		t.Fatalf("strncat dst=%q err=%v, want abcdef", got, err)
+	}
+	ret, exit, err = strncatFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(catBuf), PtrValue(longSrc), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("strncat zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != catBuf {
+		t.Fatalf("strncat zero ret=%#v, want pointer %#x", ret, catBuf)
+	}
+	got, err = mem.ReadCString(catBuf)
+	if err != nil || got != "abcdef" {
+		t.Fatalf("strncat zero dst=%q err=%v, want abcdef", got, err)
+	}
+}
+
+func TestCheckedStringMemoryExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	dst := mustAllocBytes(t, mem, "checked:dst", make([]byte, 16), false, blockLocal)
+	src := mustAllocBytes(t, mem, "checked:src", []byte("abcd\x00"), true, blockString)
+	wantObjectSizeErr := func(name string, err error) {
+		t.Helper()
+		if err == nil || !strings.Contains(err.Error(), "object size") {
+			t.Fatalf("%s err=%v, want object size error", name, err)
+		}
+	}
+
+	memcpyFn, ok := reg.Lookup("__builtin___memcpy_chk")
+	if !ok {
+		t.Fatal("missing __builtin___memcpy_chk extern")
+	}
+	ret, exit, err := memcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 5), UIntValue(bytecode.TypeU64, 5)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("memcpy_chk boundary ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	_, _, err = memcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 5), UIntValue(bytecode.TypeU64, 4)})
+	wantObjectSizeErr("memcpy_chk overflow", err)
+
+	memsetFn, ok := reg.Lookup("__builtin___memset_chk")
+	if !ok {
+		t.Fatal("missing __builtin___memset_chk extern")
+	}
+	ret, exit, err = memsetFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst + 5), IntValue(bytecode.TypeI32, 'z'), UIntValue(bytecode.TypeU64, 2), UIntValue(bytecode.TypeU64, 2)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != dst+5 {
+		t.Fatalf("memset_chk boundary ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	_, _, err = memsetFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst + 5), IntValue(bytecode.TypeI32, 'z'), UIntValue(bytecode.TypeU64, 3), UIntValue(bytecode.TypeU64, 2)})
+	wantObjectSizeErr("memset_chk overflow", err)
+
+	strcpyFn, ok := reg.Lookup("__builtin___strcpy_chk")
+	if !ok {
+		t.Fatal("missing __builtin___strcpy_chk extern")
+	}
+	shortSrc := mustAllocBytes(t, mem, "checked:short-src", []byte("ab\x00"), true, blockString)
+	ret, exit, err = strcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(shortSrc), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("strcpy_chk boundary ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	_, _, err = strcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(shortSrc), UIntValue(bytecode.TypeU64, 2)})
+	wantObjectSizeErr("strcpy_chk overflow", err)
+
+	strncatFn, ok := reg.Lookup("__builtin___strncat_chk")
+	if !ok {
+		t.Fatal("missing __builtin___strncat_chk extern")
+	}
+	tail := mustAllocBytes(t, mem, "checked:tail", []byte("cdxx\x00"), true, blockString)
+	ret, exit, err = strncatFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(tail), UIntValue(bytecode.TypeU64, 2), UIntValue(bytecode.TypeU64, 5)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("strncat_chk boundary ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	_, _, err = strncatFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(tail), UIntValue(bytecode.TypeU64, 1), UIntValue(bytecode.TypeU64, 4)})
+	wantObjectSizeErr("strncat_chk overflow", err)
 }
 
 func TestPlainAllocationExterns(t *testing.T) {
@@ -2439,6 +4862,21 @@ func TestStdlibRandExterns(t *testing.T) {
 		t.Fatal("missing rand extern")
 	}
 
+	defaultFirst, exit, err := randFn(context.Background(), nil, nil)
+	if err != nil || exit != nil {
+		t.Fatalf("rand default ret=%#v exit=%#v err=%v", defaultFirst, exit, err)
+	}
+	if _, exit, err := srandFn(context.Background(), nil, []Value{UIntValue(bytecode.TypeU32, 1)}); err != nil || exit != nil {
+		t.Fatalf("srand default seed repeat exit=%#v err=%v", exit, err)
+	}
+	defaultAgain, exit, err := randFn(context.Background(), nil, nil)
+	if err != nil || exit != nil {
+		t.Fatalf("rand default repeat ret=%#v exit=%#v err=%v", defaultAgain, exit, err)
+	}
+	if defaultFirst.Type != bytecode.TypeI32 || defaultAgain.Int != defaultFirst.Int {
+		t.Fatalf("rand default=%#v after srand(1)=%#v, want repeat", defaultFirst, defaultAgain)
+	}
+
 	if ret, exit, err := srandFn(context.Background(), nil, []Value{UIntValue(bytecode.TypeU32, 123)}); err != nil || exit != nil || ret.Type != bytecode.TypeVoid {
 		t.Fatalf("srand ret=%#v exit=%#v err=%v", ret, exit, err)
 	}
@@ -2483,6 +4921,49 @@ func TestStdlibGetenvExtern(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
 		t.Fatalf("getenv ret=%#v, want null pointer", ret)
+	}
+}
+
+func TestStdlibGetenvExternReadsConfiguredEnvironment(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.SetEnv("CVM_TEST", "configured-value")
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("getenv")
+	if !ok {
+		t.Fatal("missing getenv extern")
+	}
+	name := mustAllocBytes(t, mem, "getenv:configured-name", []byte("CVM_TEST\x00"), true, blockString)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(name)})
+	if err != nil || exit != nil {
+		t.Fatalf("getenv ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("getenv ret=%#v, want non-null pointer", ret)
+	}
+	got, err := mem.ReadCString(ret.Int)
+	if err != nil || got != "configured-value" {
+		t.Fatalf("getenv value=%q err=%v, want configured-value", got, err)
+	}
+	ret2, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(name)})
+	if err != nil || exit != nil {
+		t.Fatalf("getenv second ret=%#v exit=%#v err=%v", ret2, exit, err)
+	}
+	if ret2.Int != ret.Int {
+		t.Fatalf("getenv pointer changed %#x -> %#x", ret.Int, ret2.Int)
+	}
+
+	mem2 := NewMemory(bytecode.DefaultTarget())
+	name2 := mustAllocBytes(t, mem2, "getenv:configured-name-2", []byte("CVM_TEST\x00"), true, blockString)
+	ret3, exit, err := fn(context.Background(), &ExternContext{Memory: mem2}, []Value{PtrValue(name2)})
+	if err != nil || exit != nil {
+		t.Fatalf("getenv other memory ret=%#v exit=%#v err=%v", ret3, exit, err)
+	}
+	if ret3.Type != bytecode.TypePtr || ret3.Int == 0 {
+		t.Fatalf("getenv other memory ret=%#v, want non-null pointer", ret3)
+	}
+	got, err = mem2.ReadCString(ret3.Int)
+	if err != nil || got != "configured-value" {
+		t.Fatalf("getenv other memory value=%q err=%v, want configured-value", got, err)
 	}
 }
 
@@ -2532,6 +5013,7 @@ func TestLocaleSetlocaleExtern(t *testing.T) {
 	if !ok {
 		t.Fatal("missing setlocale extern")
 	}
+	categories := []int64{0, 1, 2, 3, 4, 5}
 	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 0), PtrValue(0)})
 	if err != nil || exit != nil {
 		t.Fatalf("setlocale query ret=%#v exit=%#v err=%v", ret, exit, err)
@@ -2542,14 +5024,38 @@ func TestLocaleSetlocaleExtern(t *testing.T) {
 	if got, err := mem.ReadCString(ret.Int); err != nil || got != "C" {
 		t.Fatalf("setlocale query string=%q err=%v, want C", got, err)
 	}
+	initialPtr := ret.Int
 
 	cLocale := mustAllocBytes(t, mem, "locale:C", []byte("C\x00"), true, blockString)
-	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 4), PtrValue(cLocale)})
-	if err != nil || exit != nil {
-		t.Fatalf("setlocale C ret=%#v exit=%#v err=%v", ret, exit, err)
+	for _, category := range categories {
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, category), PtrValue(cLocale)})
+		if err != nil || exit != nil {
+			t.Fatalf("setlocale C category %d ret=%#v exit=%#v err=%v", category, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != initialPtr {
+			t.Fatalf("setlocale C category %d ret=%#v, want stable C locale pointer %#x", category, ret, initialPtr)
+		}
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, category), PtrValue(0)})
+		if err != nil || exit != nil {
+			t.Fatalf("setlocale query category %d ret=%#v exit=%#v err=%v", category, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != initialPtr {
+			t.Fatalf("setlocale query category %d ret=%#v, want stable C locale pointer %#x", category, ret, initialPtr)
+		}
 	}
-	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
-		t.Fatalf("setlocale C ret=%#v, want non-null C locale string", ret)
+
+	emptyLocale := mustAllocBytes(t, mem, "locale:empty", []byte("\x00"), true, blockString)
+	for _, category := range categories {
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, category), PtrValue(emptyLocale)})
+		if err != nil || exit != nil {
+			t.Fatalf("setlocale empty category %d ret=%#v exit=%#v err=%v", category, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != initialPtr {
+			t.Fatalf("setlocale empty category %d ret=%#v, want stable C locale pointer %#x", category, ret, initialPtr)
+		}
+		if got, err := mem.ReadCString(ret.Int); err != nil || got != "C" {
+			t.Fatalf("setlocale empty category %d string=%q err=%v, want C", category, got, err)
+		}
 	}
 
 	unsupported := mustAllocBytes(t, mem, "locale:unsupported", []byte("ja_JP.UTF-8\x00"), true, blockString)
@@ -2559,6 +5065,73 @@ func TestLocaleSetlocaleExtern(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
 		t.Fatalf("setlocale unsupported ret=%#v, want null", ret)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 0), PtrValue(0)})
+	if err != nil || exit != nil {
+		t.Fatalf("setlocale query after unsupported ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != initialPtr {
+		t.Fatalf("setlocale query after unsupported ret=%#v, want stable C locale pointer %#x", ret, initialPtr)
+	}
+}
+
+func TestLocaleconvExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	target := bytecode.DefaultTarget()
+	mem := NewMemory(target)
+	fn, ok := reg.Lookup("localeconv")
+	if !ok {
+		t.Fatal("missing localeconv extern")
+	}
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, nil)
+	if err != nil || exit != nil {
+		t.Fatalf("localeconv ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("localeconv ret=%#v, want non-null struct pointer", ret)
+	}
+	addr := ret.Int
+	checkStringField := func(name string, index int, want string) {
+		t.Helper()
+		ptr, err := mem.Load(addr+uint64(int64(index)*target.PointerSize), bytecode.TypePtr, target.PointerAlign)
+		if err != nil {
+			t.Fatalf("load %s pointer: %v", name, err)
+		}
+		got, err := mem.ReadCString(ptr.Int)
+		if err != nil || got != want {
+			t.Fatalf("%s=%q err=%v, want %q", name, got, err, want)
+		}
+	}
+	checkStringField("decimal_point", 0, ".")
+	checkStringField("thousands_sep", 1, "")
+	checkStringField("grouping", 2, "")
+
+	charBase := addr + uint64(10*target.PointerSize)
+	for i, name := range []string{"int_frac_digits", "frac_digits", "p_cs_precedes"} {
+		got, err := mem.Load(charBase+uint64(i), bytecode.TypeI8, 1)
+		if err != nil {
+			t.Fatalf("load %s: %v", name, err)
+		}
+		if got.Int != 127 {
+			t.Fatalf("%s=%#v, want CHAR_MAX", name, got)
+		}
+	}
+
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, nil)
+	if err != nil || exit != nil {
+		t.Fatalf("localeconv second ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != addr {
+		t.Fatalf("localeconv second ret=%#v, want stable pointer %#x", ret, addr)
+	}
+
+	other := NewMemory(target)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: other}, nil)
+	if err != nil || exit != nil {
+		t.Fatalf("localeconv other memory ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("localeconv other memory ret=%#v, want independent non-null pointer", ret)
 	}
 }
 
@@ -2588,6 +5161,9 @@ func TestTimeExterns(t *testing.T) {
 	if signedInt(stored) != 0 {
 		t.Fatalf("stored time=%#v, want 0", stored)
 	}
+	if ret, exit, err = timeFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(1)}); err == nil || exit != nil {
+		t.Fatalf("time invalid ret=%#v exit=%#v err=%v, want memory error without exit", ret, exit, err)
+	}
 
 	diffFn, ok := reg.Lookup("difftime")
 	if !ok {
@@ -2599,6 +5175,20 @@ func TestTimeExterns(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypeF64 || ret.Float != 5 {
 		t.Fatalf("difftime ret=%#v, want f64 5", ret)
+	}
+	ret, exit, err = diffFn(context.Background(), nil, []Value{IntValue(bytecode.TypeI64, 7), IntValue(bytecode.TypeI64, 7)})
+	if err != nil || exit != nil {
+		t.Fatalf("difftime zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != 0 {
+		t.Fatalf("difftime zero ret=%#v, want f64 0", ret)
+	}
+	ret, exit, err = diffFn(context.Background(), nil, []Value{IntValue(bytecode.TypeI64, 2), IntValue(bytecode.TypeI64, 7)})
+	if err != nil || exit != nil {
+		t.Fatalf("difftime negative ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeF64 || ret.Float != -5 {
+		t.Fatalf("difftime negative ret=%#v, want f64 -5", ret)
 	}
 
 	clockFn, ok := reg.Lookup("clock")
@@ -2644,6 +5234,26 @@ func TestErrnoExternVariable(t *testing.T) {
 	}
 	if signedInt(ret) != 34 {
 		t.Fatalf("updated errno=%#v, want 34", ret)
+	}
+
+	other := NewMemory(bytecode.DefaultTarget())
+	otherAddr, ok := reg.LookupVariable("errno", other)
+	if !ok {
+		t.Fatal("missing errno extern variable for second memory")
+	}
+	otherAgain, ok := reg.LookupVariable("errno", other)
+	if !ok {
+		t.Fatal("missing errno extern variable for second memory on second lookup")
+	}
+	if otherAgain != otherAddr {
+		t.Fatalf("second memory errno address changed: first=%#x second=%#x", otherAddr, otherAgain)
+	}
+	otherRet, err := other.Load(otherAddr, bytecode.TypeI32, 4)
+	if err != nil {
+		t.Fatalf("load second memory errno: %v", err)
+	}
+	if signedInt(otherRet) != 0 {
+		t.Fatalf("second memory initial errno=%#v, want 0", otherRet)
 	}
 }
 
@@ -3034,12 +5644,93 @@ func TestStrcmpRequiresMemory(t *testing.T) {
 	}
 }
 
+func TestStringCharSearchExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	text := mustAllocBytes(t, mem, "strchr:text", []byte{'a', 0x82, 'c', 0}, true, blockString)
+	for _, name := range []string{"strchr", "__builtin_strchr"} {
+		fn, ok := reg.Lookup(name)
+		if !ok {
+			t.Fatalf("missing %s extern", name)
+		}
+		ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, 'c')})
+		if err != nil || exit != nil {
+			t.Fatalf("%s hit ret=%#v exit=%#v err=%v", name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != text+2 {
+			t.Fatalf("%s hit ret=%#v, want pointer %#x", name, ret, text+2)
+		}
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, 0)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s nul ret=%#v exit=%#v err=%v", name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != text+3 {
+			t.Fatalf("%s nul ret=%#v, want pointer %#x", name, ret, text+3)
+		}
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, 0x182)})
+		if err != nil || exit != nil {
+			t.Fatalf("%s masked ret=%#v exit=%#v err=%v", name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != text+1 {
+			t.Fatalf("%s masked ret=%#v, want pointer %#x", name, ret, text+1)
+		}
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, 'z')})
+		if err != nil || exit != nil {
+			t.Fatalf("%s miss ret=%#v exit=%#v err=%v", name, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+			t.Fatalf("%s miss ret=%#v, want null pointer", name, ret)
+		}
+	}
+}
+
+func TestStringSubstringSearchExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	haystack := mustAllocBytes(t, mem, "strstr:haystack", []byte("abcdef\x00"), true, blockString)
+	tests := []struct {
+		name   string
+		needle string
+		want   uint64
+	}{
+		{name: "empty", needle: "", want: haystack},
+		{name: "full", needle: "abcdef", want: haystack},
+		{name: "suffix", needle: "ef", want: haystack + 4},
+		{name: "middle", needle: "cd", want: haystack + 2},
+		{name: "miss", needle: "gh", want: 0},
+	}
+	for _, fnName := range []string{"strstr", "__builtin_strstr"} {
+		fn, ok := reg.Lookup(fnName)
+		if !ok {
+			t.Fatalf("missing %s extern", fnName)
+		}
+		for _, tt := range tests {
+			t.Run(fnName+"/"+tt.name, func(t *testing.T) {
+				needle := mustAllocBytes(t, mem, "strstr:needle:"+tt.name, []byte(tt.needle+"\x00"), true, blockString)
+				ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(haystack), PtrValue(needle)})
+				if err != nil || exit != nil {
+					t.Fatalf("%s %s ret=%#v exit=%#v err=%v", fnName, tt.name, ret, exit, err)
+				}
+				if ret.Type != bytecode.TypePtr || ret.Int != tt.want {
+					t.Fatalf("%s %s ret=%#v, want pointer %#x", fnName, tt.name, ret, tt.want)
+				}
+			})
+		}
+	}
+}
+
 func TestStringBoundedCompareSearchExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
 	left := mustAllocBytes(t, mem, "strncmp:left", []byte("abcdef\x00"), true, blockString)
 	samePrefix := mustAllocBytes(t, mem, "strncmp:same", []byte("abcxyz\x00"), true, blockString)
 	less := mustAllocBytes(t, mem, "strncmp:less", []byte("abbzzz\x00"), true, blockString)
+	leftTerminated := mustAllocBytes(t, mem, "strncmp:left-terminated", []byte{'a', 0, 'z'}, true, blockString)
+	rightTerminated := mustAllocBytes(t, mem, "strncmp:right-terminated", []byte{'a', 0, 'y'}, true, blockString)
+	leftUnterminated := mustAllocBytes(t, mem, "strncmp:left-unterminated", []byte{'a', 'b', 'c'}, true, blockString)
+	rightUnterminated := mustAllocBytes(t, mem, "strncmp:right-unterminated", []byte{'a', 'b', 'd'}, true, blockString)
+	high := mustAllocBytes(t, mem, "strncmp:high", []byte{0xff, 0}, true, blockString)
+	low := mustAllocBytes(t, mem, "strncmp:low", []byte{0x7f, 0}, true, blockString)
 	strncmpFn, ok := reg.Lookup("strncmp")
 	if !ok {
 		t.Fatal("missing strncmp extern")
@@ -3052,8 +5743,13 @@ func TestStringBoundedCompareSearchExterns(t *testing.T) {
 		want int64
 	}{
 		{name: "zero", a: left, b: less, n: 0, want: 0},
+		{name: "zero invalid pointers", a: 0xdeadbeef, b: 0xcafebabe, n: 0, want: 0},
 		{name: "prefix", a: left, b: samePrefix, n: 3, want: 0},
 		{name: "greater", a: left, b: less, n: 3, want: 1},
+		{name: "terminator before count", a: leftTerminated, b: rightTerminated, n: 3, want: 0},
+		{name: "unterminated equal prefix", a: leftUnterminated, b: rightUnterminated, n: 2, want: 0},
+		{name: "unterminated less", a: leftUnterminated, b: rightUnterminated, n: 3, want: -1},
+		{name: "unsigned byte greater", a: high, b: low, n: 1, want: 1},
 	}
 	for _, tt := range tests {
 		ret, exit, err := strncmpFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.a), PtrValue(tt.b), UIntValue(bytecode.TypeU64, tt.n)})
@@ -3077,6 +5773,20 @@ func TestStringBoundedCompareSearchExterns(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypePtr || ret.Int != data+1 {
 		t.Fatalf("memchr hit ret=%#v, want pointer %#x", ret, data+1)
+	}
+	ret, exit, err = memchrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(data), IntValue(bytecode.TypeI32, 2), UIntValue(bytecode.TypeU64, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("memchr zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("memchr zero ret=%#v, want null pointer", ret)
+	}
+	ret, exit, err = memchrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(data), IntValue(bytecode.TypeI32, 0x102), UIntValue(bytecode.TypeU64, 4)})
+	if err != nil || exit != nil {
+		t.Fatalf("memchr masked ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != data+1 {
+		t.Fatalf("memchr masked ret=%#v, want pointer %#x", ret, data+1)
 	}
 	ret, exit, err = memchrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(data), IntValue(bytecode.TypeI32, 9), UIntValue(bytecode.TypeU64, 4)})
 	if err != nil || exit != nil {
@@ -3109,10 +5819,33 @@ func TestStringReverseAndSetSearchExterns(t *testing.T) {
 	if ret.Type != bytecode.TypePtr || ret.Int != text+6 {
 		t.Fatalf("strrchr nul ret=%#v, want pointer %#x", ret, text+6)
 	}
+	ret, exit, err = strrchrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), IntValue(bytecode.TypeI32, 'z')})
+	if err != nil || exit != nil {
+		t.Fatalf("strrchr miss ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("strrchr miss ret=%#v, want null pointer", ret)
+	}
+	highText := mustAllocBytes(t, mem, "strrchr:high", []byte{0x82, 'a', 0x82, 0}, true, blockString)
+	ret, exit, err = strrchrFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(highText), IntValue(bytecode.TypeI32, 0x182)})
+	if err != nil || exit != nil {
+		t.Fatalf("strrchr masked ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != highText+2 {
+		t.Fatalf("strrchr masked ret=%#v, want pointer %#x", ret, highText+2)
+	}
 
 	strpbrkFn, ok := reg.Lookup("strpbrk")
 	if !ok {
 		t.Fatal("missing strpbrk extern")
+	}
+	first := mustAllocBytes(t, mem, "strpbrk:first", []byte("a\x00"), true, blockString)
+	ret, exit, err = strpbrkFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(first)})
+	if err != nil || exit != nil {
+		t.Fatalf("strpbrk first ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != text {
+		t.Fatalf("strpbrk first ret=%#v, want pointer %#x", ret, text)
 	}
 	accept := mustAllocBytes(t, mem, "strpbrk:accept", []byte("xyc\x00"), true, blockString)
 	ret, exit, err = strpbrkFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(accept)})
@@ -3130,6 +5863,14 @@ func TestStringReverseAndSetSearchExterns(t *testing.T) {
 	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
 		t.Fatalf("strpbrk miss ret=%#v, want null pointer", ret)
 	}
+	empty := mustAllocBytes(t, mem, "strpbrk:empty", []byte{0}, true, blockString)
+	ret, exit, err = strpbrkFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(empty)})
+	if err != nil || exit != nil {
+		t.Fatalf("strpbrk empty ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("strpbrk empty ret=%#v, want null pointer", ret)
+	}
 }
 
 func TestStringSpanExterns(t *testing.T) {
@@ -3138,7 +5879,9 @@ func TestStringSpanExterns(t *testing.T) {
 	text := mustAllocBytes(t, mem, "span:text", []byte("abcde312\x00"), true, blockString)
 	abc := mustAllocBytes(t, mem, "span:abc", []byte("abc\x00"), true, blockString)
 	de := mustAllocBytes(t, mem, "span:de", []byte("de\x00"), true, blockString)
+	a := mustAllocBytes(t, mem, "span:a", []byte("a\x00"), true, blockString)
 	xyz := mustAllocBytes(t, mem, "span:xyz", []byte("xyz\x00"), true, blockString)
+	empty := mustAllocBytes(t, mem, "span:empty", []byte{0}, true, blockString)
 
 	strspnFn, ok := reg.Lookup("strspn")
 	if !ok {
@@ -3158,6 +5901,13 @@ func TestStringSpanExterns(t *testing.T) {
 	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
 		t.Fatalf("strspn miss ret=%#v, want size 0", ret)
 	}
+	ret, exit, err = strspnFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(empty)})
+	if err != nil || exit != nil {
+		t.Fatalf("strspn empty ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("strspn empty ret=%#v, want size 0", ret)
+	}
 
 	strcspnFn, ok := reg.Lookup("strcspn")
 	if !ok {
@@ -3170,12 +5920,26 @@ func TestStringSpanExterns(t *testing.T) {
 	if ret.Type != bytecode.TypeU64 || ret.Int != 3 {
 		t.Fatalf("strcspn hit ret=%#v, want size 3", ret)
 	}
+	ret, exit, err = strcspnFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(a)})
+	if err != nil || exit != nil {
+		t.Fatalf("strcspn immediate ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("strcspn immediate ret=%#v, want size 0", ret)
+	}
 	ret, exit, err = strcspnFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(xyz)})
 	if err != nil || exit != nil {
 		t.Fatalf("strcspn miss ret=%#v exit=%#v err=%v", ret, exit, err)
 	}
 	if ret.Type != bytecode.TypeU64 || ret.Int != 8 {
 		t.Fatalf("strcspn miss ret=%#v, want size 8", ret)
+	}
+	ret, exit, err = strcspnFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(empty)})
+	if err != nil || exit != nil {
+		t.Fatalf("strcspn empty ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 8 {
+		t.Fatalf("strcspn empty ret=%#v, want size 8", ret)
 	}
 }
 
@@ -3232,6 +5996,80 @@ func TestStringStrtokExtern(t *testing.T) {
 	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
 		t.Fatalf("strtok end ret=%#v, want null pointer", ret)
 	}
+
+	changing := mustAllocBytes(t, mem, "strtok:changing", []byte("alpha,beta;gamma.delta\x00"), false, blockString)
+	comma := mustAllocBytes(t, mem, "strtok:comma", []byte(",\x00"), true, blockString)
+	semicolon := mustAllocBytes(t, mem, "strtok:semicolon", []byte(";\x00"), true, blockString)
+	dot := mustAllocBytes(t, mem, "strtok:dot", []byte(".\x00"), true, blockString)
+
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(changing), PtrValue(comma)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok changing first ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != changing {
+		t.Fatalf("strtok changing first ret=%#v, want pointer %#x", ret, changing)
+	}
+	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "alpha" {
+		t.Fatalf("strtok changing first token=%q err=%v, want alpha", tok, err)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(semicolon)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok changing second ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != changing+6 {
+		t.Fatalf("strtok changing second ret=%#v, want pointer %#x", ret, changing+6)
+	}
+	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "beta" {
+		t.Fatalf("strtok changing second token=%q err=%v, want beta", tok, err)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(dot)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok changing third ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != changing+11 {
+		t.Fatalf("strtok changing third ret=%#v, want pointer %#x", ret, changing+11)
+	}
+	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "gamma" {
+		t.Fatalf("strtok changing third token=%q err=%v, want gamma", tok, err)
+	}
+
+	allDelims := mustAllocBytes(t, mem, "strtok:all-delims", []byte(";;;\x00"), false, blockString)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(allDelims), PtrValue(semicolon)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok all-delims ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("strtok all-delims ret=%#v, want null pointer", ret)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(semicolon)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok exhausted ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("strtok exhausted ret=%#v, want null pointer", ret)
+	}
+
+	restart := mustAllocBytes(t, mem, "strtok:restart", []byte("one,two\x00"), false, blockString)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(restart), PtrValue(comma)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok restart first ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != restart {
+		t.Fatalf("strtok restart first ret=%#v, want pointer %#x", ret, restart)
+	}
+	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "one" {
+		t.Fatalf("strtok restart first token=%q err=%v, want one", tok, err)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(comma)})
+	if err != nil || exit != nil {
+		t.Fatalf("strtok restart second ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != restart+4 {
+		t.Fatalf("strtok restart second ret=%#v, want pointer %#x", ret, restart+4)
+	}
+	if tok, err := mem.ReadCString(ret.Int); err != nil || tok != "two" {
+		t.Fatalf("strtok restart second token=%q err=%v, want two", tok, err)
+	}
 }
 
 func TestStringCollateAndTransformExterns(t *testing.T) {
@@ -3244,12 +6082,29 @@ func TestStringCollateAndTransformExterns(t *testing.T) {
 	if !ok {
 		t.Fatal("missing strcoll extern")
 	}
-	ret, exit, err := strcollFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(left), PtrValue(right)})
-	if err != nil || exit != nil {
-		t.Fatalf("strcoll ret=%#v exit=%#v err=%v", ret, exit, err)
+	strcollTests := []struct {
+		name string
+		a    uint64
+		b    uint64
+		sign int
+	}{
+		{name: "equal", a: left, b: left, sign: 0},
+		{name: "less", a: left, b: right, sign: -1},
+		{name: "greater", a: right, b: left, sign: 1},
+		{name: "prefix less", a: mustAllocBytes(t, mem, "strcoll:prefix-less", []byte("ab\x00"), true, blockString), b: left, sign: -1},
+		{name: "prefix greater", a: left, b: mustAllocBytes(t, mem, "strcoll:prefix-greater", []byte("ab\x00"), true, blockString), sign: 1},
 	}
-	if ret.Type != bytecode.TypeI32 || signedInt(ret) >= 0 {
-		t.Fatalf("strcoll ret=%#v, want negative i32", ret)
+	for _, tt := range strcollTests {
+		t.Run("strcoll "+tt.name, func(t *testing.T) {
+			ret, exit, err := strcollFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(tt.a), PtrValue(tt.b)})
+			if err != nil || exit != nil {
+				t.Fatalf("strcoll ret=%#v exit=%#v err=%v", ret, exit, err)
+			}
+			got := signedInt(ret)
+			if ret.Type != bytecode.TypeI32 || (tt.sign == 0 && got != 0) || (tt.sign < 0 && got >= 0) || (tt.sign > 0 && got <= 0) {
+				t.Fatalf("strcoll ret=%#v, want sign %d", ret, tt.sign)
+			}
+		})
 	}
 
 	strxfrmFn, ok := reg.Lookup("strxfrm")
@@ -3258,7 +6113,7 @@ func TestStringCollateAndTransformExterns(t *testing.T) {
 	}
 	src := mustAllocBytes(t, mem, "strxfrm:src", []byte("abcdef\x00"), true, blockString)
 	dst := mustAllocBytes(t, mem, "strxfrm:dst", []byte("xxxx\x00"), false, blockString)
-	ret, exit, err = strxfrmFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 4)})
+	ret, exit, err := strxfrmFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 4)})
 	if err != nil || exit != nil {
 		t.Fatalf("strxfrm ret=%#v exit=%#v err=%v", ret, exit, err)
 	}
@@ -3268,6 +6123,19 @@ func TestStringCollateAndTransformExterns(t *testing.T) {
 	got, err := mem.ReadCString(dst)
 	if err != nil || got != "abc" {
 		t.Fatalf("strxfrm dst=%q err=%v, want abc", got, err)
+	}
+
+	exact := mustAllocBytes(t, mem, "strxfrm:exact", make([]byte, 7), false, blockString)
+	ret, exit, err = strxfrmFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(exact), PtrValue(src), UIntValue(bytecode.TypeU64, 7)})
+	if err != nil || exit != nil {
+		t.Fatalf("strxfrm exact ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 6 {
+		t.Fatalf("strxfrm exact ret=%#v, want size 6", ret)
+	}
+	got, err = mem.ReadCString(exact)
+	if err != nil || got != "abcdef" {
+		t.Fatalf("strxfrm exact dst=%q err=%v, want abcdef", got, err)
 	}
 
 	ret, exit, err = strxfrmFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(0), PtrValue(src), UIntValue(bytecode.TypeU64, 0)})
@@ -3287,8 +6155,19 @@ func TestStringNLengthExtern(t *testing.T) {
 		t.Fatal("missing strnlen extern")
 	}
 
-	noNull := mustAllocBytes(t, mem, "strnlen:no-null", []byte("abcdef"), true, blockString)
 	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(0xdeadbeef),
+		UIntValue(bytecode.TypeU64, 0),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("strnlen zero ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 0 {
+		t.Fatalf("strnlen zero ret=%#v, want u64 0", ret)
+	}
+
+	noNull := mustAllocBytes(t, mem, "strnlen:no-null", []byte("abcdef"), true, blockString)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
 		PtrValue(noNull),
 		UIntValue(bytecode.TypeU64, 3),
 	})
@@ -3297,6 +6176,16 @@ func TestStringNLengthExtern(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypeU64 || ret.Int != 3 {
 		t.Fatalf("strnlen no-null ret=%#v, want u64 3", ret)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(noNull),
+		UIntValue(bytecode.TypeU64, 6),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("strnlen exact no-null ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeU64 || ret.Int != 6 {
+		t.Fatalf("strnlen exact no-null ret=%#v, want u64 6", ret)
 	}
 
 	withNull := mustAllocBytes(t, mem, "strnlen:with-null", []byte("ab\x00cd"), true, blockString)
@@ -3340,6 +6229,32 @@ func TestStringStrerrorExtern(t *testing.T) {
 	if again.Int != ret.Int {
 		t.Fatalf("strerror stable pointer = %#x, want %#x", again.Int, ret.Int)
 	}
+	for _, errno := range []int64{1, 2, 123} {
+		next, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, errno)})
+		if err != nil || exit != nil {
+			t.Fatalf("strerror errno %d ret=%#v exit=%#v err=%v", errno, next, exit, err)
+		}
+		if next.Int != ret.Int {
+			t.Fatalf("strerror errno %d pointer = %#x, want stable pointer %#x", errno, next.Int, ret.Int)
+		}
+	}
+
+	otherMem := NewMemory(bytecode.DefaultTarget())
+	other, exit, err := fn(context.Background(), &ExternContext{Memory: otherMem}, []Value{IntValue(bytecode.TypeI32, 2)})
+	if err != nil || exit != nil {
+		t.Fatalf("strerror other memory ret=%#v exit=%#v err=%v", other, exit, err)
+	}
+	otherAgain, exit, err := fn(context.Background(), &ExternContext{Memory: otherMem}, []Value{IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil {
+		t.Fatalf("strerror other memory again ret=%#v exit=%#v err=%v", otherAgain, exit, err)
+	}
+	if other.Type != bytecode.TypePtr || other.Int == 0 || otherAgain.Int != other.Int {
+		t.Fatalf("strerror other memory pointers = %#v then %#v, want stable non-null", other, otherAgain)
+	}
+	otherString, err := otherMem.ReadCString(other.Int)
+	if err != nil || otherString != "error" {
+		t.Fatalf("strerror other memory string=%q err=%v, want error", otherString, err)
+	}
 }
 
 func TestMemcmpComparesBytes(t *testing.T) {
@@ -3353,6 +6268,8 @@ func TestMemcmpComparesBytes(t *testing.T) {
 	same := mustAllocBytes(t, mem, "memcmp:same", []byte{0, 1, 2, 9}, true, blockString)
 	diff := mustAllocBytes(t, mem, "memcmp:diff", []byte{0, 1, 4, 3}, true, blockString)
 	less := mustAllocBytes(t, mem, "memcmp:less", []byte{0, 1, 0, 3}, true, blockString)
+	high := mustAllocBytes(t, mem, "memcmp:high", []byte{0xff, 0}, true, blockString)
+	low := mustAllocBytes(t, mem, "memcmp:low", []byte{0x7f, 0}, true, blockString)
 	tests := []struct {
 		name  string
 		right uint64
@@ -3374,6 +6291,426 @@ func TestMemcmpComparesBytes(t *testing.T) {
 				t.Fatalf("memcmp = %#v, want i32 %d", ret, tt.want)
 			}
 		})
+	}
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(high), ObjectAddrValue(low), UIntValue(bytecode.TypeU64, 1)})
+	if err != nil || exit != nil {
+		t.Fatalf("memcmp unsigned ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || int64(int32(ret.Int)) <= 0 {
+		t.Fatalf("memcmp unsigned = %#v, want positive i32", ret)
+	}
+}
+
+func TestSscanfExternScansBasicIntegerStringAndChar(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+
+	inputAddr := mustAllocBytes(t, mem, "sscanf:input", []byte(" -12 34 hello Z\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:fmt", []byte("%d %u %5s %c\x00"), true, blockString)
+	signedAddr := mustAlloc(t, mem, "sscanf:signed", 4, 4, false, blockLocal)
+	unsignedAddr := mustAlloc(t, mem, "sscanf:unsigned", 4, 4, false, blockLocal)
+	wordAddr := mustAllocBytes(t, mem, "sscanf:word", []byte{0, 0, 0, 0, 0, 0}, false, blockLocal)
+	charAddr := mustAllocBytes(t, mem, "sscanf:char", []byte{0}, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(signedAddr),
+		PtrValue(unsignedAddr),
+		PtrValue(wordAddr),
+		PtrValue(charAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 4 {
+		t.Fatalf("sscanf ret=%#v, want i32 4", ret)
+	}
+	signed, err := mem.Load(signedAddr, bytecode.TypeI32, 4)
+	if err != nil || int32(signed.Int) != -12 {
+		t.Fatalf("signed=%#v err=%v, want -12", signed, err)
+	}
+	unsigned, err := mem.Load(unsignedAddr, bytecode.TypeU32, 4)
+	if err != nil || uint32(unsigned.Int) != 34 {
+		t.Fatalf("unsigned=%#v err=%v, want 34", unsigned, err)
+	}
+	word, err := mem.ReadCString(wordAddr)
+	if err != nil || word != "hello" {
+		t.Fatalf("word=%q err=%v, want hello", word, err)
+	}
+	ch, err := mem.Load(charAddr, bytecode.TypeI8, 1)
+	if err != nil || byte(ch.Int) != 'Z' {
+		t.Fatalf("char=%#v err=%v, want Z", ch, err)
+	}
+}
+
+func TestScanfExternScansStdinAndPreservesUnreadInput(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("17 tail"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("scanf")
+	if !ok {
+		t.Fatal("missing scanf extern")
+	}
+	fmtAddr := mustAllocBytes(t, mem, "scanf:fmt", []byte("%d\x00"), true, blockString)
+	valueAddr := mustAlloc(t, mem, "scanf:value", 4, 4, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(fmtAddr),
+		PtrValue(valueAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("scanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("scanf ret=%#v, want i32 1", ret)
+	}
+	value, err := mem.Load(valueAddr, bytecode.TypeI32, 4)
+	if err != nil || value.Int != 17 {
+		t.Fatalf("value=%#v err=%v, want 17", value, err)
+	}
+	ch, ok := reg.readHostChar(reg.stdinHandle)
+	if !ok || ch != ' ' {
+		t.Fatalf("next stdin char=%q ok=%v, want space", ch, ok)
+	}
+}
+
+func TestScanfExternScansSetAndPreservesUnreadInput(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("abc!"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("scanf")
+	if !ok {
+		t.Fatal("missing scanf extern")
+	}
+	fmtAddr := mustAllocBytes(t, mem, "scanf:scanset-fmt", []byte("%[a-z]\x00"), true, blockString)
+	wordAddr := mustAllocBytes(t, mem, "scanf:scanset-word", []byte{0, 0, 0, 0}, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(fmtAddr),
+		PtrValue(wordAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("scanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("scanf ret=%#v, want i32 1", ret)
+	}
+	word, err := mem.ReadCString(wordAddr)
+	if err != nil || word != "abc" {
+		t.Fatalf("word=%q err=%v, want abc", word, err)
+	}
+	ch, ok := reg.readHostChar(reg.stdinHandle)
+	if !ok || ch != '!' {
+		t.Fatalf("next stdin char=%q ok=%v, want !", ch, ok)
+	}
+}
+
+func TestFscanfExternScansConfiguredFileAndPreservesUnreadInput(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("23 rest"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "fscanf:path", []byte("data.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "fscanf:mode", []byte("r\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "fscanf:fmt", []byte("%d\x00"), true, blockString)
+	valueAddr := mustAlloc(t, mem, "fscanf:value", 4, 4, false, blockLocal)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	fn, ok := reg.Lookup("fscanf")
+	if !ok {
+		t.Fatal("missing fscanf extern")
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(file),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(valueAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("fscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("fscanf ret=%#v, want i32 1", ret)
+	}
+	value, err := mem.Load(valueAddr, bytecode.TypeI32, 4)
+	if err != nil || value.Int != 23 {
+		t.Fatalf("value=%#v err=%v, want 23", value, err)
+	}
+	ch, ok := reg.readHostChar(file)
+	if !ok || ch != ' ' {
+		t.Fatalf("next file char=%q ok=%v, want space", ch, ok)
+	}
+}
+
+func TestFscanfExternScansFloatAndPreservesUnreadInput(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("float.txt", []byte("1.5!"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "fscanf:float-path", []byte("float.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "fscanf:float-mode", []byte("r\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "fscanf:float-fmt", []byte("%f\x00"), true, blockString)
+	valueAddr := mustAlloc(t, mem, "fscanf:float-value", 4, 4, false, blockLocal)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	fn, ok := reg.Lookup("fscanf")
+	if !ok {
+		t.Fatal("missing fscanf extern")
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(file),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(valueAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("fscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("fscanf ret=%#v, want i32 1", ret)
+	}
+	value, err := mem.Load(valueAddr, bytecode.TypeF32, 4)
+	if err != nil || value.Float != 1.5 {
+		t.Fatalf("value=%#v err=%v, want 1.5", value, err)
+	}
+	ch, ok := reg.readHostChar(file)
+	if !ok || ch != '!' {
+		t.Fatalf("next file char=%q ok=%v, want !", ch, ok)
+	}
+}
+
+func TestSscanfExternScansRadixSuppressionAndCount(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:radix-input", []byte("11 0x2a 10 rest\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:radix-fmt", []byte("%*d %x %o%n\x00"), true, blockString)
+	hexAddr := mustAlloc(t, mem, "sscanf:hex", 4, 4, false, blockLocal)
+	octalAddr := mustAlloc(t, mem, "sscanf:octal", 4, 4, false, blockLocal)
+	countAddr := mustAlloc(t, mem, "sscanf:count", 4, 4, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(hexAddr),
+		PtrValue(octalAddr),
+		PtrValue(countAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 2 {
+		t.Fatalf("sscanf ret=%#v, want i32 2", ret)
+	}
+	hex, err := mem.Load(hexAddr, bytecode.TypeU32, 4)
+	if err != nil || hex.Int != 42 {
+		t.Fatalf("hex=%#v err=%v, want 42", hex, err)
+	}
+	octal, err := mem.Load(octalAddr, bytecode.TypeU32, 4)
+	if err != nil || octal.Int != 8 {
+		t.Fatalf("octal=%#v err=%v, want 8", octal, err)
+	}
+	count, err := mem.Load(countAddr, bytecode.TypeI32, 4)
+	if err != nil || count.Int != 10 {
+		t.Fatalf("count=%#v err=%v, want 10", count, err)
+	}
+}
+
+func TestSscanfExternScansSets(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:scanset-input", []byte("abc123 xyz!\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:scanset-fmt", []byte("%[a-z]%3[0-9] %*[^!]%c\x00"), true, blockString)
+	wordAddr := mustAllocBytes(t, mem, "sscanf:scanset-word", []byte{0, 0, 0, 0}, false, blockLocal)
+	digitsAddr := mustAllocBytes(t, mem, "sscanf:scanset-digits", []byte{0, 0, 0, 0}, false, blockLocal)
+	chAddr := mustAllocBytes(t, mem, "sscanf:scanset-char", []byte{0}, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(wordAddr),
+		PtrValue(digitsAddr),
+		PtrValue(chAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 3 {
+		t.Fatalf("sscanf ret=%#v, want i32 3", ret)
+	}
+	word, err := mem.ReadCString(wordAddr)
+	if err != nil || word != "abc" {
+		t.Fatalf("word=%q err=%v, want abc", word, err)
+	}
+	digits, err := mem.ReadCString(digitsAddr)
+	if err != nil || digits != "123" {
+		t.Fatalf("digits=%q err=%v, want 123", digits, err)
+	}
+	ch, err := mem.Load(chAddr, bytecode.TypeI8, 1)
+	if err != nil || byte(ch.Int) != '!' {
+		t.Fatalf("char=%#v err=%v, want !", ch, err)
+	}
+}
+
+func TestSscanfExternScansFloatingValues(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:float-input", []byte("1.5 -2.25 0x1.8p+2 rest\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:float-fmt", []byte("%f %lf %La\x00"), true, blockString)
+	floatAddr := mustAlloc(t, mem, "sscanf:float-f32", 4, 4, false, blockLocal)
+	doubleAddr := mustAlloc(t, mem, "sscanf:float-f64", 8, 8, false, blockLocal)
+	longAddr := mustAlloc(t, mem, "sscanf:float-flong", 16, 8, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(floatAddr),
+		PtrValue(doubleAddr),
+		PtrValue(longAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 3 {
+		t.Fatalf("sscanf ret=%#v, want i32 3", ret)
+	}
+	f, err := mem.Load(floatAddr, bytecode.TypeF32, 4)
+	if err != nil || f.Float != 1.5 {
+		t.Fatalf("float=%#v err=%v, want 1.5", f, err)
+	}
+	d, err := mem.Load(doubleAddr, bytecode.TypeF64, 8)
+	if err != nil || d.Float != -2.25 {
+		t.Fatalf("double=%#v err=%v, want -2.25", d, err)
+	}
+	l, err := mem.Load(longAddr, bytecode.TypeFLong, 8)
+	if err != nil || l.Float != 6 {
+		t.Fatalf("long double=%#v err=%v, want 6", l, err)
+	}
+}
+
+func TestSscanfExternScansPointerValues(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	target := bytecode.DefaultTarget()
+	mem := NewMemory(target)
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:pointer-input", []byte("0x1234 0x5 tail\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:pointer-fmt", []byte("%p %3p\x00"), true, blockString)
+	ptrAddr := mustAlloc(t, mem, "sscanf:pointer", target.PointerSize, target.PointerAlign, false, blockLocal)
+	narrowAddr := mustAlloc(t, mem, "sscanf:pointer-narrow", target.PointerSize, target.PointerAlign, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(ptrAddr),
+		PtrValue(narrowAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 2 {
+		t.Fatalf("sscanf ret=%#v, want i32 2", ret)
+	}
+	ptr, err := mem.Load(ptrAddr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || ptr.Int != 0x1234 {
+		t.Fatalf("ptr=%#v err=%v, want 0x1234", ptr, err)
+	}
+	narrow, err := mem.Load(narrowAddr, bytecode.TypePtr, target.PointerAlign)
+	if err != nil || narrow.Int != 0x5 {
+		t.Fatalf("narrow ptr=%#v err=%v, want 0x5", narrow, err)
+	}
+}
+
+func TestSscanfExternDistinguishesInputFailure(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:failure-fmt", []byte("%d\x00"), true, blockString)
+	valueAddr := mustAlloc(t, mem, "sscanf:failure-value", 4, 4, false, blockLocal)
+	tests := []struct {
+		name  string
+		input string
+		want  int64
+	}{
+		{name: "empty input", input: "", want: -1},
+		{name: "whitespace only", input: " \t\n", want: -1},
+		{name: "matching failure", input: "word", want: 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inputAddr := mustAllocBytes(t, mem, "sscanf:failure-input:"+tt.name, append([]byte(tt.input), 0), true, blockString)
+			ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+				ObjectAddrValue(inputAddr),
+				ObjectAddrValue(fmtAddr),
+				PtrValue(valueAddr),
+			})
+			if err != nil || exit != nil {
+				t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+			}
+			if ret.Type != bytecode.TypeI32 || int64(int32(ret.Int)) != tt.want {
+				t.Fatalf("sscanf ret=%#v, want i32 %d", ret, tt.want)
+			}
+		})
+	}
+}
+
+func TestSscanfExternReturnsAssignmentsBeforeLaterFailure(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:later-failure-input", []byte("12 word\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:later-failure-fmt", []byte("%d %d\x00"), true, blockString)
+	firstAddr := mustAlloc(t, mem, "sscanf:later-failure-first", 4, 4, false, blockLocal)
+	secondAddr := mustAlloc(t, mem, "sscanf:later-failure-second", 4, 4, false, blockLocal)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(firstAddr),
+		PtrValue(secondAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("sscanf ret=%#v, want i32 1", ret)
+	}
+	first, err := mem.Load(firstAddr, bytecode.TypeI32, 4)
+	if err != nil || first.Int != 12 {
+		t.Fatalf("first=%#v err=%v, want 12", first, err)
 	}
 }
 

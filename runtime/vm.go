@@ -13,16 +13,18 @@ type RunOptions struct {
 }
 
 type VM struct {
-	program  *Program
-	stack    []Value
-	frames   []frame
-	closures map[uint64]closure
-	steps    int
-	limit    int
+	program         *Program
+	stack           []Value
+	frames          []frame
+	closures        map[uint64]closure
+	expiredClosures map[uint64]expiredClosure
+	steps           int
+	limit           int
 }
 
 type frame struct {
 	fn             *bytecode.Function
+	entry          bool
 	pc             int
 	locals         []Value
 	variadicArgs   []Value
@@ -41,6 +43,11 @@ type closure struct {
 	captures []Value
 }
 
+type expiredClosure struct {
+	creator string
+	global  int
+}
+
 func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -55,11 +62,12 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 		return ExitStatus{}, &TrapError{Reason: "program memory is nil"}
 	}
 	vm := &VM{
-		program:  p,
-		closures: make(map[uint64]closure),
-		limit:    opts.StepLimit,
+		program:         p,
+		closures:        make(map[uint64]closure),
+		expiredClosures: make(map[uint64]expiredClosure),
+		limit:           opts.StepLimit,
 	}
-	if err := vm.pushFrame(p.entryFunc, p.entryArgs); err != nil {
+	if err := vm.pushFrameAsEntry(p.entryFunc, p.entryArgs); err != nil {
 		return ExitStatus{}, err
 	}
 	for {
@@ -72,12 +80,30 @@ func Run(ctx context.Context, p *Program, opts RunOptions) (ExitStatus, error) {
 			if cleanupErr != nil {
 				return st, cleanupErr
 			}
-			return st, err
+			if !st.skipAtexit {
+				atexitStatus, atexitDone, atexitErr := vm.runAtexitHandlers(ctx)
+				if atexitErr != nil {
+					return st, atexitErr
+				}
+				if atexitDone {
+					st = atexitStatus
+				}
+			}
+			st.skipAtexit = false
+			return st, nil
 		}
 	}
 }
 
 func (vm *VM) pushFrame(funcID int, args []Value) error {
+	return vm.pushFrameWithMode(funcID, args, false)
+}
+
+func (vm *VM) pushFrameAsEntry(funcID int, args []Value) error {
+	return vm.pushFrameWithMode(funcID, args, true)
+}
+
+func (vm *VM) pushFrameWithMode(funcID int, args []Value, entry bool) error {
 	if funcID < 0 || funcID >= len(vm.program.module.Functions) {
 		return vm.trap("invalid function id")
 	}
@@ -148,6 +174,7 @@ func (vm *VM) pushFrame(funcID int, args []Value) error {
 
 	vm.frames = append(vm.frames, frame{
 		fn:             fn,
+		entry:          entry,
 		locals:         locals,
 		variadicArgs:   variadicArgs,
 		vaLists:        make(map[int]int),
@@ -533,6 +560,9 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 			}
 			break
 		}
+		if expired, ok := vm.expiredClosures[callee.Int]; ok {
+			return ExitStatus{}, true, vm.trap(fmt.Sprintf("expired closure pointer %#x from %s to global %d", callee.Int, expired.creator, expired.global))
+		}
 		globalID, err := vm.program.FuncGlobalByAddress(callee.Int)
 		if err != nil {
 			return ExitStatus{}, true, vm.trapWithCause("invalid indirect call target", err)
@@ -556,7 +586,7 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if err != nil {
 			return ExitStatus{}, true, err
 		}
-		if len(vm.frames) == 1 {
+		if fr.entry {
 			code, err := v.ExitCode()
 			if err != nil {
 				return ExitStatus{}, true, vm.trapWithCause("invalid exit code", err)
@@ -571,7 +601,7 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		}
 		vm.stack = append(vm.stack, v)
 	case bytecode.OpReturnVoid:
-		if len(vm.frames) == 1 {
+		if fr.entry {
 			return ExitStatus{}, true, vm.trap("void return from entry function")
 		}
 		if err := vm.popFrame(); err != nil {
@@ -582,7 +612,7 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if err != nil {
 			return ExitStatus{}, true, err
 		}
-		if len(vm.frames) == 1 {
+		if fr.entry {
 			return ExitStatus{}, true, vm.trap("object return from entry function")
 		}
 		retAddr, err := vm.copyReturnObject(ins.Object, addr.Int)
@@ -603,10 +633,18 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		fr.activeVaList = ins.Slot
 		fr.hasActiveVa = true
 	case bytecode.OpVaArg:
-		if !fr.hasActiveVa {
-			return ExitStatus{}, true, vm.trap("va_arg without active va_list")
+		slot := ins.Slot
+		cursor, ok := fr.vaLists[slot]
+		if !ok {
+			if !fr.hasActiveVa {
+				return ExitStatus{}, true, vm.trap("va_arg without active va_list")
+			}
+			slot = fr.activeVaList
+			cursor, ok = fr.vaLists[slot]
+			if !ok {
+				return ExitStatus{}, true, vm.trap("va_arg without active va_list")
+			}
 		}
-		cursor := fr.vaLists[fr.activeVaList]
 		if cursor < 0 || cursor >= len(fr.variadicArgs) {
 			return ExitStatus{}, true, vm.trap("va_arg past end of arguments")
 		}
@@ -614,8 +652,14 @@ func (vm *VM) step(ctx context.Context) (ExitStatus, bool, error) {
 		if v.Type != ins.Type {
 			return ExitStatus{}, true, vm.trap(fmt.Sprintf("va_arg has type %s, want %s", v.Type, ins.Type))
 		}
-		fr.vaLists[fr.activeVaList] = cursor + 1
+		fr.vaLists[slot] = cursor + 1
 		vm.stack = append(vm.stack, v)
+	case bytecode.OpVaCopy:
+		cursor, ok := fr.vaLists[ins.Object]
+		if !ok {
+			return ExitStatus{}, true, vm.trap("va_copy from inactive va_list")
+		}
+		fr.vaLists[ins.Slot] = cursor
 	case bytecode.OpVaEnd:
 		delete(fr.vaLists, ins.Slot)
 		if fr.hasActiveVa && fr.activeVaList == ins.Slot {
@@ -659,7 +703,13 @@ func (vm *VM) popFrame() error {
 		}
 	}
 	for _, addr := range fr.closures {
-		delete(vm.closures, addr)
+		if cl, ok := vm.closures[addr]; ok {
+			vm.expiredClosures[addr] = expiredClosure{
+				creator: fr.fn.Name,
+				global:  cl.global,
+			}
+			delete(vm.closures, addr)
+		}
 		if err := vm.program.Memory().Free(addr, blockLocal); err != nil {
 			return vm.trapWithCause(fmt.Sprintf("closure %x free failed", addr), err)
 		}
@@ -707,6 +757,56 @@ func (vm *VM) cleanupFrames() error {
 		}
 	}
 	return nil
+}
+
+func (vm *VM) runAtexitHandlers(ctx context.Context) (ExitStatus, bool, error) {
+	if vm.program == nil || vm.program.externReg == nil {
+		return ExitStatus{}, false, nil
+	}
+	handlers := vm.program.externReg.takeAtexitHandlers()
+	for i := len(handlers) - 1; i >= 0; i-- {
+		st, done, err := vm.invokeAtexitHandler(ctx, handlers[i])
+		if done || err != nil {
+			cleanupErr := vm.cleanupFrames()
+			if err != nil {
+				return st, done, err
+			}
+			if cleanupErr != nil {
+				return st, done, cleanupErr
+			}
+			return st, done, nil
+		}
+		for len(vm.frames) != 0 {
+			st, done, err = vm.step(ctx)
+			if done || err != nil {
+				cleanupErr := vm.cleanupFrames()
+				if err != nil {
+					return st, done, err
+				}
+				if cleanupErr != nil {
+					return st, done, cleanupErr
+				}
+				return st, done, nil
+			}
+		}
+	}
+	return ExitStatus{}, false, nil
+}
+
+func (vm *VM) invokeAtexitHandler(ctx context.Context, addr uint64) (ExitStatus, bool, error) {
+	globalID, err := vm.program.FuncGlobalByAddress(addr)
+	if err != nil {
+		return ExitStatus{}, true, vm.trapWithCause("invalid atexit handler", err)
+	}
+	g, err := vm.program.global(globalID)
+	if err != nil {
+		return ExitStatus{}, true, vm.trapWithCause("invalid atexit handler", err)
+	}
+	sig := vm.program.module.Sigs[g.Sig]
+	if sig.Ret != bytecode.TypeVoid || sig.Variadic || len(sig.Params) != 0 {
+		return ExitStatus{}, true, vm.trap(fmt.Sprintf("atexit handler global %d has incompatible signature", globalID))
+	}
+	return vm.invokeGlobal(ctx, globalID, g.Sig, nil)
 }
 
 func (vm *VM) popCallArgs(sigID, argc int) ([]Value, error) {

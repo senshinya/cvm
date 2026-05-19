@@ -228,6 +228,7 @@ func TestFormatInstrCoversCurrentOpcodeEnum(t *testing.T) {
 		{"make-closure", MakeClosure(1, 2, 3), "MakeClosure global=1 sig=2 argc=3"},
 		{"va-start", Instr{Op: OpVaStart, Slot: 1}, "VaStart slot=1"},
 		{"va-arg", Instr{Op: OpVaArg, Type: TypeI64}, "I64VaArg"},
+		{"va-copy", Instr{Op: OpVaCopy, Slot: 2, Object: 1}, "VaCopy dst=2 src=1"},
 		{"va-end", Instr{Op: OpVaEnd, Slot: 1}, "VaEnd slot=1"},
 		{"invalid", Instr{Op: Opcode(999), Type: TypeI32, Int: 7}, "InvalidOpcode(999)"},
 	}

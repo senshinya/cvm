@@ -22,31 +22,47 @@ type ExternContext struct {
 }
 
 type ExternRegistry struct {
-	funcs         map[string]ExternFunc
-	stdin         io.Reader
-	stdout        io.Writer
-	stderr        io.Writer
-	hostWriters   map[uint64]io.Writer
-	hostFDs       map[uint64]int32
-	hostPushback  map[uint64][]byte
-	hostEOF       map[uint64]bool
-	hostClosed    map[uint64]bool
-	hostFiles     map[uint64]*hostFile
-	files         map[string][]byte
-	stdinHandle   uint64
-	staticStrings map[*Memory]map[string]uint64
-	staticVars    map[*Memory]map[string]uint64
-	strtokNext    map[*Memory]uint64
-	randSeed      uint32
+	funcs          map[string]ExternFunc
+	stdin          io.Reader
+	stdout         io.Writer
+	stderr         io.Writer
+	hostWriters    map[uint64]io.Writer
+	hostFDs        map[uint64]int32
+	hostPushback   map[uint64][]byte
+	hostEOF        map[uint64]bool
+	hostError      map[uint64]bool
+	hostClosed     map[uint64]bool
+	hostFiles      map[uint64]*hostFile
+	files          map[string][]byte
+	env            map[string]string
+	atexitHandlers []uint64
+	stdinHandle    uint64
+	staticStrings  map[*Memory]map[string]uint64
+	staticVars     map[*Memory]map[string]uint64
+	staticBlocks   map[*Memory]map[string]uint64
+	strtokNext     map[*Memory]uint64
+	randSeed       uint32
+	tmpnamCounter  uint64
 }
 
 type hostFile struct {
-	path     string
-	data     []byte
-	pos      int64
-	readable bool
-	writable bool
+	path       string
+	data       []byte
+	pos        int64
+	readable   bool
+	writable   bool
+	appendMode bool
+	updateMode bool
+	lastOp     hostFileOp
 }
+
+type hostFileOp int
+
+const (
+	hostFileOpNone hostFileOp = iota
+	hostFileOpRead
+	hostFileOpWrite
+)
 
 type hostFileWriter struct {
 	registry *ExternRegistry
@@ -73,11 +89,14 @@ func NewExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *ExternR
 		hostFDs:       make(map[uint64]int32),
 		hostPushback:  make(map[uint64][]byte),
 		hostEOF:       make(map[uint64]bool),
+		hostError:     make(map[uint64]bool),
 		hostClosed:    make(map[uint64]bool),
 		hostFiles:     make(map[uint64]*hostFile),
 		files:         make(map[string][]byte),
+		env:           make(map[string]string),
 		staticStrings: make(map[*Memory]map[string]uint64),
 		staticVars:    make(map[*Memory]map[string]uint64),
+		staticBlocks:  make(map[*Memory]map[string]uint64),
 		strtokNext:    make(map[*Memory]uint64),
 		randSeed:      1,
 	}
@@ -99,7 +118,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("fopen", fopenExtern("fopen", r))
 	r.Register("freopen", freopenExtern("freopen", r))
 	r.Register("tmpfile", tmpfileExtern("tmpfile", r))
-	r.Register("tmpnam", tmpnamExtern("tmpnam"))
+	r.Register("tmpnam", tmpnamExtern("tmpnam", r))
 	for _, name := range []string{"puts", "puts_unlocked"} {
 		r.Register(name, putsExtern(name, r))
 	}
@@ -161,30 +180,39 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("atoi", atoiExtern("atoi", bytecode.TypeI32))
 	r.Register("atol", atoiExtern("atol", bytecode.TypeI64))
 	r.Register("atoll", atoiExtern("atoll", bytecode.TypeI64))
-	r.Register("atof", atofExtern("atof"))
+	r.Register("atof", atofExtern("atof", r))
 	r.Register("strtol", strtoIntegerExtern("strtol", bytecode.TypeI64, true))
 	r.Register("strtoul", strtoIntegerExtern("strtoul", bytecode.TypeU64, false))
 	r.Register("strtoll", strtoIntegerExtern("strtoll", bytecode.TypeI64, true))
 	r.Register("strtoull", strtoIntegerExtern("strtoull", bytecode.TypeU64, false))
-	r.Register("strtod", strtoFloatExtern("strtod", bytecode.TypeF64))
-	r.Register("strtof", strtoFloatExtern("strtof", bytecode.TypeF32))
-	r.Register("strtold", strtoFloatExtern("strtold", bytecode.TypeFLong))
+	r.Register("strtod", strtoFloatExtern("strtod", bytecode.TypeF64, r))
+	r.Register("strtof", strtoFloatExtern("strtof", bytecode.TypeF32, r))
+	r.Register("strtold", strtoFloatExtern("strtold", bytecode.TypeFLong, r))
 	r.Register("mblen", mblenExtern("mblen"))
 	r.Register("mbtowc", mbtowcExtern("mbtowc"))
 	r.Register("wctomb", wctombExtern("wctomb"))
 	r.Register("mbstowcs", mbstowcsExtern("mbstowcs"))
 	r.Register("wcstombs", wcstombsExtern("wcstombs"))
+	r.Register("mbrlen", mbrlenExtern("mbrlen"))
+	r.Register("mbrtowc", mbrtowcExtern("mbrtowc"))
+	r.Register("wcrtomb", wcrtombExtern("wcrtomb"))
+	r.Register("mbsrtowcs", mbsrtowcsExtern("mbsrtowcs"))
+	r.Register("wcsrtombs", wcsrtombsExtern("wcsrtombs"))
 	r.Register("rand", randExtern("rand", r))
 	r.Register("srand", srandExtern("srand", r))
-	r.Register("getenv", getenvExtern("getenv"))
+	r.Register("getenv", getenvExtern("getenv", r))
 	r.Register("system", systemExtern("system"))
-	r.Register("atexit", atexitExtern("atexit"))
+	r.Register("atexit", atexitExtern("atexit", r))
 	r.Register("setlocale", setlocaleExtern("setlocale", r))
+	r.Register("localeconv", localeconvExtern("localeconv", r))
 	r.Register("clock", clockExtern("clock"))
 	r.Register("difftime", difftimeExtern("difftime"))
 	r.Register("time", timeExtern("time"))
 	registerCtypeClassificationExterns(r)
 	registerCtypeCaseExterns(r)
+	registerWideCtypeClassificationExterns(r)
+	registerWideCtypeCaseExterns(r)
+	registerWideCtypeDescriptorExterns(r)
 	r.Register("strcmp", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("strcmp expects 2 arguments")
@@ -207,6 +235,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	registerAllocationExterns(r)
 	registerMemoryExterns(r)
 	registerOutputFormatExterns(r)
+	registerInputFormatExterns(r)
 	r.Register("feclearexcept", func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("feclearexcept expects 1 argument")
@@ -230,25 +259,60 @@ func (r *ExternRegistry) AddFile(path string, data []byte) {
 	r.files[path] = append([]byte(nil), data...)
 }
 
+func (r *ExternRegistry) SetEnv(name, value string) {
+	if r == nil {
+		return
+	}
+	r.env[name] = value
+}
+
+func (r *ExternRegistry) registerAtexitHandler(addr uint64) {
+	if r == nil {
+		return
+	}
+	r.atexitHandlers = append(r.atexitHandlers, addr)
+}
+
+func (r *ExternRegistry) takeAtexitHandlers() []uint64 {
+	if r == nil || len(r.atexitHandlers) == 0 {
+		return nil
+	}
+	handlers := append([]uint64(nil), r.atexitHandlers...)
+	r.atexitHandlers = nil
+	return handlers
+}
+
 func (w hostFileWriter) Write(p []byte) (int, error) {
 	if w.registry == nil {
 		return 0, fmt.Errorf("file writer has no registry")
 	}
 	file := w.registry.hostFiles[w.addr]
 	if file == nil {
+		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("unknown file handle %#x", w.addr)
 	}
 	if !file.writable {
+		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q is not open for writing", file.path)
 	}
+	if file.updateMode && file.lastOp == hostFileOpRead && !w.registry.hostEOF[w.addr] {
+		w.registry.hostError[w.addr] = true
+		return 0, fmt.Errorf("file %q needs positioning before writing after reading", file.path)
+	}
+	if file.appendMode {
+		file.pos = int64(len(file.data))
+	}
 	if file.pos < 0 {
+		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q has negative offset", file.path)
 	}
 	end := file.pos + int64(len(p))
 	if end < file.pos {
+		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q write offset overflows", file.path)
 	}
 	if end > int64(maxInt()) {
+		w.registry.hostError[w.addr] = true
 		return 0, fmt.Errorf("file %q write offset exceeds host int range", file.path)
 	}
 	if end > int64(len(file.data)) {
@@ -261,6 +325,7 @@ func (w hostFileWriter) Write(p []byte) (int, error) {
 	if file.path != "" {
 		w.registry.files[file.path] = append([]byte(nil), file.data...)
 	}
+	file.lastOp = hostFileOpWrite
 	delete(w.registry.hostEOF, w.addr)
 	return len(p), nil
 }
@@ -361,10 +426,12 @@ func fopenExtern(name string, r *ExternRegistry) ExternFunc {
 			return PtrValue(0), nil, nil
 		}
 		file := &hostFile{
-			path:     path,
-			data:     append([]byte(nil), data...),
-			readable: readable,
-			writable: writable,
+			path:       path,
+			data:       append([]byte(nil), data...),
+			readable:   readable,
+			writable:   writable,
+			appendMode: strings.HasPrefix(mode, "a"),
+			updateMode: strings.Contains(mode, "+"),
 		}
 		if strings.HasPrefix(mode, "w") {
 			file.data = nil
@@ -382,6 +449,7 @@ func fopenExtern(name string, r *ExternRegistry) ExternFunc {
 			r.files[path] = append([]byte(nil), file.data...)
 		}
 		delete(r.hostEOF, addr)
+		delete(r.hostError, addr)
 		return PtrValue(addr), nil, nil
 	}
 }
@@ -397,16 +465,56 @@ func freopenExtern(name string, r *ExternRegistry) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+		path, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
 			return Value{}, nil, err
 		}
-		if _, err := ec.Memory.ReadCString(args[1].Int); err != nil {
+		mode, err := ec.Memory.ReadCString(args[1].Int)
+		if err != nil {
 			return Value{}, nil, err
 		}
 		if _, ok := r.lookupHostWriter(args[2].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[2].Int)
 		}
-		return PtrValue(0), nil, nil
+		readMode := strings.HasPrefix(mode, "r")
+		writeMode := strings.HasPrefix(mode, "w")
+		appendMode := strings.HasPrefix(mode, "a")
+		if !readMode && !writeMode && !appendMode {
+			return PtrValue(0), nil, nil
+		}
+		updateMode := strings.Contains(mode, "+")
+		readable := readMode || updateMode
+		writable := writeMode || appendMode || updateMode
+		data, ok := r.files[path]
+		if readMode && !ok {
+			return PtrValue(0), nil, nil
+		}
+		file := &hostFile{
+			path:       path,
+			data:       append([]byte(nil), data...),
+			readable:   readable,
+			writable:   writable,
+			appendMode: appendMode,
+			updateMode: updateMode,
+		}
+		if writeMode {
+			file.data = nil
+		}
+		if appendMode {
+			file.pos = int64(len(file.data))
+		}
+		if old := r.hostFiles[args[2].Int]; old != nil && old.writable && old.path != "" {
+			r.files[old.path] = append([]byte(nil), old.data...)
+		}
+		r.hostFiles[args[2].Int] = file
+		r.hostWriters[args[2].Int] = hostFileWriter{registry: r, addr: args[2].Int}
+		if writable {
+			r.files[path] = append([]byte(nil), file.data...)
+		}
+		delete(r.hostPushback, args[2].Int)
+		delete(r.hostEOF, args[2].Int)
+		delete(r.hostError, args[2].Int)
+		return PtrValue(args[2].Int), nil, nil
 	}
 }
 
@@ -418,7 +526,7 @@ func tmpfileExtern(name string, r *ExternRegistry) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		file := &hostFile{readable: true, writable: true}
+		file := &hostFile{readable: true, writable: true, updateMode: true}
 		addr, err := r.allocHostWriter("tmpfile", ec.Memory, hostFileWriter{registry: r}, -1)
 		if err != nil {
 			return Value{}, nil, err
@@ -429,7 +537,7 @@ func tmpfileExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
-func tmpnamExtern(name string) ExternFunc {
+func tmpnamExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
@@ -437,15 +545,23 @@ func tmpnamExtern(name string) ExternFunc {
 		if !isPointerType(args[0].Type) {
 			return Value{}, nil, fmt.Errorf("%s expects buffer pointer", name)
 		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		tmpName := "/tmp/cvm-tmp-0"
 		if args[0].Int != 0 {
-			if ec == nil || ec.Memory == nil {
-				return Value{}, nil, fmt.Errorf("%s requires memory", name)
-			}
-			if err := writeMemoryByte(ec.Memory, args[0].Int, 0); err != nil {
+			tmpName = fmt.Sprintf("/tmp/cvm-tmp-%d", r.tmpnamCounter)
+			r.tmpnamCounter++
+			if err := writeMemoryBytes(ec.Memory, args[0].Int, append([]byte(tmpName), 0)); err != nil {
 				return Value{}, nil, err
 			}
+			return PtrValue(args[0].Int), nil, nil
 		}
-		return PtrValue(0), nil, nil
+		addr, err := r.staticCString(ec.Memory, "tmpnam", tmpName)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
 	}
 }
 
@@ -513,7 +629,8 @@ func fputcExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		ch := byte(args[0].Int)
 		if _, err := w.Write([]byte{ch}); err != nil {
-			return Value{}, nil, err
+			r.hostError[args[1].Int] = true
+			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
 	}
@@ -529,6 +646,9 @@ func fgetcExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		if r.markHostReadErrorIfUnreadable(args[0].Int) {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
 		if ch, ok := r.readHostChar(args[0].Int); ok {
 			return IntValue(bytecode.TypeI32, int64(ch)), nil, nil
@@ -573,6 +693,9 @@ func fgetsExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		if _, ok := r.lookupHostWriter(args[2].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[2].Int)
+		}
+		if r.markHostReadErrorIfUnreadable(args[2].Int) {
+			return PtrValue(0), nil, nil
 		}
 		n := int32(args[1].Int)
 		if n <= 1 {
@@ -620,7 +743,8 @@ func fputsExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
 		}
 		if _, err := fmt.Fprint(w, s); err != nil {
-			return Value{}, nil, err
+			r.hostError[args[1].Int] = true
+			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, int64(len(s))), nil, nil
 	}
@@ -668,6 +792,9 @@ func fflushExtern(name string, r *ExternRegistry) ExternFunc {
 			if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 				return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 			}
+			if file := r.hostFiles[args[0].Int]; file != nil && file.updateMode {
+				file.lastOp = hostFileOpNone
+			}
 		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
@@ -689,6 +816,7 @@ func fcloseExtern(name string, r *ExternRegistry) ExternFunc {
 		delete(r.hostFDs, args[0].Int)
 		delete(r.hostPushback, args[0].Int)
 		delete(r.hostEOF, args[0].Int)
+		delete(r.hostError, args[0].Int)
 		if file := r.hostFiles[args[0].Int]; file != nil && file.writable && file.path != "" {
 			r.files[file.path] = append([]byte(nil), file.data...)
 		}
@@ -742,6 +870,9 @@ func fseekExtern(name string, r *ExternRegistry) ExternFunc {
 				return IntValue(bytecode.TypeI32, -1), nil, nil
 			}
 			file.pos = next
+			if file.updateMode {
+				file.lastOp = hostFileOpNone
+			}
 			delete(r.hostPushback, args[0].Int)
 			delete(r.hostEOF, args[0].Int)
 			return IntValue(bytecode.TypeI32, 0), nil, nil
@@ -781,6 +912,9 @@ func rewindExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		if file := r.hostFiles[args[0].Int]; file != nil {
 			file.pos = 0
+			if file.updateMode {
+				file.lastOp = hostFileOpNone
+			}
 		}
 		delete(r.hostPushback, args[0].Int)
 		delete(r.hostEOF, args[0].Int)
@@ -799,13 +933,20 @@ func fgetposExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		file := r.hostFiles[args[0].Int]
+		if file == nil {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
 		if _, _, err := ec.Memory.rangeAccess(args[1].Int, int64(valueSize(ec.Memory.target, bytecode.TypeI64)), true); err != nil {
 			return Value{}, nil, err
 		}
-		return IntValue(bytecode.TypeI32, -1), nil, nil
+		if err := ec.Memory.Store(args[1].Int, bytecode.TypeI64, 8, IntValue(bytecode.TypeI64, file.pos)); err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
 
@@ -820,13 +961,31 @@ func fsetposExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		file := r.hostFiles[args[0].Int]
+		if file == nil {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
 		if _, _, err := ec.Memory.rangeAccess(args[1].Int, int64(valueSize(ec.Memory.target, bytecode.TypeI64)), false); err != nil {
 			return Value{}, nil, err
 		}
-		return IntValue(bytecode.TypeI32, -1), nil, nil
+		pos, err := ec.Memory.Load(args[1].Int, bytecode.TypeI64, 8)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		next := signedInt(pos)
+		if next < 0 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		file.pos = next
+		if file.updateMode {
+			file.lastOp = hostFileOpNone
+		}
+		delete(r.hostPushback, args[0].Int)
+		delete(r.hostEOF, args[0].Int)
+		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
 
@@ -855,6 +1014,22 @@ func setvbufExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		mode := signedInt(args[2])
+		if mode < 0 || mode > 2 {
+			return IntValue(bytecode.TypeI32, 1), nil, nil
+		}
+		size := unsignedInt(args[3])
+		if args[1].Int != 0 && size != 0 {
+			if size > uint64(maxInt()) {
+				return Value{}, nil, fmt.Errorf("%s buffer size exceeds host int range", name)
+			}
+			if ec == nil || ec.Memory == nil {
+				return Value{}, nil, fmt.Errorf("%s requires memory", name)
+			}
+			if _, _, err := ec.Memory.rangeAccess(args[1].Int, int64(size), true); err != nil {
+				return Value{}, nil, err
+			}
 		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
@@ -1084,7 +1259,7 @@ func strtoDigit(ch byte) int {
 	}
 }
 
-func atofExtern(name string) ExternFunc {
+func atofExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
@@ -1100,11 +1275,16 @@ func atofExtern(name string) ExternFunc {
 			return Value{}, nil, err
 		}
 		parsed := parseStrtoFloatString(s)
+		if parsed.rangeErr {
+			if err := r.setErrno(ec.Memory, 34); err != nil {
+				return Value{}, nil, err
+			}
+		}
 		return FloatValue(bytecode.TypeF64, parsed.value), nil, nil
 	}
 }
 
-func strtoFloatExtern(name string, ret bytecode.ValueType) ExternFunc {
+func strtoFloatExtern(name string, ret bytecode.ValueType, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 2 {
 			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
@@ -1132,7 +1312,13 @@ func strtoFloatExtern(name string, ret bytecode.ValueType) ExternFunc {
 				return Value{}, nil, err
 			}
 		}
-		return FloatValue(ret, parsed.value), nil, nil
+		value, rangeErr := normalizeStrtoFloatResult(ret, parsed.value, parsed.rangeErr)
+		if rangeErr {
+			if err := r.setErrno(ec.Memory, 34); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		return FloatValue(ret, value), nil, nil
 	}
 }
 
@@ -1157,6 +1343,9 @@ func mblenExtern(name string) ExternFunc {
 		if ch == 0 {
 			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
+		if ch >= 0x80 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
 		return IntValue(bytecode.TypeI32, 1), nil, nil
 	}
 }
@@ -1178,6 +1367,9 @@ func mbtowcExtern(name string) ExternFunc {
 		ch, err := readMemoryByte(ec.Memory, args[1].Int)
 		if err != nil {
 			return Value{}, nil, err
+		}
+		if ch >= 0x80 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
 		if args[0].Int != 0 {
 			if err := ec.Memory.Store(args[0].Int, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(ch))); err != nil {
@@ -1203,13 +1395,249 @@ func wctombExtern(name string) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
 		wc := signedInt(args[1])
-		if wc < 0 || wc > 255 {
+		if wc < 0 || wc > 0x7f {
 			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
 		if err := writeMemoryByte(ec.Memory, args[0].Int, byte(wc)); err != nil {
 			return Value{}, nil, err
 		}
 		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func mbrlenExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if args[0].Int == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || (args[2].Int != 0 && !isPointerType(args[2].Type)) {
+			return Value{}, nil, fmt.Errorf("%s expects string, length, and state pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if unsignedInt(args[1]) == 0 {
+			return UIntValue(bytecode.TypeU64, math.MaxUint64-1), nil, nil
+		}
+		ch, err := readMemoryByte(ec.Memory, args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if ch >= 0x80 {
+			return UIntValue(bytecode.TypeU64, math.MaxUint64), nil, nil
+		}
+		if ch == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		return UIntValue(bytecode.TypeU64, 1), nil, nil
+	}
+}
+
+func mbrtowcExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if args[1].Int == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		if (args[0].Int != 0 && !isPointerType(args[0].Type)) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) || (args[3].Int != 0 && !isPointerType(args[3].Type)) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, string, length, and state pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if unsignedInt(args[2]) == 0 {
+			return UIntValue(bytecode.TypeU64, math.MaxUint64-1), nil, nil
+		}
+		ch, err := readMemoryByte(ec.Memory, args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if ch >= 0x80 {
+			return UIntValue(bytecode.TypeU64, math.MaxUint64), nil, nil
+		}
+		if args[0].Int != 0 {
+			if err := ec.Memory.Store(args[0].Int, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(ch))); err != nil {
+				return Value{}, nil, err
+			}
+		}
+		if ch == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		return UIntValue(bytecode.TypeU64, 1), nil, nil
+	}
+}
+
+func wcrtombExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if args[0].Int == 0 {
+			return UIntValue(bytecode.TypeU64, 1), nil, nil
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || (args[2].Int != 0 && !isPointerType(args[2].Type)) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, wide char, and state pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		wc := signedInt(args[1])
+		if wc < 0 || wc > 0x7f {
+			return UIntValue(bytecode.TypeU64, math.MaxUint64), nil, nil
+		}
+		if err := writeMemoryByte(ec.Memory, args[0].Int, byte(wc)); err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, 1), nil, nil
+	}
+}
+
+func mbsrtowcsExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if (args[0].Int != 0 && !isPointerType(args[0].Type)) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) || (args[3].Int != 0 && !isPointerType(args[3].Type)) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, source pointer, length, and state pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		srcValue, err := ec.Memory.Load(args[1].Int, bytecode.TypePtr, ec.Memory.target.PointerAlign)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		src := srcValue.Int
+		if src == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		if args[0].Int == 0 {
+			count, err := cLocaleStringLength(ec.Memory, src)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			return UIntValue(bytecode.TypeU64, count), nil, nil
+		}
+		limit := unsignedInt(args[2])
+		var count uint64
+		for count < limit {
+			ch, err := readMemoryByte(ec.Memory, src+count)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if ch >= 0x80 {
+				return UIntValue(bytecode.TypeU64, math.MaxUint64), nil, nil
+			}
+			if err := ec.Memory.Store(args[0].Int+count*4, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(ch))); err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				if err := ec.Memory.WritePointer(args[1].Int, 0); err != nil {
+					return Value{}, nil, err
+				}
+				return UIntValue(bytecode.TypeU64, count), nil, nil
+			}
+			count++
+		}
+		if err := ec.Memory.WritePointer(args[1].Int, src+count); err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, count), nil, nil
+	}
+}
+
+func cLocaleStringLength(mem *Memory, src uint64) (uint64, error) {
+	var count uint64
+	for {
+		ch, err := readMemoryByte(mem, src+count)
+		if err != nil {
+			return 0, err
+		}
+		if ch >= 0x80 {
+			return math.MaxUint64, nil
+		}
+		if ch == 0 {
+			return count, nil
+		}
+		count++
+	}
+}
+
+func wcsrtombsExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if (args[0].Int != 0 && !isPointerType(args[0].Type)) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) || (args[3].Int != 0 && !isPointerType(args[3].Type)) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, source pointer, length, and state pointer arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		srcValue, err := ec.Memory.Load(args[1].Int, bytecode.TypePtr, ec.Memory.target.PointerAlign)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		src := srcValue.Int
+		if src == 0 {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
+		}
+		if args[0].Int == 0 {
+			count, err := cLocaleWideStringLength(ec.Memory, src)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			return UIntValue(bytecode.TypeU64, count), nil, nil
+		}
+		limit := unsignedInt(args[2])
+		var count uint64
+		for count < limit {
+			wc, err := ec.Memory.Load(src+count*4, bytecode.TypeI32, 4)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			ch := signedInt(wc)
+			if ch < 0 || ch > 0x7f {
+				return UIntValue(bytecode.TypeU64, math.MaxUint64), nil, nil
+			}
+			if err := writeMemoryByte(ec.Memory, args[0].Int+count, byte(ch)); err != nil {
+				return Value{}, nil, err
+			}
+			if ch == 0 {
+				if err := ec.Memory.WritePointer(args[1].Int, 0); err != nil {
+					return Value{}, nil, err
+				}
+				return UIntValue(bytecode.TypeU64, count), nil, nil
+			}
+			count++
+		}
+		if err := ec.Memory.WritePointer(args[1].Int, src+count*4); err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, count), nil, nil
+	}
+}
+
+func cLocaleWideStringLength(mem *Memory, src uint64) (uint64, error) {
+	var count uint64
+	for {
+		wc, err := mem.Load(src+count*4, bytecode.TypeI32, 4)
+		if err != nil {
+			return 0, err
+		}
+		ch := signedInt(wc)
+		if ch < 0 || ch > 0x7f {
+			return math.MaxUint64, nil
+		}
+		if ch == 0 {
+			return count, nil
+		}
+		count++
 	}
 }
 
@@ -1224,6 +1652,11 @@ func mbstowcsExtern(name string) ExternFunc {
 		src, err := ec.Memory.ReadCString(args[1].Int)
 		if err != nil {
 			return Value{}, nil, err
+		}
+		for i := 0; i < len(src); i++ {
+			if src[i] >= 0x80 {
+				return UIntValue(bytecode.TypeU64, ^uint64(0)), nil, nil
+			}
 		}
 		if args[0].Int == 0 {
 			return UIntValue(bytecode.TypeU64, uint64(len(src))), nil, nil
@@ -1257,6 +1690,11 @@ func wcstombsExtern(name string) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
+		for _, wc := range chars {
+			if wc > 0x7f {
+				return UIntValue(bytecode.TypeU64, ^uint64(0)), nil, nil
+			}
+		}
 		if args[0].Int == 0 {
 			return UIntValue(bytecode.TypeU64, uint64(len(chars))), nil, nil
 		}
@@ -1264,9 +1702,6 @@ func wcstombsExtern(name string) ExternFunc {
 		count := uint64(0)
 		for count < n && count < uint64(len(chars)) {
 			wc := chars[count]
-			if wc > 255 {
-				return UIntValue(bytecode.TypeU64, ^uint64(0)), nil, nil
-			}
 			if err := writeMemoryByte(ec.Memory, args[0].Int+count, byte(wc)); err != nil {
 				return Value{}, nil, err
 			}
@@ -1304,7 +1739,7 @@ func srandExtern(name string, r *ExternRegistry) ExternFunc {
 	}
 }
 
-func getenvExtern(name string) ExternFunc {
+func getenvExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
@@ -1315,10 +1750,19 @@ func getenvExtern(name string) ExternFunc {
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
-		if _, err := ec.Memory.ReadCString(args[0].Int); err != nil {
+		key, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
 			return Value{}, nil, err
 		}
-		return PtrValue(0), nil, nil
+		value, ok := r.env[key]
+		if !ok {
+			return PtrValue(0), nil, nil
+		}
+		addr, err := r.staticCString(ec.Memory, "getenv:"+key+"="+value, value)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
 	}
 }
 
@@ -1343,7 +1787,7 @@ func systemExtern(name string) ExternFunc {
 	}
 }
 
-func atexitExtern(name string) ExternFunc {
+func atexitExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
 			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
@@ -1351,6 +1795,7 @@ func atexitExtern(name string) ExternFunc {
 		if !isPointerType(args[0].Type) {
 			return Value{}, nil, fmt.Errorf("%s expects function pointer", name)
 		}
+		r.registerAtexitHandler(args[0].Int)
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
@@ -1364,7 +1809,7 @@ func exitExtern(name string) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		return Value{}, &ExitStatus{Code: code}, nil
+		return Value{}, &ExitStatus{Code: code, skipAtexit: name == "_Exit"}, nil
 	}
 }
 
@@ -1403,6 +1848,55 @@ func setlocaleExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		return PtrValue(addr), nil, nil
 	}
+}
+
+func localeconvExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 0 {
+			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		addr, err := r.staticLocaleconv(ec.Memory)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
+	}
+}
+
+var localeconvPointerFields = []struct {
+	name  string
+	value string
+}{
+	{name: "decimal_point", value: "."},
+	{name: "thousands_sep", value: ""},
+	{name: "grouping", value: ""},
+	{name: "int_curr_symbol", value: ""},
+	{name: "currency_symbol", value: ""},
+	{name: "mon_decimal_point", value: ""},
+	{name: "mon_thousands_sep", value: ""},
+	{name: "mon_grouping", value: ""},
+	{name: "positive_sign", value: ""},
+	{name: "negative_sign", value: ""},
+}
+
+var localeconvCharFields = []string{
+	"int_frac_digits",
+	"frac_digits",
+	"p_cs_precedes",
+	"p_sep_by_space",
+	"n_cs_precedes",
+	"n_sep_by_space",
+	"p_sign_posn",
+	"n_sign_posn",
+	"int_p_cs_precedes",
+	"int_p_sep_by_space",
+	"int_n_cs_precedes",
+	"int_n_sep_by_space",
+	"int_p_sign_posn",
+	"int_n_sign_posn",
 }
 
 func clockExtern(name string) ExternFunc {
@@ -1451,6 +1945,7 @@ type parsedStrtoFloat struct {
 	value     float64
 	end       int
 	converted bool
+	rangeErr  bool
 }
 
 func parseStrtoFloatString(s string) parsedStrtoFloat {
@@ -1458,13 +1953,87 @@ func parseStrtoFloatString(s string) parsedStrtoFloat {
 	for start < len(s) && isASCIIWhitespace(s[start]) {
 		start++
 	}
+	if v, end, ok := parseStrtoFloatSpecial(s, start); ok {
+		return parsedStrtoFloat{value: v, end: end, converted: true}
+	}
 	for end := len(s); end > start; end-- {
-		v, err := strconv.ParseFloat(s[start:end], 64)
+		token := s[start:end]
+		v, err := strconv.ParseFloat(token, 64)
 		if err == nil {
-			return parsedStrtoFloat{value: v, end: end, converted: true}
+			return parsedStrtoFloat{
+				value:     v,
+				end:       end,
+				converted: true,
+				rangeErr:  v == 0 && floatTokenHasNonZeroSignificand(token),
+			}
+		}
+		if numErr, ok := err.(*strconv.NumError); ok && numErr.Err == strconv.ErrRange {
+			return parsedStrtoFloat{value: v, end: end, converted: true, rangeErr: true}
 		}
 	}
 	return parsedStrtoFloat{}
+}
+
+func floatTokenHasNonZeroSignificand(token string) bool {
+	i := 0
+	if i < len(token) && (token[i] == '+' || token[i] == '-') {
+		i++
+	}
+	hex := i+2 <= len(token) && token[i] == '0' && (token[i+1] == 'x' || token[i+1] == 'X')
+	if hex {
+		i += 2
+	}
+	for ; i < len(token); i++ {
+		ch := token[i]
+		if hex {
+			if ch == 'p' || ch == 'P' {
+				break
+			}
+		} else if ch == 'e' || ch == 'E' {
+			break
+		}
+		if ch == '.' {
+			continue
+		}
+		if digit := strtoDigit(ch); digit > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeStrtoFloatResult(ret bytecode.ValueType, value float64, rangeErr bool) (float64, bool) {
+	if ret != bytecode.TypeF32 {
+		return value, rangeErr
+	}
+	narrowed := float64(float32(value))
+	if math.IsInf(narrowed, 0) && !math.IsInf(value, 0) {
+		rangeErr = true
+	}
+	if narrowed == 0 && value != 0 {
+		rangeErr = true
+	}
+	return narrowed, rangeErr
+}
+
+func parseStrtoFloatSpecial(s string, start int) (float64, int, bool) {
+	i := start
+	if i < len(s) && (s[i] == '+' || s[i] == '-') {
+		i++
+	}
+	if i+3 > len(s) || !strings.EqualFold(s[i:i+3], "nan") {
+		return 0, 0, false
+	}
+	end := i + 3
+	if end < len(s) && s[end] == '(' {
+		for j := end + 1; j < len(s); j++ {
+			if s[j] == ')' {
+				end = j + 1
+				break
+			}
+		}
+	}
+	return math.NaN(), end, true
 }
 
 func isASCIIWhitespace(ch byte) bool {
@@ -1522,10 +2091,250 @@ func ctypeClassificationExtern(name string, pred func(byte) bool) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
 		}
 		ch := signedInt(args[0])
-		if ch < 0 || ch > 255 || !pred(byte(ch)) {
+		if ch == -1 || !pred(byte(unsignedInt(args[0]))) {
 			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
 		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func registerWideCtypeClassificationExterns(r *ExternRegistry) {
+	r.Register("iswdigit", wideCtypeClassificationExtern("iswdigit", func(ch int64) bool {
+		return ch >= '0' && ch <= '9'
+	}))
+	r.Register("iswalpha", wideCtypeClassificationExtern("iswalpha", func(ch int64) bool {
+		return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+	}))
+	r.Register("iswalnum", wideCtypeClassificationExtern("iswalnum", func(ch int64) bool {
+		return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+	}))
+	r.Register("iswspace", wideCtypeClassificationExtern("iswspace", func(ch int64) bool {
+		return ch >= 0 && ch <= 0x7f && isASCIIWhitespace(byte(ch))
+	}))
+	r.Register("iswlower", wideCtypeClassificationExtern("iswlower", func(ch int64) bool {
+		return ch >= 'a' && ch <= 'z'
+	}))
+	r.Register("iswupper", wideCtypeClassificationExtern("iswupper", func(ch int64) bool {
+		return ch >= 'A' && ch <= 'Z'
+	}))
+	r.Register("iswxdigit", wideCtypeClassificationExtern("iswxdigit", func(ch int64) bool {
+		return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f')
+	}))
+	r.Register("iswprint", wideCtypeClassificationExtern("iswprint", func(ch int64) bool {
+		return ch >= 0x20 && ch <= 0x7e
+	}))
+	r.Register("iswblank", wideCtypeClassificationExtern("iswblank", func(ch int64) bool {
+		return ch == ' ' || ch == '\t'
+	}))
+	r.Register("iswcntrl", wideCtypeClassificationExtern("iswcntrl", func(ch int64) bool {
+		return (ch >= 0 && ch < 0x20) || ch == 0x7f
+	}))
+	r.Register("iswgraph", wideCtypeClassificationExtern("iswgraph", func(ch int64) bool {
+		return ch >= 0x21 && ch <= 0x7e
+	}))
+	r.Register("iswpunct", wideCtypeClassificationExtern("iswpunct", func(ch int64) bool {
+		return (ch >= 0x21 && ch <= 0x2f) || (ch >= 0x3a && ch <= 0x40) || (ch >= 0x5b && ch <= 0x60) || (ch >= 0x7b && ch <= 0x7e)
+	}))
+}
+
+func wideCtypeClassificationExtern(name string, pred func(int64) bool) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
+		}
+		ch := signedInt(args[0])
+		if ch == -1 || !pred(ch) {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func registerWideCtypeCaseExterns(r *ExternRegistry) {
+	r.Register("towlower", wideCtypeCaseExtern("towlower", wideToLower))
+	r.Register("towupper", wideCtypeCaseExtern("towupper", wideToUpper))
+}
+
+func wideCtypeCaseExtern(name string, convert func(int64) int64) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
+		}
+		ch := signedInt(args[0])
+		if ch == -1 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, convert(ch)), nil, nil
+	}
+}
+
+func wideToLower(ch int64) int64 {
+	if ch >= 'A' && ch <= 'Z' {
+		return ch + ('a' - 'A')
+	}
+	return ch
+}
+
+func wideToUpper(ch int64) int64 {
+	if ch >= 'a' && ch <= 'z' {
+		return ch - ('a' - 'A')
+	}
+	return ch
+}
+
+const (
+	wideClassAlnum uint64 = iota + 1
+	wideClassAlpha
+	wideClassBlank
+	wideClassCntrl
+	wideClassDigit
+	wideClassGraph
+	wideClassLower
+	wideClassPrint
+	wideClassPunct
+	wideClassSpace
+	wideClassUpper
+	wideClassXDigit
+)
+
+const (
+	wideTransToLower uint64 = iota + 1
+	wideTransToUpper
+)
+
+func registerWideCtypeDescriptorExterns(r *ExternRegistry) {
+	r.Register("wctype", wideCtypeDescriptorExtern("wctype"))
+	r.Register("iswctype", wideIswctypeExtern("iswctype"))
+	r.Register("wctrans", wideTransDescriptorExtern("wctrans"))
+	r.Register("towctrans", wideTowctransExtern("towctrans"))
+}
+
+func wideCtypeDescriptorExtern(name string) ExternFunc {
+	classes := map[string]uint64{
+		"alnum":  wideClassAlnum,
+		"alpha":  wideClassAlpha,
+		"blank":  wideClassBlank,
+		"cntrl":  wideClassCntrl,
+		"digit":  wideClassDigit,
+		"graph":  wideClassGraph,
+		"lower":  wideClassLower,
+		"print":  wideClassPrint,
+		"punct":  wideClassPunct,
+		"space":  wideClassSpace,
+		"upper":  wideClassUpper,
+		"xdigit": wideClassXDigit,
+	}
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, classes[s]), nil, nil
+	}
+}
+
+func wideIswctypeExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer arguments", name)
+		}
+		ch := signedInt(args[0])
+		desc := unsignedInt(args[1])
+		var ok bool
+		switch desc {
+		case wideClassAlnum:
+			ok = (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+		case wideClassAlpha:
+			ok = (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z')
+		case wideClassBlank:
+			ok = ch == ' ' || ch == '\t'
+		case wideClassCntrl:
+			ok = (ch >= 0 && ch < 0x20) || ch == 0x7f
+		case wideClassDigit:
+			ok = ch >= '0' && ch <= '9'
+		case wideClassGraph:
+			ok = ch >= 0x21 && ch <= 0x7e
+		case wideClassLower:
+			ok = ch >= 'a' && ch <= 'z'
+		case wideClassPrint:
+			ok = ch >= 0x20 && ch <= 0x7e
+		case wideClassPunct:
+			ok = (ch >= 0x21 && ch <= 0x2f) || (ch >= 0x3a && ch <= 0x40) || (ch >= 0x5b && ch <= 0x60) || (ch >= 0x7b && ch <= 0x7e)
+		case wideClassSpace:
+			ok = ch >= 0 && ch <= 0x7f && isASCIIWhitespace(byte(ch))
+		case wideClassUpper:
+			ok = ch >= 'A' && ch <= 'Z'
+		case wideClassXDigit:
+			ok = (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f')
+		}
+		if ch == -1 || !ok {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		return IntValue(bytecode.TypeI32, 1), nil, nil
+	}
+}
+
+func wideTransDescriptorExtern(name string) ExternFunc {
+	transforms := map[string]uint64{
+		"tolower": wideTransToLower,
+		"toupper": wideTransToUpper,
+	}
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects string pointer", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		s, err := ec.Memory.ReadCString(args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, transforms[s]), nil, nil
+	}
+}
+
+func wideTowctransExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isIntegerLike(args[0].Type) || !isIntegerLike(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects integer arguments", name)
+		}
+		ch := signedInt(args[0])
+		if ch == -1 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		switch unsignedInt(args[1]) {
+		case wideTransToLower:
+			return IntValue(bytecode.TypeI32, wideToLower(ch)), nil, nil
+		case wideTransToUpper:
+			return IntValue(bytecode.TypeI32, wideToUpper(ch)), nil, nil
+		default:
+			return IntValue(bytecode.TypeI32, ch), nil, nil
+		}
 	}
 }
 
@@ -1553,10 +2362,10 @@ func ctypeCaseExtern(name string, convert func(byte) byte) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s expects integer argument", name)
 		}
 		ch := signedInt(args[0])
-		if ch < 0 || ch > 255 {
-			return IntValue(bytecode.TypeI32, ch), nil, nil
+		if ch == -1 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
 		}
-		return IntValue(bytecode.TypeI32, int64(convert(byte(ch)))), nil, nil
+		return IntValue(bytecode.TypeI32, int64(convert(byte(unsignedInt(args[0]))))), nil, nil
 	}
 }
 
@@ -1595,7 +2404,8 @@ func fwriteExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, err
 		}
 		if _, err := w.Write(block.data[off : off+int(total)]); err != nil {
-			return Value{}, nil, err
+			r.hostError[args[3].Int] = true
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
 		}
 		return UIntValue(bytecode.TypeU64, uint64(count)), nil, nil
 	}
@@ -1614,6 +2424,9 @@ func freadExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		if _, ok := r.lookupHostWriter(args[3].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[3].Int)
+		}
+		if r.markHostReadErrorIfUnreadable(args[3].Int) {
+			return UIntValue(bytecode.TypeU64, 0), nil, nil
 		}
 		size, err := memorySizeArg(name, args[1])
 		if err != nil {
@@ -1664,6 +2477,9 @@ func streamStatusExtern(name string, r *ExternRegistry) ExternFunc {
 		if (name == "feof" || name == "feof_unlocked") && r.hostEOF[args[0].Int] {
 			return IntValue(bytecode.TypeI32, 1), nil, nil
 		}
+		if (name == "ferror" || name == "ferror_unlocked") && r.hostError[args[0].Int] {
+			return IntValue(bytecode.TypeI32, 1), nil, nil
+		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
@@ -1680,6 +2496,7 @@ func clearerrExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
 		r.hostEOF[args[0].Int] = false
+		r.hostError[args[0].Int] = false
 		return Value{}, nil, nil
 	}
 }
@@ -1802,6 +2619,12 @@ func registerOutputFormatExterns(r *ExternRegistry) {
 	r.Register("__builtin___fprintf_chk", fprintfCheckedExtern("__builtin___fprintf_chk", r))
 	r.Register("__builtin___vprintf_chk", vprintfCheckedExtern("__builtin___vprintf_chk", r))
 	r.Register("__builtin___vfprintf_chk", vfprintfCheckedExtern("__builtin___vfprintf_chk", r))
+}
+
+func registerInputFormatExterns(r *ExternRegistry) {
+	r.Register("scanf", scanfExtern("scanf", r))
+	r.Register("fscanf", fscanfExtern("fscanf", r))
+	r.Register("sscanf", sscanfExtern("sscanf"))
 }
 
 func registerMathExterns(r *ExternRegistry) {
@@ -2819,15 +3642,37 @@ func stringNCompareExtern(name string) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		left, err := ec.Memory.ReadCString(args[0].Int)
-		if err != nil {
-			return Value{}, nil, err
+		if n == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
 		}
-		right, err := ec.Memory.ReadCString(args[1].Int)
-		if err != nil {
-			return Value{}, nil, err
+		for i := int64(0); i < n; i++ {
+			leftAddr, err := addSignedOffset(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			rightAddr, err := addSignedOffset(args[1].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			left, err := readMemoryByte(ec.Memory, leftAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			right, err := readMemoryByte(ec.Memory, rightAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if left < right {
+				return IntValue(bytecode.TypeI32, -1), nil, nil
+			}
+			if left > right {
+				return IntValue(bytecode.TypeI32, 1), nil, nil
+			}
+			if left == 0 {
+				return IntValue(bytecode.TypeI32, 0), nil, nil
+			}
 		}
-		return IntValue(bytecode.TypeI32, int64(strncmpResult(left, right, n))), nil, nil
+		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
 
@@ -3644,6 +4489,503 @@ func vfprintfCheckedExtern(name string, r *ExternRegistry) ExternFunc {
 			return Value{}, nil, err
 		}
 		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+	}
+}
+
+func scanfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 1 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects format string argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if r.stdinHandle == 0 {
+			if _, ok := r.LookupVariable("stdin", ec.Memory); !ok {
+				return Value{}, nil, fmt.Errorf("%s could not initialize stdin", name)
+			}
+		}
+		n, err := scanHostStream(name, r, ec.Memory, r.stdinHandle, args[0].Int, args[1:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(n)), nil, nil
+	}
+}
+
+func fscanfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 2 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream and format string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		n, err := scanHostStream(name, r, ec.Memory, args[0].Int, args[1].Int, args[2:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(n)), nil, nil
+	}
+}
+
+func sscanfExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) < 2 {
+			return Value{}, nil, fmt.Errorf("%s expects at least 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects input and format string arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		n, err := scanCString(name, ec.Memory, args[0].Int, args[1].Int, args[2:])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(n)), nil, nil
+	}
+}
+
+func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []Value) (int, error) {
+	input, err := mem.ReadCString(inputAddr)
+	if err != nil {
+		return 0, err
+	}
+	format, err := mem.ReadCString(formatAddr)
+	if err != nil {
+		return 0, err
+	}
+	assigned, _, inputFailure, err := scanString(name, mem, input, format, args)
+	if inputFailure && assigned == 0 {
+		return -1, err
+	}
+	return assigned, err
+}
+
+func scanHostStream(name string, r *ExternRegistry, mem *Memory, stream, formatAddr uint64, args []Value) (int, error) {
+	format, err := mem.ReadCString(formatAddr)
+	if err != nil {
+		return 0, err
+	}
+	if r.markHostReadErrorIfUnreadable(stream) {
+		return 0, nil
+	}
+	var input []byte
+	for {
+		ch, ok := r.readHostChar(stream)
+		if !ok {
+			break
+		}
+		input = append(input, ch)
+	}
+	assigned, consumed, inputFailure, err := scanString(name, mem, string(input), format, args)
+	if consumed < len(input) {
+		r.pushBackHostBytes(stream, input[consumed:])
+	}
+	if consumed == len(input) && len(input) == 0 {
+		r.hostEOF[stream] = true
+	}
+	if inputFailure && assigned == 0 {
+		return -1, err
+	}
+	return assigned, err
+}
+
+func (r *ExternRegistry) pushBackHostBytes(addr uint64, data []byte) {
+	for i := len(data) - 1; i >= 0; i-- {
+		r.hostPushback[addr] = append(r.hostPushback[addr], data[i])
+	}
+	if len(data) > 0 {
+		r.hostEOF[addr] = false
+	}
+}
+
+func (r *ExternRegistry) markHostReadErrorIfUnreadable(addr uint64) bool {
+	if file := r.hostFiles[addr]; file != nil {
+		if !file.readable {
+			r.hostError[addr] = true
+			return true
+		}
+		if file.updateMode && file.lastOp == hostFileOpWrite {
+			r.hostError[addr] = true
+			return true
+		}
+	}
+	return false
+}
+
+func scanString(name string, mem *Memory, input, format string, args []Value) (int, int, bool, error) {
+	inputIndex := 0
+	argIndex := 0
+	assigned := 0
+	for formatIndex := 0; formatIndex < len(format); formatIndex++ {
+		ch := format[formatIndex]
+		if isASCIIWhitespace(ch) {
+			for formatIndex+1 < len(format) && isASCIIWhitespace(format[formatIndex+1]) {
+				formatIndex++
+			}
+			inputIndex = scanSkipWhitespace(input, inputIndex)
+			continue
+		}
+		if ch != '%' {
+			if inputIndex >= len(input) || input[inputIndex] != ch {
+				return assigned, inputIndex, inputIndex >= len(input), nil
+			}
+			inputIndex++
+			continue
+		}
+		formatIndex++
+		if formatIndex >= len(format) {
+			return 0, inputIndex, false, fmt.Errorf("%s has trailing %% in format", name)
+		}
+		if format[formatIndex] == '%' {
+			if inputIndex >= len(input) || input[inputIndex] != '%' {
+				return assigned, inputIndex, inputIndex >= len(input), nil
+			}
+			inputIndex++
+			continue
+		}
+		suppress := false
+		if format[formatIndex] == '*' {
+			suppress = true
+			formatIndex++
+			if formatIndex >= len(format) {
+				return 0, inputIndex, false, fmt.Errorf("%s has trailing %% in format", name)
+			}
+		}
+		width := 0
+		for formatIndex < len(format) && format[formatIndex] >= '0' && format[formatIndex] <= '9' {
+			width = width*10 + int(format[formatIndex]-'0')
+			formatIndex++
+		}
+		lengthMod := ""
+		for formatIndex < len(format) {
+			switch format[formatIndex] {
+			case 'h', 'l':
+				lengthMod = string(format[formatIndex])
+				if formatIndex+1 < len(format) && format[formatIndex+1] == format[formatIndex] {
+					lengthMod += string(format[formatIndex])
+					formatIndex += 2
+				} else {
+					formatIndex++
+				}
+			case 'j', 'z', 't', 'L':
+				lengthMod = string(format[formatIndex])
+				formatIndex++
+			default:
+				goto verb
+			}
+		}
+	verb:
+		if formatIndex >= len(format) {
+			return 0, inputIndex, false, fmt.Errorf("%s has trailing %% in format", name)
+		}
+		verb := format[formatIndex]
+		if !suppress {
+			if argIndex >= len(args) {
+				return 0, inputIndex, false, fmt.Errorf("%s format needs more arguments", name)
+			}
+			if !isPointerType(args[argIndex].Type) {
+				return 0, inputIndex, false, fmt.Errorf("%s %%%c expects pointer argument", name, verb)
+			}
+		}
+		switch verb {
+		case 'd', 'i', 'u', 'x', 'X', 'o':
+			base := int64(10)
+			if verb == 'i' {
+				base = 0
+			} else if verb == 'x' || verb == 'X' {
+				base = 16
+			} else if verb == 'o' {
+				base = 8
+			}
+			inputIndex = scanSkipWhitespace(input, inputIndex)
+			if inputIndex >= len(input) {
+				return assigned, inputIndex, true, nil
+			}
+			token := scanLimit(input, inputIndex, width)
+			parsed, err := parseStrtoIntegerString(name, token, base)
+			if err != nil {
+				return 0, inputIndex, false, err
+			}
+			if !parsed.converted {
+				return assigned, inputIndex, false, nil
+			}
+			if !suppress {
+				unsigned := verb == 'u' || verb == 'x' || verb == 'X' || verb == 'o'
+				if err := scanStoreInteger(mem, args[argIndex].Int, lengthMod, unsigned, parsed); err != nil {
+					return 0, inputIndex, false, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex += parsed.end
+		case 'f', 'F', 'e', 'E', 'g', 'G', 'a', 'A':
+			inputIndex = scanSkipWhitespace(input, inputIndex)
+			if inputIndex >= len(input) {
+				return assigned, inputIndex, true, nil
+			}
+			token := scanLimit(input, inputIndex, width)
+			parsed := parseStrtoFloatString(token)
+			if !parsed.converted {
+				return assigned, inputIndex, false, nil
+			}
+			if !suppress {
+				if err := scanStoreFloat(mem, args[argIndex].Int, lengthMod, parsed.value); err != nil {
+					return 0, inputIndex, false, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex += parsed.end
+		case 'p':
+			if lengthMod != "" {
+				return 0, inputIndex, false, fmt.Errorf("%s %%p does not support length modifier %q", name, lengthMod)
+			}
+			inputIndex = scanSkipWhitespace(input, inputIndex)
+			if inputIndex >= len(input) {
+				return assigned, inputIndex, true, nil
+			}
+			token := scanLimit(input, inputIndex, width)
+			parsed, err := parseStrtoIntegerString(name, token, 16)
+			if err != nil {
+				return 0, inputIndex, false, err
+			}
+			if !parsed.converted {
+				return assigned, inputIndex, false, nil
+			}
+			if parsed.neg {
+				return 0, inputIndex, false, fmt.Errorf("%s %%p does not support negative pointer input", name)
+			}
+			if !suppress {
+				if err := mem.WritePointer(args[argIndex].Int, parsed.value); err != nil {
+					return 0, inputIndex, false, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex += parsed.end
+		case 'n':
+			if width != 0 {
+				return 0, inputIndex, false, fmt.Errorf("%s %%n does not support width", name)
+			}
+			if !suppress {
+				countType, countAlign := scanIntegerType(lengthMod, false)
+				if err := mem.Store(args[argIndex].Int, countType, countAlign, normalizeInt(IntValue(countType, int64(inputIndex)))); err != nil {
+					return 0, inputIndex, false, err
+				}
+				argIndex++
+			}
+		case 's':
+			inputIndex = scanSkipWhitespace(input, inputIndex)
+			if inputIndex >= len(input) {
+				return assigned, inputIndex, true, nil
+			}
+			end := inputIndex
+			limit := len(input)
+			if width > 0 && inputIndex+width < limit {
+				limit = inputIndex + width
+			}
+			for end < limit && !isASCIIWhitespace(input[end]) {
+				end++
+			}
+			if end == inputIndex {
+				return assigned, inputIndex, false, nil
+			}
+			if !suppress {
+				data := append([]byte(input[inputIndex:end]), 0)
+				if err := writeMemoryBytes(mem, args[argIndex].Int, data); err != nil {
+					return 0, inputIndex, false, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex = end
+		case 'c':
+			count := width
+			if count == 0 {
+				count = 1
+			}
+			if inputIndex+count > len(input) {
+				return assigned, inputIndex, true, nil
+			}
+			if !suppress {
+				if err := writeMemoryBytes(mem, args[argIndex].Int, []byte(input[inputIndex:inputIndex+count])); err != nil {
+					return 0, inputIndex, false, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex += count
+		case '[':
+			matches, nextFormatIndex, err := parseScanSet(name, format, formatIndex)
+			if err != nil {
+				return 0, inputIndex, false, err
+			}
+			formatIndex = nextFormatIndex
+			end := inputIndex
+			limit := len(input)
+			if width > 0 && inputIndex+width < limit {
+				limit = inputIndex + width
+			}
+			for end < limit && matches(input[end]) {
+				end++
+			}
+			if end == inputIndex {
+				return assigned, inputIndex, inputIndex >= len(input), nil
+			}
+			if !suppress {
+				data := append([]byte(input[inputIndex:end]), 0)
+				if err := writeMemoryBytes(mem, args[argIndex].Int, data); err != nil {
+					return 0, inputIndex, false, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex = end
+		default:
+			return 0, inputIndex, false, fmt.Errorf("%s unsupported scan format %%%c", name, verb)
+		}
+	}
+	return assigned, inputIndex, false, nil
+}
+
+func parseScanSet(name, format string, open int) (func(byte) bool, int, error) {
+	i := open + 1
+	if i >= len(format) {
+		return nil, open, fmt.Errorf("%s has unterminated scan set", name)
+	}
+	negated := false
+	if format[i] == '^' {
+		negated = true
+		i++
+	}
+	if i >= len(format) {
+		return nil, open, fmt.Errorf("%s has unterminated scan set", name)
+	}
+	members := make(map[byte]bool)
+	if format[i] == ']' {
+		members[']'] = true
+		i++
+	}
+	for i < len(format) && format[i] != ']' {
+		start := format[i]
+		if i+2 < len(format) && format[i+1] == '-' && format[i+2] != ']' {
+			end := format[i+2]
+			if start <= end {
+				for ch := start; ch <= end; ch++ {
+					members[ch] = true
+				}
+			} else {
+				for ch := start; ch >= end; ch-- {
+					members[ch] = true
+					if ch == 0 {
+						break
+					}
+				}
+			}
+			i += 3
+			continue
+		}
+		members[start] = true
+		i++
+	}
+	if i >= len(format) || format[i] != ']' {
+		return nil, open, fmt.Errorf("%s has unterminated scan set", name)
+	}
+	return func(ch byte) bool {
+		contained := members[ch]
+		if negated {
+			return !contained
+		}
+		return contained
+	}, i, nil
+}
+
+func scanSkipWhitespace(s string, i int) int {
+	for i < len(s) && isASCIIWhitespace(s[i]) {
+		i++
+	}
+	return i
+}
+
+func scanLimit(s string, start, width int) string {
+	if width <= 0 || start+width > len(s) {
+		return s[start:]
+	}
+	return s[start : start+width]
+}
+
+func scanStoreInteger(mem *Memory, addr uint64, lengthMod string, unsigned bool, parsed parsedStrtoInteger) error {
+	t, align := scanIntegerType(lengthMod, unsigned)
+	if unsigned {
+		v := parsed.value
+		if parsed.neg {
+			v = -v
+		}
+		return mem.Store(addr, t, align, normalizeInt(UIntValue(t, v)))
+	}
+	v := int64(parsed.value)
+	if parsed.neg {
+		v = -v
+	}
+	return mem.Store(addr, t, align, normalizeInt(IntValue(t, v)))
+}
+
+func scanStoreFloat(mem *Memory, addr uint64, lengthMod string, value float64) error {
+	t, align, err := scanFloatType(lengthMod)
+	if err != nil {
+		return err
+	}
+	return mem.Store(addr, t, align, FloatValue(t, value))
+}
+
+func scanFloatType(lengthMod string) (bytecode.ValueType, int64, error) {
+	switch lengthMod {
+	case "":
+		return bytecode.TypeF32, 4, nil
+	case "l":
+		return bytecode.TypeF64, 8, nil
+	case "L":
+		return bytecode.TypeFLong, 8, nil
+	default:
+		return bytecode.TypeVoid, 0, fmt.Errorf("unsupported scanf floating length modifier %q", lengthMod)
+	}
+}
+
+func scanIntegerType(lengthMod string, unsigned bool) (bytecode.ValueType, int64) {
+	switch lengthMod {
+	case "hh":
+		if unsigned {
+			return bytecode.TypeU8, 1
+		}
+		return bytecode.TypeI8, 1
+	case "h":
+		if unsigned {
+			return bytecode.TypeU16, 2
+		}
+		return bytecode.TypeI16, 2
+	case "l", "ll", "j", "z", "t":
+		if unsigned {
+			return bytecode.TypeU64, 8
+		}
+		return bytecode.TypeI64, 8
+	default:
+		if unsigned {
+			return bytecode.TypeU32, 4
+		}
+		return bytecode.TypeI32, 4
 	}
 }
 
@@ -4619,6 +5961,73 @@ func (r *ExternRegistry) staticI32Variable(mem *Memory, name string, initial int
 	return addr, nil
 }
 
+func (r *ExternRegistry) staticBlock(mem *Memory, name string, size, align int64) (uint64, bool, error) {
+	if mem == nil {
+		return 0, false, fmt.Errorf("memory is nil")
+	}
+	if byName := r.staticBlocks[mem]; byName != nil {
+		if addr, ok := byName[name]; ok {
+			return addr, false, nil
+		}
+	}
+	addr, err := mem.TryAlloc("extern:"+name, size, align, false, blockGlobal)
+	if err != nil {
+		return 0, false, err
+	}
+	if r.staticBlocks[mem] == nil {
+		r.staticBlocks[mem] = make(map[string]uint64)
+	}
+	r.staticBlocks[mem][name] = addr
+	return addr, true, nil
+}
+
+func (r *ExternRegistry) staticLocaleconv(mem *Memory) (uint64, error) {
+	ptrSize := mem.target.PointerSize
+	ptrAlign := mem.target.PointerAlign
+	size := alignInt64(int64(len(localeconvPointerFields))*ptrSize+int64(len(localeconvCharFields)), ptrAlign)
+	addr, created, err := r.staticBlock(mem, "localeconv", size, ptrAlign)
+	if err != nil || !created {
+		return addr, err
+	}
+	for i, field := range localeconvPointerFields {
+		fieldAddr, err := r.staticCString(mem, "localeconv:"+field.name, field.value)
+		if err != nil {
+			return 0, err
+		}
+		if err := mem.Store(addr+uint64(int64(i)*ptrSize), bytecode.TypePtr, ptrAlign, PtrValue(fieldAddr)); err != nil {
+			return 0, err
+		}
+	}
+	charBase := addr + uint64(int64(len(localeconvPointerFields))*ptrSize)
+	for i := range localeconvCharFields {
+		if err := mem.Store(charBase+uint64(i), bytecode.TypeI8, 1, IntValue(bytecode.TypeI8, 127)); err != nil {
+			return 0, err
+		}
+	}
+	return addr, nil
+}
+
+func alignInt64(v, align int64) int64 {
+	if align <= 1 {
+		return v
+	}
+	if rem := v % align; rem != 0 {
+		v += align - rem
+	}
+	return v
+}
+
+func (r *ExternRegistry) setErrno(mem *Memory, value int32) error {
+	if r == nil {
+		return nil
+	}
+	addr, err := r.staticI32Variable(mem, "errno", 0)
+	if err != nil {
+		return err
+	}
+	return mem.Store(addr, bytecode.TypeI32, 4, IntValue(bytecode.TypeI32, int64(value)))
+}
+
 func (r *ExternRegistry) lookupHostWriter(addr uint64) (io.Writer, bool) {
 	if r.hostClosed[addr] {
 		return nil, false
@@ -4639,6 +6048,9 @@ func (r *ExternRegistry) readHostChar(addr uint64) (byte, bool) {
 			}
 			ch := file.data[file.pos]
 			file.pos++
+			if file.updateMode {
+				file.lastOp = hostFileOpRead
+			}
 			return ch, true
 		}
 		if addr == r.stdinHandle && r.stdin != nil {
@@ -4680,5 +6092,6 @@ func (r *ExternRegistry) allocHostWriter(name string, mem *Memory, w io.Writer, 
 	r.hostWriters[addr] = w
 	r.hostFDs[addr] = fd
 	delete(r.hostClosed, addr)
+	delete(r.hostError, addr)
 	return addr, nil
 }

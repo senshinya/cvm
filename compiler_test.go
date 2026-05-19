@@ -190,3 +190,42 @@ func TestRunBytecodeForwardsArgs(t *testing.T) {
 		t.Fatalf("runMain exit code = %d, want 9", code)
 	}
 }
+
+func TestRunBytecodeConfiguresStdin(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "main.c")
+	out := filepath.Join(dir, "main.cvmbc")
+	source := `#include <stdio.h>
+int main(void) {
+	return getchar() == 'Z' ? 0 : 1;
+}`
+	if err := os.WriteFile(src, []byte(source), 0644); err != nil {
+		t.Fatalf("write source: %v", err)
+	}
+	if err := (&Compiler{EmitBytecode: out}).RunFile(src); err != nil {
+		t.Fatalf("emit bytecode: %v", err)
+	}
+	if code := runMain([]string{"run", "--stdin", "Z", out}); code != 0 {
+		t.Fatalf("runMain exit code = %d, want 0", code)
+	}
+}
+
+func TestRunBytecodeConfiguresEnvironment(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "main.c")
+	out := filepath.Join(dir, "main.cvmbc")
+	source := `#include <stdlib.h>
+int main(void) {
+	char *value = getenv("CVM_TEST");
+	return value && value[0] == 'o' && value[1] == 'k' ? 0 : 1;
+}`
+	if err := os.WriteFile(src, []byte(source), 0644); err != nil {
+		t.Fatalf("write source: %v", err)
+	}
+	if err := (&Compiler{EmitBytecode: out}).RunFile(src); err != nil {
+		t.Fatalf("emit bytecode: %v", err)
+	}
+	if code := runMain([]string{"run", "--env", "CVM_TEST=ok", out}); code != 0 {
+		t.Fatalf("runMain exit code = %d, want 0", code)
+	}
+}

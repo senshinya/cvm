@@ -1,0 +1,339 @@
+# Phase 9 Floating Conversion Errno Fidelity Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Close deterministic C-locale floating conversion range, errno, NaN/Inf, and end-pointer fidelity gaps left after Phase 8.
+
+**Architecture:** Preserve the deterministic hosted-runtime model. Strengthen parsing and range handling in `runtime/extern.go`, direct coverage in `runtime/extern_test.go`, source-level coverage in `runtime/gcc_exec_test.go`, and closure docs/gap maps.
+
+**Tech Stack:** Go runtime externs, bytecode memory helpers, deterministic hosted registry state, GCC-style source execution tests.
+
+---
+
+## Milestone 1: Baseline And Branch Setup
+
+Calibration before execution: Start from Phase 8 closure on `codex/bytecode-runtime-phase-9`.
+
+- [x] Create/switch Phase 9 branch.
+- [x] Re-read Phase 9 roadmap.
+- [x] Run baseline verification.
+- [x] Commit branch setup docs if needed.
+
+Baseline:
+
+- Created `codex/bytecode-runtime-phase-9` from Phase 8 closure commit `b1b0f01`.
+- Phase 9 contains 22 milestones covering floating conversion errno/range behavior, NaN/Inf parsing, header/registry recheck, GCC fixture recheck, gap map, and closure docs.
+- Phase 10 roadmap was created alongside Phase 9 so the next phase can start immediately after Phase 9 closure.
+- No runtime code changes were needed for branch setup.
+
+## Milestone 2: Errno Static Variable Baseline
+
+Calibration before execution: Re-read `LookupVariable("errno")`, static var storage, and existing errno tests.
+
+- [x] Add direct tests proving `errno` is per-memory stable and initially zero.
+- [x] Add source-level smoke for reading/writing `errno`.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): recheck errno storage`.
+
+Findings:
+
+- Existing direct coverage already checked one-memory stable `errno` address and read/write behavior.
+- Existing source-level runtime coverage already checked `<errno.h>` constants and source read/write.
+- Added direct coverage proving a second `Memory` gets its own stable, initially zero `errno` under the same registry.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestErrno' -count=1` passed.
+
+## Milestone 3: Floating Conversion Errno Preservation
+
+Calibration before execution: Re-read `strtoFloatExtern`, `atofExtern`, and current errno behavior.
+
+- [x] Add tests proving successful `strtod` does not alter nonzero `errno`.
+- [x] Add tests proving no-conversion `strtod` does not alter nonzero `errno`.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): preserve errno in float parsing`.
+
+Findings:
+
+- `strtoFloatExtern` did not write `errno`; the missing piece was regression coverage.
+- Added direct extern and source-level runtime tests proving successful `strtod` and no-conversion `strtod` preserve a nonzero `errno`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
+
+## Milestone 4: `strtod` Infinity Spelling
+
+Calibration before execution: Check `strconv.ParseFloat` behavior for `inf`, `infinity`, sign, and end index.
+
+- [x] Add direct/source tests for `inf`, `+infinity`, `-INF`, trailing text, and endptr.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): cover strtod infinity parsing`.
+
+Findings:
+
+- Existing parser behavior already accepted infinity spellings through `strconv.ParseFloat`.
+- Added direct extern and source-level runtime coverage for `inf`, `+infinity`, `-INF`, trailing text, and end pointers.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
+
+## Milestone 5: `strtod` NaN Spelling
+
+Calibration before execution: Check accepted NaN spellings and deterministic payload policy.
+
+- [x] Add direct/source tests for `nan`, `NAN`, `nan(payload)`, trailing text, and endptr.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `feat(runtime): cover strtod nan parsing`.
+
+Findings:
+
+- Tests exposed that `nan(payload)` previously parsed as `nan` but left the payload in `endptr`.
+- Added a deterministic NaN special-token parser that consumes a balanced parenthesized payload when present.
+- Added direct extern and source-level runtime coverage for `nan`, `NAN`, `nan(payload)`, trailing text, and end pointers.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed after the fix.
+
+## Milestone 6: `nan` Family Payload Inputs
+
+Calibration before execution: Re-read `mathNanExtern` and existing `nan/nanf/nanl` tests.
+
+- [x] Add tests for empty payload, numeric payload, and nonnumeric payload for `nan`, `nanf`, and `nanl`.
+- [x] Add source-level runtime coverage.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover nan payload inputs`.
+
+Findings:
+
+- `mathNanExtern` intentionally ignores payload text and returns a deterministic NaN of the requested return type.
+- Added direct extern coverage for empty, numeric, and nonnumeric payloads across `nan`, `nanf`, and `nanl`.
+- Added source-level runtime coverage for payload inputs.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestPlainMathNanExterns|TestBuiltinFloatingConstantsExecuteThroughRuntime' -count=1` passed.
+
+## Milestone 7: Decimal Overflow Range Trapdoor
+
+Calibration before execution: Determine deterministic range policy for `strtod("1e309")` and errno.
+
+- [x] Add direct/source tests for positive and negative decimal overflow returning infinities.
+- [x] Set `errno` to `ERANGE` on overflow.
+- [x] Verify, commit, and push `feat(runtime): mark strtod decimal overflow`.
+
+Findings:
+
+- `strconv.ParseFloat` reports `ErrRange` for overflowing tokens while still returning the correctly signed infinity.
+- The previous backtracking parser could ignore `ErrRange` and accept a shorter prefix, so `1e309!` could lose the intended end pointer.
+- `ErrRange` is now treated as a successful conversion with range status, preserving the full token end pointer and setting `errno` to `ERANGE`.
+- Added direct extern and source-level runtime coverage for positive and negative decimal overflow.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
+
+## Milestone 8: Decimal Underflow Range Trapdoor
+
+Calibration before execution: Check small decimal parsing and deterministic underflow threshold.
+
+- [x] Add direct/source tests for decimal underflow to zero.
+- [x] Set `errno` to `ERANGE` on underflow-to-zero.
+- [x] Preserve successful subnormal parsing behavior.
+- [x] Verify, commit, and push `feat(runtime): mark strtod decimal underflow`.
+
+Findings:
+
+- Go's `strconv.ParseFloat` returns nil error for `1e-400`/`-1e-400`, so underflow-to-zero needed an explicit significand check.
+- Added detection for parsed zero values whose significand contains a nonzero digit, while preserving exact zero inputs and representable subnormal values.
+- Added direct extern and source-level runtime coverage for positive underflow, negative underflow, and the smallest positive subnormal `5e-324`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed after the fix.
+
+## Milestone 9: Hex Float Overflow Range Trapdoor
+
+Calibration before execution: Check `0x1p+2048` parsing behavior and endptr behavior.
+
+- [x] Add direct/source tests for positive and negative hex overflow.
+- [x] Set `errno` to `ERANGE` on overflow.
+- [x] Verify, commit, and push `feat(runtime): mark strtod hex overflow`.
+
+Findings:
+
+- `strconv.ParseFloat` reports `ErrRange` for `0x1p+2048` and `-0x1p+2048`, so the range path added for decimal overflow also covers hex overflow.
+- Added direct extern and source-level runtime coverage for positive and negative hex overflow, including end pointer checks after the full hex token.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
+
+## Milestone 10: Hex Float Underflow Range Trapdoor
+
+Calibration before execution: Check tiny hex float parsing and deterministic zero/subnormal boundary.
+
+- [x] Add direct/source tests for hex underflow to zero.
+- [x] Set `errno` to `ERANGE` on underflow-to-zero.
+- [x] Verify, commit, and push `feat(runtime): mark strtod hex underflow`.
+
+Findings:
+
+- `strconv.ParseFloat` also returns nil error for `0x1p-20000` and `-0x1p-20000`, so the explicit nonzero-significand underflow detector is required for hex tokens too.
+- The detector correctly stops at `p`/`P` for hex exponents, preserving exact zero hex inputs and representable hex subnormals.
+- Added direct extern and source-level runtime coverage for positive hex underflow, negative hex underflow, and `0x1p-1074`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
+
+## Milestone 11: `strtof` Float32 Overflow
+
+Calibration before execution: Confirm `strtof` currently parses at float64 precision before returning TypeF32.
+
+- [x] Add direct/source tests for float32 overflow.
+- [x] Return signed float32 infinities and set `errno` to `ERANGE`.
+- [x] Verify, commit, and push `feat(runtime): mark strtof overflow`.
+
+Findings:
+
+- `FloatValue(TypeF32, ...)` records the float64 payload as-is, so `strtof` needed target-type normalization before returning.
+- Added `strtof` result normalization that narrows to float32 and marks `ERANGE` when the narrowed value becomes a signed infinity.
+- Added direct extern and source-level runtime coverage for positive and negative float32 overflow, including end pointers and `errno`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibMoreFloatParser' -count=1` passed after the fix.
+
+## Milestone 12: `strtof` Float32 Underflow
+
+Calibration before execution: Confirm float32 underflow/subnormal behavior in runtime values.
+
+- [x] Add direct/source tests for float32 underflow to zero.
+- [x] Set `errno` to `ERANGE` on underflow-to-zero.
+- [x] Preserve representable float32 subnormals where possible.
+- [x] Verify, commit, and push `feat(runtime): mark strtof underflow`.
+
+Findings:
+
+- The float32 normalization added for overflow also detects underflow when a nonzero parsed float64 narrows to signed float32 zero.
+- Added direct extern and source-level runtime coverage for positive and negative float32 underflow-to-zero.
+- Added subnormal coverage proving `1e-45` narrows to the smallest float32 subnormal without setting `errno`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibMoreFloatParser' -count=1` passed.
+
+## Milestone 13: `strtold` Current Flong Overflow
+
+Calibration before execution: Reconfirm current `TypeFLong` is binary64-backed.
+
+- [x] Add direct/source tests documenting current flong overflow behavior.
+- [x] Set `errno` to `ERANGE` consistently with current representation.
+- [x] Verify, commit, and push `feat(runtime): mark strtold overflow`.
+
+Findings:
+
+- Current `TypeFLong` values are binary64-backed, so `strtold` intentionally follows the same overflow boundary as `strtod` for now.
+- Added direct extern and source-level runtime coverage for positive and negative `strtold` overflow, including end pointers and `errno`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibMoreFloatParser' -count=1` passed.
+
+## Milestone 14: `strtold` Current Flong Underflow
+
+Calibration before execution: Reconfirm current flong underflow behavior.
+
+- [x] Add direct/source tests documenting current flong underflow-to-zero behavior.
+- [x] Set `errno` to `ERANGE` consistently with current representation.
+- [x] Verify, commit, and push `feat(runtime): mark strtold underflow`.
+
+Findings:
+
+- Current `TypeFLong` underflow follows the binary64-backed `strtod` path.
+- Added direct extern and source-level runtime coverage for positive and negative `strtold` underflow-to-zero.
+- Added subnormal coverage proving `5e-324` remains representable without setting `errno`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibMoreFloatParser' -count=1` passed.
+
+## Milestone 15: `atof` Wrapper Range Behavior
+
+Calibration before execution: Re-read `atofExtern` and decide whether wrapper writes errno through shared parser.
+
+- [x] Add direct/source tests for `atof` overflow, underflow, and no-conversion.
+- [x] Reuse shared float parser range handling.
+- [x] Verify, commit, and push `feat(runtime): align atof range behavior`.
+
+Findings:
+
+- `atof` now uses the shared float parser range status and writes `errno=ERANGE` for overflow and underflow-to-zero.
+- Added direct extern and source-level runtime coverage proving no-conversion preserves nonzero `errno`.
+- Added direct/source coverage for `atof` overflow and underflow without an end pointer surface.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
+
+## Milestone 16: Endptr With Range Errors
+
+Calibration before execution: Check `strtoFloatExtern` endptr calculation after range errors.
+
+- [x] Add direct/source tests proving overflow and underflow still set `endptr` after the consumed token.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover float range endptr`.
+
+Findings:
+
+- The previous range milestones already added direct end-pointer assertions for decimal `strtod`, hex `strtod`, `strtof`, and `strtold` overflow/underflow cases.
+- Source-level fixtures also check the trailing byte after every range conversion, covering both overflow and underflow paths.
+- No additional runtime change was needed; this milestone records the endptr audit and keeps the focused coverage from Milestones 7-14 as the executable proof.
+
+## Milestone 17: Errno Direct Extern Sweep
+
+Calibration before execution: Search direct extern tests for all floating conversion errno cases.
+
+- [x] Add helper coverage if duplicated errno setup/assertions are brittle.
+- [x] Ensure no-conversion, success, overflow, and underflow are all represented.
+- [x] Verify, commit, and push `test(runtime): sweep float errno externs`.
+
+Findings:
+
+- Direct extern coverage now includes success errno preservation, no-conversion errno preservation, overflow `ERANGE`, and underflow `ERANGE`.
+- Coverage spans `atof`, `strtod`, `strtof`, and current binary64-backed `strtold`.
+- Existing direct checks also assert signed infinity/zero behavior and end pointers where applicable, so no extra helper was needed.
+
+## Milestone 18: Source Runtime Sweep
+
+Calibration before execution: Search `runtime/gcc_exec_test.go` for Phase 9 source-level surfaces.
+
+- [x] Ensure source tests cover `errno`, `ERANGE`, `strtod`, `strtof`, `strtold`, `atof`, `nan`, and infinity paths.
+- [x] Add one compact source fixture if missing.
+- [x] Verify, commit, and push `test(runtime): sweep float errno source coverage`.
+
+Findings:
+
+- `TestStdlibFloatParserExecuteThroughRuntime` covers `atof`, `strtod`, success/no-conversion errno preservation, infinity, NaN spellings, decimal/hex overflow, decimal/hex underflow, and subnormal preservation.
+- `TestStdlibMoreFloatParserExecuteThroughRuntime` covers `strtof` and current binary64-backed `strtold` overflow, underflow, subnormal, `ERANGE`, and end pointers.
+- Existing source fixtures already covered all Phase 9 runtime surfaces; no additional source fixture was needed.
+
+## Milestone 19: Header/Registry Recheck
+
+Calibration before execution: Search errno/math/stdlib headers and extern registry for touched Phase 9 surfaces.
+
+- [x] Record declaration/registration/test surface status.
+- [x] Add smoke coverage if missing.
+- [x] Verify, commit, and push `docs: record phase 9 header registry recheck`.
+
+Findings:
+
+- `<errno.h>` exposes `EDOM`, `ERANGE`, `EILSEQ`, and `extern int errno;`.
+- `<stdlib.h>` declares `atof`, `strtod`, `strtof`, and `strtold`; `<math.h>` declares `nan`, `nanf`, `nanl`, and infinity/HUGE macros.
+- `DefaultExternRegistry` registers `atof`, `strtod`, `strtof`, `strtold`, `nan`, `nanf`, and `nanl`; `LookupVariable("errno")` routes to the per-memory static variable.
+- Existing direct and source smoke coverage reaches those surfaces, so no missing declaration or registration was found.
+
+## Milestone 20: GCC Runtime Fixture Recheck
+
+Calibration before execution: Run gap report and scan GCC accept roots for newly stable floating conversion candidates.
+
+- [x] Run `TestGCCExecutionGapReportIsCurrent`.
+- [x] Scan fixture roots for float conversion, errno, nan, inf, and range candidates.
+- [x] Add a low-risk fixture only if stable.
+- [x] Verify, commit, and push `docs: record phase 9 gcc fixture recheck`.
+
+Findings:
+
+- `TestGCCExecutionGapReportIsCurrent` passed.
+- Scanned GCC accept roots for `strtod`, `strtof`, `strtold`, `atof`, `errno`, `ERANGE`, NaN, infinity, and range candidates.
+- Relevant compile fixtures such as `float-range-3.c`, `float-range-4.c`, `float-range-5.c`, and `pr19984.c` are already present in `codegen/testdata/gcc-bytecode-compile.tsv`.
+- No new low-risk GCC fixture was added for this milestone; Phase 9 behavior is covered by targeted runtime source fixtures.
+
+## Milestone 21: Phase 9 Residual Gap Map
+
+Calibration before execution: Confirm all Phase 9 implementation milestones are committed and pushed.
+
+- [x] Create `docs/phase9-floating-conversion-errno-fidelity-gap-map.md`.
+- [x] Record closed surfaces and residual deterministic limits.
+- [x] Verify, commit, and push `docs: map phase 9 float conversion gaps`.
+
+Findings:
+
+- Added the Phase 9 gap map with closed conversion/errno/range surfaces, recheck results, and residual deterministic limits.
+- Residuals explicitly document current binary64-backed `long double`, deterministic C-locale parsing, NaN payload-bit non-preservation, and deferred native-libc errno corner cases.
+
+## Milestone 22: Phase 9 Closure Docs
+
+Calibration before execution: Confirm all prior Phase 9 milestones are committed and pushed.
+
+- [x] Update `docs/bytecode-runtime-handoff.md`.
+- [x] Mark this plan complete.
+- [x] Run standard verification, commit `docs: close phase 9 float conversion work`, and push.
+
+Findings:
+
+- Updated the handoff document to point at `codex/bytecode-runtime-phase-9`.
+- Added Phase 9 closure notes and linked the new Phase 9 gap map.
+- All Phase 9 milestones are complete and ready for final verification.
