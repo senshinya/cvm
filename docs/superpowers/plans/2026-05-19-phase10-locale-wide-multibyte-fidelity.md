@@ -333,6 +333,6 @@ Calibration before execution: Confirm all Phase 10 implementation milestones are
 
 Calibration before execution: Confirm all prior Phase 10 milestones are committed and pushed.
 
-- [ ] Update `docs/bytecode-runtime-handoff.md`.
-- [ ] Mark this plan complete.
-- [ ] Run standard verification, commit `docs: close phase 10 locale wide work`, and push.
+- [x] Update `docs/bytecode-runtime-handoff.md`.
+- [x] Mark this plan complete.
+- [x] Run standard verification, commit `docs: close phase 10 locale wide work`, and push.

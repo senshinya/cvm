@@ -8,10 +8,10 @@ This document records the current state of the bytecode/runtime work so the bran
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-9`
-- Latest implementation/coverage commit before this handoff document update: `69f387e docs: map phase 9 float conversion gaps`
+- Branch: `codex/bytecode-runtime-phase-10`
+- Latest implementation/coverage commit before this handoff document update: `da55d45 docs: map phase 10 locale wide gaps`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: `origin/codex/bytecode-runtime-phase-8`
+- Upstream: `origin/codex/bytecode-runtime-phase-9`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-9 origin/codex/bytecode-runtime-phase-9
+git switch -c codex/bytecode-runtime-phase-10 origin/codex/bytecode-runtime-phase-10
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-9` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-10` instead.
 
 ## Verification Commands
 
@@ -209,6 +209,36 @@ Residual bounded surfaces after Phase 9:
 - Floating conversion remains deterministic C-locale parsing, not host-locale parsing.
 - NaN payload text is consumed deterministically, but payload bits are not preserved.
 - Exact native libc errno corner cases beyond overflow and underflow-to-zero remain out of scope until a fixture or workflow requires them.
+
+## Phase 10 Closure
+
+Phase 10 locale, wide-character, and restartable multibyte fidelity is closed on `codex/bytecode-runtime-phase-10`.
+
+Closed Phase 10 milestones:
+
+- Added `docs/phase10-locale-model.md` to pin the deterministic C-locale boundary for locale and multibyte behavior.
+- Extended deterministic `setlocale` category tracking across standard `LC_*` categories.
+- Added builtin `<locale.h>` `struct lconv` and `localeconv` declarations.
+- Implemented per-memory C-locale `localeconv` storage and source-level coverage.
+- Added builtin `<wchar.h>` and `<wctype.h>` declarations for `wchar_t`, `wint_t`, `mbstate_t`, `WEOF`, wide ctype, wide case conversion, descriptors, and restartable multibyte functions.
+- Implemented C-locale wide ctype classification, wide case conversion, `wctype`, `iswctype`, `wctrans`, and `towctrans`.
+- Added opaque C-locale `mbstate_t` support and restartable multibyte externs: `mbrlen`, `mbrtowc`, `wcrtomb`, `mbsrtowcs`, and `wcsrtombs`.
+- Added source-level runtime coverage for localeconv, wide ctype/case/descriptor workflows, and restartable multibyte conversion.
+- Rechecked header, registry, direct extern, source runtime, and GCC fixture surfaces for Phase 10.
+- Added `docs/phase10-locale-wide-multibyte-fidelity-gap-map.md`.
+
+Phase 10 recheck:
+
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed with 18 runnable manifest candidates and no failures.
+- Header declarations and registry entries were rechecked for locale, wide-character, descriptor, and restartable multibyte surfaces.
+- Imported GCC accept scans did not identify a new stable low-risk runtime fixture beyond existing compile/runtime coverage.
+
+Residual bounded surfaces after Phase 10:
+
+- Locale behavior remains deterministic C-locale behavior; host locale databases, collation, and localized numeric formatting are deferred.
+- `mbstate_t` is opaque and effectively stateless for the supported single-byte C-locale conversions.
+- Restartable multibyte conversion supports ASCII and NUL bytes only; stateful encodings and UTF-8 multibyte sequences remain out of scope.
+- Wide ctype classification is C-locale ASCII classification; non-ASCII wide values are unclassified and unchanged by case conversion.
 
 ## Completed Work
 
