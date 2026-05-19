@@ -2748,6 +2748,44 @@ int main(void)
 	}
 }
 
+func TestFormattedStreamPreservationExecutesThroughRuntime(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("scan.txt", []byte("123 tail"))
+	reg.AddFile("wscan.txt", []byte("77 wide"))
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <wchar.h>
+
+int main(void)
+{
+  FILE *f = fopen("scan.txt", "r");
+  if (!f)
+    return 1;
+  int n = 0;
+  if (fscanf(f, "%d", &n) != 1)
+    return 2;
+  if (n != 123)
+    return 3;
+  if (fgetc(f) != ' ')
+    return 4;
+
+  FILE *wf = fopen("wscan.txt", "r");
+  if (!wf)
+    return 5;
+  int wn = 0;
+  if (fwscanf(wf, L"%d", &wn) != 1)
+    return 6;
+  if (wn != 77)
+    return 7;
+  return fgetwc(wf) == L' ' ? 0 : 8;
+}
+`
+	st := runGCCExecFixtureWithLoadOptions(t, "formatted-stream-preservation-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinCheckedSprintfExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

@@ -260,9 +260,13 @@ Calibration result:
 
 Calibration before execution: Confirm `scanf`, `fscanf`, `wscanf`, and `fwscanf` push back unread bytes consistently.
 
-- [ ] Add source workflows for unread preservation after narrow and wide scans.
-- [ ] Fix stream pushback or EOF state if needed.
-- [ ] Verify, commit `test(runtime): cover formatted stream preservation`, and push.
+- [x] Add source workflows for unread preservation after narrow and wide scans.
+- [x] Fix stream pushback or EOF state if needed.
+- [x] Verify, commit `test(runtime): cover formatted stream preservation`, and push.
+
+Calibration result:
+- Direct tests already covered narrow and wide unread preservation for configured streams.
+- A source workflow now verifies `fscanf` followed by `fgetc` and `fwscanf` followed by `fgetwc`; no runtime code change was needed.
 
 ## Milestone 23: GCC Fixture Recheck
 
