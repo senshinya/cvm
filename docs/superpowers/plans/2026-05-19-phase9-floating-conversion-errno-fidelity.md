@@ -90,10 +90,17 @@ Findings:
 
 Calibration before execution: Re-read `mathNanExtern` and existing `nan/nanf/nanl` tests.
 
-- [ ] Add tests for empty payload, numeric payload, and nonnumeric payload for `nan`, `nanf`, and `nanl`.
-- [ ] Add source-level runtime coverage.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover nan payload inputs`.
+- [x] Add tests for empty payload, numeric payload, and nonnumeric payload for `nan`, `nanf`, and `nanl`.
+- [x] Add source-level runtime coverage.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover nan payload inputs`.
+
+Findings:
+
+- `mathNanExtern` intentionally ignores payload text and returns a deterministic NaN of the requested return type.
+- Added direct extern coverage for empty, numeric, and nonnumeric payloads across `nan`, `nanf`, and `nanl`.
+- Added source-level runtime coverage for payload inputs.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestPlainMathNanExterns|TestBuiltinFloatingConstantsExecuteThroughRuntime' -count=1` passed.
 
 ## Milestone 7: Decimal Overflow Range Trapdoor
 

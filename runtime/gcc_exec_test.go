@@ -1372,6 +1372,9 @@ int main(void)
   float nf = nanf("");
   double m = nan("");
   long double nl = nanl("");
+  float nf_payload = nanf("123");
+  double m_payload = nan("payload");
+  long double nl_payload = nanl("bad");
 
   if (!(hf > 1e30f))
     return 1;
@@ -1387,6 +1390,12 @@ int main(void)
     return 6;
   if (!(nl != nl))
     return 7;
+  if (!(nf_payload != nf_payload))
+    return 11;
+  if (!(m_payload != m_payload))
+    return 12;
+  if (!(nl_payload != nl_payload))
+    return 13;
 
   if (!signbit(-0.0f))
     return 8;

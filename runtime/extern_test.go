@@ -1358,6 +1358,7 @@ func TestPlainMathTernaryExterns(t *testing.T) {
 
 func TestPlainMathNanExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
 	tests := []struct {
 		name string
 		want bytecode.ValueType
@@ -1366,18 +1367,22 @@ func TestPlainMathNanExterns(t *testing.T) {
 		{name: "nan", want: bytecode.TypeF64},
 		{name: "nanl", want: bytecode.TypeFLong},
 	}
+	payloads := []string{"", "123", "payload"}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fn, ok := reg.Lookup(tt.name)
 			if !ok {
 				t.Fatalf("missing %s extern", tt.name)
 			}
-			ret, exit, err := fn(context.Background(), nil, []Value{PtrValue(0)})
-			if err != nil || exit != nil {
-				t.Fatalf("%s ret=%#v exit=%#v err=%v", tt.name, ret, exit, err)
-			}
-			if ret.Type != tt.want || !math.IsNaN(ret.Float) {
-				t.Fatalf("%s ret=%#v, want %s NaN", tt.name, ret, tt.want)
+			for _, payload := range payloads {
+				addr := mustAllocBytes(t, mem, "nan:"+tt.name+":"+payload, []byte(payload+"\x00"), true, blockString)
+				ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(addr)})
+				if err != nil || exit != nil {
+					t.Fatalf("%s(%q) ret=%#v exit=%#v err=%v", tt.name, payload, ret, exit, err)
+				}
+				if ret.Type != tt.want || !math.IsNaN(ret.Float) {
+					t.Fatalf("%s(%q) ret=%#v, want %s NaN", tt.name, payload, ret, tt.want)
+				}
 			}
 		})
 	}
