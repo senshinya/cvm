@@ -1895,6 +1895,35 @@ int main(void)
 	}
 }
 
+func TestWideCtypeDescriptorExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wctype.h>
+
+int main(void)
+{
+  wctype_t alpha = wctype("alpha");
+  wctype_t digit = wctype("digit");
+  if (alpha == 0 || digit == 0)
+    return 1;
+  if (wctype("emoji") != 0)
+    return 2;
+  if (!iswctype(L'A', alpha) || iswctype(L'!', alpha))
+    return 3;
+  if (iswctype(0x141, alpha) || iswctype(WEOF, alpha))
+    return 4;
+  if (!iswctype(L'7', digit) || iswctype(L'x', digit))
+    return 5;
+  if (iswctype(L'A', 0))
+    return 6;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-ctype-descriptor-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <time.h>

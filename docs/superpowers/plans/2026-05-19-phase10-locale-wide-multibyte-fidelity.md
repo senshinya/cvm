@@ -164,10 +164,17 @@ Findings:
 
 Calibration before execution: Decide deterministic descriptor IDs for named wide classes.
 
-- [ ] Implement `wctype` for supported class names.
-- [ ] Implement `iswctype`.
-- [ ] Add direct/source tests for valid and invalid class names.
-- [ ] Verify, commit, and push `feat(runtime): add wctype descriptors`.
+- [x] Implement `wctype` for supported class names.
+- [x] Implement `iswctype`.
+- [x] Add direct/source tests for valid and invalid class names.
+- [x] Verify, commit, and push `feat(runtime): add wctype descriptors`.
+
+Findings:
+
+- `wctype` returns deterministic nonzero descriptor IDs for supported C-locale class names and zero for unknown names.
+- `iswctype` applies descriptors over full `wint_t` values, preserving high-value non-ASCII rejection and `WEOF` false behavior.
+- Added direct extern and source-level runtime coverage for valid descriptors, invalid names, invalid descriptors, ASCII positives/negatives, high values, and `WEOF`.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestWideCtypeDescriptor' -count=1` passed.
 
 ## Milestone 12: `wctrans` And `towctrans`
 

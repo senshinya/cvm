@@ -3946,6 +3946,59 @@ func TestWideCtypeCaseConversionExterns(t *testing.T) {
 	}
 }
 
+func TestWideCtypeDescriptorExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	wctypeFn, ok := reg.Lookup("wctype")
+	if !ok {
+		t.Fatal("missing wctype extern")
+	}
+	iswctypeFn, ok := reg.Lookup("iswctype")
+	if !ok {
+		t.Fatal("missing iswctype extern")
+	}
+	alphaName := mustAllocBytes(t, mem, "wctype:alpha", []byte("alpha\x00"), true, blockString)
+	digitName := mustAllocBytes(t, mem, "wctype:digit", []byte("digit\x00"), true, blockString)
+	unknownName := mustAllocBytes(t, mem, "wctype:unknown", []byte("emoji\x00"), true, blockString)
+
+	alpha, exit, err := wctypeFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(alphaName)})
+	if err != nil || exit != nil || alpha.Type != bytecode.TypeU64 || alpha.Int == 0 {
+		t.Fatalf("wctype alpha ret=%#v exit=%#v err=%v, want nonzero descriptor", alpha, exit, err)
+	}
+	digit, exit, err := wctypeFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(digitName)})
+	if err != nil || exit != nil || digit.Type != bytecode.TypeU64 || digit.Int == 0 {
+		t.Fatalf("wctype digit ret=%#v exit=%#v err=%v, want nonzero descriptor", digit, exit, err)
+	}
+	unknown, exit, err := wctypeFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(unknownName)})
+	if err != nil || exit != nil || unknown.Type != bytecode.TypeU64 || unknown.Int != 0 {
+		t.Fatalf("wctype unknown ret=%#v exit=%#v err=%v, want zero descriptor", unknown, exit, err)
+	}
+
+	tests := []struct {
+		ch   int64
+		desc Value
+		want bool
+	}{
+		{ch: 'A', desc: alpha, want: true},
+		{ch: '!', desc: alpha, want: false},
+		{ch: 0x141, desc: alpha, want: false},
+		{ch: -1, desc: alpha, want: false},
+		{ch: '7', desc: digit, want: true},
+		{ch: 'x', desc: digit, want: false},
+		{ch: 'A', desc: unknown, want: false},
+	}
+	for _, tt := range tests {
+		ret, exit, err := iswctypeFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, tt.ch), tt.desc})
+		if err != nil || exit != nil {
+			t.Fatalf("iswctype(%d, %#v) ret=%#v exit=%#v err=%v", tt.ch, tt.desc, ret, exit, err)
+		}
+		got := ret.Int != 0
+		if ret.Type != bytecode.TypeI32 || got != tt.want {
+			t.Fatalf("iswctype(%d, %#v) ret=%#v, want %v", tt.ch, tt.desc, ret, tt.want)
+		}
+	}
+}
+
 func TestPlainMemoryOperationExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
