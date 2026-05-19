@@ -212,9 +212,13 @@ Calibration result:
 
 Calibration before execution: Recheck `%s`, `%ls`, and width/null termination.
 
-- [ ] Cover narrow and wide strings with width limits.
-- [ ] Fix wide string termination and unread preservation if needed.
-- [ ] Verify, commit `feat(runtime): harden scanf wide strings`, and push.
+- [x] Cover narrow and wide strings with width limits.
+- [x] Fix wide string termination and unread preservation if needed.
+- [x] Verify, commit `test(runtime): cover scanf wide strings`, and push.
+
+Calibration result:
+- `%s` and `%ls` already share `scanStoreText`, with NUL termination enabled for string conversions.
+- Direct and source coverage now lock width-limited narrow and wide string scans; no runtime code change was needed.
 
 ## Milestone 19: Scanf Scanset Length Modifiers
 
