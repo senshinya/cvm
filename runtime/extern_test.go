@@ -2194,6 +2194,97 @@ func TestWideScannerBridge(t *testing.T) {
 	}
 }
 
+func TestSwscanfExternScansWideInput(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("swscanf")
+	if !ok {
+		t.Fatal("missing swscanf extern")
+	}
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	readWide := func(addr uint64) string {
+		t.Helper()
+		chars, err := readWideCString(mem, addr)
+		if err != nil {
+			t.Fatalf("read wide string: %v", err)
+		}
+		var b strings.Builder
+		for _, ch := range chars {
+			b.WriteByte(byte(ch))
+		}
+		return b.String()
+	}
+
+	input := makeWide("swscanf:input", ' ', '-', '1', '2', ' ', 'h', 'e', 'l', 'l', 'o', ' ', 'Z', 'A', ' ', '!', 0)
+	format := makeWide("swscanf:format", '%', 'd', ' ', '%', '5', 'l', 's', ' ', '%', '2', 'l', 'c', ' ', '%', 'l', 'c', '%', 'n', 0)
+	valueAddr := mustAlloc(t, mem, "swscanf:value", 4, 4, false, blockLocal)
+	wordAddr := mustAllocBytes(t, mem, "swscanf:word", make([]byte, 24), false, blockLocal)
+	charsAddr := mustAllocBytes(t, mem, "swscanf:chars", make([]byte, 8), false, blockLocal)
+	bangAddr := mustAllocBytes(t, mem, "swscanf:bang", make([]byte, 4), false, blockLocal)
+	countAddr := mustAlloc(t, mem, "swscanf:count", 4, 4, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(input),
+		ObjectAddrValue(format),
+		PtrValue(valueAddr),
+		PtrValue(wordAddr),
+		PtrValue(charsAddr),
+		PtrValue(bangAddr),
+		PtrValue(countAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("swscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 4 {
+		t.Fatalf("swscanf ret=%#v, want i32 4", ret)
+	}
+	value, err := mem.Load(valueAddr, bytecode.TypeI32, 4)
+	if err != nil || int32(value.Int) != -12 {
+		t.Fatalf("value=%#v err=%v, want -12", value, err)
+	}
+	if got := readWide(wordAddr); got != "hello" {
+		t.Fatalf("wide word = %q, want hello", got)
+	}
+	for i, want := range []uint32{'Z', 'A'} {
+		got, err := loadWideChar(mem, charsAddr+uint64(i*4))
+		if err != nil || got != want {
+			t.Fatalf("wide chars[%d]=%#x err=%v, want %#x", i, got, err, want)
+		}
+	}
+	bang, err := loadWideChar(mem, bangAddr)
+	if err != nil || bang != '!' {
+		t.Fatalf("bang=%#x err=%v, want !", bang, err)
+	}
+	count, err := mem.Load(countAddr, bytecode.TypeI32, 4)
+	if err != nil || count.Int != 15 {
+		t.Fatalf("count=%#v err=%v, want 15", count, err)
+	}
+
+	empty := makeWide("swscanf:empty-input", 0)
+	intFormat := makeWide("swscanf:int-format", '%', 'd', 0)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(empty), ObjectAddrValue(intFormat), PtrValue(valueAddr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || int64(int32(ret.Int)) != -1 {
+		t.Fatalf("swscanf empty ret=%#v exit=%#v err=%v, want -1", ret, exit, err)
+	}
+	wordInput := makeWide("swscanf:word-input", 'w', 'o', 'r', 'd', 0)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{ObjectAddrValue(wordInput), ObjectAddrValue(intFormat), PtrValue(valueAddr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("swscanf mismatch ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+}
+
 func TestSwprintfWritesWideFormattedOutput(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

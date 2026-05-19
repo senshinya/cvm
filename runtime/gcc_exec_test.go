@@ -4406,6 +4406,37 @@ int main(void)
 	}
 }
 
+func TestWideSwscanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  int n = 0;
+  int count = 0;
+  wchar_t word[8] = {0};
+  wchar_t pair[3] = {0};
+  wchar_t bang = 0;
+  int r = swscanf(L" -12 hello ZA !", L"%d %5ls %2lc %lc%n", &n, word, pair, &bang, &count);
+  if (r != 4)
+    return 1;
+  if (n != -12)
+    return 2;
+  if (word[0] != L'h' || word[1] != L'e' || word[2] != L'l' || word[3] != L'l' || word[4] != L'o' || word[5] != 0)
+    return 3;
+  if (pair[0] != L'Z' || pair[1] != L'A')
+    return 4;
+  if (bang != L'!')
+    return 5;
+  return count == 15 ? 0 : 6;
+}
+`
+	st := runGCCExecFixture(t, "wide-swscanf-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestWideStdioInputAliasesExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

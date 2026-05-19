@@ -166,9 +166,9 @@ Calibration before execution: Inspect existing scanner support and keep the firs
 
 Calibration before execution: Use wide input and wide format buffers without stream side effects.
 
-- [ ] Register and implement `swscanf`.
-- [ ] Cover integer, `%ls`, `%lc`, `%n`, mismatch, and EOF-like empty input.
-- [ ] Verify, commit `feat(runtime): add swscanf`, and push.
+- [x] Register and implement `swscanf`.
+- [x] Cover integer, `%ls`, `%lc`, `%n`, mismatch, and EOF-like empty input.
+- [x] Verify, commit `feat(runtime): add swscanf`, and push.
 
 ## Milestone 20: `wscanf`
 
