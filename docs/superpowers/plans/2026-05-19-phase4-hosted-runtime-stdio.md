@@ -76,19 +76,19 @@ Calibration before execution: Re-check existing `strtof`/`strtod`/`strtold` pars
 - Modify: `runtime/gcc_exec_test.go`
 - Modify: this plan file
 
-- [ ] **Step 1: Add failing direct float scanf tests**
+- [x] **Step 1: Add failing direct float scanf tests**
 
 Cover `%f` into `float *`, `%lf` into `double *`, `%Lf` into long-double storage, plus `%a` hex-float input.
 
-- [ ] **Step 2: Implement float scan storage**
+- [x] **Step 2: Implement float scan storage**
 
 Parse a consumed float prefix, store using the target value type, and keep assignment counts and consumed offsets correct.
 
-- [ ] **Step 3: Add source-level runtime float scanf coverage**
+- [x] **Step 3: Add source-level runtime float scanf coverage**
 
 Compile a C snippet using `sscanf` and `fscanf` for decimal and hex floats.
 
-- [ ] **Step 4: Verify, commit, and push float scanning**
+- [x] **Step 4: Verify, commit, and push float scanning**
 
 Run the standard verification chain, then commit `feat(runtime): scan floating input formats`.
 

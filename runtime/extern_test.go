@@ -3771,6 +3771,46 @@ func TestSscanfExternScansSets(t *testing.T) {
 	}
 }
 
+func TestSscanfExternScansFloatingValues(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:float-input", []byte("1.5 -2.25 0x1.8p+2 rest\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:float-fmt", []byte("%f %lf %La\x00"), true, blockString)
+	floatAddr := mustAlloc(t, mem, "sscanf:float-f32", 4, 4, false, blockLocal)
+	doubleAddr := mustAlloc(t, mem, "sscanf:float-f64", 8, 8, false, blockLocal)
+	longAddr := mustAlloc(t, mem, "sscanf:float-flong", 16, 8, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(floatAddr),
+		PtrValue(doubleAddr),
+		PtrValue(longAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 3 {
+		t.Fatalf("sscanf ret=%#v, want i32 3", ret)
+	}
+	f, err := mem.Load(floatAddr, bytecode.TypeF32, 4)
+	if err != nil || f.Float != 1.5 {
+		t.Fatalf("float=%#v err=%v, want 1.5", f, err)
+	}
+	d, err := mem.Load(doubleAddr, bytecode.TypeF64, 8)
+	if err != nil || d.Float != -2.25 {
+		t.Fatalf("double=%#v err=%v, want -2.25", d, err)
+	}
+	l, err := mem.Load(longAddr, bytecode.TypeFLong, 8)
+	if err != nil || l.Float != 6 {
+		t.Fatalf("long double=%#v err=%v, want 6", l, err)
+	}
+}
+
 func TestPrintfExternsWriteFormattedOutput(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

@@ -2871,6 +2871,31 @@ int main(void)
 	}
 }
 
+func TestGCCStdioFloatScanfExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  float f = 0.0f;
+  double d = 0.0;
+  long double l = 0.0L;
+  int r = sscanf("1.5 -2.25 0x1.8p+2 rest", "%f %lf %La", &f, &d, &l);
+  if (r != 3)
+    return 1;
+  if (f != 1.5f)
+    return 2;
+  if (d != -2.25)
+    return 3;
+  return l == 6.0L ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdio-scanf-float-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioUngetcExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>

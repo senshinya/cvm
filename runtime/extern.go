@@ -3944,6 +3944,21 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				assigned++
 			}
 			inputIndex += parsed.end
+		case 'f', 'F', 'e', 'E', 'g', 'G', 'a', 'A':
+			inputIndex = scanSkipWhitespace(input, inputIndex)
+			token := scanLimit(input, inputIndex, width)
+			parsed := parseStrtoFloatString(token)
+			if !parsed.converted {
+				return assigned, inputIndex, nil
+			}
+			if !suppress {
+				if err := scanStoreFloat(mem, args[argIndex].Int, lengthMod, parsed.value); err != nil {
+					return 0, inputIndex, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex += parsed.end
 		case 'n':
 			if width != 0 {
 				return 0, inputIndex, fmt.Errorf("%s %%n does not support width", name)
@@ -4106,6 +4121,27 @@ func scanStoreInteger(mem *Memory, addr uint64, lengthMod string, unsigned bool,
 		v = -v
 	}
 	return mem.Store(addr, t, align, normalizeInt(IntValue(t, v)))
+}
+
+func scanStoreFloat(mem *Memory, addr uint64, lengthMod string, value float64) error {
+	t, align, err := scanFloatType(lengthMod)
+	if err != nil {
+		return err
+	}
+	return mem.Store(addr, t, align, FloatValue(t, value))
+}
+
+func scanFloatType(lengthMod string) (bytecode.ValueType, int64, error) {
+	switch lengthMod {
+	case "":
+		return bytecode.TypeF32, 4, nil
+	case "l":
+		return bytecode.TypeF64, 8, nil
+	case "L":
+		return bytecode.TypeFLong, 8, nil
+	default:
+		return bytecode.TypeVoid, 0, fmt.Errorf("unsupported scanf floating length modifier %q", lengthMod)
+	}
 }
 
 func scanIntegerType(lengthMod string, unsigned bool) (bytecode.ValueType, int64) {
