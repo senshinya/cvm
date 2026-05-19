@@ -89,9 +89,9 @@ Calibration before execution: Confirm high wide values should be stored unmasked
 
 Calibration before execution: Confirm C runtime uses 32-bit `wchar_t` in the target model.
 
-- [ ] Register and implement `wcslen`.
-- [ ] Cover empty, non-empty, and source-level `L"..."` execution.
-- [ ] Verify, commit `feat(runtime): add wcslen`, and push.
+- [x] Register and implement `wcslen`.
+- [x] Cover empty, non-empty, and source-level `L"..."` execution.
+- [x] Verify, commit `feat(runtime): add wcslen`, and push.
 
 ## Milestone 10: `wcscmp`
 

@@ -2541,6 +2541,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	for _, name := range []string{"__builtin_strlen", "strlen"} {
 		r.Register(name, stringLengthExtern(name))
 	}
+	r.Register("wcslen", wideStringLengthExtern("wcslen"))
 	r.Register("strnlen", stringNLengthExtern("strnlen"))
 	r.Register("strerror", stringErrorExtern("strerror", r))
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
@@ -3417,6 +3418,41 @@ func wideMemorySetExtern(name string) ExternFunc {
 			}
 		}
 		return PtrValue(args[0].Int), nil, nil
+	}
+}
+
+func wideStringLengthExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isPointerType(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string argument", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		length, err := wideStringLength(ec.Memory, args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return UIntValue(bytecode.TypeU64, uint64(length)), nil, nil
+	}
+}
+
+func wideStringLength(mem *Memory, addr uint64) (int64, error) {
+	for i := int64(0); ; i++ {
+		chAddr, err := wideElementAddr(addr, i)
+		if err != nil {
+			return 0, err
+		}
+		ch, err := loadWideChar(mem, chAddr)
+		if err != nil {
+			return 0, err
+		}
+		if ch == 0 {
+			return i, nil
+		}
 	}
 }
 
