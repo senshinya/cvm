@@ -85,9 +85,9 @@ Calibration before execution: Re-read narrow `ungetc` pushback storage.
 
 Calibration before execution: Reuse wide string scan and `fputwc` write behavior.
 
-- [ ] Register and implement `fputws`.
-- [ ] Cover ASCII string, empty string, invalid high wide value, closed stream, and return convention.
-- [ ] Verify, commit `feat(runtime): add fputws`, and push.
+- [x] Register and implement `fputws`.
+- [x] Cover ASCII string, empty string, invalid high wide value, closed stream, and return convention.
+- [x] Verify, commit `feat(runtime): add fputws`, and push.
 
 ## Milestone 10: `fgetws`
 

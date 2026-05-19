@@ -161,7 +161,7 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("getwc", fgetwcExtern("getwc", r))
 	r.Register("getwchar", getwcharExtern("getwchar", r))
 	r.Register("ungetwc", ungetwcExtern("ungetwc", r))
-	r.Register("fputws", wideStdioIntStubExtern("fputws", -1))
+	r.Register("fputws", fputwsExtern("fputws", r))
 	r.Register("fgetws", wideStdioPtrStubExtern("fgetws", 0))
 	r.Register("perror", perrorExtern("perror", r))
 	for _, name := range []string{"fflush", "fflush_unlocked"} {
@@ -881,6 +881,34 @@ func ungetwcExtern(name string, r *ExternRegistry) ExternFunc {
 		r.hostPushback[args[1].Int] = append(r.hostPushback[args[1].Int], byte(wc))
 		r.hostEOF[args[1].Int] = false
 		return IntValue(bytecode.TypeI32, wc), nil, nil
+	}
+}
+
+func fputwsExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string and stream arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		w, ok := r.lookupHostWriter(args[1].Int)
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
+		}
+		chars, err := readWideCString(ec.Memory, args[0].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		for _, ch := range chars {
+			if ret := r.writeHostWideChar(args[1].Int, w, int64(ch)); signedInt(ret) == -1 {
+				return ret, nil, nil
+			}
+		}
+		return IntValue(bytecode.TypeI32, int64(len(chars))), nil, nil
 	}
 }
 

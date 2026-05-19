@@ -1900,6 +1900,87 @@ func TestUngetwcRejectsEOFAndInvalidWideChars(t *testing.T) {
 	}
 }
 
+func TestFputwsWritesWideStringToHostHandle(t *testing.T) {
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdout, ok := reg.LookupVariable("stdout", mem)
+	if !ok {
+		t.Fatal("missing stdout extern variable")
+	}
+	fputwsFn, ok := reg.Lookup("fputws")
+	if !ok {
+		t.Fatal("missing fputws extern")
+	}
+	fwideFn, ok := reg.Lookup("fwide")
+	if !ok {
+		t.Fatal("missing fwide extern")
+	}
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr := mustAllocBytes(t, mem, name, make([]byte, len(chars)*4), false, blockLocal)
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+
+	text := makeWide("fputws:text", 'H', 'i', 0)
+	ret, exit, err := fputwsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(stdout)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 2 || out.String() != "Hi" {
+		t.Fatalf("fputws text ret=%#v exit=%#v err=%v output=%q, want 2 and Hi", ret, exit, err, out.String())
+	}
+	ret, exit, err = fwideFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || signedInt(ret) <= 0 {
+		t.Fatalf("fwide after fputws ret=%#v exit=%#v err=%v, want positive", ret, exit, err)
+	}
+	empty := makeWide("fputws:empty", 0)
+	ret, exit, err = fputwsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(empty), PtrValue(stdout)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 || out.String() != "Hi" {
+		t.Fatalf("fputws empty ret=%#v exit=%#v err=%v output=%q, want 0 and unchanged", ret, exit, err, out.String())
+	}
+	high := makeWide("fputws:high", '!', 0x80, 'x', 0)
+	ret, exit, err = fputwsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(high), PtrValue(stdout)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 || out.String() != "Hi!" {
+		t.Fatalf("fputws high ret=%#v exit=%#v err=%v output=%q, want WEOF after prefix", ret, exit, err, out.String())
+	}
+}
+
+func TestFputwsRejectsClosedStream(t *testing.T) {
+	var out bytes.Buffer
+	reg := DefaultExternRegistry(&out, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdout, ok := reg.LookupVariable("stdout", mem)
+	if !ok {
+		t.Fatal("missing stdout extern variable")
+	}
+	text := mustAllocBytes(t, mem, "fputws:closed-text", make([]byte, 8), false, blockLocal)
+	if err := storeWideChar(mem, text, 'C'); err != nil {
+		t.Fatalf("store closed text[0]: %v", err)
+	}
+	if err := storeWideChar(mem, text+4, 0); err != nil {
+		t.Fatalf("store closed text[1]: %v", err)
+	}
+	fcloseFn, ok := reg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+	fputwsFn, ok := reg.Lookup("fputws")
+	if !ok {
+		t.Fatal("missing fputws extern")
+	}
+	ret, exit, err := fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fclose ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = fputwsFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(stdout)})
+	if err == nil || exit != nil {
+		t.Fatalf("fputws closed ret=%#v exit=%#v err=%v, want error", ret, exit, err)
+	}
+}
+
 func TestOutputCharacterAliasesWriteBytes(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer
