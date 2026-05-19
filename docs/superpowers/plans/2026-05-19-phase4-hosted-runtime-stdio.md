@@ -50,19 +50,19 @@ Calibration before execution: Re-read `scanString` and existing `TestSscanfExter
 - Modify: `runtime/gcc_exec_test.go`
 - Modify: this plan file
 
-- [ ] **Step 1: Add failing direct scanset tests**
+- [x] **Step 1: Add failing direct scanset tests**
 
 Add direct `sscanf` tests for `%[a-z]`, `%[^0-9]`, width, and assignment suppression.
 
-- [ ] **Step 2: Implement scanset parsing**
+- [x] **Step 2: Implement scanset parsing**
 
 Add scanner helpers for bracket expressions, negation, leading `]`, ranges, width, and no-match failure.
 
-- [ ] **Step 3: Add source-level runtime scanset coverage**
+- [x] **Step 3: Add source-level runtime scanset coverage**
 
 Add a GCC-style runtime test that compiles C using `sscanf` scansets and validates output buffers and return counts.
 
-- [ ] **Step 4: Verify, commit, and push scansets**
+- [x] **Step 4: Verify, commit, and push scansets**
 
 Run the standard verification chain, then commit `feat(runtime): scan formatted input sets`.
 

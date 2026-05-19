@@ -3731,6 +3731,46 @@ func TestSscanfExternScansRadixSuppressionAndCount(t *testing.T) {
 	}
 }
 
+func TestSscanfExternScansSets(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:scanset-input", []byte("abc123 xyz!\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:scanset-fmt", []byte("%[a-z]%3[0-9] %*[^!]%c\x00"), true, blockString)
+	wordAddr := mustAllocBytes(t, mem, "sscanf:scanset-word", []byte{0, 0, 0, 0}, false, blockLocal)
+	digitsAddr := mustAllocBytes(t, mem, "sscanf:scanset-digits", []byte{0, 0, 0, 0}, false, blockLocal)
+	chAddr := mustAllocBytes(t, mem, "sscanf:scanset-char", []byte{0}, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(wordAddr),
+		PtrValue(digitsAddr),
+		PtrValue(chAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 3 {
+		t.Fatalf("sscanf ret=%#v, want i32 3", ret)
+	}
+	word, err := mem.ReadCString(wordAddr)
+	if err != nil || word != "abc" {
+		t.Fatalf("word=%q err=%v, want abc", word, err)
+	}
+	digits, err := mem.ReadCString(digitsAddr)
+	if err != nil || digits != "123" {
+		t.Fatalf("digits=%q err=%v, want 123", digits, err)
+	}
+	ch, err := mem.Load(chAddr, bytecode.TypeI8, 1)
+	if err != nil || byte(ch.Int) != '!' {
+		t.Fatalf("char=%#v err=%v, want !", ch, err)
+	}
+}
+
 func TestPrintfExternsWriteFormattedOutput(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

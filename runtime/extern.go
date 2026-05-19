@@ -3993,11 +3993,89 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				assigned++
 			}
 			inputIndex += count
+		case '[':
+			matches, nextFormatIndex, err := parseScanSet(name, format, formatIndex)
+			if err != nil {
+				return 0, inputIndex, err
+			}
+			formatIndex = nextFormatIndex
+			end := inputIndex
+			limit := len(input)
+			if width > 0 && inputIndex+width < limit {
+				limit = inputIndex + width
+			}
+			for end < limit && matches(input[end]) {
+				end++
+			}
+			if end == inputIndex {
+				return assigned, inputIndex, nil
+			}
+			if !suppress {
+				data := append([]byte(input[inputIndex:end]), 0)
+				if err := writeMemoryBytes(mem, args[argIndex].Int, data); err != nil {
+					return 0, inputIndex, err
+				}
+				argIndex++
+				assigned++
+			}
+			inputIndex = end
 		default:
 			return 0, inputIndex, fmt.Errorf("%s unsupported scan format %%%c", name, verb)
 		}
 	}
 	return assigned, inputIndex, nil
+}
+
+func parseScanSet(name, format string, open int) (func(byte) bool, int, error) {
+	i := open + 1
+	if i >= len(format) {
+		return nil, open, fmt.Errorf("%s has unterminated scan set", name)
+	}
+	negated := false
+	if format[i] == '^' {
+		negated = true
+		i++
+	}
+	if i >= len(format) {
+		return nil, open, fmt.Errorf("%s has unterminated scan set", name)
+	}
+	members := make(map[byte]bool)
+	if format[i] == ']' {
+		members[']'] = true
+		i++
+	}
+	for i < len(format) && format[i] != ']' {
+		start := format[i]
+		if i+2 < len(format) && format[i+1] == '-' && format[i+2] != ']' {
+			end := format[i+2]
+			if start <= end {
+				for ch := start; ch <= end; ch++ {
+					members[ch] = true
+				}
+			} else {
+				for ch := start; ch >= end; ch-- {
+					members[ch] = true
+					if ch == 0 {
+						break
+					}
+				}
+			}
+			i += 3
+			continue
+		}
+		members[start] = true
+		i++
+	}
+	if i >= len(format) || format[i] != ']' {
+		return nil, open, fmt.Errorf("%s has unterminated scan set", name)
+	}
+	return func(ch byte) bool {
+		contained := members[ch]
+		if negated {
+			return !contained
+		}
+		return contained
+	}, i, nil
 }
 
 func scanSkipWhitespace(s string, i int) int {

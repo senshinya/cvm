@@ -2845,6 +2845,32 @@ int main(void)
 	}
 }
 
+func TestGCCStdioScansetExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+  char word[4] = {0};
+  char digits[4] = {0};
+  char ch = 0;
+  int r = sscanf("abc123 xyz!", "%[a-z]%3[0-9] %*[^!]%c", word, digits, &ch);
+  if (r != 3)
+    return 1;
+  if (strcmp(word, "abc") != 0)
+    return 2;
+  if (strcmp(digits, "123") != 0)
+    return 3;
+  return ch == '!' ? 0 : 4;
+}
+`
+	st := runGCCExecFixture(t, "stdio-scanf-scanset-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdioUngetcExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
