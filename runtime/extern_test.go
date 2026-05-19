@@ -2108,6 +2108,92 @@ func TestWideFormatCStringBridge(t *testing.T) {
 	}
 }
 
+func TestWideScannerBridge(t *testing.T) {
+	mem := NewMemory(bytecode.DefaultTarget())
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	readWide := func(addr uint64) string {
+		t.Helper()
+		chars, err := readWideCString(mem, addr)
+		if err != nil {
+			t.Fatalf("read wide string: %v", err)
+		}
+		var b strings.Builder
+		for _, ch := range chars {
+			b.WriteByte(byte(ch))
+		}
+		return b.String()
+	}
+
+	input := makeWide("wide-scan:input", ' ', '-', '1', '2', ' ', '3', '4', ' ', 'h', 'e', 'l', 'l', 'o', ' ', 'Z', 'A', ' ', 's', 'k', 'i', 'p', ' ', '!', 0)
+	format := makeWide("wide-scan:format", '%', 'd', ' ', '%', 'u', ' ', '%', '5', 'l', 's', ' ', '%', '2', 'l', 'c', ' ', '%', '*', 's', ' ', '%', 'l', 'c', 0)
+	signedAddr := mustAlloc(t, mem, "wide-scan:signed", 4, 4, false, blockLocal)
+	unsignedAddr := mustAlloc(t, mem, "wide-scan:unsigned", 4, 4, false, blockLocal)
+	wordAddr := mustAllocBytes(t, mem, "wide-scan:word", make([]byte, 24), false, blockLocal)
+	charsAddr := mustAllocBytes(t, mem, "wide-scan:chars", make([]byte, 8), false, blockLocal)
+	bangAddr := mustAllocBytes(t, mem, "wide-scan:bang", make([]byte, 4), false, blockLocal)
+
+	n, err := scanWideCString("wide-scan", mem, input, format, []Value{
+		PtrValue(signedAddr),
+		PtrValue(unsignedAddr),
+		PtrValue(wordAddr),
+		PtrValue(charsAddr),
+		PtrValue(bangAddr),
+	})
+	if err != nil || n != 5 {
+		t.Fatalf("scanWideCString assigned=%d err=%v, want 5", n, err)
+	}
+	signed, err := mem.Load(signedAddr, bytecode.TypeI32, 4)
+	if err != nil || int32(signed.Int) != -12 {
+		t.Fatalf("signed=%#v err=%v, want -12", signed, err)
+	}
+	unsigned, err := mem.Load(unsignedAddr, bytecode.TypeU32, 4)
+	if err != nil || uint32(unsigned.Int) != 34 {
+		t.Fatalf("unsigned=%#v err=%v, want 34", unsigned, err)
+	}
+	if got := readWide(wordAddr); got != "hello" {
+		t.Fatalf("wide word = %q, want hello", got)
+	}
+	for i, want := range []uint32{'Z', 'A'} {
+		got, err := loadWideChar(mem, charsAddr+uint64(i*4))
+		if err != nil || got != want {
+			t.Fatalf("wide char[%d]=%#x err=%v, want %#x", i, got, err, want)
+		}
+	}
+	got, err := loadWideChar(mem, bangAddr)
+	if err != nil || got != '!' {
+		t.Fatalf("wide bang=%#x err=%v, want !", got, err)
+	}
+
+	empty := makeWide("wide-scan:empty-input", 0)
+	intFormat := makeWide("wide-scan:int-format", '%', 'd', 0)
+	n, err = scanWideCString("wide-scan", mem, empty, intFormat, []Value{PtrValue(signedAddr)})
+	if err != nil || n != -1 {
+		t.Fatalf("scanWideCString empty assigned=%d err=%v, want -1", n, err)
+	}
+	wordInput := makeWide("wide-scan:word-input", 'w', 'o', 'r', 'd', 0)
+	n, err = scanWideCString("wide-scan", mem, wordInput, intFormat, []Value{PtrValue(signedAddr)})
+	if err != nil || n != 0 {
+		t.Fatalf("scanWideCString mismatch assigned=%d err=%v, want 0", n, err)
+	}
+	highInput := makeWide("wide-scan:high-input", 0x80, 0)
+	_, err = scanWideCString("wide-scan", mem, highInput, intFormat, []Value{PtrValue(signedAddr)})
+	if err == nil || !strings.Contains(err.Error(), "unsupported") {
+		t.Fatalf("scanWideCString high input err=%v, want unsupported", err)
+	}
+}
+
 func TestSwprintfWritesWideFormattedOutput(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

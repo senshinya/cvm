@@ -158,9 +158,9 @@ Calibration before execution: Re-read current scanf declaration pattern.
 
 Calibration before execution: Inspect existing scanner support and keep the first subset bounded.
 
-- [ ] Add helper to read wide format strings and wide input buffers as C-locale byte strings.
-- [ ] Cover integer, string, char, width, assignment suppression, and failure cases.
-- [ ] Verify, commit `feat(runtime): add wide scanner bridge`, and push.
+- [x] Add helper to read wide format strings and wide input buffers as C-locale byte strings.
+- [x] Cover integer, string, char, width, assignment suppression, and failure cases.
+- [x] Verify, commit `feat(runtime): add wide scanner bridge`, and push.
 
 ## Milestone 19: `swscanf`
 

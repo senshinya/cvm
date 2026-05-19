@@ -5840,6 +5840,22 @@ func scanCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []
 	return assigned, err
 }
 
+func scanWideCString(name string, mem *Memory, inputAddr, formatAddr uint64, args []Value) (int, error) {
+	input, err := wideASCIIString(name, mem, inputAddr, "input")
+	if err != nil {
+		return 0, err
+	}
+	format, err := wideASCIIString(name, mem, formatAddr, "format")
+	if err != nil {
+		return 0, err
+	}
+	assigned, _, inputFailure, err := scanString(name, mem, input, format, args)
+	if inputFailure && assigned == 0 {
+		return -1, err
+	}
+	return assigned, err
+}
+
 func scanHostStream(name string, r *ExternRegistry, mem *Memory, stream, formatAddr uint64, args []Value) (int, error) {
 	format, err := mem.ReadCString(formatAddr)
 	if err != nil {
@@ -6071,8 +6087,7 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				return assigned, inputIndex, false, nil
 			}
 			if !suppress {
-				data := append([]byte(input[inputIndex:end]), 0)
-				if err := writeMemoryBytes(mem, args[argIndex].Int, data); err != nil {
+				if err := scanStoreText(mem, args[argIndex].Int, input[inputIndex:end], lengthMod == "l", true); err != nil {
 					return 0, inputIndex, false, err
 				}
 				argIndex++
@@ -6088,7 +6103,7 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				return assigned, inputIndex, true, nil
 			}
 			if !suppress {
-				if err := writeMemoryBytes(mem, args[argIndex].Int, []byte(input[inputIndex:inputIndex+count])); err != nil {
+				if err := scanStoreText(mem, args[argIndex].Int, input[inputIndex:inputIndex+count], lengthMod == "l", false); err != nil {
 					return 0, inputIndex, false, err
 				}
 				argIndex++
@@ -6113,8 +6128,7 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 				return assigned, inputIndex, inputIndex >= len(input), nil
 			}
 			if !suppress {
-				data := append([]byte(input[inputIndex:end]), 0)
-				if err := writeMemoryBytes(mem, args[argIndex].Int, data); err != nil {
+				if err := scanStoreText(mem, args[argIndex].Int, input[inputIndex:end], lengthMod == "l", true); err != nil {
 					return 0, inputIndex, false, err
 				}
 				argIndex++
@@ -6126,6 +6140,25 @@ func scanString(name string, mem *Memory, input, format string, args []Value) (i
 		}
 	}
 	return assigned, inputIndex, false, nil
+}
+
+func scanStoreText(mem *Memory, addr uint64, text string, wide, nul bool) error {
+	if !wide {
+		data := []byte(text)
+		if nul {
+			data = append(data, 0)
+		}
+		return writeMemoryBytes(mem, addr, data)
+	}
+	for i := 0; i < len(text); i++ {
+		if err := storeWideChar(mem, addr+uint64(i)*4, uint32(text[i])); err != nil {
+			return err
+		}
+	}
+	if nul {
+		return storeWideChar(mem, addr+uint64(len(text))*4, 0)
+	}
+	return nil
 }
 
 func parseScanSet(name, format string, open int) (func(byte) bool, int, error) {
@@ -6593,14 +6626,18 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 }
 
 func wideFormatCString(name string, mem *Memory, formatAddr uint64) (string, error) {
-	chars, err := readWideCString(mem, formatAddr)
+	return wideASCIIString(name, mem, formatAddr, "format")
+}
+
+func wideASCIIString(name string, mem *Memory, addr uint64, what string) (string, error) {
+	chars, err := readWideCString(mem, addr)
 	if err != nil {
 		return "", err
 	}
 	var out strings.Builder
 	for _, ch := range chars {
 		if ch > 0x7f {
-			return "", fmt.Errorf("%s wide format contains unsupported character %#x", name, ch)
+			return "", fmt.Errorf("%s wide %s contains unsupported character %#x", name, what, ch)
 		}
 		out.WriteByte(byte(ch))
 	}
