@@ -2499,11 +2499,17 @@ int main(void)
   if (strcmp(buf, "7    |xy  |abcdef|    42|1.50    ") != 0)
     return 17;
 
+  n = sprintf(buf, "%.0d|%.0u|%.0x|%.0o|%#.0o|%#.0x|%#.0X", 0, 0U, 0U, 0U, 0U, 0U, 0U);
+  if (n != 7)
+    return 18;
+  if (strcmp(buf, "||||0||") != 0)
+    return 19;
+
   char small[5];
   n = snprintf(small, 5, "%s-%u", "abcdef", 3U);
   if (n != 8)
-    return 18;
-  return strcmp(small, "abcd") == 0 ? 0 : 19;
+    return 20;
+  return strcmp(small, "abcd") == 0 ? 0 : 21;
 }
 `
 	st := runGCCExecFixture(t, "plain-sprintf-runtime.c", source)

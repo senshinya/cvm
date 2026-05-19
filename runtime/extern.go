@@ -6736,6 +6736,9 @@ func formatCString(name string, mem *Memory, formatAddr uint64, args []Value) (s
 		}
 		if integerFormat && precision >= 0 {
 			piece = applyIntegerPrecision(piece, precision)
+			if format[i] == 'o' && alternate && piece == "" {
+				piece = "0"
+			}
 			zeroPad = false
 		}
 		writeFormattedPiece(&out, piece, width, leftAlign, zeroPad)

@@ -116,9 +116,13 @@ Calibration result:
 
 Calibration before execution: Compare integer zero-value precision behavior for `%d`, `%u`, `%x`, and `%o`.
 
-- [ ] Cover `%.0d`, `%.0u`, `%.0x`, `%.0o`, and alternate forms.
-- [ ] Fix omitted digits and prefix behavior if needed.
-- [ ] Verify, commit `feat(runtime): harden printf zero precision`, and push.
+- [x] Cover `%.0d`, `%.0u`, `%.0x`, `%.0o`, and alternate forms.
+- [x] Fix omitted digits and prefix behavior if needed.
+- [x] Verify, commit `feat(runtime): harden printf zero precision`, and push.
+
+Calibration result:
+- Zero precision already omitted zero digits for decimal, unsigned decimal, hex, and plain octal.
+- `%#.0o` incorrectly lost the required single `0` after integer precision was applied; alternate octal now restores that digit for the zero-value precision edge case.
 
 ## Milestone 11: Printf Alternate Form Edge Cases
 

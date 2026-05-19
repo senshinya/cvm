@@ -9746,6 +9746,38 @@ func TestFormatExternsSupportPrecision(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportZeroIntegerPrecision(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-zero-precision", 16, 1, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-zero-precision", []byte("%.0d|%.0u|%.0x|%.0o|%#.0o|%#.0x|%#.0X\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU32, 0),
+		UIntValue(bytecode.TypeU32, 0),
+		UIntValue(bytecode.TypeU32, 0),
+		UIntValue(bytecode.TypeU32, 0),
+		UIntValue(bytecode.TypeU32, 0),
+		UIntValue(bytecode.TypeU32, 0),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 7 || got != "||||0||" {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q, want i32 7 and zero precision output", ret, got)
+	}
+}
+
 func TestFormatExternsSupportSignAndAlternateFlags(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
