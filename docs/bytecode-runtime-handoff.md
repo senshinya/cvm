@@ -8,10 +8,10 @@ This document records the current state of the bytecode/runtime work so the bran
 ## Repository State
 
 - Workspace: `/Users/shinya/Downloads/cvm`
-- Branch: `codex/bytecode-runtime-phase-6`
-- Latest implementation/coverage commit before this handoff document update: `23680ba docs: record phase 6 gcc fixture recheck`
+- Branch: `codex/bytecode-runtime-phase-7`
+- Latest implementation/coverage commit before this handoff document update: `7ab67dc docs: record phase 7 fixture recheck`
 - Remote: `origin git@github.com:senshinya/cvm.git`
-- Upstream: `origin/codex/bytecode-runtime-phase-6`
+- Upstream: `origin/codex/bytecode-runtime-phase-7`
 - Working tree at handoff time: clean
 - Base remote branch used for comparison: `origin/main`
 
@@ -19,10 +19,10 @@ To update this work on another device:
 
 ```bash
 git fetch origin
-git switch -c codex/bytecode-runtime-phase-6 origin/codex/bytecode-runtime-phase-6
+git switch -c codex/bytecode-runtime-phase-7 origin/codex/bytecode-runtime-phase-7
 ```
 
-If the local branch already exists, use `git switch codex/bytecode-runtime-phase-6` instead.
+If the local branch already exists, use `git switch codex/bytecode-runtime-phase-7` instead.
 
 ## Verification Commands
 
@@ -129,6 +129,31 @@ Residual bounded surfaces after Phase 6:
 - `tmpnam` uses deterministic hermetic names and does not model native filesystem races or host temporary directories.
 - File streams remain hermetic registry-backed streams, not native file descriptors.
 - Long double storage and arithmetic continue to use the current binary64-backed approximation inside the runtime model.
+
+## Phase 7 Closure
+
+Phase 7 string and memory fidelity is closed on `codex/bytecode-runtime-phase-7`.
+
+Closed Phase 7 milestones:
+
+- Hardened `memchr`, `memcmp`, `strncmp`, and `strnlen` zero-length, bounded-read, and unsigned-byte behavior.
+- Covered `strchr`, `strrchr`, `strstr`, `strpbrk`, `strspn`, and `strcspn` search/span boundaries.
+- Covered `strtok` delimiter changes, exhaustion, all-delimiter input, and restart behavior.
+- Covered `strxfrm`, `strcoll`, and deterministic per-memory `strerror` storage.
+- Hardened `memccpy`, `bcopy`, `memset`, and `bzero` edge cases.
+- Covered string write helpers and checked string/memory builtin object-size success/failure behavior.
+
+Phase 7 recheck:
+
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed with 18 runnable manifest candidates and no failures.
+- Header, sema builtin, registry, direct extern, and source-level runtime coverage were rechecked for the Phase 7 surface.
+- Imported GCC accept scans found only warning-only/non-runtime candidates or fixtures already represented in the compile manifest.
+
+Residual bounded surfaces after Phase 7:
+
+- `strerror` remains a deterministic hosted stub returning `"error"` rather than host-specific errno text.
+- Checked builtin overflow diagnostics remain split between compile-time GCC accept coverage and runtime direct trap coverage.
+- Broader stdlib, time, locale, and ctype edge fidelity is next-phase work.
 
 ## Completed Work
 
@@ -1654,10 +1679,10 @@ Runtime support exists for real math externs and for the Phase 1 complex math ex
 
 ## Suggested Next Work
 
-The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, Phase 2 and Phase 2B are closed, and Phase 3 runtime ABI fidelity is closed. Suggested next directions:
+The compile manifest has caught up with the imported `.c` GCC accept fixtures in the tracked roots, Phase 1 maths is complete, Phase 1 non-math low-risk runtime `main` fixture closure is complete, and Phases 2 through 7 are closed. Suggested next directions:
 
-- Expand runtime execution coverage only when a fixture has stable runtime semantics or when the required semantics are explicitly brought into scope.
-- Treat any further hosted runtime work as a newly scoped Phase 4 milestone rather than continuing the now-closed Phase 3 set.
+- Continue with Phase 8 stdlib, time, locale, and ctype fidelity from `docs/superpowers/plans/2026-05-19-phase8-stdlib-time-locale-fidelity.md`.
+- Expand runtime execution coverage only when a fixture has stable deterministic semantics or when the required hosted-runtime semantics are explicitly brought into scope.
 
 Recommended workflow:
 
