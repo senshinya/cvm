@@ -4089,6 +4089,14 @@ func TestStringReverseAndSetSearchExterns(t *testing.T) {
 	if !ok {
 		t.Fatal("missing strpbrk extern")
 	}
+	first := mustAllocBytes(t, mem, "strpbrk:first", []byte("a\x00"), true, blockString)
+	ret, exit, err = strpbrkFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(first)})
+	if err != nil || exit != nil {
+		t.Fatalf("strpbrk first ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != text {
+		t.Fatalf("strpbrk first ret=%#v, want pointer %#x", ret, text)
+	}
 	accept := mustAllocBytes(t, mem, "strpbrk:accept", []byte("xyc\x00"), true, blockString)
 	ret, exit, err = strpbrkFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(accept)})
 	if err != nil || exit != nil {
@@ -4104,6 +4112,14 @@ func TestStringReverseAndSetSearchExterns(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
 		t.Fatalf("strpbrk miss ret=%#v, want null pointer", ret)
+	}
+	empty := mustAllocBytes(t, mem, "strpbrk:empty", []byte{0}, true, blockString)
+	ret, exit, err = strpbrkFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(text), PtrValue(empty)})
+	if err != nil || exit != nil {
+		t.Fatalf("strpbrk empty ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
+		t.Fatalf("strpbrk empty ret=%#v, want null pointer", ret)
 	}
 }
 

@@ -82,9 +82,9 @@ Calibration before execution: Re-read `stringSearchExtern`.
 
 Calibration before execution: Re-read `stringSetSearchExtern`.
 
-- [ ] Add tests for empty accept set, first accept hit, later hit, and miss.
-- [ ] Fix `strpbrk` if needed.
-- [ ] Verify, commit, and push `test(runtime): cover strpbrk boundaries`.
+- [x] Add tests for empty accept set, first accept hit, later hit, and miss.
+- [x] Fix `strpbrk` if needed.
+- [x] Verify, commit, and push `test(runtime): cover strpbrk boundaries`.
 
 ## Milestone 10: `strspn` And `strcspn` Empty Sets
 

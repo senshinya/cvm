@@ -2669,9 +2669,13 @@ int main(void)
     return 3;
   if (strrchr(high, 0x182) != high + 2)
     return 4;
-  if (strpbrk(text, "xyc") != text + 3)
+  if (strpbrk(text, "a") != text)
     return 5;
-  return strpbrk(text, "xyz") == 0 ? 0 : 6;
+  if (strpbrk(text, "xyc") != text + 3)
+    return 6;
+  if (strpbrk(text, "") != 0)
+    return 7;
+  return strpbrk(text, "xyz") == 0 ? 0 : 8;
 }
 `
 	st := runGCCExecFixture(t, "string-reverse-set-search-runtime.c", source)
