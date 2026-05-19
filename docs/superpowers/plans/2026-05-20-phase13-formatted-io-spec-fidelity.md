@@ -298,9 +298,9 @@ Recheck result:
 
 Calibration before execution: Confirm all implementation increments are committed and pushed.
 
-- [ ] Create `docs/phase13-formatted-io-spec-fidelity-gap-map.md`.
-- [ ] Record closed surfaces and residual deterministic limits.
-- [ ] Verify, commit `docs: map phase 13 formatted io gaps`, and push.
+- [x] Create `docs/phase13-formatted-io-spec-fidelity-gap-map.md`.
+- [x] Record closed surfaces and residual deterministic limits.
+- [x] Verify, commit `docs: map phase 13 formatted io gaps`, and push.
 
 ## Milestone 26: Phase 13 Closure
 
