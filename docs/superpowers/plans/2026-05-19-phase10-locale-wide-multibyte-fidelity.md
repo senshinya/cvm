@@ -74,9 +74,16 @@ Findings:
 
 Calibration before execution: Design the deterministic `struct lconv` memory layout for current target ABI.
 
-- [ ] Add direct tests for decimal point, thousands separator, and grouping fields.
-- [ ] Implement per-memory static `localeconv` storage.
-- [ ] Verify, commit, and push `feat(runtime): implement c localeconv`.
+- [x] Add direct tests for decimal point, thousands separator, and grouping fields.
+- [x] Implement per-memory static `localeconv` storage.
+- [x] Verify, commit, and push `feat(runtime): implement c localeconv`.
+
+Findings:
+
+- Implemented per-memory static `struct lconv` storage with 10 pointer fields followed by C-locale `char` fields, aligned to target pointer alignment.
+- C-locale string fields use `"."` for `decimal_point` and `""` for grouping/separator/currency/sign strings.
+- C-locale unavailable `char` fields are initialized to `CHAR_MAX` (`127`).
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestLocaleconvExtern -count=1` passed.
 
 ## Milestone 6: `localeconv` Source Runtime Coverage
 

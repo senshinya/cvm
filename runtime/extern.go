@@ -39,6 +39,7 @@ type ExternRegistry struct {
 	stdinHandle    uint64
 	staticStrings  map[*Memory]map[string]uint64
 	staticVars     map[*Memory]map[string]uint64
+	staticBlocks   map[*Memory]map[string]uint64
 	strtokNext     map[*Memory]uint64
 	randSeed       uint32
 	tmpnamCounter  uint64
@@ -95,6 +96,7 @@ func NewExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *ExternR
 		env:           make(map[string]string),
 		staticStrings: make(map[*Memory]map[string]uint64),
 		staticVars:    make(map[*Memory]map[string]uint64),
+		staticBlocks:  make(map[*Memory]map[string]uint64),
 		strtokNext:    make(map[*Memory]uint64),
 		randSeed:      1,
 	}
@@ -1609,8 +1611,48 @@ func localeconvExtern(name string, r *ExternRegistry) ExternFunc {
 		if len(args) != 0 {
 			return Value{}, nil, fmt.Errorf("%s expects 0 arguments", name)
 		}
-		return PtrValue(0), nil, nil
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		addr, err := r.staticLocaleconv(ec.Memory)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return PtrValue(addr), nil, nil
 	}
+}
+
+var localeconvPointerFields = []struct {
+	name  string
+	value string
+}{
+	{name: "decimal_point", value: "."},
+	{name: "thousands_sep", value: ""},
+	{name: "grouping", value: ""},
+	{name: "int_curr_symbol", value: ""},
+	{name: "currency_symbol", value: ""},
+	{name: "mon_decimal_point", value: ""},
+	{name: "mon_thousands_sep", value: ""},
+	{name: "mon_grouping", value: ""},
+	{name: "positive_sign", value: ""},
+	{name: "negative_sign", value: ""},
+}
+
+var localeconvCharFields = []string{
+	"int_frac_digits",
+	"frac_digits",
+	"p_cs_precedes",
+	"p_sep_by_space",
+	"n_cs_precedes",
+	"n_sep_by_space",
+	"p_sign_posn",
+	"n_sign_posn",
+	"int_p_cs_precedes",
+	"int_p_sep_by_space",
+	"int_n_cs_precedes",
+	"int_n_sep_by_space",
+	"int_p_sign_posn",
+	"int_n_sign_posn",
 }
 
 func clockExtern(name string) ExternFunc {
@@ -5433,6 +5475,62 @@ func (r *ExternRegistry) staticI32Variable(mem *Memory, name string, initial int
 	}
 	r.staticVars[mem][name] = addr
 	return addr, nil
+}
+
+func (r *ExternRegistry) staticBlock(mem *Memory, name string, size, align int64) (uint64, bool, error) {
+	if mem == nil {
+		return 0, false, fmt.Errorf("memory is nil")
+	}
+	if byName := r.staticBlocks[mem]; byName != nil {
+		if addr, ok := byName[name]; ok {
+			return addr, false, nil
+		}
+	}
+	addr, err := mem.TryAlloc("extern:"+name, size, align, false, blockGlobal)
+	if err != nil {
+		return 0, false, err
+	}
+	if r.staticBlocks[mem] == nil {
+		r.staticBlocks[mem] = make(map[string]uint64)
+	}
+	r.staticBlocks[mem][name] = addr
+	return addr, true, nil
+}
+
+func (r *ExternRegistry) staticLocaleconv(mem *Memory) (uint64, error) {
+	ptrSize := mem.target.PointerSize
+	ptrAlign := mem.target.PointerAlign
+	size := alignInt64(int64(len(localeconvPointerFields))*ptrSize+int64(len(localeconvCharFields)), ptrAlign)
+	addr, created, err := r.staticBlock(mem, "localeconv", size, ptrAlign)
+	if err != nil || !created {
+		return addr, err
+	}
+	for i, field := range localeconvPointerFields {
+		fieldAddr, err := r.staticCString(mem, "localeconv:"+field.name, field.value)
+		if err != nil {
+			return 0, err
+		}
+		if err := mem.Store(addr+uint64(int64(i)*ptrSize), bytecode.TypePtr, ptrAlign, PtrValue(fieldAddr)); err != nil {
+			return 0, err
+		}
+	}
+	charBase := addr + uint64(int64(len(localeconvPointerFields))*ptrSize)
+	for i := range localeconvCharFields {
+		if err := mem.Store(charBase+uint64(i), bytecode.TypeI8, 1, IntValue(bytecode.TypeI8, 127)); err != nil {
+			return 0, err
+		}
+	}
+	return addr, nil
+}
+
+func alignInt64(v, align int64) int64 {
+	if align <= 1 {
+		return v
+	}
+	if rem := v % align; rem != 0 {
+		v += align - rem
+	}
+	return v
 }
 
 func (r *ExternRegistry) setErrno(mem *Memory, value int32) error {

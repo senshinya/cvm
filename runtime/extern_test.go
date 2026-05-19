@@ -4628,6 +4628,66 @@ func TestLocaleSetlocaleExtern(t *testing.T) {
 	}
 }
 
+func TestLocaleconvExtern(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	target := bytecode.DefaultTarget()
+	mem := NewMemory(target)
+	fn, ok := reg.Lookup("localeconv")
+	if !ok {
+		t.Fatal("missing localeconv extern")
+	}
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, nil)
+	if err != nil || exit != nil {
+		t.Fatalf("localeconv ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("localeconv ret=%#v, want non-null struct pointer", ret)
+	}
+	addr := ret.Int
+	checkStringField := func(name string, index int, want string) {
+		t.Helper()
+		ptr, err := mem.Load(addr+uint64(int64(index)*target.PointerSize), bytecode.TypePtr, target.PointerAlign)
+		if err != nil {
+			t.Fatalf("load %s pointer: %v", name, err)
+		}
+		got, err := mem.ReadCString(ptr.Int)
+		if err != nil || got != want {
+			t.Fatalf("%s=%q err=%v, want %q", name, got, err, want)
+		}
+	}
+	checkStringField("decimal_point", 0, ".")
+	checkStringField("thousands_sep", 1, "")
+	checkStringField("grouping", 2, "")
+
+	charBase := addr + uint64(10*target.PointerSize)
+	for i, name := range []string{"int_frac_digits", "frac_digits", "p_cs_precedes"} {
+		got, err := mem.Load(charBase+uint64(i), bytecode.TypeI8, 1)
+		if err != nil {
+			t.Fatalf("load %s: %v", name, err)
+		}
+		if got.Int != 127 {
+			t.Fatalf("%s=%#v, want CHAR_MAX", name, got)
+		}
+	}
+
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, nil)
+	if err != nil || exit != nil {
+		t.Fatalf("localeconv second ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != addr {
+		t.Fatalf("localeconv second ret=%#v, want stable pointer %#x", ret, addr)
+	}
+
+	other := NewMemory(target)
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: other}, nil)
+	if err != nil || exit != nil {
+		t.Fatalf("localeconv other memory ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("localeconv other memory ret=%#v, want independent non-null pointer", ret)
+	}
+}
+
 func TestTimeExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
