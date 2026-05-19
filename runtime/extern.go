@@ -166,9 +166,9 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	r.Register("swprintf", swprintfExtern("swprintf"))
 	r.Register("wprintf", wprintfExtern("wprintf", r))
 	r.Register("fwprintf", fwprintfExtern("fwprintf", r))
-	for _, name := range []string{"vwprintf", "vfwprintf", "vswprintf"} {
-		r.Register(name, wideStdioIntStubExtern(name, -1))
-	}
+	r.Register("vwprintf", vwprintfExtern("vwprintf", r))
+	r.Register("vfwprintf", vfwprintfExtern("vfwprintf", r))
+	r.Register("vswprintf", vswprintfExtern("vswprintf"))
 	r.Register("perror", perrorExtern("perror", r))
 	for _, name := range []string{"fflush", "fflush_unlocked"} {
 		r.Register(name, fflushExtern(name, r))
@@ -1017,6 +1017,46 @@ func (r *ExternRegistry) readHostWideChar(stream uint64) Value {
 		return IntValue(bytecode.TypeI32, -1)
 	}
 	return IntValue(bytecode.TypeI32, int64(ch))
+}
+
+func writeWideFormattedBuffer(name string, mem *Memory, dst uint64, sizeArg Value, out string) (Value, *ExitStatus, error) {
+	size, err := memorySizeArg(name, sizeArg)
+	if err != nil {
+		return Value{}, nil, err
+	}
+	if size <= 0 {
+		return IntValue(bytecode.TypeI32, -1), nil, nil
+	}
+	limit := int(size) - 1
+	truncated := len(out) > limit
+	writeLen := len(out)
+	if truncated {
+		writeLen = limit
+	}
+	for i := 0; i < writeLen; i++ {
+		if out[i] >= 0x80 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		if err := storeWideChar(mem, dst+uint64(i*4), uint32(out[i])); err != nil {
+			return Value{}, nil, err
+		}
+	}
+	if err := storeWideChar(mem, dst+uint64(writeLen*4), 0); err != nil {
+		return Value{}, nil, err
+	}
+	if truncated {
+		return IntValue(bytecode.TypeI32, -1), nil, nil
+	}
+	return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+}
+
+func (r *ExternRegistry) writeWideFormattedOutput(stream uint64, w io.Writer, out string) Value {
+	for i := 0; i < len(out); i++ {
+		if ret := r.writeHostWideChar(stream, w, int64(out[i])); signedInt(ret) == -1 {
+			return ret
+		}
+	}
+	return IntValue(bytecode.TypeI32, int64(len(out)))
 }
 
 func wideStdioIntStubExtern(name string, value int64) ExternFunc {
@@ -5237,34 +5277,26 @@ func swprintfExtern(name string) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		size, err := memorySizeArg(name, args[1])
+		return writeWideFormattedBuffer(name, ec.Memory, args[0].Int, args[1], out)
+	}
+}
+
+func vswprintfExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 4 {
+			return Value{}, nil, fmt.Errorf("%s expects 4 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isIntegerLike(args[1].Type) || !isPointerType(args[2].Type) || !isPointerType(args[3].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects destination, size, wide format, and va_list arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatWideVaListCString(name, ec.Memory, args[2].Int, args[3].Int)
 		if err != nil {
 			return Value{}, nil, err
 		}
-		if size <= 0 {
-			return IntValue(bytecode.TypeI32, -1), nil, nil
-		}
-		limit := int(size) - 1
-		truncated := len(out) > limit
-		writeLen := len(out)
-		if truncated {
-			writeLen = limit
-		}
-		for i := 0; i < writeLen; i++ {
-			if out[i] >= 0x80 {
-				return IntValue(bytecode.TypeI32, -1), nil, nil
-			}
-			if err := storeWideChar(ec.Memory, args[0].Int+uint64(i*4), uint32(out[i])); err != nil {
-				return Value{}, nil, err
-			}
-		}
-		if err := storeWideChar(ec.Memory, args[0].Int+uint64(writeLen*4), 0); err != nil {
-			return Value{}, nil, err
-		}
-		if truncated {
-			return IntValue(bytecode.TypeI32, -1), nil, nil
-		}
-		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+		return writeWideFormattedBuffer(name, ec.Memory, args[0].Int, args[1], out)
 	}
 }
 
@@ -5283,13 +5315,26 @@ func wprintfExtern(name string, r *ExternRegistry) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		w := r.externStdout(ec)
-		for i := 0; i < len(out); i++ {
-			if ret := r.writeHostWideChar(r.stdoutHandle, w, int64(out[i])); signedInt(ret) == -1 {
-				return ret, nil, nil
-			}
+		return r.writeWideFormattedOutput(r.stdoutHandle, r.externStdout(ec), out), nil, nil
+	}
+}
+
+func vwprintfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 2 {
+			return Value{}, nil, fmt.Errorf("%s expects 2 arguments", name)
 		}
-		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide format and va_list arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		out, err := formatWideVaListCString(name, ec.Memory, args[0].Int, args[1].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return r.writeWideFormattedOutput(r.stdoutHandle, r.externStdout(ec), out), nil, nil
 	}
 }
 
@@ -5312,12 +5357,30 @@ func fwprintfExtern(name string, r *ExternRegistry) ExternFunc {
 		if err != nil {
 			return Value{}, nil, err
 		}
-		for i := 0; i < len(out); i++ {
-			if ret := r.writeHostWideChar(args[0].Int, w, int64(out[i])); signedInt(ret) == -1 {
-				return ret, nil, nil
-			}
+		return r.writeWideFormattedOutput(args[0].Int, w, out), nil, nil
+	}
+}
+
+func vfwprintfExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
 		}
-		return IntValue(bytecode.TypeI32, int64(len(out))), nil, nil
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isPointerType(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects stream, wide format, and va_list arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		w, ok := r.lookupHostWriter(args[0].Int)
+		if !ok {
+			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
+		}
+		out, err := formatWideVaListCString(name, ec.Memory, args[1].Int, args[2].Int)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return r.writeWideFormattedOutput(args[0].Int, w, out), nil, nil
 	}
 }
 
@@ -6206,6 +6269,14 @@ func formatVaListCString(name string, mem *Memory, formatAddr, vaListAddr uint64
 		return "", err
 	}
 	return formatCString(name, mem, formatAddr, args)
+}
+
+func formatWideVaListCString(name string, mem *Memory, formatAddr, vaListAddr uint64) (string, error) {
+	args, err := readMemoryVaList(name, mem, vaListAddr)
+	if err != nil {
+		return "", err
+	}
+	return formatWideCString(name, mem, formatAddr, args)
 }
 
 func formatWideCString(name string, mem *Memory, formatAddr uint64, args []Value) (string, error) {

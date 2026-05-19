@@ -2238,6 +2238,85 @@ func TestFwprintfWritesToStream(t *testing.T) {
 	}
 }
 
+func TestWideVPrintfFunctionsReadMemoryVaList(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	reg := DefaultExternRegistry(&out, &errOut)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stderr, ok := reg.LookupVariable("stderr", mem)
+	if !ok {
+		t.Fatal("missing stderr extern variable")
+	}
+	buf := mustAlloc(t, mem, "buf:wide-vformat-va-list", 48, 4, false, blockLocal)
+	str := mustAllocBytes(t, mem, "str:wide-vformat-va-list", []byte("ok\x00"), true, blockString)
+	makeWide := func(name string, chars ...uint32) uint64 {
+		t.Helper()
+		addr, err := mem.TryAlloc(name, int64(len(chars)*4), 4, false, blockLocal)
+		if err != nil {
+			t.Fatalf("alloc %s: %v", name, err)
+		}
+		for i, ch := range chars {
+			if err := storeWideChar(mem, addr+uint64(i*4), ch); err != nil {
+				t.Fatalf("store %s[%d]: %v", name, i, err)
+			}
+		}
+		return addr
+	}
+	readWide := func(addr uint64) string {
+		t.Helper()
+		chars, err := readWideCString(mem, addr)
+		if err != nil {
+			t.Fatalf("read wide string: %v", err)
+		}
+		var b strings.Builder
+		for _, ch := range chars {
+			b.WriteByte(byte(ch))
+		}
+		return b.String()
+	}
+	format := makeWide("wide-vformat:fmt", '%', 'd', ' ', '%', 's', 0)
+	ap := mustAllocVaList(t, mem, "ap:wide-vformat", IntValue(bytecode.TypeI32, 42), ObjectAddrValue(str))
+
+	vswprintfFn, ok := reg.Lookup("vswprintf")
+	if !ok {
+		t.Fatal("missing vswprintf extern")
+	}
+	ret, exit, err := vswprintfFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(buf),
+		UIntValue(bytecode.TypeU64, 16),
+		ObjectAddrValue(format),
+		PtrValue(ap),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 5 || readWide(buf) != "42 ok" {
+		t.Fatalf("vswprintf ret=%#v exit=%#v err=%v output=%q, want 42 ok", ret, exit, err, readWide(buf))
+	}
+
+	vwprintfFn, ok := reg.Lookup("vwprintf")
+	if !ok {
+		t.Fatal("missing vwprintf extern")
+	}
+	ret, exit, err = vwprintfFn(context.Background(), &ExternContext{Memory: mem, Stdout: &out}, []Value{
+		ObjectAddrValue(format),
+		PtrValue(ap),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 5 || out.String() != "42 ok" {
+		t.Fatalf("vwprintf ret=%#v exit=%#v err=%v stdout=%q, want 42 ok", ret, exit, err, out.String())
+	}
+
+	vfwprintfFn, ok := reg.Lookup("vfwprintf")
+	if !ok {
+		t.Fatal("missing vfwprintf extern")
+	}
+	ret, exit, err = vfwprintfFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(stderr),
+		ObjectAddrValue(format),
+		PtrValue(ap),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 5 || errOut.String() != "42 ok" {
+		t.Fatalf("vfwprintf ret=%#v exit=%#v err=%v stderr=%q, want 42 ok", ret, exit, err, errOut.String())
+	}
+}
+
 func TestOutputCharacterAliasesWriteBytes(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

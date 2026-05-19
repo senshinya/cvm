@@ -142,9 +142,9 @@ Calibration before execution: Reuse `fprintf` stream routing and wide format bri
 
 Calibration before execution: Re-read memory-backed `va_list` support for v-format externs.
 
-- [ ] Register and implement `vwprintf`, `vfwprintf`, and `vswprintf`.
-- [ ] Cover memory-backed va-list integer/string arguments.
-- [ ] Verify, commit `feat(runtime): add wide vprintf functions`, and push.
+- [x] Register and implement `vwprintf`, `vfwprintf`, and `vswprintf`.
+- [x] Cover memory-backed va-list integer/string arguments.
+- [x] Verify, commit `feat(runtime): add wide vprintf functions`, and push.
 
 ## Milestone 17: Wide Input Format Header Surface
 
