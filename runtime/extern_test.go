@@ -1642,6 +1642,50 @@ func TestFputwcWritesWideCharToHostHandle(t *testing.T) {
 	}
 }
 
+func TestWideOutputAliasesWriteWideChars(t *testing.T) {
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	reg := DefaultExternRegistry(&out, &errOut)
+	mem := NewMemory(bytecode.DefaultTarget())
+	stdout, ok := reg.LookupVariable("stdout", mem)
+	if !ok {
+		t.Fatal("missing stdout extern variable")
+	}
+	stderr, ok := reg.LookupVariable("stderr", mem)
+	if !ok {
+		t.Fatal("missing stderr extern variable")
+	}
+	putwcFn, ok := reg.Lookup("putwc")
+	if !ok {
+		t.Fatal("missing putwc extern")
+	}
+	putwcharFn, ok := reg.Lookup("putwchar")
+	if !ok {
+		t.Fatal("missing putwchar extern")
+	}
+	fwideFn, ok := reg.Lookup("fwide")
+	if !ok {
+		t.Fatal("missing fwide extern")
+	}
+
+	ret, exit, err := putwcFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'Q'), PtrValue(stderr)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'Q' || errOut.String() != "Q" {
+		t.Fatalf("putwc ret=%#v exit=%#v err=%v stderr=%q, want Q", ret, exit, err, errOut.String())
+	}
+	ret, exit, err = fwideFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stderr), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || signedInt(ret) <= 0 {
+		t.Fatalf("fwide stderr ret=%#v exit=%#v err=%v, want positive", ret, exit, err)
+	}
+	ret, exit, err = putwcharFn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 'R')})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 'R' || out.String() != "R" {
+		t.Fatalf("putwchar ret=%#v exit=%#v err=%v stdout=%q, want R", ret, exit, err, out.String())
+	}
+	ret, exit, err = fwideFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), IntValue(bytecode.TypeI32, 0)})
+	if err != nil || exit != nil || signedInt(ret) <= 0 {
+		t.Fatalf("fwide stdout ret=%#v exit=%#v err=%v, want positive", ret, exit, err)
+	}
+}
+
 func TestOutputCharacterAliasesWriteBytes(t *testing.T) {
 	var out bytes.Buffer
 	var errOut bytes.Buffer

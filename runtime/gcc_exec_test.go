@@ -4361,6 +4361,28 @@ int main(void)
 	}
 }
 
+func TestWideStdioOutputAliasesExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <wchar.h>
+
+int main(void)
+{
+  if (putwc(L'W', stdout) != L'W')
+    return 1;
+  if (putwchar(L'Z') != L'Z')
+    return 2;
+  if (fwide(stdout, 0) <= 0)
+    return 3;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-stdio-output-aliases-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinMemoryOpsExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

@@ -53,9 +53,9 @@ Calibration before execution: Reuse C-locale single-byte `wcrtomb` semantics.
 
 Calibration before execution: Confirm aliases should route through `fputwc` and stdout.
 
-- [ ] Register and implement `putwc` and `putwchar`.
-- [ ] Cover direct extern and source-level stdout behavior.
-- [ ] Verify, commit `feat(runtime): add putwc aliases`, and push.
+- [x] Register and implement `putwc` and `putwchar`.
+- [x] Cover direct extern and source-level stdout behavior.
+- [x] Verify, commit `feat(runtime): add putwc aliases`, and push.
 
 ## Milestone 6: `fgetwc`
 

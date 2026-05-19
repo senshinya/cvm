@@ -155,7 +155,9 @@ func DefaultExternRegistryWithIO(stdin io.Reader, stdout, stderr io.Writer) *Ext
 	}
 	r.Register("fwide", fwideExtern("fwide", r))
 	r.Register("fputwc", fputwcExtern("fputwc", r))
-	for _, name := range []string{"putwc", "putwchar", "fgetwc", "getwc", "getwchar", "ungetwc"} {
+	r.Register("putwc", fputwcExtern("putwc", r))
+	r.Register("putwchar", putwcharExtern("putwchar", r))
+	for _, name := range []string{"fgetwc", "getwc", "getwchar", "ungetwc"} {
 		r.Register(name, wideStdioIntStubExtern(name, -1))
 	}
 	r.Register("fputws", wideStdioIntStubExtern("fputws", -1))
@@ -789,14 +791,12 @@ func fwideExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
-		switch signedInt(args[1]) {
-		case 0:
-		default:
-			if signedInt(args[1]) > 0 {
-				r.setHostOrientation(args[0].Int, streamWide)
-			} else {
-				r.setHostOrientation(args[0].Int, streamByte)
-			}
+		mode := signedInt(args[1])
+		switch {
+		case mode > 0:
+			r.setHostOrientation(args[0].Int, streamWide)
+		case mode < 0:
+			r.setHostOrientation(args[0].Int, streamByte)
 		}
 		return IntValue(bytecode.TypeI32, r.hostOrientationResult(args[0].Int)), nil, nil
 	}
@@ -814,21 +814,42 @@ func fputwcExtern(name string, r *ExternRegistry) ExternFunc {
 		if !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[1].Int)
 		}
-		if r.setHostOrientation(args[1].Int, streamWide) != streamWide {
-			r.hostError[args[1].Int] = true
-			return IntValue(bytecode.TypeI32, -1), nil, nil
-		}
-		wc := signedInt(args[0])
-		if wc < 0 || wc > 0x7f {
-			r.hostError[args[1].Int] = true
-			return IntValue(bytecode.TypeI32, -1), nil, nil
-		}
-		if _, err := w.Write([]byte{byte(wc)}); err != nil {
-			r.hostError[args[1].Int] = true
-			return IntValue(bytecode.TypeI32, -1), nil, nil
-		}
-		return IntValue(bytecode.TypeI32, wc), nil, nil
+		return r.writeHostWideChar(args[1].Int, w, signedInt(args[0])), nil, nil
 	}
+}
+
+func putwcharExtern(name string, r *ExternRegistry) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 1 {
+			return Value{}, nil, fmt.Errorf("%s expects 1 argument", name)
+		}
+		if !isIntegerLike(args[0].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide character argument", name)
+		}
+		return r.writeHostWideChar(r.stdoutHandle, r.externStdout(ec), signedInt(args[0])), nil, nil
+	}
+}
+
+func (r *ExternRegistry) writeHostWideChar(stream uint64, w io.Writer, wc int64) Value {
+	if stream != 0 {
+		if r.setHostOrientation(stream, streamWide) != streamWide {
+			r.hostError[stream] = true
+			return IntValue(bytecode.TypeI32, -1)
+		}
+	}
+	if wc < 0 || wc > 0x7f {
+		if stream != 0 {
+			r.hostError[stream] = true
+		}
+		return IntValue(bytecode.TypeI32, -1)
+	}
+	if _, err := w.Write([]byte{byte(wc)}); err != nil {
+		if stream != 0 {
+			r.hostError[stream] = true
+		}
+		return IntValue(bytecode.TypeI32, -1)
+	}
+	return IntValue(bytecode.TypeI32, wc)
 }
 
 func wideStdioIntStubExtern(name string, value int64) ExternFunc {
@@ -873,7 +894,6 @@ func perrorExtern(name string, r *ExternRegistry) ExternFunc {
 		return Value{}, nil, nil
 	}
 }
-
 func fflushExtern(name string, r *ExternRegistry) ExternFunc {
 	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
 		if len(args) != 1 {
