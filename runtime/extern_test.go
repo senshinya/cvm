@@ -771,6 +771,13 @@ func TestStdioPositionStubs(t *testing.T) {
 	if ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
 		t.Fatalf("fgetpos ret=%#v, want i32 -1", ret)
 	}
+	ret, exit, err = fgetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), PtrValue(0xdeadbeef)})
+	if err != nil || exit != nil {
+		t.Fatalf("fgetpos invalid stdout ptr ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("fgetpos invalid stdout ptr ret=%#v, want i32 -1", ret)
+	}
 
 	fsetposFn, ok := reg.Lookup("fsetpos")
 	if !ok {
@@ -782,6 +789,78 @@ func TestStdioPositionStubs(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
 		t.Fatalf("fsetpos ret=%#v, want i32 -1", ret)
+	}
+	ret, exit, err = fsetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(stdout), PtrValue(0xdeadbeef)})
+	if err != nil || exit != nil {
+		t.Fatalf("fsetpos invalid stdout ptr ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("fsetpos invalid stdout ptr ret=%#v, want i32 -1", ret)
+	}
+}
+
+func TestConfiguredFilePositionErrors(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("data.txt", []byte("ABCDE"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "stdio:file-pos-error-path", []byte("data.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "stdio:file-pos-error-mode", []byte("r\x00"), true, blockString)
+	pos := mustAlloc(t, mem, "stdio:file-pos-error-fpos", 8, 8, false, blockLocal)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	fseekFn, ok := reg.Lookup("fseek")
+	if !ok {
+		t.Fatal("missing fseek extern")
+	}
+	ftellFn, ok := reg.Lookup("ftell")
+	if !ok {
+		t.Fatal("missing ftell extern")
+	}
+	fgetposFn, ok := reg.Lookup("fgetpos")
+	if !ok {
+		t.Fatal("missing fgetpos extern")
+	}
+	fsetposFn, ok := reg.Lookup("fsetpos")
+	if !ok {
+		t.Fatal("missing fsetpos extern")
+	}
+
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	ret, exit, err = fseekFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(file),
+		IntValue(bytecode.TypeI64, 2),
+		IntValue(bytecode.TypeI32, 0),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("fseek ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+
+	ret, exit, err = fgetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), PtrValue(0xdeadbeef)})
+	if err == nil || !strings.Contains(err.Error(), "invalid memory access") || exit != nil {
+		t.Fatalf("fgetpos invalid ptr ret=%#v exit=%#v err=%v, want invalid memory access", ret, exit, err)
+	}
+	ret, exit, err = fsetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), PtrValue(0xdeadbeef)})
+	if err == nil || !strings.Contains(err.Error(), "invalid memory access") || exit != nil {
+		t.Fatalf("fsetpos invalid ptr ret=%#v exit=%#v err=%v, want invalid memory access", ret, exit, err)
+	}
+
+	if err := mem.Store(pos, bytecode.TypeI64, 8, IntValue(bytecode.TypeI64, -1)); err != nil {
+		t.Fatalf("store negative fpos: %v", err)
+	}
+	ret, exit, err = fsetposFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file), PtrValue(pos)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || signedInt(ret) != -1 {
+		t.Fatalf("fsetpos negative ret=%#v exit=%#v err=%v, want -1", ret, exit, err)
+	}
+	ret, exit, err = ftellFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(file)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI64 || ret.Int != 2 {
+		t.Fatalf("ftell after negative fsetpos ret=%#v exit=%#v err=%v, want 2", ret, exit, err)
 	}
 }
 

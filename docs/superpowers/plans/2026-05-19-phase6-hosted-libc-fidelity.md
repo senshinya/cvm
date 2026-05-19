@@ -46,9 +46,9 @@ Calibration before execution: Re-read `fsetposExtern`, `fseekExtern`, and update
 
 Calibration before execution: Check standard-stream stub tests and invalid position-pointer coverage.
 
-- [ ] Add direct tests for standard streams, negative positions, and invalid memory.
-- [ ] Tighten `fgetpos`/`fsetpos` error returns without trapping where C-level failure is appropriate.
-- [ ] Verify, commit, and push `test(runtime): cover file position errors`.
+- [x] Add direct tests for standard streams, negative positions, and invalid memory.
+- [x] Tighten `fgetpos`/`fsetpos` error returns without trapping where C-level failure is appropriate.
+- [x] Verify, commit, and push `test(runtime): cover file position errors`.
 
 ## Milestone 5: `freopen` Opens Configured Read Files
 

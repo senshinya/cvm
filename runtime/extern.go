@@ -873,19 +873,20 @@ func fgetposExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		file := r.hostFiles[args[0].Int]
+		if file == nil {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
 		if _, _, err := ec.Memory.rangeAccess(args[1].Int, int64(valueSize(ec.Memory.target, bytecode.TypeI64)), true); err != nil {
 			return Value{}, nil, err
 		}
-		if file := r.hostFiles[args[0].Int]; file != nil {
-			if err := ec.Memory.Store(args[1].Int, bytecode.TypeI64, 8, IntValue(bytecode.TypeI64, file.pos)); err != nil {
-				return Value{}, nil, err
-			}
-			return IntValue(bytecode.TypeI32, 0), nil, nil
+		if err := ec.Memory.Store(args[1].Int, bytecode.TypeI64, 8, IntValue(bytecode.TypeI64, file.pos)); err != nil {
+			return Value{}, nil, err
 		}
-		return IntValue(bytecode.TypeI32, -1), nil, nil
+		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
 
@@ -900,30 +901,31 @@ func fsetposExtern(name string, r *ExternRegistry) ExternFunc {
 		if _, ok := r.lookupHostWriter(args[0].Int); !ok {
 			return Value{}, nil, fmt.Errorf("unknown stream handle %#x", args[0].Int)
 		}
+		file := r.hostFiles[args[0].Int]
+		if file == nil {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
 		if ec == nil || ec.Memory == nil {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
 		if _, _, err := ec.Memory.rangeAccess(args[1].Int, int64(valueSize(ec.Memory.target, bytecode.TypeI64)), false); err != nil {
 			return Value{}, nil, err
 		}
-		if file := r.hostFiles[args[0].Int]; file != nil {
-			pos, err := ec.Memory.Load(args[1].Int, bytecode.TypeI64, 8)
-			if err != nil {
-				return Value{}, nil, err
-			}
-			next := signedInt(pos)
-			if next < 0 {
-				return IntValue(bytecode.TypeI32, -1), nil, nil
-			}
-			file.pos = next
-			if file.updateMode {
-				file.lastOp = hostFileOpNone
-			}
-			delete(r.hostPushback, args[0].Int)
-			delete(r.hostEOF, args[0].Int)
-			return IntValue(bytecode.TypeI32, 0), nil, nil
+		pos, err := ec.Memory.Load(args[1].Int, bytecode.TypeI64, 8)
+		if err != nil {
+			return Value{}, nil, err
 		}
-		return IntValue(bytecode.TypeI32, -1), nil, nil
+		next := signedInt(pos)
+		if next < 0 {
+			return IntValue(bytecode.TypeI32, -1), nil, nil
+		}
+		file.pos = next
+		if file.updateMode {
+			file.lastOp = hostFileOpNone
+		}
+		delete(r.hostPushback, args[0].Int)
+		delete(r.hostEOF, args[0].Int)
+		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
 
