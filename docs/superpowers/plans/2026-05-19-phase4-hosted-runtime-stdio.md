@@ -179,15 +179,15 @@ Calibration before execution: After scansets/floats/pointers/failures land, re-r
 - Modify: `runtime/gcc_exec_test.go`
 - Modify: this plan file
 
-- [ ] **Step 1: Add stdin-backed cross-extern tests**
+- [x] **Step 1: Add stdin-backed cross-extern tests**
 
 Cover at least one scanset or float through `scanf` with configured stdin.
 
-- [ ] **Step 2: Add file-backed cross-extern tests**
+- [x] **Step 2: Add file-backed cross-extern tests**
 
 Cover at least one scanset or float through `fscanf` over a configured hermetic file, including unread-byte preservation.
 
-- [ ] **Step 3: Verify, commit, and push cross-extern coverage**
+- [x] **Step 3: Verify, commit, and push cross-extern coverage**
 
 Run the standard verification chain, then commit `test(runtime): cover scanf scanner variants`.
 

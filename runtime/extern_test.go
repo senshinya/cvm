@@ -3758,6 +3758,36 @@ func TestScanfExternScansStdinAndPreservesUnreadInput(t *testing.T) {
 	}
 }
 
+func TestScanfExternScansSetAndPreservesUnreadInput(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("abc!"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("scanf")
+	if !ok {
+		t.Fatal("missing scanf extern")
+	}
+	fmtAddr := mustAllocBytes(t, mem, "scanf:scanset-fmt", []byte("%[a-z]\x00"), true, blockString)
+	wordAddr := mustAllocBytes(t, mem, "scanf:scanset-word", []byte{0, 0, 0, 0}, false, blockLocal)
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(fmtAddr),
+		PtrValue(wordAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("scanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("scanf ret=%#v, want i32 1", ret)
+	}
+	word, err := mem.ReadCString(wordAddr)
+	if err != nil || word != "abc" {
+		t.Fatalf("word=%q err=%v, want abc", word, err)
+	}
+	ch, ok := reg.readHostChar(reg.stdinHandle)
+	if !ok || ch != '!' {
+		t.Fatalf("next stdin char=%q ok=%v, want !", ch, ok)
+	}
+}
+
 func TestFscanfExternScansConfiguredFileAndPreservesUnreadInput(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	reg.AddFile("data.txt", []byte("23 rest"))
@@ -3798,6 +3828,49 @@ func TestFscanfExternScansConfiguredFileAndPreservesUnreadInput(t *testing.T) {
 	ch, ok := reg.readHostChar(file)
 	if !ok || ch != ' ' {
 		t.Fatalf("next file char=%q ok=%v, want space", ch, ok)
+	}
+}
+
+func TestFscanfExternScansFloatAndPreservesUnreadInput(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("float.txt", []byte("1.5!"))
+	mem := NewMemory(bytecode.DefaultTarget())
+	path := mustAllocBytes(t, mem, "fscanf:float-path", []byte("float.txt\x00"), true, blockString)
+	mode := mustAllocBytes(t, mem, "fscanf:float-mode", []byte("r\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "fscanf:float-fmt", []byte("%f\x00"), true, blockString)
+	valueAddr := mustAlloc(t, mem, "fscanf:float-value", 4, 4, false, blockLocal)
+
+	fopenFn, ok := reg.Lookup("fopen")
+	if !ok {
+		t.Fatal("missing fopen extern")
+	}
+	ret, exit, err := fopenFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(path), PtrValue(mode)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("fopen ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	file := ret.Int
+	fn, ok := reg.Lookup("fscanf")
+	if !ok {
+		t.Fatal("missing fscanf extern")
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(file),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(valueAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("fscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("fscanf ret=%#v, want i32 1", ret)
+	}
+	value, err := mem.Load(valueAddr, bytecode.TypeF32, 4)
+	if err != nil || value.Float != 1.5 {
+		t.Fatalf("value=%#v err=%v, want 1.5", value, err)
+	}
+	ch, ok := reg.readHostChar(file)
+	if !ok || ch != '!' {
+		t.Fatalf("next file char=%q ok=%v, want !", ch, ok)
 	}
 }
 

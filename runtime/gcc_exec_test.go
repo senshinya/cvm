@@ -2797,6 +2797,28 @@ int main(void)
 	}
 }
 
+func TestGCCStdioScanfScansetExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+  char word[4] = {0};
+  if (scanf("%[a-z]", word) != 1)
+    return 1;
+  if (strcmp(word, "abc") != 0)
+    return 2;
+  return getchar() == '!' ? 0 : 3;
+}
+`
+	reg := DefaultExternRegistryWithIO(strings.NewReader("abc!"), nil, nil)
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-scanf-scanset-stdin-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCStdioFscanfExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdio.h>
@@ -2817,6 +2839,31 @@ int main(void)
 	reg := DefaultExternRegistry(nil, nil)
 	reg.AddFile("input.txt", []byte("52 tail"))
 	st := runGCCExecFixtureWithLoadOptions(t, "stdio-fscanf-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
+func TestGCCStdioFscanfFloatExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  float f = 0.0f;
+  FILE *fp = fopen("float.txt", "r");
+  if (!fp)
+    return 1;
+  if (fscanf(fp, "%f", &f) != 1)
+    return 2;
+  if (f != 1.5f)
+    return 3;
+  return fgetc(fp) == '!' ? 0 : 4;
+}
+`
+	reg := DefaultExternRegistry(nil, nil)
+	reg.AddFile("float.txt", []byte("1.5!"))
+	st := runGCCExecFixtureWithLoadOptions(t, "stdio-fscanf-float-runtime.c", source, gccExecStepLimit, LoadOptions{Externs: reg})
 	if st.Code != 0 {
 		t.Fatalf("exit code = %d, want 0", st.Code)
 	}
