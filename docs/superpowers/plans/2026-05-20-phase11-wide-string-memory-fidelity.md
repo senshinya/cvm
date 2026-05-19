@@ -225,10 +225,15 @@ Calibration before execution: Search existing source runtime tests for `<wchar.h
 
 Calibration before execution: Run GCC runtime gap report and scan imported accept roots for wide-string candidates.
 
-- [ ] Run `TestGCCExecutionGapReportIsCurrent`.
-- [ ] Scan imported GCC accept fixtures for `wcs`, `wmem`, `wcstok`, `wcscoll`, and `wcsxfrm`.
-- [ ] Add a low-risk fixture only if stable.
-- [ ] Verify, commit `docs: record phase 11 gcc fixture recheck`, and push.
+- [x] Run `TestGCCExecutionGapReportIsCurrent`.
+- [x] Scan imported GCC accept fixtures for `wcs`, `wmem`, `wcstok`, `wcscoll`, and `wcsxfrm`.
+- [x] Add a low-risk fixture only if stable.
+- [x] Verify, commit `docs: record phase 11 gcc fixture recheck`, and push.
+
+Recheck notes:
+- `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1` passed.
+- Imported GCC accept scans for `wcs`, `wmem`, `wcstok`, `wcscoll`, and `wcsxfrm` found no new low-risk run fixture. Relevant imported hits are still the already-covered `c99-init-1.c` wide-string initializer and reject-only wide-character diagnostics.
+- Phase 11 source-level runtime coverage now carries the executable wide memory, search/span, copy/concat, collation/transform, and tokenizer workflows.
 
 ## Milestone 27: Phase 11 Gap Map
 
