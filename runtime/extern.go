@@ -538,7 +538,7 @@ func tmpnamExtern(name string, r *ExternRegistry) ExternFunc {
 		}
 		tmpName := "/tmp/cvm-tmp-0"
 		if args[0].Int != 0 {
-			if err := writeMemoryByte(ec.Memory, args[0].Int, 0); err != nil {
+			if err := writeMemoryBytes(ec.Memory, args[0].Int, append([]byte(tmpName), 0)); err != nil {
 				return Value{}, nil, err
 			}
 			return PtrValue(args[0].Int), nil, nil

@@ -934,6 +934,31 @@ func TestTmpnamNullReturnsStaticName(t *testing.T) {
 	}
 }
 
+func TestTmpnamWritesCallerBuffer(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	buf := mustAlloc(t, mem, "stdio:tmpnam-buffer", 20, 1, false, blockLocal)
+	fn, ok := reg.Lookup("tmpnam")
+	if !ok {
+		t.Fatal("missing tmpnam extern")
+	}
+
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(buf)})
+	if err != nil || exit != nil {
+		t.Fatalf("tmpnam ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != buf {
+		t.Fatalf("tmpnam ret=%#v, want buffer pointer %#x", ret, buf)
+	}
+	got, err := mem.ReadCString(buf)
+	if err != nil {
+		t.Fatalf("tmpnam buffer string: %v", err)
+	}
+	if got != "/tmp/cvm-tmp-0" {
+		t.Fatalf("tmpnam buffer = %q, want /tmp/cvm-tmp-0", got)
+	}
+}
+
 func TestStdioPositionStubs(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

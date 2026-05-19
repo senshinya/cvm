@@ -98,10 +98,10 @@ Calibration before execution: Re-read `tmpnamExtern` and existing stub tests; co
 
 Calibration before execution: Check writable buffer helpers and `L_tmpnam`.
 
-- [ ] Add failing direct test expecting `tmpnam(buf)` to write and return `buf`.
-- [ ] Implement caller-buffer write with null termination.
-- [ ] Add source-level runtime coverage.
-- [ ] Verify, commit, and push `feat(runtime): write tmpnam buffers`.
+- [x] Add failing direct test expecting `tmpnam(buf)` to write and return `buf`.
+- [x] Implement caller-buffer write with null termination.
+- [x] Add source-level runtime coverage.
+- [x] Verify, commit, and push `feat(runtime): write tmpnam buffers`.
 
 ## Milestone 11: `tmpnam` Sequence Uniqueness
 

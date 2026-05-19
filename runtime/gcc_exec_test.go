@@ -553,12 +553,18 @@ func TestStdioTmpnamExecuteThroughRuntime(t *testing.T) {
 int main(void)
 {
   char *p;
+  char buf[L_tmpnam];
   if (L_tmpnam < 1 || TMP_MAX < 1)
     return 1;
   p = tmpnam(0);
   if (!p)
     return 2;
-  return p[0] == '/' && p[1] == 't' && p[2] == 'm' && p[3] == 'p' ? 0 : 3;
+  if (p[0] != '/' || p[1] != 't' || p[2] != 'm' || p[3] != 'p')
+    return 3;
+  p = tmpnam(buf);
+  if (p != buf)
+    return 4;
+  return buf[0] == '/' && buf[1] == 't' && buf[2] == 'm' && buf[3] == 'p' ? 0 : 5;
 }
 `
 	st := runGCCExecFixture(t, "stdio-tmpnam-runtime.c", source)
