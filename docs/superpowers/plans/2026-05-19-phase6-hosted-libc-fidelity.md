@@ -115,9 +115,9 @@ Calibration before execution: Confirm registry state can hold a temporary-name c
 
 Calibration before execution: Check `fopen("w")` can create registry files whose names come from runtime memory.
 
-- [ ] Add source-level test using `tmpnam`, `fopen(name, "w")`, write, close, reopen, read.
-- [ ] Fix any integration gap.
-- [ ] Verify, commit, and push `test(runtime): use tmpnam with configured files`.
+- [x] Add source-level test using `tmpnam`, `fopen(name, "w")`, write, close, reopen, read.
+- [x] Fix any integration gap.
+- [x] Verify, commit, and push `test(runtime): use tmpnam with configured files`.
 
 ## Milestone 13: `setvbuf` Mode Validation
 

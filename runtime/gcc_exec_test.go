@@ -579,6 +579,38 @@ int main(void)
 	}
 }
 
+func TestStdioTmpnamWithConfiguredFilesExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  char name[L_tmpnam];
+  char buf[3] = { 0, 0, 0 };
+  FILE *f;
+  if (tmpnam(name) != name)
+    return 1;
+  f = fopen(name, "w");
+  if (!f)
+    return 2;
+  if (fputs("AB", f) < 0)
+    return 3;
+  if (fclose(f) != 0)
+    return 4;
+  f = fopen(name, "r");
+  if (!f)
+    return 5;
+  if (fread(buf, 1, 2, f) != 2)
+    return 6;
+  return buf[0] == 'A' && buf[1] == 'B' ? 0 : 7;
+}
+`
+	st := runGCCExecFixture(t, "stdio-tmpnam-configured-files-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestGCCExecutionFixtures(t *testing.T) {
 	content, err := os.ReadFile(filepath.Join("testdata", "gcc-exec", "manifest.tsv"))
 	if err != nil {
