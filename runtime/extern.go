@@ -2543,6 +2543,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	}
 	r.Register("wcslen", wideStringLengthExtern("wcslen"))
 	r.Register("wcscmp", wideStringCompareExtern("wcscmp"))
+	r.Register("wcsncmp", wideStringNCompareExtern("wcsncmp"))
 	r.Register("strnlen", stringNLengthExtern("strnlen"))
 	r.Register("strerror", stringErrorExtern("strerror", r))
 	for _, name := range []string{"__builtin_strchr", "strchr"} {
@@ -3453,6 +3454,32 @@ func wideStringCompareExtern(name string) ExternFunc {
 			return Value{}, nil, fmt.Errorf("%s requires memory", name)
 		}
 		result, err := wideStringCompare(ec.Memory, args[0].Int, args[1].Int, -1)
+		if err != nil {
+			return Value{}, nil, err
+		}
+		return IntValue(bytecode.TypeI32, int64(result)), nil, nil
+	}
+}
+
+func wideStringNCompareExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects wide string, wide string, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		if count == 0 {
+			return IntValue(bytecode.TypeI32, 0), nil, nil
+		}
+		result, err := wideStringCompare(ec.Memory, args[0].Int, args[1].Int, count)
 		if err != nil {
 			return Value{}, nil, err
 		}

@@ -105,9 +105,9 @@ Calibration before execution: Reuse wide compare primitives and keep result sign
 
 Calibration before execution: Re-read `strncmp` zero-count and terminator-before-count behavior.
 
-- [ ] Register and implement `wcsncmp`.
-- [ ] Cover zero-count invalid pointers, equal prefix, less, greater, early terminator, and high wide values.
-- [ ] Verify, commit `feat(runtime): add wcsncmp`, and push.
+- [x] Register and implement `wcsncmp`.
+- [x] Cover zero-count invalid pointers, equal prefix, less, greater, early terminator, and high wide values.
+- [x] Verify, commit `feat(runtime): add wcsncmp`, and push.
 
 ## Milestone 12: `wcschr`
 
