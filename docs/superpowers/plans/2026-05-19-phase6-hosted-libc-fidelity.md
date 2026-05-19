@@ -193,8 +193,8 @@ Calibration before execution: Re-read `wcstombsExtern` and wide string helpers.
 
 Calibration before execution: Re-scan direct tests and source-level tests from milestones 16-20 for gaps.
 
-- [ ] Add one source-level workflow using all five helpers together.
-- [ ] Verify, commit, and push `test(runtime): cover c locale multibyte workflow`.
+- [x] Add one source-level workflow using all five helpers together.
+- [x] Verify, commit, and push `test(runtime): cover c locale multibyte workflow`.
 
 ## Milestone 22: Header And Registry Surface Recheck
 

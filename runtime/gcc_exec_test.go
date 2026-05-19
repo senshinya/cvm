@@ -2328,6 +2328,44 @@ int main(void)
 	}
 }
 
+func TestStdlibMultibyteWorkflowExecutesThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdlib.h>
+
+int main(void)
+{
+  wchar_t wide[4];
+  char out[4] = { 0, 0, 0, 0 };
+  char one[2] = { 0, 0 };
+  const char *input = "Hi";
+
+  if (mblen(input, 2) != 1)
+    return 1;
+  if (mbtowc(&wide[0], input, 2) != 1)
+    return 2;
+  if (mbtowc(&wide[1], input + 1, 1) != 1)
+    return 3;
+  wide[2] = 0;
+  if (wcstombs(out, wide, sizeof out) != 2)
+    return 4;
+  if (out[0] != 'H' || out[1] != 'i' || out[2] != 0)
+    return 5;
+  wide[0] = wide[1] = wide[2] = 0;
+  if (mbstowcs(wide, out, 4) != 2)
+    return 6;
+  if (wide[0] != L'H' || wide[1] != L'i' || wide[2] != 0)
+    return 7;
+  if (wctomb(one, wide[1]) != 1 || one[0] != 'i')
+    return 8;
+  return wctomb(0, 0) == 0 ? 0 : 9;
+}
+`
+	st := runGCCExecFixture(t, "stdlib-multibyte-workflow-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestStdlibStrtolExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <stdlib.h>
