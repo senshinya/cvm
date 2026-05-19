@@ -1805,6 +1805,36 @@ int main(void)
 	}
 }
 
+func TestLocaleconvExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <locale.h>
+#include <string.h>
+
+int main(void)
+{
+  struct lconv *first = localeconv();
+  struct lconv *second = localeconv();
+  if (first == 0)
+    return 1;
+  if (first != second)
+    return 2;
+  if (strcmp(first->decimal_point, ".") != 0)
+    return 3;
+  if (first->thousands_sep[0] != 0)
+    return 4;
+  if (first->grouping[0] != 0)
+    return 5;
+  if (first->int_frac_digits != 127)
+    return 6;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "localeconv-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <time.h>

@@ -89,9 +89,15 @@ Findings:
 
 Calibration before execution: Re-read source test helpers and C header layout.
 
-- [ ] Add source-level runtime test for `localeconv()->decimal_point`.
-- [ ] Add source-level runtime test for stable pointer behavior.
-- [ ] Verify, commit, and push `test(runtime): cover localeconv source`.
+- [x] Add source-level runtime test for `localeconv()->decimal_point`.
+- [x] Add source-level runtime test for stable pointer behavior.
+- [x] Verify, commit, and push `test(runtime): cover localeconv source`.
+
+Findings:
+
+- Added source-level runtime coverage for `localeconv` returning a non-null stable pointer.
+- The source test validates `decimal_point`, empty `thousands_sep`, empty `grouping`, and `CHAR_MAX` monetary digit sentinel behavior through struct field access.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestLocaleconvExecuteThroughRuntime -count=1` passed.
 
 ## Milestone 7: Wide Ctype Header Surface
 
