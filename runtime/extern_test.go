@@ -9695,6 +9695,55 @@ func TestFormatExternsSupportSizedWriteCount(t *testing.T) {
 	}
 }
 
+func TestFormatExternsSupportWideSizedWriteCount(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	bufAddr := mustAlloc(t, mem, "buf:format-wide-sized-count", 16, 1, false, blockLocal)
+	countLong := mustAlloc(t, mem, "count-long:format-wide-sized-count", 8, 8, false, blockLocal)
+	countJ := mustAlloc(t, mem, "count-j:format-wide-sized-count", 8, 8, false, blockLocal)
+	countZ := mustAlloc(t, mem, "count-z:format-wide-sized-count", 8, 8, false, blockLocal)
+	countT := mustAlloc(t, mem, "count-t:format-wide-sized-count", 8, 8, false, blockLocal)
+	fmtAddr := mustAllocBytes(t, mem, "fmt:format-wide-sized-count", []byte("a%lnb%jnc%znd%tne\x00"), true, blockString)
+	fn, ok := reg.Lookup("__builtin_sprintf")
+	if !ok {
+		t.Fatal("missing __builtin_sprintf extern")
+	}
+	ret, exit, callErr := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(bufAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(countLong),
+		PtrValue(countJ),
+		PtrValue(countZ),
+		PtrValue(countT),
+	})
+	if callErr != nil || exit != nil {
+		t.Fatalf("__builtin_sprintf ret=%#v exit=%#v err=%v", ret, exit, callErr)
+	}
+	got, err := mem.ReadCString(bufAddr)
+	if err != nil {
+		t.Fatalf("ReadCString: %v", err)
+	}
+	vLong, err := mem.Load(countLong, bytecode.TypeI64, 8)
+	if err != nil {
+		t.Fatalf("Load countLong: %v", err)
+	}
+	vJ, err := mem.Load(countJ, bytecode.TypeI64, 8)
+	if err != nil {
+		t.Fatalf("Load countJ: %v", err)
+	}
+	vZ, err := mem.Load(countZ, bytecode.TypeI64, 8)
+	if err != nil {
+		t.Fatalf("Load countZ: %v", err)
+	}
+	vT, err := mem.Load(countT, bytecode.TypeI64, 8)
+	if err != nil {
+		t.Fatalf("Load countT: %v", err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 5 || got != "abcde" || vLong.Int != 1 || vJ.Int != 2 || vZ.Int != 3 || vT.Int != 4 {
+		t.Fatalf("__builtin_sprintf ret=%#v output=%q counts=%#v/%#v/%#v/%#v, want abcde and 1/2/3/4", ret, got, vLong, vJ, vZ, vT)
+	}
+}
+
 func TestFenvExternsAreNoOps(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	for _, name := range []string{"feclearexcept", "fetestexcept"} {

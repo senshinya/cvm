@@ -56,9 +56,13 @@ Calibration result:
 
 Calibration before execution: Re-read existing `%n` storage and scanf count handling.
 
-- [ ] Cover `%hhn`, `%hn`, `%n`, `%ln`, and `%lln` for printf.
-- [ ] Fix count storage widths and alignment behavior if needed.
-- [ ] Verify, commit `feat(runtime): harden printf count lengths`, and push.
+- [x] Cover `%hhn`, `%hn`, `%n`, `%ln`, and `%lln` for printf.
+- [x] Fix count storage widths and alignment behavior if needed.
+- [x] Verify, commit `test(runtime): cover printf count lengths`, and push.
+
+Calibration result:
+- Existing `%n` storage already routed through `writeCountType`, which covers `hh`, `h`, `l`, `ll`, `j`, `z`, and `t`.
+- The milestone added direct coverage for `l`/`j`/`z`/`t` count writes and source coverage for the full `hh`/`h`/default/`l`/`ll`/`j`/`z`/`t` set; no runtime code change was needed.
 
 ## Milestone 6: Printf Character Length Modifiers
 

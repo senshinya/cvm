@@ -2450,11 +2450,27 @@ int main(void)
   if (strcmp(buf, "255 65535 4294967295 1234 377") != 0)
     return 6;
 
+  signed char c8 = 0;
+  short c16 = 0;
+  int c32 = 0;
+  long cl = 0;
+  long long cll = 0;
+  intmax_t cj = 0;
+  long cz = 0;
+  ptrdiff_t ct = 0;
+  n = sprintf(buf, "a%hhnb%hnc%nd%lne%llnf%jng%znh%tn", &c8, &c16, &c32, &cl, &cll, &cj, &cz, &ct);
+  if (n != 8)
+    return 7;
+  if (strcmp(buf, "abcdefgh") != 0)
+    return 8;
+  if (c8 != 1 || c16 != 2 || c32 != 3 || cl != 4 || cll != 5 || cj != 6 || cz != 7 || ct != 8)
+    return 9;
+
   char small[5];
   n = snprintf(small, 5, "%s-%u", "abcdef", 3U);
   if (n != 8)
-    return 7;
-  return strcmp(small, "abcd") == 0 ? 0 : 8;
+    return 10;
+  return strcmp(small, "abcd") == 0 ? 0 : 11;
 }
 `
 	st := runGCCExecFixture(t, "plain-sprintf-runtime.c", source)
