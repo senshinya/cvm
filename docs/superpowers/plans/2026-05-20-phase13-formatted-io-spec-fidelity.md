@@ -248,9 +248,13 @@ Calibration result:
 
 Calibration before execution: Re-read input failure and matching failure handling.
 
-- [ ] Cover literal percent, trailing whitespace, leading whitespace, and literal mismatch.
-- [ ] Fix consumed-byte and EOF behavior if needed.
-- [ ] Verify, commit `feat(runtime): harden scanf literal edges`, and push.
+- [x] Cover literal percent, trailing whitespace, leading whitespace, and literal mismatch.
+- [x] Fix consumed-byte and EOF behavior if needed.
+- [x] Verify, commit `test(runtime): cover scanf literal edges`, and push.
+
+Calibration result:
+- Literal matching and `%%` already preserve the current input index on mismatch, and whitespace directives collapse adjacent whitespace while skipping input whitespace.
+- Direct and source coverage now lock literal percent, whitespace skipping, and unread preservation after a literal mismatch; no runtime code change was needed.
 
 ## Milestone 22: Stream Formatted I/O Preservation
 

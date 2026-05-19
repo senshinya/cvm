@@ -2729,6 +2729,25 @@ int main(void)
 	}
 }
 
+func TestPlainSscanfLiteralWhitespaceExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <stdio.h>
+
+int main(void)
+{
+  int value = 0;
+  int n = sscanf("  % 42", " %% %d", &value);
+  if (n != 1)
+    return 1;
+  return value == 42 ? 0 : 2;
+}
+`
+	st := runGCCExecFixture(t, "plain-sscanf-literal-whitespace-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestBuiltinCheckedSprintfExecutesThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 

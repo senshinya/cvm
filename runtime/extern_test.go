@@ -8913,6 +8913,58 @@ func TestSscanfExternScansScansetLengthModifiers(t *testing.T) {
 	}
 }
 
+func TestSscanfExternScansLiteralPercentAndWhitespace(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("sscanf")
+	if !ok {
+		t.Fatal("missing sscanf extern")
+	}
+	inputAddr := mustAllocBytes(t, mem, "sscanf:literal-input", []byte("  % 42\x00"), true, blockString)
+	fmtAddr := mustAllocBytes(t, mem, "sscanf:literal-fmt", []byte(" %% %d\x00"), true, blockString)
+	valueAddr := mustAlloc(t, mem, "sscanf:literal-value", 4, 4, false, blockLocal)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(inputAddr),
+		ObjectAddrValue(fmtAddr),
+		PtrValue(valueAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("sscanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 1 {
+		t.Fatalf("sscanf ret=%#v, want i32 1", ret)
+	}
+	value, err := mem.Load(valueAddr, bytecode.TypeI32, 4)
+	if err != nil || value.Int != 42 {
+		t.Fatalf("value=%#v err=%v, want 42", value, err)
+	}
+}
+
+func TestScanfExternPreservesUnreadLiteralMismatch(t *testing.T) {
+	reg := DefaultExternRegistryWithIO(strings.NewReader("abX9"), nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	fn, ok := reg.Lookup("scanf")
+	if !ok {
+		t.Fatal("missing scanf extern")
+	}
+	fmtAddr := mustAllocBytes(t, mem, "scanf:literal-mismatch-fmt", []byte("abY%d\x00"), true, blockString)
+	valueAddr := mustAlloc(t, mem, "scanf:literal-mismatch-value", 4, 4, false, blockLocal)
+	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		ObjectAddrValue(fmtAddr),
+		PtrValue(valueAddr),
+	})
+	if err != nil || exit != nil {
+		t.Fatalf("scanf ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("scanf ret=%#v, want i32 0", ret)
+	}
+	ch, ok := reg.readHostChar(reg.stdinHandle)
+	if !ok || ch != 'X' {
+		t.Fatalf("next stdin char=%q ok=%v, want X", ch, ok)
+	}
+}
+
 func TestScanfExternScansStdinAndPreservesUnreadInput(t *testing.T) {
 	reg := DefaultExternRegistryWithIO(strings.NewReader("17 tail"), nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
