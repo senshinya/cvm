@@ -188,9 +188,13 @@ Calibration result:
 
 Calibration before execution: Compare scanf `%n` with printf `%n` storage rules.
 
-- [ ] Cover `%hhn`, `%hn`, `%n`, `%ln`, and `%lln`.
-- [ ] Fix storage widths and no-assignment count behavior if needed.
-- [ ] Verify, commit `feat(runtime): harden scanf count lengths`, and push.
+- [x] Cover `%hhn`, `%hn`, `%n`, `%ln`, and `%lln`.
+- [x] Fix storage widths and no-assignment count behavior if needed.
+- [x] Verify, commit `test(runtime): cover scanf count lengths`, and push.
+
+Calibration result:
+- Scanf `%n` already reuses `scanIntegerType`, rejects width, and does not increase the assignment count.
+- Direct and source coverage now lock `hh`, `h`, default, `l`, `ll`, `j`, `z`, and `t` count stores plus the no-assignment return-count rule; no runtime code change was needed.
 
 ## Milestone 17: Scanf Character Length Modifiers
 
