@@ -1008,6 +1008,18 @@ func setvbufExtern(name string, r *ExternRegistry) ExternFunc {
 		if mode < 0 || mode > 2 {
 			return IntValue(bytecode.TypeI32, 1), nil, nil
 		}
+		size := unsignedInt(args[3])
+		if args[1].Int != 0 && size != 0 {
+			if size > uint64(maxInt()) {
+				return Value{}, nil, fmt.Errorf("%s buffer size exceeds host int range", name)
+			}
+			if ec == nil || ec.Memory == nil {
+				return Value{}, nil, fmt.Errorf("%s requires memory", name)
+			}
+			if _, _, err := ec.Memory.rangeAccess(args[1].Int, int64(size), true); err != nil {
+				return Value{}, nil, err
+			}
+		}
 		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }

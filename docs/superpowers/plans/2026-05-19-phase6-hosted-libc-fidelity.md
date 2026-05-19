@@ -132,9 +132,9 @@ Calibration before execution: Re-read `setvbufExtern`, header macros, and existi
 
 Calibration before execution: Check size argument handling and closed stream behavior.
 
-- [ ] Add tests for closed streams, null buffer with nonzero size, and ordinary buffer pointer validation.
-- [ ] Tighten validation while preserving no-op buffering.
-- [ ] Verify, commit, and push `test(runtime): cover setvbuf validation`.
+- [x] Add tests for closed streams, null buffer with nonzero size, and ordinary buffer pointer validation.
+- [x] Tighten validation while preserving no-op buffering.
+- [x] Verify, commit, and push `test(runtime): cover setvbuf validation`.
 
 ## Milestone 15: `setbuf` Delegation Coverage
 

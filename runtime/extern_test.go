@@ -2227,6 +2227,7 @@ func TestFilenoReturnsStandardStreamDescriptors(t *testing.T) {
 func TestStdioBufferControls(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())
+	buf := mustAlloc(t, mem, "stdio:setvbuf-buffer", 8, 1, false, blockLocal)
 	stdout, ok := reg.LookupVariable("stdout", mem)
 	if !ok {
 		t.Fatal("missing stdout extern variable")
@@ -2267,6 +2268,58 @@ func TestStdioBufferControls(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypeI32 || ret.Int == 0 {
 		t.Fatalf("setvbuf invalid mode ret=%#v, want nonzero i32", ret)
+	}
+	ret, exit, err = setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(stdout),
+		PtrValue(0),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU64, 8),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("setvbuf null buffer nonzero size ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(stdout),
+		PtrValue(buf),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU64, 8),
+	})
+	if err != nil || exit != nil || ret.Type != bytecode.TypeI32 || ret.Int != 0 {
+		t.Fatalf("setvbuf valid buffer ret=%#v exit=%#v err=%v, want 0", ret, exit, err)
+	}
+	ret, exit, err = setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(stdout),
+		PtrValue(buf + 4),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU64, 8),
+	})
+	if err == nil || !strings.Contains(err.Error(), "invalid memory access") || exit != nil {
+		t.Fatalf("setvbuf invalid buffer ret=%#v exit=%#v err=%v, want invalid memory access", ret, exit, err)
+	}
+	tmpfileFn, ok := reg.Lookup("tmpfile")
+	if !ok {
+		t.Fatal("missing tmpfile extern")
+	}
+	fcloseFn, ok := reg.Lookup("fclose")
+	if !ok {
+		t.Fatal("missing fclose extern")
+	}
+	ret, exit, err = tmpfileFn(context.Background(), &ExternContext{Memory: mem}, nil)
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int == 0 {
+		t.Fatalf("tmpfile ret=%#v exit=%#v err=%v, want file handle", ret, exit, err)
+	}
+	closed := ret.Int
+	if _, exit, err = fcloseFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(closed)}); err != nil || exit != nil {
+		t.Fatalf("fclose exit=%#v err=%v", exit, err)
+	}
+	ret, exit, err = setvbufFn(context.Background(), &ExternContext{Memory: mem}, []Value{
+		PtrValue(closed),
+		PtrValue(0),
+		IntValue(bytecode.TypeI32, 0),
+		UIntValue(bytecode.TypeU64, 0),
+	})
+	if err == nil || !strings.Contains(err.Error(), "unknown stream handle") || exit != nil {
+		t.Fatalf("setvbuf closed stream ret=%#v exit=%#v err=%v, want unknown stream handle", ret, exit, err)
 	}
 }
 
