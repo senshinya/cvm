@@ -57,9 +57,9 @@ Calibration before execution: Compare `memchr` byte masking with full wide-value
 
 Calibration before execution: Confirm return sign conventions match existing `memcmp`.
 
-- [ ] Register and implement `wmemcmp`.
-- [ ] Cover equal, less, greater, zero count, and high-value ordering.
-- [ ] Verify, commit `feat(runtime): add wmemcmp`, and push.
+- [x] Register and implement `wmemcmp`.
+- [x] Cover equal, less, greater, zero count, and high-value ordering.
+- [x] Verify, commit `feat(runtime): add wmemcmp`, and push.
 
 ## Milestone 6: `wmemcpy`
 

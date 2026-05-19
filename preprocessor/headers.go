@@ -365,6 +365,7 @@ typedef struct { unsigned int __count; unsigned int __value; } mbstate_t;
 #endif
 #define WEOF (-1)
 wchar_t *wmemchr(const wchar_t *, wchar_t, size_t);
+int wmemcmp(const wchar_t *, const wchar_t *, size_t);
 size_t mbrlen(const char *, size_t, mbstate_t *);
 size_t mbrtowc(wchar_t *, const char *, size_t, mbstate_t *);
 size_t wcrtomb(char *, wchar_t, mbstate_t *);

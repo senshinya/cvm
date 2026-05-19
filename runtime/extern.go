@@ -2559,6 +2559,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("strcoll", stringCollateExtern("strcoll"))
 	r.Register("memchr", memoryCharSearchExtern("memchr"))
 	r.Register("wmemchr", wideMemoryCharSearchExtern("wmemchr"))
+	r.Register("wmemcmp", wideMemoryCompareExtern("wmemcmp"))
 	for _, name := range []string{"__builtin_strcpy", "strcpy"} {
 		r.Register(name, stringCopyExtern(name, false))
 	}
@@ -3313,6 +3314,49 @@ func wideMemoryCharSearchExtern(name string) ExternFunc {
 			}
 		}
 		return PtrValue(0), nil, nil
+	}
+}
+
+func wideMemoryCompareExtern(name string) ExternFunc {
+	return func(ctx context.Context, ec *ExternContext, args []Value) (Value, *ExitStatus, error) {
+		if len(args) != 3 {
+			return Value{}, nil, fmt.Errorf("%s expects 3 arguments", name)
+		}
+		if !isPointerType(args[0].Type) || !isPointerType(args[1].Type) || !isIntegerLike(args[2].Type) {
+			return Value{}, nil, fmt.Errorf("%s expects pointer, pointer, and size arguments", name)
+		}
+		if ec == nil || ec.Memory == nil {
+			return Value{}, nil, fmt.Errorf("%s requires memory", name)
+		}
+		count, err := memorySizeArg(name, args[2])
+		if err != nil {
+			return Value{}, nil, err
+		}
+		for i := int64(0); i < count; i++ {
+			leftAddr, err := wideElementAddr(args[0].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			rightAddr, err := wideElementAddr(args[1].Int, i)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			left, err := loadWideChar(ec.Memory, leftAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			right, err := loadWideChar(ec.Memory, rightAddr)
+			if err != nil {
+				return Value{}, nil, err
+			}
+			if left < right {
+				return IntValue(bytecode.TypeI32, -1), nil, nil
+			}
+			if left > right {
+				return IntValue(bytecode.TypeI32, 1), nil, nil
+			}
+		}
+		return IntValue(bytecode.TypeI32, 0), nil, nil
 	}
 }
 
