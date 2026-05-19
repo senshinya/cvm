@@ -2544,6 +2544,7 @@ func registerMemoryExterns(r *ExternRegistry) {
 	r.Register("wcslen", wideStringLengthExtern("wcslen"))
 	r.Register("wcscmp", wideStringCompareExtern("wcscmp"))
 	r.Register("wcsncmp", wideStringNCompareExtern("wcsncmp"))
+	r.Register("wcscoll", wideStringCompareExtern("wcscoll"))
 	r.Register("wcschr", wideStringCharSearchExtern("wcschr"))
 	r.Register("wcsrchr", wideStringReverseCharSearchExtern("wcsrchr"))
 	r.Register("wcsstr", wideStringSearchExtern("wcsstr"))

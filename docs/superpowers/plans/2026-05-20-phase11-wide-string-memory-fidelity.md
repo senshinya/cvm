@@ -193,9 +193,9 @@ Calibration before execution: Re-read `strncat` terminator and zero-count behavi
 
 Calibration before execution: C locale collation is deterministic code-point ordering.
 
-- [ ] Register and implement `wcscoll` as C-locale `wcscmp`.
-- [ ] Cover source-level execution and direct extern comparisons.
-- [ ] Verify, commit `feat(runtime): add wcscoll`, and push.
+- [x] Register and implement `wcscoll` as C-locale `wcscmp`.
+- [x] Cover source-level execution and direct extern comparisons.
+- [x] Verify, commit `feat(runtime): add wcscoll`, and push.
 
 ## Milestone 23: `wcsxfrm`
 

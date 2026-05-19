@@ -367,6 +367,7 @@ typedef struct { unsigned int __count; unsigned int __value; } mbstate_t;
 size_t wcslen(const wchar_t *);
 int wcscmp(const wchar_t *, const wchar_t *);
 int wcsncmp(const wchar_t *, const wchar_t *, size_t);
+int wcscoll(const wchar_t *, const wchar_t *);
 wchar_t *wcschr(const wchar_t *, wchar_t);
 wchar_t *wcsrchr(const wchar_t *, wchar_t);
 wchar_t *wcsstr(const wchar_t *, const wchar_t *);

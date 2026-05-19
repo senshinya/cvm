@@ -2057,6 +2057,29 @@ int main(void)
 	}
 }
 
+func TestWideStringCollateExecuteThroughRuntime(t *testing.T) {
+	source := `/* { dg-do run } */
+#include <wchar.h>
+
+int main(void)
+{
+  if (wcscoll(L"abc", L"abd") >= 0)
+    return 1;
+  if (wcscoll(L"abc", L"abc") != 0)
+    return 2;
+  if (wcscoll(L"abd", L"abc") <= 0)
+    return 3;
+  if (wcscoll(L"ab", L"abc") >= 0)
+    return 4;
+  return 0;
+}
+`
+	st := runGCCExecFixture(t, "wide-string-collate-runtime.c", source)
+	if st.Code != 0 {
+		t.Fatalf("exit code = %d, want 0", st.Code)
+	}
+}
+
 func TestTimeHeaderExecuteThroughRuntime(t *testing.T) {
 	source := `/* { dg-do run } */
 #include <time.h>
