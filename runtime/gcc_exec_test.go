@@ -1784,9 +1784,17 @@ int main(void)
   char *current = setlocale(LC_ALL, 0);
   if (current == 0 || strcmp(current, "C") != 0)
     return 1;
-  if (setlocale(LC_NUMERIC, "C") == 0)
+  if (setlocale(LC_COLLATE, "C") == 0 || strcmp(setlocale(LC_COLLATE, 0), "C") != 0)
     return 2;
-  if (setlocale(LC_ALL, "") == 0)
+  if (setlocale(LC_CTYPE, "C") == 0 || strcmp(setlocale(LC_CTYPE, 0), "C") != 0)
+    return 5;
+  if (setlocale(LC_MONETARY, "C") == 0 || strcmp(setlocale(LC_MONETARY, 0), "C") != 0)
+    return 6;
+  if (setlocale(LC_NUMERIC, "C") == 0 || strcmp(setlocale(LC_NUMERIC, 0), "C") != 0)
+    return 7;
+  if (setlocale(LC_TIME, "C") == 0 || strcmp(setlocale(LC_TIME, 0), "C") != 0)
+    return 8;
+  if (setlocale(LC_ALL, "") == 0 || strcmp(setlocale(LC_ALL, 0), "C") != 0)
     return 4;
   return setlocale(LC_TIME, "ja_JP.UTF-8") == 0 ? 0 : 3;
 }

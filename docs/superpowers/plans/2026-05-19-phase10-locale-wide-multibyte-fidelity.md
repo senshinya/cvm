@@ -43,9 +43,16 @@ Findings:
 
 Calibration before execution: Check current `setlocale` always returns static `"C"`.
 
-- [ ] Add tests for each supported category query after setting `C` and `""`.
-- [ ] Store deterministic category state if needed.
-- [ ] Verify, commit, and push `feat(runtime): track deterministic locale categories`.
+- [x] Add tests for each supported category query after setting `C` and `""`.
+- [x] Store deterministic category state if needed.
+- [x] Verify, commit, and push `feat(runtime): track deterministic locale categories`.
+
+Findings:
+
+- The deterministic model only has an effective C locale, so explicit per-category mutable storage is not required yet.
+- Added direct extern coverage for all supported category values after setting `"C"` and `""`, including stable pointer reuse and unsupported-locale non-mutation.
+- Added source-level runtime coverage for all named category macros.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestLocaleSetlocale' -count=1` passed.
 
 ## Milestone 4: `localeconv` Header And Registry
 

@@ -4566,6 +4566,7 @@ func TestLocaleSetlocaleExtern(t *testing.T) {
 	if !ok {
 		t.Fatal("missing setlocale extern")
 	}
+	categories := []int64{0, 1, 2, 3, 4, 5}
 	ret, exit, err := fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 0), PtrValue(0)})
 	if err != nil || exit != nil {
 		t.Fatalf("setlocale query ret=%#v exit=%#v err=%v", ret, exit, err)
@@ -4576,26 +4577,38 @@ func TestLocaleSetlocaleExtern(t *testing.T) {
 	if got, err := mem.ReadCString(ret.Int); err != nil || got != "C" {
 		t.Fatalf("setlocale query string=%q err=%v, want C", got, err)
 	}
+	initialPtr := ret.Int
 
 	cLocale := mustAllocBytes(t, mem, "locale:C", []byte("C\x00"), true, blockString)
-	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 4), PtrValue(cLocale)})
-	if err != nil || exit != nil {
-		t.Fatalf("setlocale C ret=%#v exit=%#v err=%v", ret, exit, err)
-	}
-	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
-		t.Fatalf("setlocale C ret=%#v, want non-null C locale string", ret)
+	for _, category := range categories {
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, category), PtrValue(cLocale)})
+		if err != nil || exit != nil {
+			t.Fatalf("setlocale C category %d ret=%#v exit=%#v err=%v", category, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != initialPtr {
+			t.Fatalf("setlocale C category %d ret=%#v, want stable C locale pointer %#x", category, ret, initialPtr)
+		}
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, category), PtrValue(0)})
+		if err != nil || exit != nil {
+			t.Fatalf("setlocale query category %d ret=%#v exit=%#v err=%v", category, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != initialPtr {
+			t.Fatalf("setlocale query category %d ret=%#v, want stable C locale pointer %#x", category, ret, initialPtr)
+		}
 	}
 
 	emptyLocale := mustAllocBytes(t, mem, "locale:empty", []byte("\x00"), true, blockString)
-	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 0), PtrValue(emptyLocale)})
-	if err != nil || exit != nil {
-		t.Fatalf("setlocale empty ret=%#v exit=%#v err=%v", ret, exit, err)
-	}
-	if ret.Type != bytecode.TypePtr || ret.Int == 0 {
-		t.Fatalf("setlocale empty ret=%#v, want non-null C locale string", ret)
-	}
-	if got, err := mem.ReadCString(ret.Int); err != nil || got != "C" {
-		t.Fatalf("setlocale empty string=%q err=%v, want C", got, err)
+	for _, category := range categories {
+		ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, category), PtrValue(emptyLocale)})
+		if err != nil || exit != nil {
+			t.Fatalf("setlocale empty category %d ret=%#v exit=%#v err=%v", category, ret, exit, err)
+		}
+		if ret.Type != bytecode.TypePtr || ret.Int != initialPtr {
+			t.Fatalf("setlocale empty category %d ret=%#v, want stable C locale pointer %#x", category, ret, initialPtr)
+		}
+		if got, err := mem.ReadCString(ret.Int); err != nil || got != "C" {
+			t.Fatalf("setlocale empty category %d string=%q err=%v, want C", category, got, err)
+		}
 	}
 
 	unsupported := mustAllocBytes(t, mem, "locale:unsupported", []byte("ja_JP.UTF-8\x00"), true, blockString)
@@ -4605,6 +4618,13 @@ func TestLocaleSetlocaleExtern(t *testing.T) {
 	}
 	if ret.Type != bytecode.TypePtr || ret.Int != 0 {
 		t.Fatalf("setlocale unsupported ret=%#v, want null", ret)
+	}
+	ret, exit, err = fn(context.Background(), &ExternContext{Memory: mem}, []Value{IntValue(bytecode.TypeI32, 0), PtrValue(0)})
+	if err != nil || exit != nil {
+		t.Fatalf("setlocale query after unsupported ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	if ret.Type != bytecode.TypePtr || ret.Int != initialPtr {
+		t.Fatalf("setlocale query after unsupported ret=%#v, want stable C locale pointer %#x", ret, initialPtr)
 	}
 }
 
