@@ -315,9 +315,14 @@ Findings:
 
 Calibration before execution: Confirm all Phase 9 implementation milestones are committed and pushed.
 
-- [ ] Create `docs/phase9-floating-conversion-errno-fidelity-gap-map.md`.
-- [ ] Record closed surfaces and residual deterministic limits.
-- [ ] Verify, commit, and push `docs: map phase 9 float conversion gaps`.
+- [x] Create `docs/phase9-floating-conversion-errno-fidelity-gap-map.md`.
+- [x] Record closed surfaces and residual deterministic limits.
+- [x] Verify, commit, and push `docs: map phase 9 float conversion gaps`.
+
+Findings:
+
+- Added the Phase 9 gap map with closed conversion/errno/range surfaces, recheck results, and residual deterministic limits.
+- Residuals explicitly document current binary64-backed `long double`, deterministic C-locale parsing, NaN payload-bit non-preservation, and deferred native-libc errno corner cases.
 
 ## Milestone 22: Phase 9 Closure Docs
 
