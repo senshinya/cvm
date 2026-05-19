@@ -302,10 +302,17 @@ Findings:
 
 Calibration before execution: Re-run runtime gap report and scan imported GCC accept roots for conversion/time/locale/env candidates.
 
-- [ ] Run `TestGCCExecutionGapReportIsCurrent`.
-- [ ] Scan fixture roots for newly unblocked candidates.
-- [ ] Add a low-risk fixture only if stable.
-- [ ] Verify, commit, and push `docs: record phase 8 gcc fixture recheck`.
+- [x] Run `TestGCCExecutionGapReportIsCurrent`.
+- [x] Scan fixture roots for newly unblocked candidates.
+- [x] Add a low-risk fixture only if stable.
+- [x] Verify, commit, and push `docs: record phase 8 gcc fixture recheck`.
+
+Findings:
+
+- `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run TestGCCExecutionGapReportIsCurrent -count=1` passed.
+- `runtime/testdata/gcc-exec/gap-report.md` remains closed with 18 runnable manifest candidates and no failures.
+- `codegen/testdata/gcc-bytecode-compile.tsv` remains 232 lines including the header.
+- Imported GCC accept scans for conversion, random/env/process, locale, time, and ctype terms did not identify a new stable low-risk runtime fixture; matches were warning/header wording or non-runtime syntax fixtures.
 
 ## Milestone 22: Phase 8 Closure Docs
 
