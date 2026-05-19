@@ -2482,6 +2482,19 @@ int main(void)
     return 14;
   if (atof("word") != 0.0)
     return 15;
+  if (errno != 77)
+    return 60;
+  errno = 0;
+  if (atof("1e309tail") <= 1e300)
+    return 61;
+  if (errno != ERANGE)
+    return 62;
+  errno = 0;
+  if (atof("-1e-400tail") != 0.0)
+    return 63;
+  if (errno != ERANGE)
+    return 64;
+  errno = 77;
   if (strtod(" -12.5e1x", &end) != -125.0)
     return 2;
   if (*end != 'x')

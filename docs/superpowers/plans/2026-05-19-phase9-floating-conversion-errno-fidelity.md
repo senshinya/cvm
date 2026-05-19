@@ -227,9 +227,16 @@ Findings:
 
 Calibration before execution: Re-read `atofExtern` and decide whether wrapper writes errno through shared parser.
 
-- [ ] Add direct/source tests for `atof` overflow, underflow, and no-conversion.
-- [ ] Reuse shared float parser range handling.
-- [ ] Verify, commit, and push `feat(runtime): align atof range behavior`.
+- [x] Add direct/source tests for `atof` overflow, underflow, and no-conversion.
+- [x] Reuse shared float parser range handling.
+- [x] Verify, commit, and push `feat(runtime): align atof range behavior`.
+
+Findings:
+
+- `atof` now uses the shared float parser range status and writes `errno=ERANGE` for overflow and underflow-to-zero.
+- Added direct extern and source-level runtime coverage proving no-conversion preserves nonzero `errno`.
+- Added direct/source coverage for `atof` overflow and underflow without an end pointer surface.
+- Focused `env GOCACHE=/private/tmp/cvm-go-build-cache go test ./runtime -run 'TestStdlibFloatParser' -count=1` passed.
 
 ## Milestone 16: Endptr With Range Errors
 
