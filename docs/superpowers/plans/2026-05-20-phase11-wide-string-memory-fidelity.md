@@ -22,9 +22,15 @@ Calibration before execution: Confirm `main` includes Phase 10 closure and no lo
 
 Calibration before execution: Re-read current `wcharHeader` and avoid declarations that are not implemented in the same phase.
 
-- [ ] Add declarations for `wmemchr`, `wmemcmp`, `wmemcpy`, `wmemmove`, `wmemset`, `wcslen`, `wcscmp`, `wcsncmp`, `wcschr`, `wcsrchr`, `wcsstr`, `wcspbrk`, `wcsspn`, `wcscspn`, `wcscpy`, `wcsncpy`, `wcscat`, `wcsncat`, `wcscoll`, `wcsxfrm`, and `wcstok`.
-- [ ] Extend `TestBuiltinWcharAndWctypeHeadersExposeWideInterfaces`.
-- [ ] Run focused preprocessor test, standard verification, commit `feat(headers): declare wide string functions`, and push.
+- [x] Probe whether declarations can be added ahead of runtime registration.
+- [x] Record loader behavior and adjust Phase 11 execution to declaration-plus-implementation increments.
+- [x] Run focused preprocessor test and full verification before continuing.
+
+Findings:
+
+- Adding all `<wchar.h>` wide string declarations ahead of runtime registration made existing source runtime tests fail during load with unresolved `wcslen`.
+- Phase 11 must add declarations together with each matching runtime extern registration and implementation.
+- Milestones 4 through 24 are now the declaration-plus-implementation source of truth; this broad declaration milestone remains a calibration checkpoint only.
 
 ## Milestone 3: Wide Helper Primitives
 
