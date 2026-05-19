@@ -3336,6 +3336,65 @@ func TestPlainStringWriteExterns(t *testing.T) {
 	}
 }
 
+func TestCheckedStringMemoryExterns(t *testing.T) {
+	reg := DefaultExternRegistry(nil, nil)
+	mem := NewMemory(bytecode.DefaultTarget())
+	dst := mustAllocBytes(t, mem, "checked:dst", make([]byte, 16), false, blockLocal)
+	src := mustAllocBytes(t, mem, "checked:src", []byte("abcd\x00"), true, blockString)
+	wantObjectSizeErr := func(name string, err error) {
+		t.Helper()
+		if err == nil || !strings.Contains(err.Error(), "object size") {
+			t.Fatalf("%s err=%v, want object size error", name, err)
+		}
+	}
+
+	memcpyFn, ok := reg.Lookup("__builtin___memcpy_chk")
+	if !ok {
+		t.Fatal("missing __builtin___memcpy_chk extern")
+	}
+	ret, exit, err := memcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 5), UIntValue(bytecode.TypeU64, 5)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("memcpy_chk boundary ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	_, _, err = memcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(src), UIntValue(bytecode.TypeU64, 5), UIntValue(bytecode.TypeU64, 4)})
+	wantObjectSizeErr("memcpy_chk overflow", err)
+
+	memsetFn, ok := reg.Lookup("__builtin___memset_chk")
+	if !ok {
+		t.Fatal("missing __builtin___memset_chk extern")
+	}
+	ret, exit, err = memsetFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst + 5), IntValue(bytecode.TypeI32, 'z'), UIntValue(bytecode.TypeU64, 2), UIntValue(bytecode.TypeU64, 2)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != dst+5 {
+		t.Fatalf("memset_chk boundary ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	_, _, err = memsetFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst + 5), IntValue(bytecode.TypeI32, 'z'), UIntValue(bytecode.TypeU64, 3), UIntValue(bytecode.TypeU64, 2)})
+	wantObjectSizeErr("memset_chk overflow", err)
+
+	strcpyFn, ok := reg.Lookup("__builtin___strcpy_chk")
+	if !ok {
+		t.Fatal("missing __builtin___strcpy_chk extern")
+	}
+	shortSrc := mustAllocBytes(t, mem, "checked:short-src", []byte("ab\x00"), true, blockString)
+	ret, exit, err = strcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(shortSrc), UIntValue(bytecode.TypeU64, 3)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("strcpy_chk boundary ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	_, _, err = strcpyFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(shortSrc), UIntValue(bytecode.TypeU64, 2)})
+	wantObjectSizeErr("strcpy_chk overflow", err)
+
+	strncatFn, ok := reg.Lookup("__builtin___strncat_chk")
+	if !ok {
+		t.Fatal("missing __builtin___strncat_chk extern")
+	}
+	tail := mustAllocBytes(t, mem, "checked:tail", []byte("cdxx\x00"), true, blockString)
+	ret, exit, err = strncatFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(tail), UIntValue(bytecode.TypeU64, 2), UIntValue(bytecode.TypeU64, 5)})
+	if err != nil || exit != nil || ret.Type != bytecode.TypePtr || ret.Int != dst {
+		t.Fatalf("strncat_chk boundary ret=%#v exit=%#v err=%v", ret, exit, err)
+	}
+	_, _, err = strncatFn(context.Background(), &ExternContext{Memory: mem}, []Value{PtrValue(dst), PtrValue(tail), UIntValue(bytecode.TypeU64, 1), UIntValue(bytecode.TypeU64, 4)})
+	wantObjectSizeErr("strncat_chk overflow", err)
+}
+
 func TestPlainAllocationExterns(t *testing.T) {
 	reg := DefaultExternRegistry(nil, nil)
 	mem := NewMemory(bytecode.DefaultTarget())

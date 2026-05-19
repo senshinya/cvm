@@ -192,9 +192,9 @@ Calibration before execution: Re-read `stringConcatExtern` and `stringNConcatExt
 
 Calibration before execution: Re-read `*_chk` externs for copy, move, set, concat.
 
-- [ ] Add tests for successful boundary-sized operations and failing object-size checks.
-- [ ] Fix if needed.
-- [ ] Verify, commit, and push `test(runtime): cover checked string memory builtins`.
+- [x] Add tests for successful boundary-sized operations and failing object-size checks.
+- [x] Fix if needed.
+- [x] Verify, commit, and push `test(runtime): cover checked string memory builtins`.
 
 ## Milestone 23: Header/Registry/GCC Recheck
 
